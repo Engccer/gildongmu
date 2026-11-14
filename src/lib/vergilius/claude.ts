@@ -22,7 +22,8 @@
  *   검증해 준다. strict는 채팅 선언(선택 인자·enum)의 스키마 조건을 실호출 전에 보장할 수 없고 첫 요청에 문법 컴파일 시간이 붙는다.
  *   인자가 객체가 아니면 빈 인자로 넘긴다(실행부가 「목적지가 필요합니다」 같은 오류로 답한다, OpenAI 어댑터와 같다).
  * - **재시도는 시한 안에서만 의미가 있게 둔다.** SDK 기본(2회, 지수 대기)은 25초 요청 시한과 겹친다. 1회만 다시 하고, 응답 머리까지의
- *   시한(SDK `timeout`은 fetch가 머리를 받을 때까지만 잰다)을 짧게 둔다: 8초 + 대기 0.5초 + 8초가 25초 안에 든다.
+ *   시한(SDK `timeout`은 fetch가 머리를 받을 때까지만 잰다)을 짧게 둔다: 8초 + 대기 0.5초 + 8초가 회차 시한 20초 안에 든다.
+ *   회사가 주는 재시도 대기 머리는 지운다(`withoutRetryAfter`). 수십 초를 따르면 회차 시한까지 멈추고 원인(429·529)이 「중단」에 묻힌다.
  * - 로그에는 모델·회차·`stop_reason`·지연·토큰 수만 남긴다. 질문 글·재료·답 글은 쓰지 않는다.
  */
 import Anthropic from "@anthropic-ai/sdk";
@@ -52,7 +53,7 @@ export const CLAUDE_VERGILIUS_SETTINGS: Record<ClaudeVergiliusProvider, ClaudeRe
   "claude-sonnet": { thinking: { type: "between_tools" }, effort: "low" },
 };
 
-const ROUND_TIMEOUT_MS = 20_000;
+export const CLAUDE_ROUND_TIMEOUT_MS = 20_000;
 /**
  * 답은 한두 문장이지만 Opus 5.5의 생각도 이 상한에 든다(생각 글이 돌아오지 않아도 센다). 상한에 닿으면 실패이므로 넉넉히 둔다 —
  * 실제 지출은 쓴 만큼이고 시간은 요청 시한이 묶는다.
@@ -72,8 +73,33 @@ export interface ClaudeMessagesClient {
   };
 }
 
-export function createAnthropicClient(apiKey: string): ClaudeMessagesClient {
-  return new Anthropic({ apiKey, maxRetries: CLAUDE_MAX_RETRIES, timeout: CLAUDE_ATTEMPT_TIMEOUT_MS });
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+/**
+ * 실패 응답의 재시도 대기 머리(`retry-after`·`retry-after-ms`)를 지운다. SDK는 이 값을 상한 없이 따르므로 429·529가 수십 초를
+ * 주면 회차 시한까지 멈춘 뒤 「중단」으로 끝나 원인이 사라진다. 지우면 SDK 기본 대기(0.5초 남짓) 뒤 한 번 더 해 보고, 또 실패하면
+ * 상태 코드를 단 실패로 바로 끝난다.
+ */
+export function withoutRetryAfter(base: FetchLike): FetchLike {
+  return async (input, init) => {
+    const res = await base(input, init);
+    if (res.ok || !(res.headers.has("retry-after") || res.headers.has("retry-after-ms"))) return res;
+    const headers = new Headers(res.headers);
+    headers.delete("retry-after");
+    headers.delete("retry-after-ms");
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  };
+}
+
+export function createAnthropicClient(apiKey: string, baseFetch: FetchLike = fetch): ClaudeMessagesClient {
+  return new Anthropic({
+    apiKey,
+    maxRetries: CLAUDE_MAX_RETRIES,
+    timeout: CLAUDE_ATTEMPT_TIMEOUT_MS,
+    fetch: withoutRetryAfter(baseFetch),
+    // SDK 로거는 깨진 스트림 조각을 원문째 남긴다(답 글이 들어 있다). 회차 기록은 어댑터가 직접 쓴다.
+    logLevel: "off",
+  });
 }
 
 export interface ClaudeSessionOptions {
@@ -101,13 +127,13 @@ function toModelError(e: unknown): unknown {
 }
 
 /** 정상으로 받는 `stop_reason`. 나머지는 고정 낱말로 던진다(값을 그대로 싣지 않는다). */
-const STOP_REASON_KIND: Partial<Record<string, string>> = {
-  refusal: "claude stop refusal",
-  max_tokens: "claude stop max_tokens",
-  model_context_window_exceeded: "claude stop context",
-  pause_turn: "claude stop pause_turn",
-  stop_sequence: "claude stop stop_sequence",
-};
+const STOP_REASON_KIND = new Map<string, string>([
+  ["refusal", "claude stop refusal"],
+  ["max_tokens", "claude stop max_tokens"],
+  ["model_context_window_exceeded", "claude stop context"],
+  ["pause_turn", "claude stop pause_turn"],
+  ["stop_sequence", "claude stop stop_sequence"],
+]);
 
 function toArgs(input: unknown): Record<string, unknown> {
   return input !== null && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
@@ -126,7 +152,7 @@ export function createClaudeSession(opts: ClaudeSessionOptions): VergiliusModelS
   return {
     async round(roundOpts: VergiliusRoundOptions): Promise<VergiliusRoundResult> {
       roundNo++;
-      const timeout = AbortSignal.timeout(ROUND_TIMEOUT_MS);
+      const timeout = AbortSignal.timeout(CLAUDE_ROUND_TIMEOUT_MS);
       const started = performance.now();
       let firstTextMs: number | null = null;
       let text = "";
@@ -157,6 +183,11 @@ export function createClaudeSession(opts: ClaudeSessionOptions): VergiliusModelS
         }
         message = await stream.finalMessage();
       } catch (e) {
+        // 중단의 원인을 가른다: 회차 시한과 요청 쪽 중단(요청 시한·연결 끊김)은 운영 진단이 다르다.
+        if (e instanceof Anthropic.APIUserAbortError) {
+          if (timeout.aborted) throw new VergiliusModelError("claude round timeout");
+          if (opts.signal?.aborted) throw new VergiliusModelError("claude request aborted");
+        }
         throw toModelError(e);
       }
 
@@ -170,7 +201,7 @@ export function createClaudeSession(opts: ClaudeSessionOptions): VergiliusModelS
       const reason = message.stop_reason;
       if (reason !== "end_turn" && reason !== "tool_use") {
         throw new VergiliusModelError(
-          (reason !== null && STOP_REASON_KIND[reason]) || (reason === null ? "claude stop null" : "claude stop unexpected"),
+          reason === null ? "claude stop null" : (STOP_REASON_KIND.get(reason) ?? "claude stop unexpected"),
         );
       }
 

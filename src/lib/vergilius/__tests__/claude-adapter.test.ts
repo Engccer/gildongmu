@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CLAUDE_ATTEMPT_TIMEOUT_MS,
   CLAUDE_MAX_RETRIES,
+  CLAUDE_ROUND_TIMEOUT_MS,
   CLAUDE_VERGILIUS_MODELS,
   createAnthropicClient,
   createClaudeSession,
+  withoutRetryAfter,
   type ClaudeMessagesClient,
 } from "../claude";
 import { PROPOSE_GUIDE_TOOL, toAnthropicTools } from "../tools";
@@ -237,11 +239,56 @@ describe("Claude 어댑터(Messages API 스트림)", () => {
     for (const secret of ["재료", "질문", "가나카페", "지침"]) expect(h.logs[0]).not.toContain(secret);
   });
 
-  it("클라이언트: 재시도 1회, 시도당 응답 머리 시한 8초 — 두 번 시도와 대기가 요청 시한 25초 안에 든다", () => {
+  it("요청 쪽에서 거둔 중단은 회차 시한과 다른 종류로 남는다", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const h = claudeHarness([{ events: [], error: new Anthropic.APIUserAbortError() }], { signal: controller.signal });
+    await expect(h.session.round({ tools: true, ...noop })).rejects.toMatchObject({ kind: "claude request aborted" });
+  });
+
+  it("클라이언트: 재시도 1회, 시도당 응답 머리 시한 8초, SDK 로거 끔 — 두 번 시도와 대기가 회차 시한 20초 안에 든다", () => {
     const client = createAnthropicClient("sk-ant-test") as unknown as Anthropic;
     expect(client.maxRetries).toBe(CLAUDE_MAX_RETRIES);
     expect(client.timeout).toBe(CLAUDE_ATTEMPT_TIMEOUT_MS);
-    // 대기는 SDK 기본 지수 대기의 첫 값(0.5초)이다.
-    expect(CLAUDE_ATTEMPT_TIMEOUT_MS * (CLAUDE_MAX_RETRIES + 1) + 500).toBeLessThan(25_000);
+    expect(client.logLevel).toBe("off");
+    // 대기는 SDK 기본 지수 대기의 첫 값(0.5초)이다. 회사의 재시도 대기 머리는 아래 테스트처럼 지운다.
+    expect(CLAUDE_ATTEMPT_TIMEOUT_MS * (CLAUDE_MAX_RETRIES + 1) + 500).toBeLessThan(CLAUDE_ROUND_TIMEOUT_MS);
+  });
+
+  it("재시도 대기 머리: 실패 응답에서만 지우고 상태·본문은 그대로, 성공 응답은 손대지 않는다", async () => {
+    const failed = new Response('{"type":"error"}', { status: 429, headers: { "retry-after": "30", "retry-after-ms": "30000", "request-id": "r1" } });
+    const out = await withoutRetryAfter(async () => failed)("https://api.anthropic.com/v1/messages");
+    expect(out.status).toBe(429);
+    expect(out.headers.has("retry-after")).toBe(false);
+    expect(out.headers.has("retry-after-ms")).toBe(false);
+    expect(out.headers.get("request-id")).toBe("r1");
+    expect(await out.text()).toBe('{"type":"error"}');
+    const ok = new Response("{}", { status: 200, headers: { "retry-after": "5" } });
+    expect(await withoutRetryAfter(async () => ok)("https://x")).toBe(ok);
+  });
+
+  it("429가 30초를 기다리라 해도 한 번 다시 해 보고 몇 초 안에 상태 코드를 단 실패로 끝난다(회차 시한까지 멈추지 않는다)", async () => {
+    const calls: number[] = [];
+    const started = Date.now();
+    const fakeFetch = async () => {
+      calls.push(Date.now() - started);
+      return new Response(JSON.stringify({ type: "error", error: { type: "rate_limit_error", message: "지금 내 앞에 가나카페" } }), {
+        status: 429,
+        headers: { "retry-after": "30", "content-type": "application/json" },
+      });
+    };
+    const session = createClaudeSession({
+      client: createAnthropicClient("sk-ant-test", fakeFetch),
+      provider: "claude-sonnet",
+      instruction: "지침",
+      material: "재료",
+      tools: [],
+      log: () => {},
+    });
+    const err = (await session.round({ tools: true, ...noop }).catch((e: unknown) => e)) as Error & { kind: string; status: number };
+    expect(err).toMatchObject({ kind: "claude messages", status: 429 });
+    expect(err.message).not.toContain("가나카페");
+    expect(calls).toHaveLength(CLAUDE_MAX_RETRIES + 1);
+    expect(Date.now() - started).toBeLessThan(3_000);
   });
 });
