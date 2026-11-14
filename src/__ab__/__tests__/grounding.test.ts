@@ -133,6 +133,8 @@ describe("scoreGrounding — 엔티티 대조", () => {
     const text = "- **편의점**: CU 강동역점 / 내일도두부 (음식점, 1m) / 장애인 주차구역 9면 / 스타벅스 고객센터로 문의";
     const outputs = [{ name: "t", response: { places: [{ name: "CU 강동역점", category: "convenience" }] } }];
     expect(scoreGrounding(g, outputs, text)).toEqual({ pass: true, leaked: [] });
+    // 면제는 낱말 전체 일치뿐이다: 범주 낱말로 끝나는 도구 밖 이름은 그대로 잡는다.
+    expect(scoreGrounding(g, outputs, "편의점: 행복편의점, 근처 가나다음식점").leaked).toEqual(["name:행복편의점", "name:가나다음식점"]);
   });
   it("도구에 없는 전화번호·수치는 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과 02-999-0000, 3층에 있어요");
