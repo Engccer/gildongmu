@@ -1603,6 +1603,15 @@
   "android.outing.band": [
     "distance"
   ],
+  "android.outing.bundleLeft": [
+    "names"
+  ],
+  "android.outing.bundleRight": [
+    "names"
+  ],
+  "android.outing.bundleSide": [
+    "names"
+  ],
   "android.outing.itemLeft": [
     "distance"
   ],

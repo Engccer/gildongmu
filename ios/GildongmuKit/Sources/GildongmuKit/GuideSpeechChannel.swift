@@ -14,6 +14,21 @@ public enum GuideSpeechClass: String, Sendable, CaseIterable {
     case urgent
     /// 주기·상태·사후 정리 — 백그라운드에서는 효과음과 전경 복귀 상환이 맡는다.
     case deferrable
+    /// 물어서 나온 답과 그 실패 문장(E82 V0b·V17). 행동 문장 아래, 주변 위. 백그라운드에서는 토글과 무관하게 말한다.
+    case answer
+    /// 주변 문장(E82 V0b — 나들이의 가게 묶음·도로명). 서열의 맨 아래라 아무것도 끊지 않고, 백그라운드 발화 여부는
+    /// 행동 문장과 같다(토글을 따른다).
+    case ambient
+
+    /// 끊는 서열(E82 V0b): 안전·행동 문장 > 답 > 주변. 위 분류는 아래 분류의 **말하는 중인 문장을 끊고** 대기 칸에서도
+    /// 아래 분류를 밀어낸다. 종전 세 분류는 서열이 같아 서로의 선점 규칙이 그대로다(`urgent`·`.high` 선점은 따로 있다).
+    public var interruptRank: Int {
+        switch self {
+        case .ambient: 0
+        case .answer: 1
+        case .actionable, .urgent, .deferrable: 2
+        }
+    }
 }
 
 /// 게시 채널(spec §2).
@@ -35,6 +50,9 @@ public enum GuideSpeechChannel: String, Sendable, CaseIterable {
 /// - `backgroundAudible`: 지금 백그라운드에서 소리가 나는가(그 모델 재생기의 `isBackgroundAudible`). 승격 실패·지연이면
 ///   기기 음성도 들리지 않으므로 버림으로 판정한다 — "전달"로 치면 1회성 경고 latch와 복귀 상환이 들리지 않은 문장에
 ///   소비된다(설계 리뷰 B1).
+/// - `askWindowActive`: 묻고 답하는 구간(E82 V0c — 받아쓰기가 끝난 때부터 답이나 실패 문장이 끝날 때까지)인가. 참이면
+///   전경에서 VoiceOver가 켜져 있어도 기기 음성 한 채널이다(채널이 둘이면 답과 경고가 겹쳐 들린다). 백그라운드 판정은
+///   바꾸지 않는다. 켜는 쪽은 말로 묻기(E82 S6)가 만든다 — 그 전에는 모든 호출부가 거짓을 넘긴다.
 ///
 /// ⚠ 자동차 운전자 채널은 이 술어 위에 있다 — `BeaconModel.post`가 먼저 기기 음성으로 낸다(spec §2).
 public func guideSpeechChannel(
@@ -43,16 +61,20 @@ public func guideSpeechChannel(
     speechClass: GuideSpeechClass,
     backgroundSpeechEnabled: Bool,
     backgroundAudible: Bool,
-    foregroundDeviceSpeech: Bool
+    foregroundDeviceSpeech: Bool,
+    askWindowActive: Bool
 ) -> GuideSpeechChannel {
     if foreground {
+        if askWindowActive { return .device }
         if voiceOverRunning { return .voiceOver }
         return foregroundDeviceSpeech ? .device : .voiceOver
     }
-    guard backgroundSpeechEnabled, backgroundAudible else { return .drop }
+    // 들리지 않으면 어느 분류든 버림이다 — "전달"로 치면 1회성 경고 latch와 복귀 상환이 들리지 않은 문장에 소비된다.
+    guard backgroundAudible else { return .drop }
     // 망라 switch — 새 분류가 생기면 백그라운드에서 말할지가 컴파일 단계에서 판정되게 한다(부정 비교는 fail-open, 검증 리뷰 N6).
     switch speechClass {
-    case .actionable, .urgent: return .device
+    case .actionable, .urgent, .ambient: return backgroundSpeechEnabled ? .device : .drop
+    case .answer: return .device  // 물어서 나온 문장이라 토글과 무관하다(E82 V17)
     case .deferrable: return .drop
     }
 }

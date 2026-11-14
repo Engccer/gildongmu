@@ -205,6 +205,26 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceInterruption \{ \[weak queue\] token, reason in\s*queue\?\.speechInterrupted\(token: token, reason: reason\)/);
   });
 
+  it("기기 음성의 「말했다」는 합성기의 끝 신호로만 선다 — 끝까지 말했을 때와 취소를 가른다(E82 V0a)", () => {
+    const tts = read(join(ROOT, "ios/Gildongmu/Chat/TtsPlayer.swift"));
+    // 세대가 그대로일 때만 알린다 — `halt()`가 끊은 발화의 늦은 취소 신호가 「말하지 못했다」를 한 번 더 내지 않게.
+    expect(functionBody(tts, "speakGuidance")).toMatch(
+      /playbackDelegate\.armGuidance\(source: utterance\) \{ \[weak self\] completed in\s*guard let self, self\.generation == token else \{ return \}\s*self\.guidanceEndObservers\.forEach \{ \$0\(token, completed\) \}/,
+    );
+    expect(tts).toMatch(/didFinish utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: true\)/);
+    expect(tts).toMatch(/didCancel utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: false\)/);
+    const output = read(join(DIR, "GuideSpeechOutput.swift"));
+    expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceEnd \{ \[weak queue\] token, completed in\s*queue\?\.speechEnded\(token: token, completed: completed\)/);
+  });
+
+  it("도보·대중교통 모델은 답·주변 분류를 쓰지 않는다 — 서열 선점과 인계 제외는 나들이에만 닿는다(E82 V0b)", () => {
+    for (const name of ["BeaconModel.swift", "TransitGuideModel.swift"]) {
+      const source = read(join(DIR, name));
+      // 오디오 세션 범주 `.ambient`를 말하는 주석은 대상이 아니다 — 발화 분류 인자만 본다.
+      expect(source, name).not.toMatch(/speechClass: \.(ambient|answer)\b/);
+    }
+  });
+
   it("도보 post: 버림은 복귀 표식을 세우고, 기기 음성은 내리고, 대기 칸의 미전달만 다시 세운다(spec §4.3)", () => {
     const post = functionBody(read(join(DIR, "BeaconModel.swift")), "post");
     const device = post.slice(post.indexOf("case .device:"), post.indexOf("case .drop:"));

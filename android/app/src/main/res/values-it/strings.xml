@@ -237,6 +237,11 @@
     <string name="android_outing_aheadLandmark">Davanti: %1$s, %2$s</string>
     <string name="android_outing_aheadNone">Nessun punto di riferimento davanti</string>
     <string name="android_outing_band">Passeggiata, %1$s</string>
+    <string name="android_outing_bundleLeft">A sinistra: %1$s</string>
+    <string name="android_outing_bundleNameSeparator">", "</string>
+    <string name="android_outing_bundleRight">A destra: %1$s</string>
+    <string name="android_outing_bundleSide">Accanto: %1$s</string>
+    <string name="android_outing_bundleSideSeparator">". "</string>
     <string name="android_outing_crosswalkAhead">Attraversamento pedonale davanti</string>
     <string name="android_outing_crosswalkAheadAudio">Attraversamento pedonale davanti, con segnale acustico</string>
     <string name="android_outing_dir_e">est</string>

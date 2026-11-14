@@ -12,7 +12,13 @@ struct DeviceSpeechQueueTests {
     /// 앱 전역 합성기 흉내. `speak`마다 새 토큰, `stop`·새 발화가 이전 토큰을 무효로 만든다(`TtsPlayer` 세대와 같다).
     @MainActor
     final class SharedSynth {
-        var speaking = false
+        /// 참에서 거짓으로 바뀌면 합성기가 끝까지 말한 것이다 — 끝 신호를 낸다(`stop`·`vanish`는 내지 않는다).
+        var speaking = false {
+            didSet { if oldValue, !speaking, !silent { endObservers.forEach { $0(token, true) } } }
+        }
+        private var silent = false
+        /// 합성기의 끝 신호(앱 `TtsPlayer.observeGuidanceEnd`): 발화 토큰과 「끝까지 말했는가」.
+        var endObservers: [(Int, Bool) -> Void] = []
         /// 인터럽션 뒤 일시정지로 남은 발화 — "말하는 중"(칸을 막는가)은 아니지만 토큰의 문장은 아직 합성기에 있다.
         var paused = false
         private(set) var token = 0
@@ -34,9 +40,24 @@ struct DeviceSpeechQueueTests {
             return token
         }
 
+        /// 끝 신호 없이 합성기에서 사라졌다(끝 신호가 유실됐다).
+        func vanish() {
+            silent = true
+            speaking = false
+            silent = false
+        }
+
+        /// 합성기가 스스로 발화를 취소했다(오디오 세션 실패 등) — 취소 신호를 낸다.
+        func cancelByItself() {
+            vanish()
+            endObservers.forEach { $0(token, false) }
+        }
+
         func stop() {
             token += 1
+            silent = true
             speaking = false
+            silent = false
             paused = false
             stops += 1
         }
@@ -61,6 +82,9 @@ struct DeviceSpeechQueueTests {
             self.synth = synth
             synth.interruptionObservers.append { [weak self] token, reason in
                 self?.queue.speechInterrupted(token: token, reason: reason)
+            }
+            synth.endObservers.append { [weak self] token, completed in
+                self?.queue.speechEnded(token: token, completed: completed)
             }
         }
 

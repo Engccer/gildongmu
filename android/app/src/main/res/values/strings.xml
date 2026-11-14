@@ -322,6 +322,11 @@
     <string name="android_outing_aheadLandmark">앞에 %1$s, %2$s</string>
     <string name="android_outing_aheadNone">앞에 이정표 없음</string>
     <string name="android_outing_band">나들이, %1$s</string>
+    <string name="android_outing_bundleLeft">왼쪽에 %1$s</string>
+    <string name="android_outing_bundleNameSeparator">", "</string>
+    <string name="android_outing_bundleRight">오른쪽에 %1$s</string>
+    <string name="android_outing_bundleSide">옆에 %1$s</string>
+    <string name="android_outing_bundleSideSeparator">". "</string>
     <string name="android_outing_crosswalkAhead">앞에 횡단보도</string>
     <string name="android_outing_crosswalkAheadAudio">앞에 횡단보도, 음향신호기 있음</string>
     <string name="android_outing_dir_e">동쪽</string>
