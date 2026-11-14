@@ -204,6 +204,9 @@ final class GuideSession {
         case guide(GuideStartMode)
         /// 호출자가 조립한 도보 요청 그대로 — 「출발점으로」(줄 지정 없는 종전 요청).
         case request(BeaconModel.StartRequest)
+        /// 시작하지 않고 길찾기 탭에서 기기 위치로 다시 조회한다(S4 리뷰 NIT e — 답 아래 대중교통 버튼의 조회 결과가 낡았거나
+        /// 수동 위치에서 조회한 것일 때, 채팅 카드 R6과 같다). `notice`는 조회 시작 때 한 번 말하는 사유다.
+        case directions(notice: String)
     }
 
     /// 나들이에서 안내로 넘기는 **한 길**(E82 V13): 기다리던 질문 요청을 거둔다 → 나들이를 끝낸다 → 호출자가 넘긴 요청으로
@@ -217,6 +220,15 @@ final class GuideSession {
     func handOverOuting(to destination: GuideDestination, start: OutingHandoverStart) {
         outing.withdrawPendingRequest()
         outing.endForHandover()
+        if case .directions(let notice) = start {
+            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                role: .to,
+                endpoint: .place(
+                    label: destination.label, lat: destination.dest.lat, lng: destination.dest.lng,
+                    labelRoman: destination.labelRoman),
+                realOriginRequeryNotice: notice)
+            return
+        }
         let id = UUID()
         outingReturnID = id
         // 도보·자동차는 비콘 세션이라 늦은 실패(경로 조회 실패)를 그 세션의 종료 콜백으로 받는다. 대중교통은 자기 연결
@@ -225,6 +237,7 @@ final class GuideSession {
         switch start {
         case .guide(.transit): hooksBeacon = false
         case .guide(.walk), .guide(.car), .request: hooksBeacon = true
+        case .directions: return  // 위에서 길찾기 탭으로 넘겼다
         }
         if hooksBeacon {
             beacon.onSessionEnd = { [weak self] reason in
@@ -235,6 +248,7 @@ final class GuideSession {
         switch start {
         case .guide(let mode): startGuide(to: destination, mode: mode)
         case .request(let request): self.startBeacon(request)
+        case .directions: break
         }
         launchingOutingReturn = false
         // 동기 거부(점유·시작 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.

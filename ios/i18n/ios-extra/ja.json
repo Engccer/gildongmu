@@ -262,7 +262,8 @@
       "carListenerDriver": "運転者（スピーカー、短い指示）",
       "tabOrder": "タブの順序",
       "tabOrderReset": "標準の順序に戻す",
-      "tabOrderResetDone": "標準の順序に戻しました"
+      "tabOrderResetDone": "標準の順序に戻しました",
+      "vergiliusProvider": "回答モデル"
     },
     "shortcut": {
       "voiceSearch": {
@@ -426,7 +427,14 @@
       "historyBeside": "そば",
       "historyPassedBy": "通過済み",
       "historyJustNow": "たった今",
-      "historyMinutesAgo": "{minutes}分前"
+      "historyMinutesAgo": "{minutes}分前",
+      "askButton": "声で質問",
+      "askHint": "押したまま話してください。指を離すと質問します。",
+      "askNoAnswer": "回答を受け取れませんでした。",
+      "askCutOff": "回答が途中で切れました。",
+      "askNoSpeech": "質問を聞き取れませんでした。",
+      "askNoLocation": "まだ位置がわからないため質問できません。",
+      "askProposal": "{name}まで案内しますか？"
     },
     "reorder": {
       "toTop": "一番上へ",

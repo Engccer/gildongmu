@@ -69,6 +69,12 @@ struct HoldDictationButton: View {
     /// (검색은 홀드 단일 동작). 전사 없이 잠근 경우 nil 세그먼트로 호출된다 —
     /// 상태 변화(정지) 통지는 소비자가 담당.
     let onPause: ((String?) -> Void)?
+    /// 시작 라벨(탭 토글의 「받아쓰기 시작」, 홀드의 「받아쓰기」)을 바꾼다 — 받아쓰기가 곧 다른 행위인 자리(나들이 「말로 묻기」,
+    /// E82 V14). 청취 중 라벨(「받아쓰기 중지」)과 준비 중 라벨은 그대로다.
+    var startTitle: String? = nil
+    /// 받아쓴 말이 없이 끝났을 때(무발화·문장부호뿐). nil이면 종전처럼 정지음만이다. 받아쓰기 완료를 침묵으로 끝내면 안 되는
+    /// 소비자(전송이 곧 다음 행동인 자동 전송, 헌장 §6)만 준다.
+    var onNoSpeech: (() -> Void)? = nil
 
     /// 잠금·취소 판정 이동량(pt). 오발동 방지와 도달성의 절충(WhatsApp 관행 수준).
     private static let slideThreshold: CGFloat = 60
@@ -105,7 +111,7 @@ struct HoldDictationButton: View {
         // 가시 안내는 overlay 이탈(음수 offset)이 아니라 정상 레이아웃 흐름에 둔다 —
         // 검색·길찾기 사용처는 List 행이라 행 경계를 벗어나는 오버레이가 잘린다(실측).
         VStack(alignment: .leading, spacing: 2) {
-            micRow(title: appLocalized("ios.voice.hold"))
+            micRow(title: startTitle ?? appLocalized("ios.voice.hold"))
             if showHoldHint {
                 // 비-VO 사용자용 가시 안내(VO는 handleTap의 polite 통지가 담당 —
                 // 이중 낭독 금지를 위해 이 Text는 접근성에서 숨긴다)
@@ -124,7 +130,7 @@ struct HoldDictationButton: View {
             )
         }
         .accessibilityElement()
-        .accessibilityLabel(appLocalized("ios.voice.hold"))
+        .accessibilityLabel(startTitle ?? appLocalized("ios.voice.hold"))
         .accessibilityHint(hint)
         .accessibilityAddTraits(.isButton)
         // VO 더블탭(짧은 탭) 활성화는 기본적으로 "합성 터치 → HoldGestureCatcher의
@@ -162,7 +168,7 @@ struct HoldDictationButton: View {
     /// 모델 다운로드 대기는 둘 다 아니므로 준비 중임을 그대로 알린다.
     private var toggleLabel: String {
         if speech.phase == .preparing { return appLocalized("ios.voice.preparing") }
-        return speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start")
+        return speech.isListening ? appLocalized("voice.stop") : (startTitle ?? appLocalized("ios.voice.start"))
     }
 
     private func micRow(title: String) -> some View {
@@ -335,8 +341,12 @@ struct HoldDictationButton: View {
             // 권한 다이얼로그·모델 다운로드 중 릴리스: start()가 끝나길 기다렸다 정지해
             // 허가 직후 유령 청취가 남지 않게 한다(경합 직렬화)
             await task?.value
+            // 듣고 있지 않았으면(시작 실패 — 권한 거부 알림이 따로 뜬다) 「듣지 못함」이 아니다.
+            let wasListening = speech.isListening
             if let text = await speech.stop() {
                 onTranscript(text)
+            } else if wasListening {
+                onNoSpeech?()
             }
         }
     }

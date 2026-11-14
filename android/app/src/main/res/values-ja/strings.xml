@@ -236,6 +236,13 @@
     <string name="android_nearby_whereAmIChat">現在地について質問する</string>
     <string name="android_outing_aheadLandmark">前方に%1$s、%2$s</string>
     <string name="android_outing_aheadNone">前方に目印なし</string>
+    <string name="android_outing_askButton">声で質問</string>
+    <string name="android_outing_askCutOff">回答が途中で切れました。</string>
+    <string name="android_outing_askHint">押したまま話してください。指を離すと質問します。</string>
+    <string name="android_outing_askNoAnswer">回答を受け取れませんでした。</string>
+    <string name="android_outing_askNoLocation">まだ位置がわからないため質問できません。</string>
+    <string name="android_outing_askNoSpeech">質問を聞き取れませんでした。</string>
+    <string name="android_outing_askProposal">%1$sまで案内しますか？</string>
     <string name="android_outing_band">お散歩、%1$s</string>
     <string name="android_outing_bundleLeft">左に%1$s</string>
     <string name="android_outing_bundleNameSeparator">、</string>
@@ -389,6 +396,7 @@
     <string name="android_settings_title">設定</string>
     <string name="android_settings_trendHaptics">振動通知の拡張(実験)</string>
     <string name="android_settings_trendHapticsFooter">歩行中の接近と案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。</string>
+    <string name="android_settings_vergiliusProvider">回答モデル</string>
     <string name="android_settings_weightFooter">体重は%1$s~%2$skgの範囲で入力してください。入力した情報はサーバーに保存されません。</string>
     <string name="android_settings_weightKg">カロリー推定用の体重(kg)</string>
     <string name="android_settings_weightRejected">体重は%1$s~%2$skgの範囲で入力してください。前の値%3$skgを保持します。</string>

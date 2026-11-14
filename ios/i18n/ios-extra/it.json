@@ -262,7 +262,8 @@
       "carListenerDriver": "Conducente (altoparlante, comandi brevi)",
       "tabOrder": "Ordine delle schede",
       "tabOrderReset": "Ripristina l’ordine predefinito",
-      "tabOrderResetDone": "Ordine predefinito ripristinato"
+      "tabOrderResetDone": "Ordine predefinito ripristinato",
+      "vergiliusProvider": "Modello di risposta"
     },
     "shortcut": {
       "voiceSearch": {
@@ -426,7 +427,14 @@
       "historyBeside": "accanto",
       "historyPassedBy": "superato",
       "historyJustNow": "adesso",
-      "historyMinutesAgo": "{minutes} min fa"
+      "historyMinutesAgo": "{minutes} min fa",
+      "askButton": "Chiedi a voce",
+      "askHint": "Tieni premuto e parla. Solleva il dito per chiedere.",
+      "askNoAnswer": "Nessuna risposta ricevuta.",
+      "askCutOff": "La risposta si è interrotta.",
+      "askNoSpeech": "Nessuna domanda sentita.",
+      "askNoLocation": "Non puoi ancora chiedere: posizione sconosciuta.",
+      "askProposal": "Ti guido fino a {name}?"
     },
     "reorder": {
       "toTop": "Sposta in cima",

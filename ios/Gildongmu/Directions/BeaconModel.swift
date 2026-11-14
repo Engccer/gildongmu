@@ -328,7 +328,8 @@ final class BeaconModel {
         foregroundDeviceSpeech: false,
         isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false }
+        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
+        askWindowActive: { false }  // 묻고 답하는 구간은 나들이에만 있다(E82 V0c)
     )
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
@@ -4105,7 +4106,8 @@ final class BeaconModel {
         // `statusText`·`lastGuidance`는 호출부가 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
         // 정식판은 토글 실효값이 거짓이라 종전 그대로다(전경이면 VoiceOver 게시, 백그라운드면 버림).
         let channel = GuideSpeechOutput.channel(
-            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible)
+            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible,
+            askWindowActive: false)
         // 계측(E53 실사용 판정 — 백그라운드 문장 빈도): 전경 VoiceOver 게시는 종전처럼 남기지 않고 백그라운드 판정만.
         if !GuideSpeechOutput.isForeground {
             guideDiagLog("bgSpeech channel=\(channel.rawValue) class=\(speechClass.rawValue) text=\(message)")

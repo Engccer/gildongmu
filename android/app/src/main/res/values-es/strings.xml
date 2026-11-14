@@ -236,6 +236,13 @@
     <string name="android_nearby_whereAmIChat">Preguntar sobre mi ubicación actual</string>
     <string name="android_outing_aheadLandmark">Delante: %1$s, %2$s</string>
     <string name="android_outing_aheadNone">Sin referencias delante</string>
+    <string name="android_outing_askButton">Preguntar por voz</string>
+    <string name="android_outing_askCutOff">La respuesta se cortó.</string>
+    <string name="android_outing_askHint">Mantén pulsado y habla. Levanta el dedo para preguntar.</string>
+    <string name="android_outing_askNoAnswer">No se recibió respuesta.</string>
+    <string name="android_outing_askNoLocation">Aún no puedes preguntar: no se conoce tu ubicación.</string>
+    <string name="android_outing_askNoSpeech">No se oyó ninguna pregunta.</string>
+    <string name="android_outing_askProposal">¿Te guío hasta %1$s?</string>
     <string name="android_outing_band">Paseo, %1$s</string>
     <string name="android_outing_bundleLeft">A la izquierda: %1$s</string>
     <string name="android_outing_bundleNameSeparator">", "</string>
@@ -389,6 +396,7 @@
     <string name="android_settings_title">Ajustes</string>
     <string name="android_settings_trendHaptics">Alertas de vibración ampliadas (experimental)</string>
     <string name="android_settings_trendHapticsFooter">También vibra al acercarte y cuando la guía no es fiable mientras caminas. Los resultados de la búsqueda, de los alrededores y de las indicaciones, y los cambios de estado durante la guía, también vibran. Solo vibra con la pantalla encendida.</string>
+    <string name="android_settings_vergiliusProvider">Modelo de respuesta</string>
     <string name="android_settings_weightFooter">Introduce un peso entre %1$s y %2$s kg. Los datos introducidos no se guardan en ningún servidor.</string>
     <string name="android_settings_weightKg">Peso para estimar calorías (kg)</string>
     <string name="android_settings_weightRejected">El peso debe estar entre %1$s y %2$s kg. Se mantiene el valor anterior, %3$s kg.</string>

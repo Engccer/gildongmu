@@ -99,7 +99,7 @@ iOS는 스토어 2.6이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 | 채팅 | Gemini function calling 27도구(여정 `plan_journey`, 2026-11-14 E87 버스 노선 번호 조회 `get_bus_route`, E88 입구 기준 좌우 `get_entrance_sides` 포함, `stationName`·`place`·`via`·`origin` 인자) + Perplexity 웹 검색, 장소 앵커. 한눈에 보기 답변은 장소 카드 동반(계단식 캡 2~4곳, K4 2026-08-24), 답변 뒤 follow-up 칩 3개(웹·iOS·안드로이드, `/api/chat/suggestions`, 생성 예산 서버 15초·클라이언트 20초). 답변 끝 [복사]·[듣기] 버튼(웹 2026-09-24 B12, iOS는 듣기·공유, 안드로이드는 듣기 2026-09-27). → E72(2026-10-17, 스토어 2.2부터): 산문 블록은 언급 수와 무관하게 이름 링크 + 로터, 장소 카드는 같은 넷을 로터로 |
 | 음성 받아쓰기 | 웹 Deepgram / iOS 온디바이스(26+ SpeechAnalyzer, 18~25 SFSpeechRecognizer 온디바이스 강제 — 26 미만은 ⏳ 실기기 미판정), 탭 토글·홀드 택1 |
 | 답변 듣기 | iOS 온디바이스 정본, Google TTS 폴백 |
-| 베르길리우스 말로 묻기 서버(E82) | `/api/vergilius/ask`·`/api/vergilius/providers`. 답변 모델 선택지는 키 있는 것만 OpenAI → Google → Claude Opus 5.5 → Claude Sonnet 5.5 순(`claude-opus`·`claude-sonnet`, 실측 `docs/evals/2026-11-14-vergilius-claude.md`). ⏳ Claude 둘은 prod에 `ANTHROPIC_API_KEY`를 등록해야 선다 |
+| 베르길리우스 말로 묻기(E82, iOS 실험판) | 서버 `/api/vergilius/ask`·`/api/vergilius/providers`(키 있는 모델만: OpenAI·Google·Claude Opus 5.5·Claude Sonnet 5.5, 실측 `docs/evals/2026-11-14-vergilius-claude.md`). 앱은 나들이 시트 맨 앞 「말로 묻기」로 받아쓴 질문을 보내 답을 기기 음성으로 문장마다 읽고(첫 문장 12초 기준), 답 아래 수단·제안 버튼으로 안내에 넘긴다. 설정 AI 묶음 「답변 모델」 순서는 OpenAI → Claude Sonnet → Claude Opus → Google Gemini. ⏳ 마이크·낭독·대기음은 실기기 판정 |
 
 ### 실시간 길 안내
 | 기능 | 상태 |

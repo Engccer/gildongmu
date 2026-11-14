@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreLocation
 import CoreMotion
 import GildongmuKit
@@ -88,6 +89,45 @@ final class OutingModel {
     /// 「방금 말한 것」 기록(E82 V10) — 끝까지 말한 문장과 말하지 못하고 지나온 가게. 세션 메모리에만 있고 세션이
     /// 끝나면 지운다(가게 이름·좌표가 들어 있다). 시트가 이 값으로 목록을 그린다.
     private(set) var history = OutingHistory()
+    // MARK: 말로 묻기 (E82 S6, spec §3.3 V14~V24·V28~V30)
+
+    /// 묻기 국면. `waiting`(질문을 보내고 첫 문장을 기다림)·`reading`(답·실패 문장을 읽음) 동안이 묻고 답하는 구간이다
+    /// (V0c — 전경에서 VoiceOver가 켜져 있어도 기기 음성 한 채널, 주변 문장은 묶음에 쌓인다 V28).
+    enum AskPhase: Equatable { case idle, waiting, reading }
+    private(set) var askPhase: AskPhase = .idle
+    /// 받아쓰기(V14·V15) — 시트가 아니라 모델이 소유한다(시트를 내려도 이어진다). 세션이 끝나면 거둔다.
+    @ObservationIgnored let speech = SpeechService()
+    /// 마지막 답 아래의 버튼 재료(V21·V22) — 그 답의 기록 줄 순번에 붙는다. 다음 질문·세션 끝에서 지운다.
+    struct AskFollowUp: Equatable {
+        let entryID: Int
+        /// 경로 도구가 낸 수단 버튼(도착지별 묶음, E83 `routeStartCardGroups`).
+        let routeGroups: [RouteStartCardGroup]
+        /// 제안 도구가 지목한 가게 — 「도보 안내 시작」 하나다.
+        let proposal: OutingHistoryPlace?
+    }
+    private(set) var askFollowUp: AskFollowUp?
+    /// 질문의 세대(V15) — 거둔 요청의 늦은 이벤트·시한·끝 신호를 버린다.
+    private var askEpoch = 0
+    @ObservationIgnored private var askTask: Task<Void, Never>?
+    @ObservationIgnored private var askTimeoutTask: Task<Void, Never>?
+    private var askReader = VergiliusReader()
+    /// 읽을 줄 — 한 문장씩 낸다(기기 음성 대기 칸은 한 칸이라 미리 넣으면 앞 문장이 사라진다).
+    private var answerQueue: [String] = []
+    /// 채널에 실려 끝 신호를 기다리는 답 문장의 표식.
+    private var answerInFlight: Int?
+    private var answerSentenceSeq = 0
+    /// 끊긴 답 문장을 한 번 다시 읽었는가(질문마다 한 번 — 횡단보도 경고가 끊은 문장을 경고 뒤에 다시 읽는다, V29).
+    private var answerRetried = false
+    /// 두 번 끊겨 읽기를 그만뒀다 — 나머지는 기록 목록에 글로 남는다.
+    private var answerAbandoned = false
+    /// 서버가 끝을 알렸다(done·실패). 읽을 줄이 비면 구간이 끝난다.
+    private var answerStreamDone = false
+    /// 서버가 연 답변 모델(세션마다 한 번 묻는다, V23). nil이면 아직 묻지 않았거나 실패했다.
+    @ObservationIgnored private var providerChoices: [String]?
+    /// 대기음 재생기(V30) — 안내 효과음 재생기와 따로다. 경고가 오면 멈춘다.
+    @ObservationIgnored private var waitPlayer: AVAudioPlayer?
+    private let vergilius = VergiliusService(baseURL: AppConfig.apiBaseURL)
+
     /// 채널에 실려 끝 신호(말했다·버림)를 기다리는 주변 문장 하나. 있는 동안은 다음 주변 문장을 내지 않는다.
     /// `record`·`line`: 끝까지 말해졌을 때 기록에 적을 재료(한 줄 문장의 재료, 묶음 문장의 좌우 배치).
     /// `cutByGuide`: 이 문장이 실린 동안 안내가 스스로 더 높은 서열의 문장(횡단보도·갈림길·종료)을 냈다 — 그 문장이
@@ -200,7 +240,8 @@ final class OutingModel {
         foregroundDeviceSpeech: true,
         isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false }
+        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
+        askWindowActive: { [weak self] in (self?.askPhase ?? .idle) != .idle }
     )
     /// 전하지 못한 종료 사유 문장(E53 spec §3.4, 설계 리뷰 M6) — 백그라운드에서 버려진(안전망 종료는 미룸 문장, 토글 끔이면
     /// 전부) 종료 문장을 복귀 때 한 번 갚는다. 종료 화면이 없는 종료(출발점 미확정 ∧ 의미 없는 걸음)도 갚아야 해서 화면이
@@ -369,6 +410,7 @@ final class OutingModel {
         startAnnounced = false
         protectedUntil = 0
         deferredLow = nil
+        providerChoices = nil
         deviceSpeech.reset()
     }
 
@@ -382,6 +424,9 @@ final class OutingModel {
         announcer.advanceGeneration()
         deviceSpeech.reset()
         resetAmbient()
+        // 기다리던 질문과 받아쓰기를 거둔다(V15) — 끝난 세션에 늦은 답이 읽히지 않게.
+        withdrawPendingRequest()
+        askFollowUp = nil
         // 멱등: 이미 끝난 세션(종료 화면 → 귀환)에서 다시 불려도 오디오·위치를 두 번 원복하지 않는다 — 두 번째
         // `endSession(0)`이 첫 번째가 미룬 원복보다 먼저 떨어져 종료 문장을 자른다(구현 리뷰 m3).
         let wasActive = isTracking || starting || sessionToken != nil
@@ -471,9 +516,11 @@ final class OutingModel {
         clearEnd()
     }
 
-    /// 안내로 넘기기 전에 기다리던 질문 요청을 거둔다(E82 V13). 「말로 묻기」(S6)가 요청 상태를 이 모델에 두면 여기서
-    /// 거둔다 — 지금은 거둘 요청이 없다.
-    func withdrawPendingRequest() {}
+    /// 기다리던 질문 요청과 받아쓰기를 거둔다(E82 V13·V15) — 안내로 넘기기 직전과 세션 끝(`stop`)이 부른다.
+    func withdrawPendingRequest() {
+        cancelAsk()
+        if speech.phase != .idle { Task { await speech.cancel() } }
+    }
 
     /// 종료 화면 소거 — 닫기·새 세션·귀환 인계·30분 만료가 전부 여기를 지난다.
     func clearEnd() {
@@ -883,6 +930,12 @@ final class OutingModel {
             guideDiagLog("ambientTimeout")
             finishAmbient(epoch: ambientEpoch, spoken: false)
         }
+        // 묻고 답하는 구간(V28): 지나친 가게는 묶음에 쌓아 두고 답을 먼저 읽는다 — 이 틱은 답 읽기를 잇는다. 구간이 끝나면
+        // (`endAskWindow`) 쌓인 묶음이 한 문장으로 나간다.
+        if askPhase != .idle {
+            pumpAnswer()
+            return
+        }
         guard !outputSuppressed, now >= protectedUntil, now >= ambientHoldUntil, !announcer.hasPending,
               speechDeferStep(now: now, toneEndsAt: tones.toneEndsAt) == 0,
               GuideSpeechOutput.announcementsFinished, deviceSpeech.isIdle,
@@ -915,8 +968,9 @@ final class OutingModel {
 
     /// 지금 주변 문장이 실릴 채널이 있는가(백그라운드에서 음성 토글이 꺼졌거나 소리가 나지 않으면 없다).
     private var ambientChannelOpen: Bool {
-        GuideSpeechOutput.channel(.ambient, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible)
-            != .drop
+        GuideSpeechOutput.channel(
+            .ambient, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible,
+            askWindowActive: askPhase != .idle) != .drop
     }
 
     private func emitAmbient(
@@ -1090,6 +1144,288 @@ final class OutingModel {
         case .left: return joinText(name, appLocalized("ios.outing.itemLeft", distance))
         case .right: return joinText(name, appLocalized("ios.outing.itemRight", distance))
         case .unknown: return joinText(name, distance)
+        }
+    }
+
+    // MARK: - 말로 묻기 (E82 S6)
+
+    /// 받아쓴 질문을 보낸다(V16): 대기음 → 서버에 질문과 재료 → 답을 문장이 완결되는 대로 기기 음성으로 읽는다 → 기록에 남긴다.
+    /// 동의 전이면 시트가 이 함수 대신 동의 화면을 연다(V14). 새 질문은 기다리던 질문을 거둔다.
+    func ask(_ question: String) {
+        guard isTracking, AIChatConsent.granted else { return }
+        cancelAsk()
+        askFollowUp = nil
+        askEpoch += 1
+        let epoch = askEpoch
+        askPhase = .waiting
+        guideDiagLog("askStart chars=\(question.count)")
+        playWaitSound()
+        // 첫 문장 시한(V17)은 질문이 끝난 때부터 잰다 — 모델 선택지 조회 시간도 사용자에게는 같은 침묵이다.
+        askTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(vergiliusFirstSentenceTimeoutSeconds))
+            guard !Task.isCancelled, let self, self.askEpoch == epoch else { return }
+            self.applyAsk(self.askReader.timedOut(), epoch: epoch, event: "timeout")
+        }
+        askTask = Task { [weak self] in await self?.runAsk(question, epoch: epoch) }
+    }
+
+    /// 받아쓴 말이 없이 끝났다 — 침묵으로 끝내지 않는다(헌장 §6). 질문을 보내지 않았으니 묻고 답하는 구간이 아니다.
+    func askHeardNothing() {
+        guard isTracking else { return }
+        guideDiagLog("askNoSpeech")
+        say(appLocalized("ios.outing.askNoSpeech"), speechClass: .answer)
+    }
+
+    private func runAsk(_ question: String, epoch: Int) async {
+        guard let fix = lastFix else {
+            return finishAskEarly(appLocalized("ios.outing.askNoLocation"), epoch: epoch, reason: "noFix")
+        }
+        guard let provider = await resolveProvider(), askEpoch == epoch else {
+            guard askEpoch == epoch else { return }
+            return applyAsk(askReader.streamEnded(), epoch: epoch, event: "noProvider")
+        }
+        let body = askBody(question, provider: provider, fix: fix)
+        guideDiagLog("askSend provider=\(provider) places=\(body.places.count) log=\(body.log.count) heading=\(body.headingKnown ? 1 : 0)")
+        do {
+            for try await event in vergilius.ask(body) {
+                guard askEpoch == epoch else { return }
+                applyAsk(askReader.receive(event), epoch: epoch, event: Self.eventLog(event))
+            }
+            guard askEpoch == epoch else { return }
+            applyAsk(askReader.streamEnded(), epoch: epoch, event: "end")
+        } catch {
+            guard askEpoch == epoch, !Task.isCancelled else { return }
+            // 상태 코드만 남긴다(오류 본문에는 요청 글이 되비칠 수 있다).
+            var status = "net"
+            if case .badStatus(let code, _)? = error as? APIError { status = "\(code)" }
+            applyAsk(askReader.streamEnded(), epoch: epoch, event: "failed status=\(status)")
+        }
+    }
+
+    /// 서버가 연 답변 모델 중 설정 값(없으면 맨 앞, V23). 선택지 조회가 실패하면 저장값(없으면 처음 값)으로 그대로 묻는다 —
+    /// 그 모델이 닫혀 있으면 서버가 502로 답하고 「답을 받지 못했습니다」가 된다.
+    private func resolveProvider() async -> String? {
+        let stored = UserDefaults.standard.string(forKey: VergiliusProvider.storageKey)
+        if providerChoices == nil, let server = try? await vergilius.providers() {
+            providerChoices = VergiliusProvider.choices(server: server)
+        }
+        guard let choices = providerChoices else { return stored ?? VergiliusProvider.displayOrder.first }
+        return VergiliusProvider.effective(stored: stored, choices: choices)
+    }
+
+    /// 재료(V18): 앱이 계산한 것만. 가게 관계는 마지막 fix의 것이다(매 fix 갱신).
+    private func askBody(
+        _ question: String, provider: String, fix: (lat: Double, lng: Double, accuracy: Double)
+    ) -> VergiliusAskBody {
+        let headingKnown: Bool = if case .valid = heading { true } else { false }
+        let sources = places.compactMap { id, p -> VergiliusPlaceSource? in
+            guard let relation = relations[id] else { return nil }
+            // 분류는 카카오 분류 경로의 마지막 마디(「카페」) — 키(`cafe`)보다 모델이 그대로 말하기 좋다.
+            let category = p.categoryRaw.split(separator: ">").last.map { String($0) } ?? p.category
+            return VergiliusPlaceSource(
+                id: id, name: p.name, category: category, lat: p.lat, lng: p.lng, relation: relation)
+        }
+        let project: (Double, Double) -> OutingRelation = { [heading] lat, lng in
+            outingProject(
+                fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy, heading: heading, placeLat: lat, placeLng: lng)
+        }
+        let junctionRelations = junctions.values.map { j in
+            (junction: j, relation: project(j.lat, j.lng), branches: [OutingRelation]())
+        }
+        return VergiliusAskBody(
+            question: question, locale: AppLanguage.current, provider: provider, lat: fix.lat, lng: fix.lng,
+            headingKnown: headingKnown, places: vergiliusPlaces(sources, headingKnown: headingKnown),
+            junctionAhead: vergiliusJunctionAhead(junctionRelations),
+            nextCrosswalkMeters: vergiliusNextCrosswalkMeters(crosswalks.values.map { project($0.lat, $0.lng) }),
+            roadName: road.confirmed,
+            log: vergiliusLog(history.entries, now: Date().timeIntervalSince1970, text: Self.historyText))
+    }
+
+    /// 로그용 이벤트 이름(글은 쓰지 않는다 — 글자 수만).
+    private static func eventLog(_ event: VergiliusStreamEvent) -> String {
+        switch event {
+        case .text(let delta, let final): "text final=\(final ? 1 : 0) chars=\(delta.count)"
+        case .reset: "reset"
+        case .done(let text, let renders, let proposal):
+            "done chars=\(text.count) renders=\(renders.count) proposal=\(proposal == nil ? 0 : 1)"
+        case .error(let code): "error code=\(code)"
+        case .outOfCoverage: "outOfCoverage"
+        case .unknown: "unknown"
+        }
+    }
+
+    /// 읽기 진행(Kit `VergiliusReader`)이 낸 할 일을 한다.
+    private func applyAsk(_ actions: [VergiliusReaderAction], epoch: Int, event: String) {
+        guard askEpoch == epoch, askPhase != .idle else { return }
+        guideDiagLog("askEvent \(event) actions=\(actions.count)")
+        for action in actions {
+            switch action {
+            case .speak(let sentence):
+                if !answerAbandoned { answerQueue.append(sentence) }
+            case .discardUnread:
+                answerQueue.removeAll()
+            case .finish(let text, let renders, let proposalPlaceId):
+                answerStreamDone = true
+                askTimeoutTask?.cancel()
+                if let proposalPlaceId {
+                    finishWithProposal(proposalPlaceId)
+                } else if let entryID = recordAnswer(text) {
+                    let groups = routeStartCardGroups(renders.map { .routeStart($0) })
+                    if !groups.isEmpty { askFollowUp = AskFollowUp(entryID: entryID, routeGroups: groups, proposal: nil) }
+                }
+            case .fail(let failure):
+                answerStreamDone = true
+                askTimeoutTask?.cancel()
+                askTask?.cancel()  // 시한으로 끝낸 질문의 스트림도 거둔다(늦은 답은 어차피 읽지 않는다)
+                // 받지 못함은 읽을 것이 없다. 끊김은 이미 완결된 문장을 마저 읽고 끊겼다고 말한다.
+                if failure == .noAnswer { answerQueue.removeAll() }
+                if !answerAbandoned {
+                    answerQueue.append(appLocalized(failure == .noAnswer ? "ios.outing.askNoAnswer" : "ios.outing.askCutOff"))
+                }
+            }
+        }
+        pumpAnswer()
+    }
+
+    /// 제안(V22): 모델의 글이 아니라 앱의 틀 문장을 읽고 「도보 안내 시작」 버튼을 보인다. 가게는 요청에 실은 목록의 것이다
+    /// (서버가 그 id만 통과시킨다). 목록에서 사라졌으면(세션 안에서는 지우지 않으므로 오지 않는다) 받지 못한 것으로 친다.
+    private func finishWithProposal(_ placeId: String) {
+        guard let p = places[placeId] else {
+            answerQueue = [appLocalized("ios.outing.askNoAnswer")]
+            return
+        }
+        let line = appLocalized("ios.outing.askProposal", bilingual(p.name, roman: p.nameRoman).primary)
+        answerQueue = answerAbandoned ? [] : [line]
+        if let entryID = recordAnswer(line) {
+            askFollowUp = AskFollowUp(
+                entryID: entryID, routeGroups: [],
+                proposal: OutingHistoryPlace(id: placeId, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng))
+        }
+    }
+
+    /// 답을 기록에 적는다(V10 — 답은 끝에서 한 번). 글이 비면 적지 않는다.
+    private func recordAnswer(_ text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isTracking, !trimmed.isEmpty else { return nil }
+        let entry = history.record(.answer(text: trimmed), at: Date().timeIntervalSince1970)
+        guideDiagLog("history kind=answer \(history.logSummary)")
+        return entry.id
+    }
+
+    /// 묻기 전에 끝나는 질문(위치를 아직 모름) — 서버에 보내지 않고 그 사유를 읽는다.
+    private func finishAskEarly(_ text: String, epoch: Int, reason: String) {
+        guard askEpoch == epoch else { return }
+        guideDiagLog("askEvent \(reason)")
+        askTimeoutTask?.cancel()
+        answerStreamDone = true
+        answerQueue = [text]
+        pumpAnswer()
+    }
+
+    /// 읽을 줄에서 한 문장을 낸다 — 앞 문장의 끝 신호가 온 뒤에만(대기 칸은 한 칸이다). 매 fix·워치독 틱(`flushAmbient`)과
+    /// 끝 신호가 부른다.
+    private func pumpAnswer() {
+        guard askPhase != .idle, answerInFlight == nil else { return }
+        guard !answerQueue.isEmpty else {
+            if answerStreamDone { endAskWindow() }
+            return
+        }
+        // 톤 뒤로 미룬 안내 문장(횡단보도 경고 등)이 슬롯에 있으면 기다린다 — 답이 그 슬롯을 밀어내면 안전 문장이 늦어진다.
+        guard !announcer.hasPending else { return }
+        let sentence = answerQueue.removeFirst()
+        askPhase = .reading
+        stopWaitSound()
+        answerSentenceSeq += 1
+        let seq = answerSentenceSeq
+        answerInFlight = seq
+        say(
+            sentence, speechClass: .answer,
+            onDropped: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: false) },
+            onSpoken: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: true) })
+    }
+
+    /// 답 문장 하나의 끝(V0a). 끊긴 문장은 질문마다 한 번 다시 읽고(V29 — 경고가 끊은 문장을 경고 뒤에), 또 끊기면 읽기를
+    /// 그만둔다(답의 글은 기록 목록에 남는다).
+    private func answerSentenceEnded(_ seq: Int, sentence: String, spoken: Bool) {
+        guard answerInFlight == seq else { return }
+        answerInFlight = nil
+        if !spoken {
+            if !answerRetried {
+                answerRetried = true
+                answerQueue.insert(sentence, at: 0)
+            } else {
+                guideDiagLog("askAbandoned left=\(answerQueue.count)")
+                answerAbandoned = true
+                answerQueue.removeAll()
+            }
+        }
+        pumpAnswer()
+    }
+
+    /// 묻고 답하는 구간의 끝 — 쌓인 주변 묶음이 이제 나간다(V28).
+    private func endAskWindow() {
+        guideDiagLog("askEnd")
+        resetAskReading()
+        askPhase = .idle
+        flushAmbient()
+    }
+
+    /// 기다리던 질문을 거둔다(세대를 올려 늦은 이벤트·시한·끝 신호를 버린다).
+    private func cancelAsk() {
+        askEpoch += 1
+        askTask?.cancel()
+        askTask = nil
+        resetAskReading()
+        askPhase = .idle
+    }
+
+    private func resetAskReading() {
+        askTimeoutTask?.cancel()
+        askTimeoutTask = nil
+        askReader = VergiliusReader()
+        answerQueue = []
+        answerInFlight = nil
+        answerRetried = false
+        answerAbandoned = false
+        answerStreamDone = false
+        stopWaitSound()
+    }
+
+    /// 대기음(V30) — 질문을 보낸 때 한 번. 채팅 전송음과 같은 소리다(「질문을 보냈다」). 받아쓰기가 막 끝나 출력 억제는 풀려 있다.
+    private func playWaitSound() {
+        if waitPlayer == nil, let url = Bundle.main.url(forResource: "chat-send", withExtension: "mp3") {
+            waitPlayer = try? AVAudioPlayer(contentsOf: url)
+            waitPlayer?.prepareToPlay()
+        }
+        waitPlayer?.currentTime = 0
+        waitPlayer?.play()
+    }
+
+    private func stopWaitSound() {
+        waitPlayer?.stop()
+    }
+
+    /// 기록 한 줄의 문장(시각 꼬리 없이) — 시트의 목록과 질문 재료(V18 「방금 말한 것」)가 같은 문장을 쓴다.
+    /// 가게 줄: 「○○카페, 왼쪽」(말한 가게의 방향 모름은 「옆」으로 말했다, 지나온 가게는 방향을 알 때만).
+    static func historyText(_ content: OutingHistoryContent) -> String {
+        switch content {
+        case .place(let place, let side, let passedBy):
+            let sideWord: String? = switch side {
+            case .left: appLocalized("ios.outing.historyLeft")
+            case .right: appLocalized("ios.outing.historyRight")
+            case .unknown: passedBy ? nil : appLocalized("ios.outing.historyBeside")
+            }
+            return joinText(
+                bilingual(place.name, roman: place.nameRoman).primary, sideWord,
+                passedBy ? appLocalized("ios.outing.historyPassedBy") : nil)
+        case .crosswalk(let audioSignal):
+            return audioSignal ? appLocalized("ios.outing.crosswalkAheadAudio") : appLocalized("ios.outing.crosswalkAhead")
+        case .junction(let shape):
+            return junctionLine(shape)
+        case .road(let name):
+            return appLocalized("ios.outing.roadEntered", name)
+        case .answer(let text):
+            return text
         }
     }
 
@@ -1324,6 +1660,7 @@ final class OutingModel {
     /// `queued`: VoiceOver 대기열 뒤(낮은 우선순위)로 낸다 — 막힘이 풀려 내는 경고만 참이다(`speakHeldCrosswalk`).
     private func speakCrosswalk(_ notice: OutingCrosswalkNotice, queued: Bool) {
         let text = appLocalized(notice.hasAudioSignal ? "ios.outing.crosswalkAheadAudio" : "ios.outing.crosswalkAhead")
+        stopWaitSound()  // 경고가 오면 대기음을 멈춘다(V30)
         protectedUntil = uptimeNow + protectSeconds
         protectedText = text
         queuedText = queued ? text : nil
@@ -1447,7 +1784,8 @@ final class OutingModel {
         if queued { queuedText = nil }
         guard bypassSuppression || !outputSuppressed else { return false }
         let channel = GuideSpeechOutput.channel(
-            speechClass, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible)
+            speechClass, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible,
+            askWindowActive: askPhase != .idle)
         // `channel=`의 값은 종전 로그와 같은 소문자(voiceover·device) + E53의 drop. `fg=`·`class=`는 E53 판독용 —
         // 종전 로그는 기기 음성이 잠금 때문인지 VoiceOver가 꺼져서인지 가르지 못했다(로그 색인 09-30 행).
         // 말한 글은 쓰지 않는다 — 종류(`class=`)와 글자 수만(가게·도로 이름이 디스크 로그에 남지 않게, E82 V10).

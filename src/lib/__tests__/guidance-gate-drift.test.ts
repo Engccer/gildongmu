@@ -404,9 +404,16 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
     expect(declarationBody(session, "acceptOutingReturn")).toMatch(
       /start: \.request\(BeaconModel\.StartRequest\([\s\S]*kind: \.walk,\s*accessible: false, variant: nil, line: nil, alternate: nil,/,
     );
+    // 시트의 버튼(기록 줄·답 아래·제안, E82 V13·V21·V22)은 앱의 한 클로저로 이 함수에 넘긴다. 기록 줄의 도보 시작은 길찾기
+    // 화면의 첫 도보 시작과 같은 요청이다.
     expect(readFileSync(join(ROOT, "ios/Gildongmu/GildongmuApp.swift"), "utf8")).toContain(
-      "guideSession.handOverOuting(to: $0, start: .guide(.walk(accessible: false, waypoint: nil)))",
+      "onHandOver: { guideSession.handOverOuting(to: $0, start: $1) }",
     );
+    expect(readFileSync(join(ROOT, "ios/Gildongmu/Directions/OutingSheet.swift"), "utf8")).toContain(
+      "onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))",
+    );
+    // 낡은 대중교통 조회(S4 리뷰 NIT e)는 시작하지 않고 길찾기 탭으로 — 그 길도 나들이를 먼저 끝낸다(끝내기 뒤에 있다).
+    expect(body).toMatch(/outing\.endForHandover\(\)\s*if case \.directions\(let notice\) = start \{\s*DirectionsPrefillStore\.shared\.pending = DirectionsPrefill\(/);
     expect(declarationBody(session, "endOutingReturn")).toContain("DirectionsPrefillStore.shared.pending = DirectionsPrefill(");
     // 나들이를 인계용으로 끝내는 호출과 인계 함수의 호출 자리 전수.
     const callSites = (pattern: RegExp) =>

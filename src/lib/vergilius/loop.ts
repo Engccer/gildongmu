@@ -67,6 +67,16 @@ function judgeProposals(
   return { placeId };
 }
 
+/**
+ * 답의 마크다운 강조 별표를 걷어 낸다(2026-11-15 위원장 판정: 서버에서). 답은 기기 음성이 읽고 기록 목록에 글로 남는다 —
+ * 별표가 그대로 가면 「별표」로 들리거나 목록에 보인다(Opus가 15번 중 1번 `**식당은**`을 썼다, 지침이 금해도).
+ * 글 조각 단위로 부르므로 `**`가 조각 경계에서 갈라져도 남지 않게 별표 문자를 모두 지운다 — 말로 읽는 답에서 별표가
+ * 뜻을 갖는 자리는 없다.
+ */
+export function stripMarkdownEmphasis(text: string): string {
+  return text.replaceAll("*", "");
+}
+
 export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<VergiliusLoopResult> {
   const { session, execute, ctx, allowedTools, emit } = opts;
   const maxToolRounds = opts.maxToolRounds ?? VERGILIUS_MAX_TOOL_ROUNDS;
@@ -78,7 +88,8 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
     let sentFinal = false;
     const turn = await session.round({
       tools: toolsOpen,
-      onText: (delta) => {
+      onText: (raw) => {
+        const delta = stripMarkdownEmphasis(raw);
         if (delta === "") return;
         emit({ type: "text", delta, final: !sawCall });
         if (!sawCall) sentFinal = true;
@@ -94,7 +105,7 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
 
     // 도구를 닫은 회차에 호출이 오면(회사 쪽 계약 위반) 무시하고 글로 끝낸다 — 상한을 넘겨 실행하지 않는다.
     if (turn.calls.length === 0 || !toolsOpen) {
-      return { text: turn.text, renders: routeStartRendersOnly(renders), proposal: null };
+      return { text: stripMarkdownEmphasis(turn.text), renders: routeStartRendersOnly(renders), proposal: null };
     }
     // 스트림에서 `onCall`을 못 받은 어댑터여도 같은 결과가 되게 한다.
     if (!sawCall && sentFinal) emit({ type: "reset" });

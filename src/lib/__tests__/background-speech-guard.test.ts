@@ -111,9 +111,10 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
   it.each(MODELS)("%s의 post는 채널 술어를 지나고 VoiceOver 게시는 공유 출력으로만 한다", (name) => {
     const source = read(join(DIR, name));
     const post = functionBody(source, "post");
-    // 가청 여부는 그 모델 재생기의 값(설계 리뷰 B1 — 들리지 않는 문장을 "전달"로 치지 않는다).
+    // 가청 여부는 그 모델 재생기의 값(설계 리뷰 B1 — 들리지 않는 문장을 "전달"로 치지 않는다). 묻고 답하는 구간(E82 V0c)은
+    // 나들이만 자기 상태를 넘기고 도보·대중교통은 리터럴 거짓이다.
     expect(post).toMatch(
-      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible\)/,
+      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible,\s*askWindowActive: (false|askPhase != \.idle)\)/,
     );
     expect(post).toContain("case .drop:");
     expect(post).toContain("deviceSpeech.submit(");

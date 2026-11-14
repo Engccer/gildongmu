@@ -321,6 +321,13 @@
     <string name="android_nearby_whereAmIChat">내 현재 위치에 관해 물어보기</string>
     <string name="android_outing_aheadLandmark">앞에 %1$s, %2$s</string>
     <string name="android_outing_aheadNone">앞에 이정표 없음</string>
+    <string name="android_outing_askButton">말로 묻기</string>
+    <string name="android_outing_askCutOff">답이 끊겼습니다.</string>
+    <string name="android_outing_askHint">누른 채로 말하세요. 손가락을 떼면 묻습니다.</string>
+    <string name="android_outing_askNoAnswer">답을 받지 못했습니다.</string>
+    <string name="android_outing_askNoLocation">위치를 아직 잡지 못해 물을 수 없습니다.</string>
+    <string name="android_outing_askNoSpeech">질문을 듣지 못했습니다.</string>
+    <string name="android_outing_askProposal">%1$s까지 안내할까요?</string>
     <string name="android_outing_band">나들이, %1$s</string>
     <string name="android_outing_bundleLeft">왼쪽에 %1$s</string>
     <string name="android_outing_bundleNameSeparator">", "</string>
@@ -474,6 +481,7 @@
     <string name="android_settings_title">설정</string>
     <string name="android_settings_trendHaptics">진동 알림 확장 (실험)</string>
     <string name="android_settings_trendHapticsFooter">걷는 동안 가까워짐과 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다.</string>
+    <string name="android_settings_vergiliusProvider">답변 모델</string>
     <string name="android_settings_weightFooter">체중은 %1$s~%2$skg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요.</string>
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>

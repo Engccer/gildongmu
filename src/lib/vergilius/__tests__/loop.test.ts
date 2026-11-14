@@ -81,6 +81,15 @@ describe("runVergiliusLoop", () => {
     expect(r.execute).not.toHaveBeenCalled();
   });
 
+  it("마크다운 강조 별표는 조각과 결과에서 걷힌다(조각 경계에서 갈라진 **도, 별표뿐인 조각은 보내지 않는다)", async () => {
+    const r = run([[text("**식당은"), text("*"), text("* 왼쪽에 *가나카페*가 있습니다.")]]);
+    await expect(r.promise).resolves.toEqual({ text: "식당은 왼쪽에 가나카페가 있습니다.", renders: [], proposal: null });
+    expect(r.events).toEqual([
+      { type: "text", delta: "식당은", final: true },
+      { type: "text", delta: " 왼쪽에 가나카페가 있습니다.", final: true },
+    ]);
+  });
+
   it("도구 호출 뒤의 글만 final이다: 호출이 낀 회차의 글은 final이 아니고, 다음 회차의 글이 답이다", async () => {
     const r = run([
       [call("get_bus_arrivals"), text("잠시만요.")],

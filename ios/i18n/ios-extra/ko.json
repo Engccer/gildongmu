@@ -262,7 +262,8 @@
       "carListenerDriver": "운전자 (스피커, 짧은 명령)",
       "tabOrder": "탭 순서",
       "tabOrderReset": "기본 순서로 되돌리기",
-      "tabOrderResetDone": "기본 순서로 되돌렸습니다"
+      "tabOrderResetDone": "기본 순서로 되돌렸습니다",
+      "vergiliusProvider": "답변 모델"
     },
     "shortcut": {
       "voiceSearch": {
@@ -426,7 +427,14 @@
       "historyBeside": "옆",
       "historyPassedBy": "지나옴",
       "historyJustNow": "방금",
-      "historyMinutesAgo": "{minutes}분 전"
+      "historyMinutesAgo": "{minutes}분 전",
+      "askButton": "말로 묻기",
+      "askHint": "누른 채로 말하세요. 손가락을 떼면 묻습니다.",
+      "askNoAnswer": "답을 받지 못했습니다.",
+      "askCutOff": "답이 끊겼습니다.",
+      "askNoSpeech": "질문을 듣지 못했습니다.",
+      "askNoLocation": "위치를 아직 잡지 못해 물을 수 없습니다.",
+      "askProposal": "{name}까지 안내할까요?"
     },
     "reorder": {
       "toTop": "맨 위로",

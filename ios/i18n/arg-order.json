@@ -752,6 +752,9 @@
     "name",
     "distance"
   ],
+  "ios.outing.askProposal": [
+    "name"
+  ],
   "ios.outing.band": [
     "distance"
   ],

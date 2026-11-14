@@ -26,7 +26,7 @@ const GROUPS: [heading: string, items: string[]][] = [
       "ios.settings.trendHaptics",
     ],
   ],
-  ["ios.settings.aiSection", ["ios.settings.aiConsentToggle", "ios.common.privacyPolicy", "ios.settings.reportProblem"]],
+  ["ios.settings.aiSection", ["ios.settings.aiConsentToggle", "ios.settings.vergiliusProvider", "ios.common.privacyPolicy", "ios.settings.reportProblem"]],
   ["ios.settings.sectionAbout", ["dataSources.title", "ios.settings.releaseNotes"]],
 ];
 

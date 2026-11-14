@@ -236,6 +236,13 @@
     <string name="android_nearby_whereAmIChat">Poser une question sur ma position actuelle</string>
     <string name="android_outing_aheadLandmark">Devant : %1$s, %2$s</string>
     <string name="android_outing_aheadNone">Aucun repère devant</string>
+    <string name="android_outing_askButton">Demander à voix haute</string>
+    <string name="android_outing_askCutOff">La réponse a été interrompue.</string>
+    <string name="android_outing_askHint">Maintenez appuyé et parlez. Levez le doigt pour demander.</string>
+    <string name="android_outing_askNoAnswer">Aucune réponse reçue.</string>
+    <string name="android_outing_askNoLocation">Impossible de demander pour l’instant : position inconnue.</string>
+    <string name="android_outing_askNoSpeech">Aucune question entendue.</string>
+    <string name="android_outing_askProposal">Vous guider jusqu’à %1$s ?</string>
     <string name="android_outing_band">Balade, %1$s</string>
     <string name="android_outing_bundleLeft">À gauche : %1$s</string>
     <string name="android_outing_bundleNameSeparator">", "</string>
@@ -389,6 +396,7 @@
     <string name="android_settings_title">Réglages</string>
     <string name="android_settings_trendHaptics">Alertes vibrantes étendues (expérimental)</string>
     <string name="android_settings_trendHapticsFooter">Vibre aussi quand vous vous rapprochez ou quand le guidage n\'est pas fiable pendant la marche. Les résultats de la recherche, des alentours et de l\'itinéraire, ainsi que les changements d\'état pendant le guidage, vibrent aussi. Vibre uniquement écran allumé.</string>
+    <string name="android_settings_vergiliusProvider">Modèle de réponse</string>
     <string name="android_settings_weightFooter">Saisissez un poids entre %1$s et %2$s kg. Les informations saisies ne sont pas enregistrées sur un serveur.</string>
     <string name="android_settings_weightKg">Poids pour l\'estimation des calories (kg)</string>
     <string name="android_settings_weightRejected">Le poids doit être entre %1$s et %2$s kg. La valeur précédente, %3$s kg, est conservée.</string>

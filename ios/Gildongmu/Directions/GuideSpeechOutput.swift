@@ -22,9 +22,10 @@ enum GuideSpeechOutput {
     static var isForeground: Bool { UIApplication.shared.applicationState != .background }
 
     /// 채널 선택(spec §2). `foregroundDeviceSpeech`는 나들이만 참이다. `backgroundAudible`은 그 모델 재생기의
-    /// `isBackgroundAudible`(승격 실패면 기기 음성도 들리지 않는다 — 설계 리뷰 B1).
+    /// `isBackgroundAudible`(승격 실패면 기기 음성도 들리지 않는다 — 설계 리뷰 B1). `askWindowActive`는 나들이의 묻고 답하는
+    /// 구간(E82 V0c — 질문이 끝난 때부터 답이나 실패 문장이 끝날 때까지)이고 다른 모델은 늘 거짓이다. 기본값이 없다(안전 인자).
     static func channel(
-        _ speechClass: GuideSpeechClass, foregroundDeviceSpeech: Bool, backgroundAudible: Bool
+        _ speechClass: GuideSpeechClass, foregroundDeviceSpeech: Bool, backgroundAudible: Bool, askWindowActive: Bool
     ) -> GuideSpeechChannel {
         guideSpeechChannel(
             foreground: isForeground,
@@ -33,8 +34,7 @@ enum GuideSpeechOutput {
             backgroundSpeechEnabled: backgroundSpeechEnabled,
             backgroundAudible: backgroundAudible,
             foregroundDeviceSpeech: foregroundDeviceSpeech,
-            // 묻고 답하는 구간(E82 V0c)의 자리 — 켜는 쪽은 말로 묻기(S6)가 만든다. 그 전에는 어느 모델도 구간에 들지 않는다.
-            askWindowActive: false)
+            askWindowActive: askWindowActive)
     }
 
     /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5). 안내 VoiceOver 게시의 **유일한
@@ -136,12 +136,13 @@ enum GuideSpeechOutput {
         }
     }
 
-    /// 모델마다 하나씩 두는 기기 음성 대기 칸. 클로저는 그 모델의 받아쓰기 억제·재생기 톤 종료 시각·가청 여부.
+    /// 모델마다 하나씩 두는 기기 음성 대기 칸. 클로저는 그 모델의 받아쓰기 억제·재생기 톤 종료 시각·가청 여부·묻고 답하는 구간.
     static func makeDeviceQueue(
         foregroundDeviceSpeech: Bool,
         isSuppressed: @escaping () -> Bool,
         toneEndsAt: @escaping () -> Double?,
-        backgroundAudible: @escaping () -> Bool
+        backgroundAudible: @escaping () -> Bool,
+        askWindowActive: @escaping () -> Bool
     ) -> DeviceSpeechQueue {
         let queue = DeviceSpeechQueue(
             clock: { ProcessInfo.processInfo.systemUptime },
@@ -150,7 +151,11 @@ enum GuideSpeechOutput {
             voiceOverRunning: { UIAccessibility.isVoiceOverRunning },
             isSuppressed: isSuppressed,
             toneEndsAt: toneEndsAt,
-            route: { channel($0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible()) },
+            route: {
+                channel(
+                    $0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible(),
+                    askWindowActive: askWindowActive())
+            },
             speak: { TtsPlayer.shared.speakGuidance($0) },
             stopSpeaking: { TtsPlayer.shared.stopGuidance() },
             postVoiceOver: { postVoiceOver($0, highPriority: $1) },

@@ -236,6 +236,13 @@
     <string name="android_nearby_whereAmIChat">Ask about my current location</string>
     <string name="android_outing_aheadLandmark">Ahead: %1$s, %2$s</string>
     <string name="android_outing_aheadNone">No landmark ahead</string>
+    <string name="android_outing_askButton">Ask by voice</string>
+    <string name="android_outing_askCutOff">The answer was cut off.</string>
+    <string name="android_outing_askHint">Hold and speak. Lift your finger to ask.</string>
+    <string name="android_outing_askNoAnswer">No answer received.</string>
+    <string name="android_outing_askNoLocation">Can’t ask yet: your location isn’t known.</string>
+    <string name="android_outing_askNoSpeech">No question was heard.</string>
+    <string name="android_outing_askProposal">Guide you to %1$s?</string>
     <string name="android_outing_band">Stroll, %1$s</string>
     <string name="android_outing_bundleLeft">On your left: %1$s</string>
     <string name="android_outing_bundleNameSeparator">", "</string>
@@ -389,6 +396,7 @@
     <string name="android_settings_title">Settings</string>
     <string name="android_settings_trendHaptics">Extended vibration alerts (experimental)</string>
     <string name="android_settings_trendHapticsFooter">Also vibrates for getting closer and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on.</string>
+    <string name="android_settings_vergiliusProvider">Answer model</string>
     <string name="android_settings_weightFooter">Enter a weight between %1$s and %2$s kg. What you enter is not stored on a server.</string>
     <string name="android_settings_weightKg">Weight for calorie estimate (kg)</string>
     <string name="android_settings_weightRejected">Weight must be between %1$s and %2$s kg. Keeping the previous value, %3$s kg.</string>

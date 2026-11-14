@@ -262,7 +262,8 @@
       "carListenerDriver": "Driver (speaker, short commands)",
       "tabOrder": "Tab order",
       "tabOrderReset": "Restore default order",
-      "tabOrderResetDone": "Default order restored"
+      "tabOrderResetDone": "Default order restored",
+      "vergiliusProvider": "Answer model"
     },
     "shortcut": {
       "voiceSearch": {
@@ -426,7 +427,14 @@
       "historyBeside": "beside",
       "historyPassedBy": "passed",
       "historyJustNow": "just now",
-      "historyMinutesAgo": "{minutes} min ago"
+      "historyMinutesAgo": "{minutes} min ago",
+      "askButton": "Ask by voice",
+      "askHint": "Hold and speak. Lift your finger to ask.",
+      "askNoAnswer": "No answer received.",
+      "askCutOff": "The answer was cut off.",
+      "askNoSpeech": "No question was heard.",
+      "askNoLocation": "Can’t ask yet: your location isn’t known.",
+      "askProposal": "Guide you to {name}?"
     },
     "reorder": {
       "toTop": "Move to top",
