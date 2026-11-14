@@ -6,7 +6,8 @@
  * ($1.50/$7.50)로 복귀하므로 단가를 상수로 박지 않고 `run.measuredAt`으로 고른다.
  * thinking 토큰은 출력 단가로 과금된다(`candidatesTokenCount`와 분리돼 오므로 더해야 한다).
  */
-import { passK, type EntityKind } from "./grounding";
+// @ts-expect-error `eval:ab:report`는 노드 타입 스트리핑으로 이 파일을 읽는다 — 상대 import에 .ts 확장자가 필수이고 tsc는 그것을 금지한다(런타임이 정본, `report-cli.mts`와 같은 사정).
+import { passK, type EntityKind } from "./grounding.ts";
 
 export interface EvalCase {
   id: string;

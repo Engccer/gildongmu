@@ -89,6 +89,14 @@ describe("scoreGrounding — 엔티티 대조", () => {
     expect(scoreGrounding(g, outputs, "약 130m").leaked).toEqual(["number:130m"]);
     expect(scoreGrounding(g, outputs, "약 125m").leaked).toEqual(["number:125m"]);
   });
+  it("쉼표는 천 단위 자리에서만 수의 일부다 — 층 나열 '1,2,5층'은 125층이 아니다(E86 04 실측)", () => {
+    const outputs = [{ name: "t", response: { address: "서울특별시 강동구 양재대로 1313, 1,2,5층 (성내동)", fare: 3400 } }];
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["number"] as const };
+    expect(scoreGrounding(g, outputs, "주소: 서울특별시 강동구 양재대로 1313, 1,2,5층. 요금 3,400원")).toEqual({ pass: true, leaked: [] });
+    expect(extractEntities("요금 12,345원, 1,2,5층", ["number"]).map((e) => e.norm)).toEqual(["12345원", "5층"]);
+    // 도구에 없는 층은 여전히 잡는다.
+    expect(scoreGrounding(g, outputs, "1,2,7층").leaked).toEqual(["number:7층"]);
+  });
   it("도로명 '인제로193번길'의 193번은 수치가 아니고, 공공 상담 창구 이름은 시설이 아니다", () => {
     expect(extractEntities("인제군 인제읍 인제로193번길 1", ["number"])).toEqual([]);
     expect(extractEntities("마을버스 3번을 타세요", ["number"]).map((e) => e.norm)).toEqual(["3번"]);
