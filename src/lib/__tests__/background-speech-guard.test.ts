@@ -213,6 +213,8 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     );
     expect(tts).toMatch(/didFinish utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: true\)/);
     expect(tts).toMatch(/didCancel utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: false\)/);
+    // 채팅 듣기를 장전하면 안내 칸을 비운다 — 남아 있으면 같은 주소를 받은 새 발화의 끝 신호를 안내 칸이 삼킨다.
+    expect(functionBody(tts, "arm")).toMatch(/self\.onFinish = onFinish[\s\S]*expectedGuidance = nil\s*onGuidanceEnd = nil/);
     const output = read(join(DIR, "GuideSpeechOutput.swift"));
     expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceEnd \{ \[weak queue\] token, completed in\s*queue\?\.speechEnded\(token: token, completed: completed\)/);
   });
