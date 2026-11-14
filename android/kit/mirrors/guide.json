@@ -265,6 +265,11 @@
       "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다 — JVM만 받는 65d·65f는 Swift처럼 거절하고, Swift가 받는 16진(0x41)·NUL 꼬리는 의도적으로 거절한다(숫자 키패드로 못 넣고 거절이 보수적). rounded()·whitespaces trim은 SwiftSemantics.kt의 roundedAwayFromZero·trimSwiftWhitespaces"
     },
     {
+      "swift": "OutingBundle.swift",
+      "status": "pending",
+      "note": "E82 S2 묶어 말하기(spec 2026-11-14-e82-vergilius-v1-design.md §3.1): 지나친 가게의 묶음, 방향 없는 다가옴 판정, 문장화 시점의 좌우 재계산. E82는 iOS 실험판 전용이라 이식하지 않는다. 같은 단계가 OutingPassBy.swift의 지나침 결과를 한 곳에서 전부(passed)로 바꿨다"
+    },
+    {
       "swift": "OutingDistanceTone.swift",
       "status": "pending",
       "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 10m 비프·거리 양자화, 걸은 거리 표시 1m 내림(outingDisplayMeters, E54)"

@@ -180,6 +180,10 @@ public final class DeviceSpeechQueue {
     /// 대기 칸에 문장이 있는가 — 세션 종료 원복이 이 동안 기다린다(`BeaconTonePlayer.endSession`).
     public var hasPending: Bool { pending != nil }
 
+    /// 기기 음성 채널이 비었는가(대기 문장 없음 ∧ 합성기가 말하지 않음). 나들이의 주변 문장은 비었을 때만 만들어 낸다
+    /// (E82 V4 — 뒤쪽 칸에 미리 넣어 두지 않는다).
+    public var isIdle: Bool { pending == nil && !isSpeaking() }
+
     /// 기기 음성 채널로 고른 문장을 낸다(계약 1~3).
     /// - `protected`: 보호 문장(나들이 시작·횡단보도) — 유효 시간으로 버리지 않고 보호 문장이 아닌 새 문장에 밀리지 않는다.
     /// - `bypassSuppression`: 사용자 활성화의 직접 응답 — 꺼낼 때 억제 검사를 면제한다(`DeferredAnnouncer.announceNow` 동형).

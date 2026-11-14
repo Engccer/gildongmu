@@ -755,6 +755,15 @@
   "ios.outing.band": [
     "distance"
   ],
+  "ios.outing.bundleLeft": [
+    "names"
+  ],
+  "ios.outing.bundleRight": [
+    "names"
+  ],
+  "ios.outing.bundleSide": [
+    "names"
+  ],
   "ios.outing.itemLeft": [
     "distance"
   ],

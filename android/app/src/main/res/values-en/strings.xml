@@ -237,6 +237,11 @@
     <string name="android_outing_aheadLandmark">Ahead: %1$s, %2$s</string>
     <string name="android_outing_aheadNone">No landmark ahead</string>
     <string name="android_outing_band">Stroll, %1$s</string>
+    <string name="android_outing_bundleLeft">On your left: %1$s</string>
+    <string name="android_outing_bundleNameSeparator">", "</string>
+    <string name="android_outing_bundleRight">On your right: %1$s</string>
+    <string name="android_outing_bundleSide">Passing: %1$s</string>
+    <string name="android_outing_bundleSideSeparator">". "</string>
     <string name="android_outing_crosswalkAhead">Crosswalk ahead</string>
     <string name="android_outing_crosswalkAheadAudio">Crosswalk ahead, with audible signal</string>
     <string name="android_outing_dir_e">east</string>

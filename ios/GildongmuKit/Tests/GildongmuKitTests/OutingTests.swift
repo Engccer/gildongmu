@@ -122,7 +122,7 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: -8, north: 12), cur: project(east: -8, north: 3)),
         ], spoken: [])
-        #expect(r.spoken == "a")
+        #expect(r.passed == ["a"])
     }
 
     @Test("앞에서 뒤로 한 번에 넘어가도 말한다")
@@ -130,7 +130,7 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 12), cur: project(east: 5, north: -12)),
         ], spoken: [])
-        #expect(r.spoken == "a")
+        #expect(r.passed == ["a"])
     }
 
     @Test("횡거리 40m 경계")
@@ -138,11 +138,11 @@ struct OutingPassByTests {
         let inside = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 39, north: 12), cur: project(east: 39, north: 0)),
         ], spoken: [])
-        #expect(inside.spoken == "a")
+        #expect(inside.passed == ["a"])
         let outside = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 41, north: 12), cur: project(east: 41, north: 0)),
         ], spoken: [])
-        #expect(outside.spoken == nil)
+        #expect(outside.passed.isEmpty)
     }
 
     @Test("이미 말한 장소는 다시 말하지 않는다")
@@ -150,17 +150,17 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 12), cur: project(east: 5, north: 0)),
         ], spoken: ["a"])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
     }
 
-    @Test("동시 후보는 가장 가까운 하나만, 나머지는 침묵 목록")
-    func nearestOnly() {
+    @Test("동시 후보는 전부, 가까운 순(E82 V1)")
+    func allEligibleNearestFirst() {
         let r = outingPassByStep(candidates: [
             candidate("far", prev: project(east: 30, north: 12), cur: project(east: 30, north: 0)),
             candidate("near", prev: project(east: 5, north: 12), cur: project(east: 5, north: 0)),
+            candidate("mid", prev: project(east: -12, north: 12), cur: project(east: -12, north: 0)),
         ], spoken: [])
-        #expect(r.spoken == "near")
-        #expect(r.silenced == ["far"])
+        #expect(r.passed == ["near", "mid", "far"])
     }
 
     @Test("앞이 아니었던 장소(옆에서 시작)는 말하지 않는다")
@@ -169,7 +169,7 @@ struct OutingPassByTests {
             candidate("a", prev: project(east: 5, north: 5), cur: project(east: 5, north: -5)),
             candidate("b", prev: nil, cur: project(east: 5, north: 0)),
         ], spoken: [])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
     }
 
     @Test("방위를 잃은 fix에서는 앞의 장소가 옆으로 떨어져도 0")
@@ -177,7 +177,7 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 40), cur: project(east: 5, north: 40, heading: .stale(bearing: 0))),
         ], spoken: [])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
     }
 
     @Test("방위를 되찾은 첫 fix도 0(직전 관계가 valid가 아니다)")
@@ -185,7 +185,7 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 40, heading: .none), cur: project(east: 5, north: 0)),
         ], spoken: [])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
     }
 
     @Test("180도 반전 fix에서 앞의 전부가 뒤로 넘어가도 0")
@@ -194,7 +194,7 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 30), cur: project(east: 5, north: 30, heading: back)),
         ], spoken: [])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
     }
 
     @Test("45도 넘는 회전 fix는 0, 45도 이하는 판정")
@@ -203,12 +203,12 @@ struct OutingPassByTests {
         let r = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 12), cur: project(east: 5, north: 0, heading: turned)),
         ], spoken: [])
-        #expect(r.spoken == nil)
+        #expect(r.passed.isEmpty)
         let slight = OutingHeading.valid(bearing: 40, uncertaintyDeg: 10)
         let r2 = outingPassByStep(candidates: [
             candidate("a", prev: project(east: 5, north: 12), cur: project(east: -8, north: -8, heading: slight)),
         ], spoken: [])
-        #expect(r2.spoken == "a")
+        #expect(r2.passed == ["a"])
     }
 }
 

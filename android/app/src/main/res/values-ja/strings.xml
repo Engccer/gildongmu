@@ -237,6 +237,11 @@
     <string name="android_outing_aheadLandmark">前方に%1$s、%2$s</string>
     <string name="android_outing_aheadNone">前方に目印なし</string>
     <string name="android_outing_band">お散歩、%1$s</string>
+    <string name="android_outing_bundleLeft">左に%1$s</string>
+    <string name="android_outing_bundleNameSeparator">、</string>
+    <string name="android_outing_bundleRight">右に%1$s</string>
+    <string name="android_outing_bundleSide">そばに%1$s</string>
+    <string name="android_outing_bundleSideSeparator">。</string>
     <string name="android_outing_crosswalkAhead">前方に横断歩道</string>
     <string name="android_outing_crosswalkAheadAudio">前方に横断歩道、音響信号機あり</string>
     <string name="android_outing_dir_e">東</string>
