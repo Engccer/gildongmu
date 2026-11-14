@@ -226,6 +226,29 @@ describe("renderReport", () => {
   });
 });
 
+describe("OpenAI 전용 키 프로브", () => {
+  const probe = MONEY_PROBES.find((p) => p.id === "openai");
+
+  it("공용 키만 있으면 호출하지 않는다", async () => {
+    let calls = 0;
+    const result = await runProbe(probe, { OPENAI_API_KEY: "general-test" }, async () => {
+      calls++;
+      return new Response("{}", { status: 200 });
+    });
+    expect(calls).toBe(0);
+    expect(result.status).toBe(STATUS.MISSING);
+    expect(result.detail).toContain("GILDONGMU_OPENAI_API_KEY");
+  });
+
+  it("두 키가 있어도 길동무 전용 키로 인증한다", () => {
+    const { init } = probe.build({
+      OPENAI_API_KEY: "general-test",
+      GILDONGMU_OPENAI_API_KEY: "gildongmu-test",
+    });
+    expect(init.headers.Authorization).toBe("Bearer gildongmu-test");
+  });
+});
+
 describe("runProbe", () => {
   const probe = {
     id: "demo",

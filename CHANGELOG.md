@@ -9,6 +9,13 @@
 
 ---
 
+## 2026-11-15
+
+### 길동무 OpenAI 키를 공용 환경과 분리
+
+- 앱과 사용량 리포트는 `GILDONGMU_OPENAI_API_KEY`만 읽고 공용 키로 폴백하지 않는다. 공용 키만 있을 때의 기능 차단과 두 키가 함께 있을 때의 전용 키 인증을 회귀 테스트로 확인한다.
+- 키 적용 계약은 [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md)의 `GILDONGMU_OPENAI_API_KEY` 절을 따른다.
+
 ## 2026-11-14
 
 ### 베르길리우스 답변 모델에 Claude 둘을 더한다 (E82, 서버)

@@ -200,10 +200,10 @@ export const MONEY_PROBES = [
   {
     id: "openai",
     label: "OpenAI",
-    envKeys: ["OPENAI_API_KEY"],
+    envKeys: ["GILDONGMU_OPENAI_API_KEY"],
     build: (env) => ({
       url: "https://api.openai.com/v1/models/gpt-6.1-terra",
-      init: { headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` } },
+      init: { headers: { Authorization: `Bearer ${env.GILDONGMU_OPENAI_API_KEY}` } },
     }),
     note: "베르길리우스 말로 묻기(E82). 모델 조회라 과금 0, 월 지출 상한은 콘솔 platform.openai.com",
   },
