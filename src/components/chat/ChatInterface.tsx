@@ -10,6 +10,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { FollowUpChips } from "./FollowUpChips";
 import type { JourneyActionHandler } from "./JourneyChatCard";
+import type { RouteStartActionHandler } from "./RouteStartCard";
 import type { ChatMessage } from "@/lib/chat/types";
 
 /**
@@ -31,6 +32,8 @@ import type { ChatMessage } from "@/lib/chat/types";
  *   스크린 리더 커서가 body로 이탈한다(헌장 §6 "전송 시엔 보내기 버튼에 머문다").
  * - onJourneyAction(E70-b): 여정 카드 버튼의 통로. **있을 때만** 채팅 요청이 여정 능력을 신고한다(없으면 요청 본문이 종전과
  *   같다). [안내 시작]은 위치를 새로 받는 동안 채팅이 열려 있으므로 그 대기를 이 화면의 통지 창구로 알린다.
+ * - onRouteStartAction(E83): 경로 안내 시작 카드 버튼의 통로. **있을 때만** 채팅 요청이 `route-start` 능력을 신고한다(여정 신고와
+ *   독립). 위치를 새로 받는 것은 대중교통 [안내 시작]뿐이라(신선도 판정) 그 대기만 창구로 알린다.
  */
 export function ChatInterface({
   inputRef,
@@ -38,6 +41,7 @@ export function ChatInterface({
   examplePrompts,
   initialMessage,
   onJourneyAction,
+  onRouteStartAction,
   initialMessages,
   onMessages,
 }: {
@@ -46,6 +50,7 @@ export function ChatInterface({
   examplePrompts?: string[];
   initialMessage?: string;
   onJourneyAction?: JourneyActionHandler;
+  onRouteStartAction?: RouteStartActionHandler;
   /** 이어 갈 대화와 대화 변경 알림(E70-b2 ①) — 여정 카드 버튼으로 닫힌 범용 채팅을 다시 열 때만 쓴다. */
   initialMessages?: ChatMessage[];
   onMessages?: (messages: ChatMessage[]) => void;
@@ -56,9 +61,12 @@ export function ChatInterface({
   const tDirections = useTranslations("directions");
   // 여정 능력은 카드 통로가 이어진 범용 채팅에서만 신고한다(장소 앵커 채팅은 통로가 와도 신고하지 않는다).
   const journeyCapable = onJourneyAction !== undefined && !placeContext;
+  // 경로 안내 시작 카드도 같은 규칙이다 — 통로가 이어진 범용 채팅에서만 신고한다(E83 R2, 로케일 제한 없음).
+  const routeStartCapable = onRouteStartAction !== undefined && !placeContext;
   const { messages, isLoading, error, progressCategories, sendMessage } = useChat({
     placeContext,
     journeyCapable,
+    routeStartCapable,
     initialMessages,
     onMessages,
   });
@@ -110,6 +118,15 @@ export function ChatInterface({
       return onJourneyAction?.(payload, opts);
     },
     [announce, onJourneyAction, tDirections],
+  );
+  // 경로 안내 시작 카드 버튼(E83). 도보·자동차는 길찾기 화면이 위치를 받으므로 여기서 기다리지 않는다 — 대중교통 [안내 시작]만
+  // 신선도 판정(R6)을 위해 위치를 새로 받고, 그 대기를 여정 카드와 같은 문구로 말한다.
+  const handleRouteStartAction = useCallback<RouteStartActionHandler>(
+    (group, action) => {
+      if (action.kind === "start" && action.mode === "transit") announce(tDirections("locating"));
+      return onRouteStartAction?.(group, action);
+    },
+    [announce, onRouteStartAction, tDirections],
   );
   // 최신 사용자 질문 heading 참조 — 응답 완료 후 포커스 이동 앵커.
   const lastQueryRef = useRef<HTMLHeadingElement>(null);
@@ -183,6 +200,7 @@ export function ChatInterface({
             onCopied={handleCopied}
             onToggleListen={() => tts.toggle(m.id, markdownToPlainText(m.text))}
             onJourneyAction={journeyCapable ? handleJourneyAction : undefined}
+            onRouteStartAction={routeStartCapable ? handleRouteStartAction : undefined}
           />
         ))}
       </div>

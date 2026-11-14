@@ -3,8 +3,8 @@
  * 각 도구는 provider를 직접 호출해 LLM용 data를 만들고, 카드 마운트 지시(render)와
  * 출처(source)를 함께 반환한다. 도구 내부 실패는 호출자(agent-loop)가 흡수한다.
  */
-import type { ExecutionContext, ToolResult } from "./types";
-import type { PlaceSort } from "@/lib/types";
+import type { ExecutionContext, RouteStartRenderPayload, ToolResult } from "./types";
+import type { Place, PlaceSort } from "@/lib/types";
 import {
   barrierFreePlaceToPlace,
   kidsPlaceToPlace,
@@ -143,6 +143,32 @@ const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
 /** 지명 해석 실패는 위치 부재가 아니다 — 같은 문장으로 답하면 사용자가 권한을 의심한다. */
 function placeNotFound(place: string) {
   return { error: `'${place}' 위치를 찾지 못했습니다.` };
+}
+
+/**
+ * 경로 안내 시작 카드 렌더(E83 spec §4)의 수단 공통 뼈대 — 수단별 호출부가 자기 칸만 덮는다. **모든 키가 늘 있다**
+ * (없는 값은 `null`·`false`): Kit 디코딩이 키 부재를 실패로 읽는다.
+ */
+function routeStartRender(
+  p: Place,
+  fields: Pick<RouteStartRenderPayload, "mode"> & Partial<Pick<RouteStartRenderPayload, "via" | "accessible" | "carProvider" | "transit">>,
+): RouteStartRenderPayload {
+  return {
+    type: "route-start",
+    dest: { lat: p.lat, lng: p.lng },
+    destLabel: p.name,
+    destRoman: p.nameRoman ?? null,
+    via: null,
+    accessible: false,
+    carProvider: null,
+    transit: null,
+    ...fields,
+  };
+}
+
+/** 도구가 푼 경유지 → 렌더의 `via`(없으면 null). */
+function routeStartVia(via: { name: string; lat: number; lng: number } | undefined): RouteStartRenderPayload["via"] {
+  return via ? { lat: via.lat, lng: via.lng, label: via.name } : null;
 }
 
 /** get_walk_route가 LLM에 넘기는 steps 상한 — Tmap 도보 경로는 교차로마다
@@ -458,7 +484,9 @@ export async function executeFunction(
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       const dest = { lat: p.lat, lng: p.lng, name: p.name };
       // 카드는 경유 없는 경로를 self-fetch하므로 경유지가 있으면 내지 않는다(산문이 정본).
-      const render = args.via ? undefined : { type: "car-route" as const, dest };
+      // 안내 시작 카드를 신고한 요청(E83 R2)에는 옛 요약 카드를 어느 갈래에서도 내지 않는다 — 경로를 찾은 때에만 `route-start`가 간다(R3).
+      const startCard = ctx.routeStart !== undefined;
+      const render = args.via || startCard ? undefined : { type: "car-route" as const, dest };
       const useEn = ctx.dataLocale === "en" && hasNcpMapsKeys();
       // en(NCP)은 경유지 계약이 없다 — ko 서비스로 내리면 영어 사용자에게 한국어 안내문이 간다(리뷰
       // 검출). 대중교통과 같은 정직 마커로 답한다(upstream·지명 해석 미호출).
@@ -481,7 +509,10 @@ export async function executeFunction(
           ...(via ? { via: { name: via.name, stepIndex: briefing.waypoint?.stepIndex ?? null } } : {}),
           briefing,
         },
-        render,
+        // 경유지가 있어도 낸다(`via` 실음, 판정 7) — 그 경유지로 안내를 시작할 수 있는지는 클라이언트가 가른다(R9·R10).
+        render: startCard
+          ? routeStartRender(p, { mode: "car", via: routeStartVia(via), carProvider: briefing.provider ?? null })
+          : render,
         source: src,
       };
     }
@@ -495,12 +526,45 @@ export async function executeFunction(
       // ODsay에 경유지가 없다(N4) — route:null만 주면 "경로 없음"으로 낭독돼 거짓이라 마커로 가른다.
       // upstream·지명 해석 모두 미호출(라우트 동형).
       if (args.via) return { data: { destination: p.name, route: null, ...TRANSIT_WAYPOINT_UNSUPPORTED }, source: src };
-      const render = { type: "transit-route" as const, dest };
+      const routeStart = ctx.routeStart;
+      // 안내 시작 카드를 신고한 요청(E83 R2)에는 옛 요약 카드를 내지 않는다.
+      const render = routeStart ? undefined : { type: "transit-route" as const, dest };
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
       const gated = coverageGate(ctx.userLocation);
       if (gated) return gated;
-      const route = await getTransitRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
-      return { data: { destination: p.name, route }, render, source: src };
+      const origin = ctx.userLocation;
+      const route = await getTransitRoute({ origin, dest: { lat: p.lat, lng: p.lng } });
+      if (!routeStart || !route) return { data: { destination: p.name, route }, render, source: src };
+      // 카드가 싣는 결과는 길찾기 화면이 받는 것과 같은 옵션으로 한 번 더 받는다(E83 spec §4 — 경유 정류장·노선 집합·데이터 언어):
+      // 화면이 그 결과로 대중교통 섹션을 그대로 세우고 안내를 시작한다. 모델에 주는 `data`는 위 조회 그대로다(신고와 무관하게 같다).
+      // ko는 ODsay URL이 같아 캐시를 탄다(추가 과금 0). 이 조회만 실패하면 카드 없이 답한다(경로를 못 찾은 것이 아니다).
+      let cardResult: Awaited<ReturnType<typeof getTransitRoute>> = null;
+      try {
+        cardResult = await getTransitRoute({
+          origin,
+          dest: { lat: p.lat, lng: p.lng },
+          includeStops: true,
+          includeLanes: true,
+          lang: ctx.dataLocale,
+        });
+      } catch (e) {
+        console.error("[chat] 안내 시작 카드용 대중교통 조회 실패:", e);
+      }
+      return {
+        data: { destination: p.name, route },
+        render: cardResult
+          ? routeStartRender(p, {
+              mode: "transit",
+              transit: {
+                result: cardResult,
+                origin: { lat: origin.lat, lng: origin.lng },
+                queriedAt: Date.now(),
+                manualOrigin: routeStart.manualOrigin,
+              },
+            })
+          : undefined,
+        source: src,
+      };
     }
     case "get_walk_route": {
       // declaration 게이트가 이미 hasWalkRouteKey()로 노출을 막지만, 직접 호출(테스트·
@@ -554,6 +618,8 @@ export async function executeFunction(
           // stepFree 상태값도 함께 실어 LLM이 명시적으로 언급할 수 있게 한다.
           ...(briefing.stepFree ? { stepFree: briefing.stepFree } : {}),
         },
+        // 안내 시작 카드(E83) — 신고한 요청에만. 도보 안내는 시작할 때 경로를 새로 받으므로 도착지·경유지·계단 회피만 싣는다(R4).
+        ...(ctx.routeStart ? { render: routeStartRender(p, { mode: "walk", via: routeStartVia(via), accessible }) } : {}),
         source: src,
       };
     }

@@ -23,12 +23,12 @@ import { AirQuality } from "@/components/AirQuality";
 import { StationMeta } from "@/components/StationMeta";
 import { StationFacilities } from "@/components/StationFacilities";
 import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
-import { CarRouteBriefing } from "@/components/CarRouteBriefing";
-import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
 import { WebResults } from "@/components/WebResults";
 import { BarrierFreeNearby } from "@/components/BarrierFreeNearby";
 import { SourceList } from "./SourceList";
 import { JourneyChatCard, type JourneyActionHandler } from "./JourneyChatCard";
+import { RouteStartCard, type RouteStartActionHandler } from "./RouteStartCard";
+import { groupRouteStartRenders } from "@/lib/chat/route-start-groups";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -42,6 +42,9 @@ import { JourneyChatCard, type JourneyActionHandler } from "./JourneyChatCard";
  * @param lastQueryRef - 최신 질문 heading 참조(ChatInterface가 포커스 이동에 사용).
  * - 어시스턴트 답변 끝에 [복사][듣기](B12, iOS 듣기·공유 계약의 웹판).
  * @param onJourneyAction - 여정 카드 버튼의 통로(E70-b). 옴니박스 범용 채팅만 준다 — 없으면 카드가 버튼 없이 선다.
+ * @param onRouteStartAction - 경로 안내 시작 카드 버튼의 통로(E83). 옴니박스 범용 채팅만 준다 — 없으면 카드를 그리지 않는다.
+ *
+ * 한 답의 `route-start` 렌더는 도착지별로 묶어 묶음마다 카드 하나로 그린다(E83 R1) — 카드는 그 묶음의 첫 렌더 자리에 선다.
  */
 export function MessageBubble({
   message,
@@ -52,6 +55,7 @@ export function MessageBubble({
   onCopied,
   onToggleListen,
   onJourneyAction,
+  onRouteStartAction,
 }: {
   message: ChatMessage;
   onOpenPlace?: (place: Place) => void;
@@ -63,9 +67,11 @@ export function MessageBubble({
   onCopied?: () => void;
   onToggleListen?: () => void;
   onJourneyAction?: JourneyActionHandler;
+  onRouteStartAction?: RouteStartActionHandler;
 }) {
   const tChat = useTranslations("chat");
   const isUser = message.role === "user";
+  const routeStartGroups = groupRouteStartRenders(message.renders ?? []);
   // 평문이 비면(기호뿐인 답변) 복사·듣기할 것이 없다 — 빈 "복사됨"·서버 400을 만들지 않는다.
   const plainText = isUser ? "" : markdownToPlainText(message.text);
   // 붙여넣을 곳이 메모·메시지라 마크다운 기호는 노이즈 — 평문으로 복사한다. 실패는 통지하지 않는다
@@ -103,9 +109,21 @@ export function MessageBubble({
             </ReactMarkdown>
           </div>
         ))}
-      {message.renders?.map((render, i) => (
-        <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} onJourneyAction={onJourneyAction} />
-      ))}
+      {message.renders?.map((render, i) => {
+        if (render.type === "route-start") {
+          // 묶음의 첫 렌더 자리에만 카드가 선다 — 같은 도착지의 나머지 렌더는 그 카드의 버튼으로 흡수됐다.
+          const group = routeStartGroups.find((g) => g.firstIndex === i);
+          return group ? (
+            <RouteStartCard
+              key={i}
+              group={group}
+              showDestLine={routeStartGroups.length > 1}
+              onAction={onRouteStartAction}
+            />
+          ) : null;
+        }
+        return <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} onJourneyAction={onJourneyAction} />;
+      })}
       {/* 어시스턴트 메시지에만 출처 푸터 표시 */}
       {!isUser && <SourceList sources={message.sources} />}
       {/* 복사·듣기는 답변 끝(산문 → 카드 → 출처 뒤). 듣기 상태는 라벨 교체만으로 전한다
@@ -209,10 +227,8 @@ function RenderBlock({
           <SeoulMetroFacilities stationName={render.stationName} />
         </>
       );
-    case "car-route":
-      return <CarRouteBriefing dest={render.dest} />;
-    case "transit-route":
-      return <TransitRouteBriefing dest={render.dest} />;
+    // `car-route`·`transit-route`(버튼 없는 요약 카드)는 웹 채팅이 그리지 않는다(E83 판정 3) — 범용 채팅은 `route-start`를
+    // 신고해 서버가 그 둘을 내지 않고, 신고하지 않는 채팅(장소 상세)에 오면 답의 글만 남는다.
     case "journey":
       return <JourneyChatCard payload={render} onAction={onJourneyAction} />;
     default:

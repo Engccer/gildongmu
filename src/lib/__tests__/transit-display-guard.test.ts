@@ -146,9 +146,14 @@ describe("iOS 폴링 URL의 lang 파라미터 (spec §3.3)", () => {
 
 describe("대중교통 안내 시작 게이트 (조건으로 본다, 개수로 세지 않는다)", () => {
   it("웹 두 자리에 로케일 조건이 없다", () => {
+    // 판정은 채팅 안내 시작 카드와 나눠 쓰는 한 함수다(E83 R10) — 두 자리는 그 함수를 부르고, 함수에 로케일 조건이 없다.
     const src = read("src/components/DirectionsView.tsx");
-    expect(src).toContain("startable: buildTransitGuideRoute(route) !== null,");
-    expect(src).toContain("const guideStartable = buildTransitGuideRoute(route) !== null;");
+    expect(src).toContain("startable: transitGuideStartable(route),");
+    expect(src).toContain("const guideStartable = transitGuideStartable(route);");
+    const shared = read("src/lib/guide-startable.ts");
+    const fn = shared.slice(shared.indexOf("export function transitGuideStartable("));
+    expect(fn).toContain("return buildTransitGuideRoute(route) !== null;");
+    expect(fn).not.toMatch(/english|locale/i);
   });
 
   it("iOS 대중교통 게이트에 로케일 조건이 없다(실험 플래그는 2.0에서 졸업)", () => {
