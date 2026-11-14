@@ -6,6 +6,7 @@
  * 라운드별 지연·토큰·도구 호출을 기록한다.
  *
  * 실행: `MODELS=<현행>,<후보> REPS=3 npm run eval:ab` (`ONLY=09` 부분 실행, 첫 항목이 regression 기준)
+ * 모델 표기에 `@<생각 수준>`을 붙이면 그 수준으로 돈다(`gemini-4-hydrogen@low`). 없으면 프로덕션 경로 그대로(생각 설정 없음).
  * 결과: `.ab-out/<타임스탬프>.json`(원시, 스킬 `llm-model-eval` 결과 파일 계약) + `.md` 리포트.
  * 판정에 쓴 파일은 `docs/evals/`로 옮겨 커밋한다.
  *
@@ -28,7 +29,7 @@ import { GEMINI_MODEL } from "@/lib/gemini/client";
 import { dataLocale } from "@/lib/data-locale";
 import type { ExecutionContext } from "@/lib/chat/types";
 import { checkLangInvariantArgs, scoreGrounding, type ToolOutput } from "./grounding";
-import { buildReport, type Checks, type ResultFile, type RunResult } from "./report";
+import { buildReport, parseModelSpec, type Checks, type ResultFile, type RunResult } from "./report";
 import { CASES, GILDONG, type Case } from "./cases";
 
 // 비교는 "현재 프로덕션 모델 vs 후보"이고 후보는 실행마다 MODELS로 넘긴다. 기본 후보를 두지 않는다 — 기각된
@@ -71,7 +72,7 @@ function secs(ms: number, digits = 1): string {
  * 다음 라운드 요청의 `contents`에 `functionResponse`로 되돌려 주므로 거기서 읽는다(프로덕션
  * 루프 무수정). history는 append-only라 (content, part) 위치로 중복을 거른다.
  */
-function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOutput[]) {
+function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOutput[], thinkingLevel: string | null) {
   const seen = new Set<string>();
   return {
     models: {
@@ -87,7 +88,10 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOut
           }),
         );
         const t0 = Date.now();
-        const res = await real.models.generateContent(req);
+        // 생각 수준 접미사가 있으면 그 값만 얹는다(프로덕션 루프는 생각 설정을 보내지 않는다).
+        const res = await real.models.generateContent(
+          thinkingLevel ? { ...req, config: { ...req.config, thinkingConfig: { thinkingLevel } } } : req,
+        );
         const u = res.usageMetadata ?? {};
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parts: any[] = res.candidates?.[0]?.content?.parts ?? [];
@@ -122,6 +126,7 @@ function checksOf(c: Case, toolCalls: string[], toolArgs: RoundStat["toolArgs"],
 }
 
 async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): Promise<HarnessResult> {
+  const spec = parseModelSpec(model);
   const rounds: RoundStat[] = [];
   const toolOutputs: ToolOutput[] = [];
   const ctx: ExecutionContext = {
@@ -151,8 +156,8 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
   });
   try {
     const result = await runAgentLoop({
-      ai: instrument(real, rounds, toolOutputs),
-      model,
+      ai: instrument(real, rounds, toolOutputs, spec.thinkingLevel),
+      model: spec.model,
       systemInstruction: buildChatSystemInstruction("ko", c.place, { journey: false }),
       tools: [{ functionDeclarations: availableDeclarations(new Set()) }],
       history,
