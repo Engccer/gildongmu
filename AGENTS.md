@@ -124,7 +124,7 @@ npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
 
 npm run test:a11y  # 실브라우저 접근성 게이트(axe, 빌드+Chromium). test:run과 별개 레인: PR·릴리스 직전, 접근성 변경 뒤 → PATTERNS
 
-node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 프로브 돈 6·가용성 13 — ODsay 1건만 과금)
+node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 프로브 돈 7·가용성 13 — ODsay 1건만 과금)
 ```
 
 **"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다** — 벤더 콘솔을 손으로 훑지 말 것(돈·가용성·시한·걱정불필요 4섹션, 200에 오류를 담는 벤더 6종까지 judge). ⚠ **호출량**은 답하지 못한다 — 호출 건수·라우트 분포는 Vercel Observability. → PATTERNS
