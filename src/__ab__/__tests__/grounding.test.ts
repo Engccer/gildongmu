@@ -127,6 +127,13 @@ describe("scoreGrounding — 엔티티 대조", () => {
     const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
     expect(scoreGrounding(g, [], "달빛어린이병원이 없습니다. 인근 종합병원 응급실을 고려하세요.")).toEqual({ pass: true, leaked: [] });
   });
+  it("범주 낱말(편의점·음식점·주차구역·고객센터)은 시설명 후보가 아니다(E86 E88 보충 실측)", () => {
+    // 도구는 범주를 영문 키(convenience·restaurant)로 주고 모델이 한국어로 옮긴다. 주차구역은 '역' 접미사로 잡혔다.
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+    const text = "- **편의점**: CU 강동역점 / 내일도두부 (음식점, 1m) / 장애인 주차구역 9면 / 스타벅스 고객센터로 문의";
+    const outputs = [{ name: "t", response: { places: [{ name: "CU 강동역점", category: "convenience" }] } }];
+    expect(scoreGrounding(g, outputs, text)).toEqual({ pass: true, leaked: [] });
+  });
   it("도구에 없는 전화번호·수치는 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과 02-999-0000, 3층에 있어요");
     expect(r.pass).toBe(false);
