@@ -1,0 +1,4095 @@
+{
+  "run": {
+    "models": [
+      "gemini-3.6-flash",
+      "gemini-4-hydrogen@low"
+    ],
+    "repeats": 1,
+    "only": "55-,56-,57-,58-,59-,60-,61-,62-,63-",
+    "measuredAt": "2026-11-14T12:16:51.320Z",
+    "interleaved": true,
+    "gitSha": "unknown"
+  },
+  "cases": [
+    {
+      "id": "55-출발지-도보",
+      "turns": [
+        "서울역에서 경복궁까지 걸어서 어떻게 가?"
+      ],
+      "expectAny": [
+        "get_walk_route"
+      ],
+      "expectArg": {
+        "tool": "get_walk_route",
+        "key": "origin",
+        "value": "서울역"
+      },
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_walk_route"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "number"
+        ]
+      },
+      "judge": "origin 인자로 서울역을 넘겼는가(현재 위치 출발 경로를 서울역 출발인 것처럼 답하지 않는가). 결과의 origin 이름으로 어디서 출발하는 경로인지 말하는가. 거리·시간이 도구 값 그대로인가.",
+      "context": {}
+    },
+    {
+      "id": "56-출발지-수단한정-지하철",
+      "turns": [
+        "서울역에서 경복궁까지 지하철만 타고 가는 방법 알려줘"
+      ],
+      "expectAny": [
+        "get_transit_route"
+      ],
+      "expectArg": {
+        "tool": "get_transit_route",
+        "key": "mode",
+        "value": "subway"
+      },
+      "forbid": [
+        "search_web",
+        "get_walk_route",
+        "get_car_route"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_transit_route"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "time",
+          "number"
+        ]
+      },
+      "judge": "origin에 서울역, mode에 subway를 넘겼는가. 노선·환승역·정거장 수·요금이 도구 값 그대로인가. 도구에 없는 방면·출구 번호를 덧붙이지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "57-수단한정-지하철만-없음",
+      "turns": [
+        "여기서 남한산성 행궁까지 지하철만 타고 갈 수 있어?"
+      ],
+      "expectAny": [
+        "get_transit_route"
+      ],
+      "expectArg": {
+        "tool": "get_transit_route",
+        "key": "mode",
+        "value": "subway"
+      },
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_transit_route"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "time",
+          "number"
+        ]
+      },
+      "judge": "noRouteWithMode를 「지하철만으로 가는 경로는 없다」로 전하고 「경로가 없다」고 하지 않는가. 한정 없는 경로를 덧붙일 때 버스 번호와 정류소를 도구 값대로 말하고 도구에 없는 출구 번호를 덧붙이지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "58-장소-전화번호",
+      "turns": [
+        "길동역 근처 약국 전화번호 알려줘"
+      ],
+      "expectAny": [
+        "search_places"
+      ],
+      "forbid": [
+        "get_air_quality",
+        "get_weather"
+      ],
+      "grounding": {
+        "fromTools": [
+          "search_places",
+          "search_web"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone"
+        ]
+      },
+      "safety": true,
+      "judge": "약국마다 도구가 준 전화번호를 그대로 말하는가. 번호가 없는 곳에 번호를 지어 붙이지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "59-무장애-이름",
+      "turns": [
+        "경복궁에 휠체어 대여 돼?"
+      ],
+      "expectAny": [
+        "get_barrier_free_detail"
+      ],
+      "expectArg": {
+        "tool": "get_barrier_free_detail",
+        "key": "name",
+        "value": "경복궁"
+      },
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_barrier_free_detail"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "number"
+        ]
+      },
+      "judge": "name 인자로 찾아 등록된 값(대여가능)대로 답하는가. facilities에 없는 항목을 있다거나 없다고 단정하지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "60-무장애-미등록",
+      "turns": [
+        "스타벅스 길동역점에 장애인 화장실 있어?"
+      ],
+      "expectAny": [
+        "get_barrier_free_detail"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_barrier_free_detail",
+          "search_places",
+          "search_web"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone"
+        ]
+      },
+      "safety": true,
+      "judge": "matched:false를 「등록된 무장애 정보가 없다」로 전하고 「장애인 화장실이 없다」거나 「있다」고 단정하지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "61-입구-오른쪽-지명",
+      "turns": [
+        "현대백화점 천호점 입구 오른쪽에 뭐 있어?"
+      ],
+      "expectAny": [
+        "get_entrance_sides"
+      ],
+      "expectArg": {
+        "tool": "get_entrance_sides",
+        "key": "place",
+        "value": "현대백화점 천호점"
+      },
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_entrance_sides"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "number"
+        ]
+      },
+      "judge": "오른쪽 묶음의 이름·거리를 도구 값대로 말하고 다른 묶음의 곳을 오른쪽이라 하지 않는가. 입구를 마주 보고 선 기준임을 밝히는가. (2026-11-14 실호출 3회 중 1회가 답 머리에 생각 글을 섞었다.)",
+      "context": {}
+    },
+    {
+      "id": "62-입구-맞은편-장소채팅",
+      "turns": [
+        "여기 입구 맞은편에 뭐 있어?"
+      ],
+      "expectAny": [
+        "get_entrance_sides"
+      ],
+      "expectArg": {
+        "tool": "get_entrance_sides",
+        "key": "place",
+        "value": "스타벅스 강동역점"
+      },
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_entrance_sides",
+          "get_surroundings"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "number"
+        ]
+      },
+      "judge": "보고 있는 장소 이름을 place로 넘기는가. 맞은편 묶음만 말하는가. sidesUnavailable이면 왼쪽·오른쪽·맞은편을 말하지 않고 입구 방향을 정하지 못했다고 전하는가.",
+      "context": {
+        "place": {
+          "name": "스타벅스 강동역점",
+          "lat": 37.536045232577685,
+          "lng": 127.13298720047844,
+          "category": "카페"
+        }
+      }
+    },
+    {
+      "id": "63-현재위치-오른쪽",
+      "turns": [
+        "지금 내 오른쪽에 뭐 있어?"
+      ],
+      "forbid": [
+        "get_entrance_sides"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_surroundings",
+          "get_where_am_i"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "number"
+        ]
+      },
+      "safety": true,
+      "judge": "사용자가 바라보는 방향을 모르니 오른쪽을 단정하지 않고 방위로 답하거나 되묻는가(2026-11-14 실호출 2회 모두 그랬다).",
+      "context": {}
+    }
+  ],
+  "results": [
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "55-출발지-도보",
+      "roundStats": [
+        {
+          "ms": 1925,
+          "promptTokens": 4916,
+          "outputTokens": 27,
+          "thoughtTokens": 72,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "destination": "경복궁",
+                "origin": "서울역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2999,
+          "promptTokens": 5794,
+          "outputTokens": 192,
+          "thoughtTokens": 158,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4924,
+      "latencyMs": 5253,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "destination": "경복궁",
+            "origin": "서울역"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_walk_route",
+          "response": {
+            "destination": "경복궁",
+            "origin": "서울역 (서울 중구 한강대로 405)",
+            "distanceMeters": 2920,
+            "durationSeconds": 2847,
+            "steps": [
+              {
+                "description": "59m 이동",
+                "distanceMeters": 59
+              },
+              {
+                "description": "왼쪽으로 도세요. 그 후 서울역교차로까지 247m 이동",
+                "distanceMeters": 247
+              },
+              {
+                "description": "서울역교차로에서 통일로를 따라 39m 이동",
+                "distanceMeters": 39
+              },
+              {
+                "description": "지하보도로 건너세요. 지하보도 길이 76m",
+                "distanceMeters": 76
+              },
+              {
+                "description": "통일로를 따라 서울역교차로까지 16m 이동",
+                "distanceMeters": 16
+              },
+              {
+                "description": "서울역교차로에서 세종대로를 따라 동경까지 332m 이동",
+                "distanceMeters": 332
+              },
+              {
+                "description": "동경 앞에서 3시 방향으로 도세요. 그 후 횡단보도 2개를 연속으로 건너세요. 전체 길이 29m",
+                "distanceMeters": 29
+              },
+              {
+                "description": "칠패로를 따라 101m 이동",
+                "distanceMeters": 101
+              },
+              {
+                "description": "2시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 35m",
+                "distanceMeters": 35
+              },
+              {
+                "description": "세종대로9길을 따라 숭례문교차로까지 59m 이동",
+                "distanceMeters": 59
+              },
+              {
+                "description": "숭례문교차로에서 세종대로를 따라 110m 이동",
+                "distanceMeters": 110
+              },
+              {
+                "description": "진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 27m",
+                "distanceMeters": 27
+              },
+              {
+                "description": "세종대로를 따라 시청교차로까지 214m 이동",
+                "distanceMeters": 214
+              },
+              {
+                "description": "시청교차로에서 1시 방향으로 도세요. 그 후 미핏 필라테스 &자이로토닉을 향해 횡단보도 2개를 연속으로 건너세요. 전체 길이 44m",
+                "distanceMeters": 44
+              },
+              {
+                "description": "미핏 필라테스 &자이로토닉 앞에서 세종대로사거리까지 633m 이동",
+                "distanceMeters": 633
+              },
+              {
+                "description": "세종대로사거리에서 횡단보도 2개를 연속으로 건넙니다. 먼저 1시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m",
+                "distanceMeters": 21
+              },
+              {
+                "description": "11시 방향으로 도세요. 그 후 다음 횡단보도를 건너세요. 횡단보도 길이 16m",
+                "distanceMeters": 16
+              },
+              {
+                "description": "세종대로 사거리 앞에서 진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 22m, 음향신호기 있음",
+                "distanceMeters": 22
+              },
+              {
+                "description": "세종대로사거리에서 광화문교차로까지 519m 이동",
+                "distanceMeters": 519
+              },
+              {
+                "description": "광화문교차로에서 사직로를 따라 18m 이동",
+                "distanceMeters": 18
+              }
+            ],
+            "truncated": true
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10710,
+      "outputTokens": 219,
+      "thoughtTokens": 230,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**서울역(서울 중구 한강대로 405)**에서 **경복궁**까지 도보 경로 정보입니다.\n\n- **총 거리**: 약 2.9 km\n- **예상 소요 시간**: 약 47분\n\n### 주요 도보 경로 안내\n1. **서울역** 출발 후 통일로 및 세종대로 방향으로 이동합니다.\n2. **숭례문교차로**에서 세종대로를 따라 **시청교차로** 방면으로 이동합니다.\n3. **시청교차로**에서 세종대로를 따라 **세종대로사거리(광화문 광장 방향)**까지 계속 직진합니다.\n4. **세종대로사거리**에서 광화문 광장/광화문교차로 방향으로 횡단보도를 건너 직진하면 **경복궁**에 도착합니다.",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "55-출발지-도보",
+      "roundStats": [
+        {
+          "ms": 2124,
+          "promptTokens": 4787,
+          "outputTokens": 33,
+          "thoughtTokens": 76,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "origin": "서울역",
+                "destination": "경복궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4139,
+          "promptTokens": 5633,
+          "outputTokens": 297,
+          "thoughtTokens": 197,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6263,
+      "latencyMs": 6492,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "origin": "서울역",
+            "destination": "경복궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_walk_route",
+          "response": {
+            "destination": "경복궁",
+            "origin": "서울역 (서울 중구 한강대로 405)",
+            "distanceMeters": 2920,
+            "durationSeconds": 2847,
+            "steps": [
+              {
+                "description": "59m 이동",
+                "distanceMeters": 59
+              },
+              {
+                "description": "왼쪽으로 도세요. 그 후 서울역교차로까지 247m 이동",
+                "distanceMeters": 247
+              },
+              {
+                "description": "서울역교차로에서 통일로를 따라 39m 이동",
+                "distanceMeters": 39
+              },
+              {
+                "description": "지하보도로 건너세요. 지하보도 길이 76m",
+                "distanceMeters": 76
+              },
+              {
+                "description": "통일로를 따라 서울역교차로까지 16m 이동",
+                "distanceMeters": 16
+              },
+              {
+                "description": "서울역교차로에서 세종대로를 따라 동경까지 332m 이동",
+                "distanceMeters": 332
+              },
+              {
+                "description": "동경 앞에서 3시 방향으로 도세요. 그 후 횡단보도 2개를 연속으로 건너세요. 전체 길이 29m",
+                "distanceMeters": 29
+              },
+              {
+                "description": "칠패로를 따라 101m 이동",
+                "distanceMeters": 101
+              },
+              {
+                "description": "2시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 35m",
+                "distanceMeters": 35
+              },
+              {
+                "description": "세종대로9길을 따라 숭례문교차로까지 59m 이동",
+                "distanceMeters": 59
+              },
+              {
+                "description": "숭례문교차로에서 세종대로를 따라 110m 이동",
+                "distanceMeters": 110
+              },
+              {
+                "description": "진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 27m",
+                "distanceMeters": 27
+              },
+              {
+                "description": "세종대로를 따라 시청교차로까지 214m 이동",
+                "distanceMeters": 214
+              },
+              {
+                "description": "시청교차로에서 1시 방향으로 도세요. 그 후 미핏 필라테스 &자이로토닉을 향해 횡단보도 2개를 연속으로 건너세요. 전체 길이 44m",
+                "distanceMeters": 44
+              },
+              {
+                "description": "미핏 필라테스 &자이로토닉 앞에서 세종대로사거리까지 633m 이동",
+                "distanceMeters": 633
+              },
+              {
+                "description": "세종대로사거리에서 횡단보도 2개를 연속으로 건넙니다. 먼저 1시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m",
+                "distanceMeters": 21
+              },
+              {
+                "description": "11시 방향으로 도세요. 그 후 다음 횡단보도를 건너세요. 횡단보도 길이 16m",
+                "distanceMeters": 16
+              },
+              {
+                "description": "세종대로 사거리 앞에서 진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 22m, 음향신호기 있음",
+                "distanceMeters": 22
+              },
+              {
+                "description": "세종대로사거리에서 광화문교차로까지 519m 이동",
+                "distanceMeters": 519
+              },
+              {
+                "description": "광화문교차로에서 사직로를 따라 18m 이동",
+                "distanceMeters": 18
+              }
+            ],
+            "truncated": true
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10420,
+      "outputTokens": 330,
+      "thoughtTokens": 273,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**서울역(서울 중구 한강대로 405)**에서 **경복궁**까지 도보 경로 안내입니다.\n\n- **총 거리**: 약 2.92km (2,920m)\n- **예상 소요 시간**: 약 47분\n\n**주요 이동 경로**\n1. 서울역에서 서울역교차로 방향으로 이동한 뒤 **지하보도(76m)**를 이용해 건넙니다.\n2. 서울역교차로에서 **세종대로**를 따라 숭례문교차로 방면으로 이동합니다. (중간에 동경 앞 횡단보도 및 칠패로·세종대로9길 경유)\n3. 숭례문교차로에서 **세종대로**를 따라 **시청교차로**까지 직진합니다.\n4. 시청교차로에서 횡단보도를 건넌 뒤 **세종대로사거리**까지 약 633m 직진합니다.\n5. 세종대로사거리에서 횡단보도를 연속으로 건넌 후, **광화문교차로**까지 약 519m 직진합니다.\n6. 광화문교차로에서 사직로를 따라 이동하면 **경복궁**에 도착합니다.\n\n*(세부 안내 단계가 많아 이후 일부 구간은 생략되었습니다.)*",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "56-출발지-수단한정-지하철",
+      "roundStats": [
+        {
+          "ms": 1890,
+          "promptTokens": 4919,
+          "outputTokens": 34,
+          "thoughtTokens": 105,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "origin": "서울역",
+                "mode": "subway",
+                "destination": "경복궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3604,
+          "promptTokens": 5458,
+          "outputTokens": 254,
+          "thoughtTokens": 274,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5494,
+      "latencyMs": 6017,
+      "toolCalls": [
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "origin": "서울역",
+            "mode": "subway",
+            "destination": "경복궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "경복궁",
+            "origin": "서울역 (서울 중구 한강대로 405)",
+            "mode": "subway",
+            "route": {
+              "recommended": {
+                "summary": {
+                  "totalMinutes": 22,
+                  "fare": 1550,
+                  "transfers": 1,
+                  "walkMinutes": 9,
+                  "walkMeters": 540,
+                  "departName": "서울역",
+                  "arriveName": "경복궁"
+                },
+                "legs": [
+                  {
+                    "mode": "walk",
+                    "minutes": 3,
+                    "distanceMeters": 189,
+                    "toName": "서울역"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 4호선",
+                    "fromName": "서울역",
+                    "toName": "충무로",
+                    "stationCount": 3,
+                    "intervalMinutes": 5,
+                    "minutes": 5,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "transfer": {
+                        "kind": "door",
+                        "doors": [
+                          "5-1"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:30",
+                    "lastServiceTime": "23:44"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 3호선",
+                    "fromName": "충무로",
+                    "toName": "경복궁",
+                    "stationCount": 4,
+                    "intervalMinutes": 6,
+                    "minutes": 7,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "elevator": {
+                        "kind": "door",
+                        "doors": [
+                          "6-2"
+                        ]
+                      },
+                      "stairs": {
+                        "kind": "door",
+                        "doors": [
+                          "7-1"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:33",
+                    "lastServiceTime": "23:54"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 5,
+                    "distanceMeters": 351
+                  }
+                ],
+                "routeKey": "s0",
+                "vehicle": "subway"
+              },
+              "alternatives": [],
+              "totalCandidates": 2
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10377,
+      "outputTokens": 288,
+      "thoughtTokens": 379,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "서울역에서 경복궁까지 **지하철만 이용하는 경로** 안내입니다.\n\n---\n\n### 🚇 이동 경로 요약\n* **소요 시간**: 약 22분 (도보 포함)\n* **환승**: 1회\n* **기본 요금**: 1,550원\n\n---\n\n### 📋 상세 경로\n\n1. **서울역 탑승**\n   * **수도권 4호선** 탑승 (당고개/진접 방면)\n   * **3개 정류장** 이동 후 **충무로역** 하차 (약 5분 소요)\n   * *빠른 환승 위치*: 5-1번 문\n\n2. **충무로역 환승**\n   * **수도권 3호선**으로 환승 (구파발/대화 방면)\n   * **4개 정류장** 이동 후 **경복궁역** 하차 (약 7분 소요)\n\n3. **목적지 도착**\n   * 경복궁역 하차 후 도보로 이동 (약 5분, 351m)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "56-출발지-수단한정-지하철",
+      "roundStats": [
+        {
+          "ms": 1685,
+          "promptTokens": 4790,
+          "outputTokens": 39,
+          "thoughtTokens": 80,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "origin": "서울역",
+                "mode": "subway",
+                "destination": "경복궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 10676,
+          "promptTokens": 5299,
+          "outputTokens": 249,
+          "thoughtTokens": 235,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 12361,
+      "latencyMs": 12829,
+      "toolCalls": [
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "origin": "서울역",
+            "mode": "subway",
+            "destination": "경복궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "경복궁",
+            "origin": "서울역 (서울 중구 한강대로 405)",
+            "mode": "subway",
+            "route": {
+              "recommended": {
+                "summary": {
+                  "totalMinutes": 22,
+                  "fare": 1550,
+                  "transfers": 1,
+                  "walkMinutes": 9,
+                  "walkMeters": 540,
+                  "departName": "서울역",
+                  "arriveName": "경복궁"
+                },
+                "legs": [
+                  {
+                    "mode": "walk",
+                    "minutes": 3,
+                    "distanceMeters": 189,
+                    "toName": "서울역"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 4호선",
+                    "fromName": "서울역",
+                    "toName": "충무로",
+                    "stationCount": 3,
+                    "intervalMinutes": 5,
+                    "minutes": 5,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "transfer": {
+                        "kind": "door",
+                        "doors": [
+                          "5-1"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:30",
+                    "lastServiceTime": "23:44"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 3호선",
+                    "fromName": "충무로",
+                    "toName": "경복궁",
+                    "stationCount": 4,
+                    "intervalMinutes": 6,
+                    "minutes": 7,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "elevator": {
+                        "kind": "door",
+                        "doors": [
+                          "6-2"
+                        ]
+                      },
+                      "stairs": {
+                        "kind": "door",
+                        "doors": [
+                          "7-1"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:33",
+                    "lastServiceTime": "23:54"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 5,
+                    "distanceMeters": 351
+                  }
+                ],
+                "routeKey": "s0",
+                "vehicle": "subway"
+              },
+              "alternatives": [],
+              "totalCandidates": 2
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10089,
+      "outputTokens": 288,
+      "thoughtTokens": 315,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**서울역 (서울 중구 한강대로 405)**에서 **경복궁**까지 지하철만 타고 가는 경로입니다.\n\n- **총 소요 시간**: 약 22분 (도보 9분 / 540m 포함)\n- **환승**: 1회\n- **요금**: 1,550원\n\n**이동 순서**\n1. **도보**: 서울역까지 이동 (약 3분, 189m)\n2. **수도권 4호선**: 서울역 승차 → 3개 역 이동 후 **충무로역** 하차 (약 5분)\n   - 빠른 환승: 5-1번 문\n3. **수도권 3호선**: 충무로역 환승 → 4개 역 이동 후 **경복궁역** 하차 (약 7분)\n   - 빠른 하차: 계단 7-1번 문, 엘리베이터 6-2번 문\n4. **도보**: 경복궁역에서 경복궁까지 이동 (약 5분, 351m)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "57-수단한정-지하철만-없음",
+      "roundStats": [
+        {
+          "ms": 2523,
+          "promptTokens": 4921,
+          "outputTokens": 30,
+          "thoughtTokens": 170,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "mode": "subway",
+                "destination": "남한산성 행궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2307,
+          "promptTokens": 5202,
+          "outputTokens": 23,
+          "thoughtTokens": 161,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "남한산성 행궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4408,
+          "promptTokens": 6401,
+          "outputTokens": 176,
+          "thoughtTokens": 422,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 9238,
+      "latencyMs": 9823,
+      "toolCalls": [
+        "get_transit_route",
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "mode": "subway",
+            "destination": "남한산성 행궁"
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "남한산성 행궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "남한산성 행궁",
+            "mode": "subway",
+            "route": null,
+            "noRouteWithMode": true,
+            "notice": "이 수단만 타고 가는 경로를 찾지 못했습니다. 다른 수단을 섞으면 경로가 있을 수 있습니다(수단을 한정하지 않고 조회해야 알 수 있습니다)."
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "남한산성 행궁",
+            "route": {
+              "recommended": {
+                "summary": {
+                  "totalMinutes": 52,
+                  "fare": 3500,
+                  "transfers": 2,
+                  "walkMinutes": 10,
+                  "walkMeters": 631,
+                  "departName": "길동",
+                  "arriveName": "남한산성도립공원"
+                },
+                "legs": [
+                  {
+                    "mode": "walk",
+                    "minutes": 2,
+                    "distanceMeters": 150,
+                    "toName": "길동"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 5호선",
+                    "fromName": "길동",
+                    "toName": "천호",
+                    "stationCount": 2,
+                    "intervalMinutes": 10,
+                    "minutes": 4,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "transfer": {
+                        "kind": "door",
+                        "doors": [
+                          "1-2"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:37",
+                    "lastServiceTime": "00:00"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 8호선",
+                    "fromName": "천호",
+                    "toName": "산성",
+                    "stationCount": 11,
+                    "intervalMinutes": 5,
+                    "minutes": 20,
+                    "serviceWayCode": 2,
+                    "quickExit": {
+                      "elevator": {
+                        "kind": "door",
+                        "doors": [
+                          "1-3"
+                        ]
+                      },
+                      "stairs": {
+                        "kind": "door",
+                        "doors": [
+                          "6-3"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:32",
+                    "lastServiceTime": "23:45"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 3,
+                    "distanceMeters": 207,
+                    "toName": "한국폴리텍대학.성남문화예술교육센터"
+                  },
+                  {
+                    "mode": "bus",
+                    "lineName": "53(주말운행)",
+                    "fromName": "한국폴리텍대학.성남문화예술교육센터",
+                    "toName": "남한산성도립공원",
+                    "stationCount": 5,
+                    "intervalMinutes": 960,
+                    "minutes": 17,
+                    "serviceRouteId": "204000171",
+                    "serviceCityCode": 1010,
+                    "serviceStatus": "unknown"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 4,
+                    "distanceMeters": 274
+                  }
+                ],
+                "routeKey": "p0"
+              },
+              "alternatives": [
+                {
+                  "summary": {
+                    "totalMinutes": 97,
+                    "fare": 3650,
+                    "transfers": 2,
+                    "walkMinutes": 14,
+                    "walkMeters": 975,
+                    "departName": "길동역1번출구",
+                    "arriveName": "남한산성도립공원"
+                  },
+                  "legs": [
+                    {
+                      "mode": "walk",
+                      "minutes": 2,
+                      "distanceMeters": 157,
+                      "toName": "길동역1번출구"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "3413",
+                      "fromName": "길동역1번출구",
+                      "toName": "가락시장.가락몰",
+                      "stationCount": 17,
+                      "intervalMinutes": 9,
+                      "minutes": 30,
+                      "serviceRouteId": "100100225",
+                      "serviceCityCode": 1000,
+                      "serviceStatus": "running",
+                      "firstServiceTime": "04:20",
+                      "lastServiceTime": "23:00"
+                    },
+                    {
+                      "mode": "walk",
+                      "minutes": 8,
+                      "distanceMeters": 535,
+                      "toName": "문정로데오거리입구"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "303",
+                      "fromName": "문정로데오거리입구",
+                      "toName": "신흥역.종합시장",
+                      "stationCount": 14,
+                      "intervalMinutes": 8,
+                      "minutes": 27,
+                      "serviceRouteId": "100100053",
+                      "serviceCityCode": 1000,
+                      "serviceStatus": "running",
+                      "firstServiceTime": "04:00",
+                      "lastServiceTime": "22:20"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "52",
+                      "fromName": "신흥역.종합시장",
+                      "toName": "남한산성도립공원",
+                      "stationCount": 12,
+                      "intervalMinutes": 100,
+                      "minutes": 26,
+                      "serviceRouteId": "204000026",
+                      "serviceCityCode": 1010,
+                      "serviceStatus": "unknown"
+                    },
+                    {
+                      "mode": "walk",
+                      "minutes": 4,
+                      "distanceMeters": 283
+                    }
+                  ],
+                  "routeKey": "p5",
+                  "vehicle": "bus",
+                  "highlight": [
+                    "busOnly"
+                  ],
+                  "displayIndex": 1
+                }
+              ],
+              "totalCandidates": 6,
+              "requeryAxes": [
+                "subwayOnly"
+              ]
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 16524,
+      "outputTokens": 229,
+      "thoughtTokens": 753,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**지하철만 타고 갈 수는 없습니다.** 남한산성 행궁 근처에는 지하철역이 직접 연결되지 않아 지하철만 이용하는 경로는 검색되지 않습니다.\n\n대중교통으로 가려면 지하철 이용 후 **버스 환승**이 필요합니다.\n\n* **추천 경로 (약 52분 소요):**\n  1. 지하철 **5호선**(길동역 등) 탑승 후 **천호역**에서 **8호선** 환승\n  2. **8호선 산성역**에서 하차\n  3. 산성역 인근 버스정류장에서 **버스**(예: 남한산성 방면 버스)로 환승하여 **'남한산성도립공원'** 정류장에서 하차 후 도보 이동",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "57-수단한정-지하철만-없음",
+      "roundStats": [
+        {
+          "ms": 2563,
+          "promptTokens": 4791,
+          "outputTokens": 35,
+          "thoughtTokens": 80,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "남한산성 행궁",
+                "mode": "subway"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3370,
+          "promptTokens": 4988,
+          "outputTokens": 29,
+          "thoughtTokens": 125,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "남한산성 행궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4516,
+          "promptTokens": 6133,
+          "outputTokens": 188,
+          "thoughtTokens": 203,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 10449,
+      "latencyMs": 10946,
+      "toolCalls": [
+        "get_transit_route",
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "남한산성 행궁",
+            "mode": "subway"
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "남한산성 행궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "남한산성 행궁",
+            "mode": "subway",
+            "route": null,
+            "noRouteWithMode": true,
+            "notice": "이 수단만 타고 가는 경로를 찾지 못했습니다. 다른 수단을 섞으면 경로가 있을 수 있습니다(수단을 한정하지 않고 조회해야 알 수 있습니다)."
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "response": {
+            "destination": "남한산성 행궁",
+            "route": {
+              "recommended": {
+                "summary": {
+                  "totalMinutes": 52,
+                  "fare": 3500,
+                  "transfers": 2,
+                  "walkMinutes": 10,
+                  "walkMeters": 632,
+                  "departName": "길동",
+                  "arriveName": "남한산성도립공원"
+                },
+                "legs": [
+                  {
+                    "mode": "walk",
+                    "minutes": 2,
+                    "distanceMeters": 151,
+                    "toName": "길동"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 5호선",
+                    "fromName": "길동",
+                    "toName": "천호",
+                    "stationCount": 2,
+                    "intervalMinutes": 10,
+                    "minutes": 4,
+                    "serviceWayCode": 1,
+                    "quickExit": {
+                      "transfer": {
+                        "kind": "door",
+                        "doors": [
+                          "1-2"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:37",
+                    "lastServiceTime": "00:00"
+                  },
+                  {
+                    "mode": "subway",
+                    "lineName": "수도권 8호선",
+                    "fromName": "천호",
+                    "toName": "산성",
+                    "stationCount": 11,
+                    "intervalMinutes": 5,
+                    "minutes": 20,
+                    "serviceWayCode": 2,
+                    "quickExit": {
+                      "elevator": {
+                        "kind": "door",
+                        "doors": [
+                          "1-3"
+                        ]
+                      },
+                      "stairs": {
+                        "kind": "door",
+                        "doors": [
+                          "6-3"
+                        ]
+                      }
+                    },
+                    "serviceStatus": "running",
+                    "firstServiceTime": "05:32",
+                    "lastServiceTime": "23:45"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 3,
+                    "distanceMeters": 207,
+                    "toName": "한국폴리텍대학.성남문화예술교육센터"
+                  },
+                  {
+                    "mode": "bus",
+                    "lineName": "53(주말운행)",
+                    "fromName": "한국폴리텍대학.성남문화예술교육센터",
+                    "toName": "남한산성도립공원",
+                    "stationCount": 5,
+                    "intervalMinutes": 960,
+                    "minutes": 17,
+                    "serviceRouteId": "204000171",
+                    "serviceCityCode": 1010,
+                    "serviceStatus": "unknown"
+                  },
+                  {
+                    "mode": "walk",
+                    "minutes": 4,
+                    "distanceMeters": 274
+                  }
+                ],
+                "routeKey": "p0"
+              },
+              "alternatives": [
+                {
+                  "summary": {
+                    "totalMinutes": 97,
+                    "fare": 3650,
+                    "transfers": 2,
+                    "walkMinutes": 14,
+                    "walkMeters": 975,
+                    "departName": "길동역1번출구",
+                    "arriveName": "남한산성도립공원"
+                  },
+                  "legs": [
+                    {
+                      "mode": "walk",
+                      "minutes": 2,
+                      "distanceMeters": 157,
+                      "toName": "길동역1번출구"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "3413",
+                      "fromName": "길동역1번출구",
+                      "toName": "가락시장.가락몰",
+                      "stationCount": 17,
+                      "intervalMinutes": 9,
+                      "minutes": 30,
+                      "serviceRouteId": "100100225",
+                      "serviceCityCode": 1000,
+                      "serviceStatus": "running",
+                      "firstServiceTime": "04:20",
+                      "lastServiceTime": "23:00"
+                    },
+                    {
+                      "mode": "walk",
+                      "minutes": 8,
+                      "distanceMeters": 535,
+                      "toName": "문정로데오거리입구"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "303",
+                      "fromName": "문정로데오거리입구",
+                      "toName": "신흥역.종합시장",
+                      "stationCount": 14,
+                      "intervalMinutes": 8,
+                      "minutes": 27,
+                      "serviceRouteId": "100100053",
+                      "serviceCityCode": 1000,
+                      "serviceStatus": "running",
+                      "firstServiceTime": "04:00",
+                      "lastServiceTime": "22:20"
+                    },
+                    {
+                      "mode": "bus",
+                      "lineName": "52",
+                      "fromName": "신흥역.종합시장",
+                      "toName": "남한산성도립공원",
+                      "stationCount": 12,
+                      "intervalMinutes": 100,
+                      "minutes": 26,
+                      "serviceRouteId": "204000026",
+                      "serviceCityCode": 1010,
+                      "serviceStatus": "unknown"
+                    },
+                    {
+                      "mode": "walk",
+                      "minutes": 4,
+                      "distanceMeters": 283
+                    }
+                  ],
+                  "routeKey": "p5",
+                  "vehicle": "bus",
+                  "highlight": [
+                    "busOnly"
+                  ],
+                  "displayIndex": 1
+                }
+              ],
+              "totalCandidates": 6,
+              "requeryAxes": [
+                "subwayOnly"
+              ]
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 15912,
+      "outputTokens": 252,
+      "thoughtTokens": 408,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "아니요, 현재 위치(길동)에서 남한산성 행궁까지는 **지하철만 타고 가는 경로는 찾을 수 없습니다.**\n\n지하철과 버스를 함께 이용하면 약 **52분**이 걸립니다(요금 3,500원, 환승 2회).\n\n**추천 경로**\n1. **길동역**에서 수도권 5호선 탑승 → **천호역**에서 8호선 환승 → **산성역** 하차\n2. 도보 3분 이동 후 **한국폴리텍대학.성남문화예술교육센터** 정류장에서 **53(주말운행)**번 버스 탑승 → **남한산성도립공원** 하차\n3. 도보 4분 이동\n\n*(버스만 이용하는 경로는 약 97분이 소요됩니다.)*",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "58-장소-전화번호",
+      "roundStats": [
+        {
+          "ms": 1575,
+          "promptTokens": 4915,
+          "outputTokens": 20,
+          "thoughtTokens": 67,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동역 약국"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3624,
+          "promptTokens": 5470,
+          "outputTokens": 301,
+          "thoughtTokens": 319,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5199,
+      "latencyMs": 5310,
+      "toolCalls": [
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동역 약국"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "search_places",
+          "response": {
+            "count": 12,
+            "places": [
+              {
+                "name": "길동 보룡약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1478",
+                "phone": "02-477-4114"
+              },
+              {
+                "name": "시민당약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1479",
+                "phone": "02-476-8100"
+              },
+              {
+                "name": "길동일번약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1477",
+                "phone": "02-486-8448"
+              },
+              {
+                "name": "강동솔약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1473",
+                "phone": "02-474-2696"
+              },
+              {
+                "name": "아름다운약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1488",
+                "phone": "02-472-4113"
+              },
+              {
+                "name": "강동더본약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1465",
+                "phone": "02-477-8280"
+              },
+              {
+                "name": "해든약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1499",
+                "phone": "02-470-9088"
+              },
+              {
+                "name": "강동메디온약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1461",
+                "phone": "02-475-0067"
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10385,
+      "outputTokens": 321,
+      "thoughtTokens": 386,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "길동역 근처 약국의 이름, 전화번호, 주소 안내입니다.\n\n* **길동 보룡약국**: 02-477-4114 (서울 강동구 양재대로 1478)\n* **시민당약국**: 02-476-8100 (서울 강동구 양재대로 1479)\n* **길동일번약국**: 02-486-8448 (서울 강동구 양재대로 1477)\n* **강동솔약국**: 02-474-2696 (서울 강동구 양재대로 1473)\n* **아름다운약국**: 02-472-4113 (서울 강동구 양재대로 1488)\n* **강동더본약국**: 02-477-8280 (서울 강동구 양재대로 1465)\n* **해든약국**: 02-470-9088 (서울 강동구 양재대로 1499)\n* **강동메디온약국**: 02-475-0067 (서울 강동구 양재대로 1461)",
+      "renders": [
+        "places"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "58-장소-전화번호",
+      "roundStats": [
+        {
+          "ms": 8614,
+          "promptTokens": 4785,
+          "outputTokens": 47,
+          "thoughtTokens": 129,
+          "toolCalls": [
+            "get_surroundings",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_surroundings",
+              "args": {
+                "place": "길동역"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동역 약국"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 6078,
+          "promptTokens": 7669,
+          "outputTokens": 297,
+          "thoughtTokens": 23,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 14692,
+      "latencyMs": 14868,
+      "toolCalls": [
+        "get_surroundings",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_surroundings",
+          "args": {
+            "place": "길동역"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동역 약국"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_surroundings",
+          "response": {
+            "resolvedPlace": "길동역 5호선 (서울 강동구 양재대로 지하 1480)",
+            "count": 50,
+            "places": [
+              {
+                "id": "kakao-21160663",
+                "name": "길동역 5호선",
+                "nameRoman": "Gildong Station, Line 5",
+                "category": "subway",
+                "categoryRaw": "교통,수송 > 지하철,전철 > 수도권5호선",
+                "categoryEn": "Transportation > Subway > Line 5",
+                "distanceMeters": 0,
+                "bearing": "n",
+                "lat": 37.5378264874159,
+                "lng": 127.140021295948,
+                "phone": "02-6311-5491",
+                "link": "http://place.map.kakao.com/21160663",
+                "roadAddress": "서울 강동구 양재대로 지하 1480"
+              },
+              {
+                "id": "kakao-7950540",
+                "name": "세븐일레븐 S길동역점",
+                "nameRoman": "Sebeunillebeun Sgildongyeokjeom",
+                "category": "convenience",
+                "categoryRaw": "가정,생활 > 편의점 > 세븐일레븐",
+                "categoryEn": "Home & Living > Convenience Store > 7-Eleven",
+                "distanceMeters": 1,
+                "bearing": "n",
+                "lat": 37.53784179631958,
+                "lng": 127.14002811337201,
+                "link": "http://place.map.kakao.com/7950540",
+                "roadAddress": "서울 강동구 양재대로 지하 1480"
+              },
+              {
+                "id": "kakao-8496731",
+                "name": "뚜레쥬르 길동중앙점",
+                "nameRoman": "Tturejyureu Gildongjungangjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 간식 > 제과,베이커리 > 뚜레쥬르",
+                "categoryEn": "Restaurants > Snacks > Bakery > Tous les Jours",
+                "distanceMeters": 20,
+                "bearing": "se",
+                "lat": 37.537751448172244,
+                "lng": 127.14023726549047,
+                "phone": "02-470-3900",
+                "link": "http://place.map.kakao.com/8496731",
+                "roadAddress": "서울 강동구 양재대로 1478"
+              },
+              {
+                "id": "kakao-7863106",
+                "name": "메디안비뇨기과의원",
+                "nameRoman": "Medianbinyogigwauiwon",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 비뇨기과",
+                "categoryEn": "Health & Medical > Hospital > Urology",
+                "distanceMeters": 23,
+                "bearing": "se",
+                "lat": 37.5376964967208,
+                "lng": 127.14022924233,
+                "phone": "02-487-5444",
+                "link": "http://place.map.kakao.com/7863106",
+                "roadAddress": "서울 강동구 양재대로 1478"
+              },
+              {
+                "id": "kakao-10795823",
+                "name": "중앙성심의원",
+                "nameRoman": "Jungangseongsimuiwon",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 일반의원",
+                "categoryEn": "Health & Medical > Hospital > General Clinic",
+                "distanceMeters": 23,
+                "bearing": "se",
+                "lat": 37.53768389350182,
+                "lng": 127.14022016701533,
+                "phone": "02-484-4245",
+                "link": "http://place.map.kakao.com/10795823",
+                "roadAddress": "서울 강동구 양재대로 1478"
+              },
+              {
+                "id": "kakao-8116933",
+                "name": "파리바게뜨 길동역점",
+                "nameRoman": "Paribagetteu Gildongyeokjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 간식 > 제과,베이커리 > 파리바게뜨",
+                "categoryEn": "Restaurants > Snacks > Bakery > Paris Baguette",
+                "distanceMeters": 26,
+                "bearing": "ne",
+                "lat": 37.53794691090334,
+                "lng": 127.14028289027016,
+                "phone": "02-472-0009",
+                "link": "http://place.map.kakao.com/8116933",
+                "roadAddress": "서울 강동구 양재대로 1482"
+              },
+              {
+                "id": "kakao-11274427",
+                "name": "시민당약국",
+                "nameRoman": "Simindangyakguk",
+                "category": "pharmacy",
+                "categoryRaw": "의료,건강 > 약국",
+                "categoryEn": "Health & Medical > Pharmacy",
+                "distanceMeters": 27,
+                "bearing": "nw",
+                "lat": 37.53802312745331,
+                "lng": 127.13983383973255,
+                "phone": "02-476-8100",
+                "link": "http://place.map.kakao.com/11274427",
+                "roadAddress": "서울 강동구 양재대로 1479"
+              },
+              {
+                "id": "kakao-12386797",
+                "name": "길동 보룡약국",
+                "nameRoman": "Gildong Boryongyakguk",
+                "category": "pharmacy",
+                "categoryRaw": "의료,건강 > 약국",
+                "categoryEn": "Health & Medical > Pharmacy",
+                "distanceMeters": 27,
+                "bearing": "se",
+                "lat": 37.53762264984165,
+                "lng": 127.1401996859974,
+                "phone": "02-477-4114",
+                "link": "http://place.map.kakao.com/12386797",
+                "roadAddress": "서울 강동구 양재대로 1478"
+              },
+              {
+                "id": "kakao-11245353",
+                "name": "강동치과",
+                "nameRoman": "Gangdongchigwa",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 치과",
+                "categoryEn": "Health & Medical > Hospital > Dental Clinic",
+                "distanceMeters": 28,
+                "bearing": "e",
+                "lat": 37.5379126232552,
+                "lng": 127.14032469034,
+                "phone": "02-482-0927",
+                "link": "http://place.map.kakao.com/11245353",
+                "roadAddress": "서울 강동구 양재대로 1482"
+              },
+              {
+                "id": "kakao-9405319",
+                "name": "지엘여성의원",
+                "nameRoman": "Jieryeoseonguiwon",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 산부인과",
+                "categoryEn": "Health & Medical > Hospital > Obstetrics & Gynecology",
+                "distanceMeters": 28,
+                "bearing": "nw",
+                "lat": 37.538028552195,
+                "lng": 127.139818009291,
+                "phone": "02-470-0167",
+                "link": "http://place.map.kakao.com/9405319",
+                "roadAddress": "서울 강동구 양재대로 1479"
+              },
+              {
+                "id": "kakao-9264198",
+                "name": "안승민치과의원",
+                "nameRoman": "Anseungminchigwauiwon",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 치과",
+                "categoryEn": "Health & Medical > Hospital > Dental Clinic",
+                "distanceMeters": 28,
+                "bearing": "se",
+                "lat": 37.5376208236655,
+                "lng": 127.140220048917,
+                "phone": "02-470-0075",
+                "link": "http://place.map.kakao.com/9264198",
+                "roadAddress": "서울 강동구 양재대로 1478"
+              },
+              {
+                "id": "kakao-1714188089",
+                "name": "길동올바른마취통증의학과의원",
+                "nameRoman": "Gildongolbareunmachwitongjeunguihakgwauiwon",
+                "category": "hospital",
+                "categoryRaw": "의료,건강 > 병원 > 정형외과",
+                "categoryEn": "Health & Medical > Hospital > Orthopedics",
+                "distanceMeters": 29,
+                "bearing": "w",
+                "lat": 37.537767402135266,
+                "lng": 127.13969984927604,
+                "phone": "02-470-8875",
+                "link": "http://place.map.kakao.com/1714188089",
+                "roadAddress": "서울 강동구 양재대로 1477"
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_places",
+          "response": {
+            "count": 12,
+            "places": [
+              {
+                "name": "길동 보룡약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1478",
+                "phone": "02-477-4114"
+              },
+              {
+                "name": "시민당약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1479",
+                "phone": "02-476-8100"
+              },
+              {
+                "name": "길동일번약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1477",
+                "phone": "02-486-8448"
+              },
+              {
+                "name": "강동솔약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1473",
+                "phone": "02-474-2696"
+              },
+              {
+                "name": "아름다운약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1488",
+                "phone": "02-472-4113"
+              },
+              {
+                "name": "강동더본약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1465",
+                "phone": "02-477-8280"
+              },
+              {
+                "name": "해든약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1499",
+                "phone": "02-470-9088"
+              },
+              {
+                "name": "강동메디온약국",
+                "category": "의료,건강 > 약국",
+                "address": "서울 강동구 양재대로 1461",
+                "phone": "02-475-0067"
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12454,
+      "outputTokens": 344,
+      "thoughtTokens": 152,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "길동역 근처 약국 전화번호입니다.\n\n- **길동 보룡약국**: 02-477-4114 (서울 강동구 양재대로 1478)\n- **시민당약국**: 02-476-8100 (서울 강동구 양재대로 1479)\n- **길동일번약국**: 02-486-8448 (서울 강동구 양재대로 1477)\n- **강동솔약국**: 02-474-2696 (서울 강동구 양재대로 1473)\n- **아름다운약국**: 02-472-4113 (서울 강동구 양재대로 1488)\n- **강동더본약국**: 02-477-8280 (서울 강동구 양재대로 1465)\n- **해든약국**: 02-470-9088 (서울 강동구 양재대로 1499)\n- **강동메디온약국**: 02-475-0067 (서울 강동구 양재대로 1461)",
+      "renders": [
+        "places"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "59-무장애-이름",
+      "roundStats": [
+        {
+          "ms": 1676,
+          "promptTokens": 4916,
+          "outputTokens": 22,
+          "thoughtTokens": 82,
+          "toolCalls": [
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "name": "경복궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2604,
+          "promptTokens": 5390,
+          "outputTokens": 159,
+          "thoughtTokens": 197,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4280,
+      "latencyMs": 4928,
+      "toolCalls": [
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "name": "경복궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_barrier_free_detail",
+          "response": {
+            "matched": true,
+            "searchedPlace": "경복궁 (서울 종로구 사직로 161)",
+            "detail": {
+              "contentId": "126508",
+              "name": "경복궁",
+              "nameRoman": "Gyeongbokgung",
+              "facilities": [
+                {
+                  "key": "wheelchair",
+                  "label": "휠체어 대여",
+                  "value": "대여가능"
+                },
+                {
+                  "key": "restroom",
+                  "label": "장애인 화장실",
+                  "value": "장애인 화장실 있음"
+                },
+                {
+                  "key": "parking",
+                  "label": "장애인 주차장",
+                  "value": "장애인 주차장 있음(광화문 우측 옥외 주차장에 9개)"
+                },
+                {
+                  "key": "exit",
+                  "label": "주출입구",
+                  "value": "주출입구는 경사로가 있어 휠체어 접근 가능함"
+                },
+                {
+                  "key": "audioguide",
+                  "label": "음성안내",
+                  "value": "음성안내 가이드 있음(티켓박스에서 음성안내기기와 PDA 대여가능)"
+                },
+                {
+                  "key": "lactationroom",
+                  "label": "수유실",
+                  "value": "수유실 있음(흥례문, 주차장 여자화장실 내부)"
+                },
+                {
+                  "key": "stroller",
+                  "label": "유모차 대여",
+                  "value": "대여가능"
+                },
+                {
+                  "key": "infantsfamilyetc",
+                  "label": "영유아·가족 편의(기타)",
+                  "value": "기저귀교환대 있음(수유실, 일반화장실 내부)"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10306,
+      "outputTokens": 181,
+      "thoughtTokens": 279,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "네, 경복궁에서 **휠체어 대여가 가능**합니다.\n\n또한 등록된 주요 무장애 및 편의시설 정보는 다음과 같습니다.\n\n* **휠체어 대여**: 가능\n* **주출입구**: 경사로가 설치되어 있어 휠체어 접근 가능\n* **장애인 주차장**: 광화문 우측 옥외 주차장에 장애인 주차구역 9면 보유\n* **장애인 화장실**: 이용 가능\n* **음성안내**: 티켓박스에서 음성안내기기 및 PDA 대여 가능\n* **기타 편의시설**: 유모차 대여 가능, 수유실 및 기저귀 교환대 보유",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "59-무장애-이름",
+      "roundStats": [
+        {
+          "ms": 2761,
+          "promptTokens": 4787,
+          "outputTokens": 28,
+          "thoughtTokens": 59,
+          "toolCalls": [
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "name": "경복궁"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2564,
+          "promptTokens": 5227,
+          "outputTokens": 92,
+          "thoughtTokens": 96,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5325,
+      "latencyMs": 6046,
+      "toolCalls": [
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "name": "경복궁"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_barrier_free_detail",
+          "response": {
+            "matched": true,
+            "searchedPlace": "경복궁 (서울 종로구 사직로 161)",
+            "detail": {
+              "contentId": "126508",
+              "name": "경복궁",
+              "nameRoman": "Gyeongbokgung",
+              "facilities": [
+                {
+                  "key": "wheelchair",
+                  "label": "휠체어 대여",
+                  "value": "대여가능"
+                },
+                {
+                  "key": "restroom",
+                  "label": "장애인 화장실",
+                  "value": "장애인 화장실 있음"
+                },
+                {
+                  "key": "parking",
+                  "label": "장애인 주차장",
+                  "value": "장애인 주차장 있음(광화문 우측 옥외 주차장에 9개)"
+                },
+                {
+                  "key": "exit",
+                  "label": "주출입구",
+                  "value": "주출입구는 경사로가 있어 휠체어 접근 가능함"
+                },
+                {
+                  "key": "audioguide",
+                  "label": "음성안내",
+                  "value": "음성안내 가이드 있음(티켓박스에서 음성안내기기와 PDA 대여가능)"
+                },
+                {
+                  "key": "lactationroom",
+                  "label": "수유실",
+                  "value": "수유실 있음(흥례문, 주차장 여자화장실 내부)"
+                },
+                {
+                  "key": "stroller",
+                  "label": "유모차 대여",
+                  "value": "대여가능"
+                },
+                {
+                  "key": "infantsfamilyetc",
+                  "label": "영유아·가족 편의(기타)",
+                  "value": "기저귀교환대 있음(수유실, 일반화장실 내부)"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10014,
+      "outputTokens": 120,
+      "thoughtTokens": 155,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "네, 경복궁에서는 **휠체어 대여가 가능**합니다.\n\n함께 확인된 주요 무장애 편의시설은 다음과 같습니다.\n- **주출입구**: 경사로가 있어 휠체어 접근이 가능합니다.\n- **장애인 화장실**: 설치되어 있습니다.\n- **장애인 주차장**: 광화문 우측 옥외 주차장에 9면이 마련되어 있습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "60-무장애-미등록",
+      "roundStats": [
+        {
+          "ms": 2665,
+          "promptTokens": 4918,
+          "outputTokens": 48,
+          "thoughtTokens": 272,
+          "toolCalls": [
+            "get_barrier_free_detail",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "name": "스타벅스 길동역점"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "스타벅스 길동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2186,
+          "promptTokens": 5453,
+          "outputTokens": 27,
+          "thoughtTokens": 131,
+          "toolCalls": [
+            "search_web"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_web",
+              "args": {
+                "query": "스타벅스 길동역점 장애인 화장실"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3195,
+          "promptTokens": 6646,
+          "outputTokens": 115,
+          "thoughtTokens": 264,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 8046,
+      "latencyMs": 9034,
+      "toolCalls": [
+        "get_barrier_free_detail",
+        "search_places",
+        "search_web"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "name": "스타벅스 길동역점"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "스타벅스 길동역점"
+          }
+        },
+        {
+          "name": "search_web",
+          "args": {
+            "query": "스타벅스 길동역점 장애인 화장실"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_barrier_free_detail",
+          "response": {
+            "matched": false,
+            "searchedPlace": "스타벅스 길동역점 (서울 강동구 양재대로 1487)",
+            "notice": "한국관광공사 무장애 여행 정보에서 이 이름으로 등록된 편의시설 정보를 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다."
+          }
+        },
+        {
+          "name": "search_places",
+          "response": {
+            "count": 2,
+            "places": [
+              {
+                "name": "스타벅스 길동역점",
+                "category": "음식점 > 카페 > 커피전문점 > 스타벅스",
+                "address": "서울 강동구 양재대로 1487",
+                "phone": "1522-3232"
+              },
+              {
+                "name": "스타벅스 길동역점 주차장",
+                "category": "교통,수송 > 교통시설 > 주차장",
+                "address": "서울 강동구 양재대로 1487"
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_web",
+          "response": {
+            "ok": true,
+            "query": "스타벅스 길동역점 장애인 화장실",
+            "count": 5,
+            "results": [
+              {
+                "title": "【김춘봉 칼럼】 “모두에게 열린 공간”이라는 스타벅스…정작 ...",
+                "url": "https://www.cfnews.kr/mobile/article.html?no=110630",
+                "snippet": "전국 수천 개의 스타벅스 매장 가운데 상당수는 장애인이 자유롭게 이용할 수 있는 화장실을 갖추지 못하고 있다.\n장애인 화장실이 아예 없는 곳도 있고, 설치되어 있더라도 휠체어가 회전할 공간이 부족하거나 출입문 폭이 좁아 실질적인 이용이 어렵다.\n장애인용 화장실 주변에는 청소도구와 물품이 쌓여 사실상 창고처럼 사용되는 사례도 있다.\n...\n많은 매장이 기존 건물 일부를 임차해 운영되고 있어 구조적인 제약이 있고, 장애인 화장실은 일반 화장실보다 훨씬 넓은 면적을 필요로 한다.",
+                "date": "2026-07-29",
+                "last_updated": "2026-07-31"
+              },
+              {
+                "title": "[카페] 스타벅스 길동역점_호그와트 골든 바닐라 라떼 마셔본 ...",
+                "url": "https://blog.naver.com/gracejennymia/223732334074",
+                "snippet": "얼른 회사 때려치고 돈많은 백수 되고싶습니다 하지만 아직은 부자가 아닌 관계로 회사 다니면서 스트레스 관리 틈틈히 해줘야함ㅎ 카페 가서 책 읽고 멍때리는 것이 나의 힐링타임 ♬ 스타벅스 길동역점은 화장실도 깨끗해서 제가 애정하는 카페입니다 히히 물론 자리를 맡을 수만 있다면요,,^^ 사람이 늘 많아,,,ㅎ 존재하지 않는 이미지입니다.",
+                "date": "2025-01-21",
+                "last_updated": "2025-12-30"
+              },
+              {
+                "title": "Inclusive Spaces Checklist",
+                "url": "https://about.starbucks.com/uploads/2024/02/Starbucks-Inclusive-Spaces-Checklist.pdf",
+                "snippet": "Equipment & tools for order preparation\nBathroom: Functional and easy to use bathrooms for all individuals, families and employees to use is important for an inclusive experience\n30A.\nCustomers have a secure, accessible place to store belongings in the restroom, fitting room, or other single- person occupancy space\n31AA.\nRestroom functions (flushing, water/soap/ towel dispensing) leverage no-touch technology to activate\n32AAA.\nChanging tables in restrooms \nare powered, height adjustable, and can accommodate an individual up to 300lbs\n33A.\nRestroom occupancy is clearly indicated in both visual and tactile methods\n42A.",
+                "last_updated": "2025-06-15"
+              },
+              {
+                "title": "서울 장애인 이용 편한 ‘스타벅스 무장애지도’ 공개",
+                "url": "https://www.ablenews.co.kr/news/articleView.html?idxno=93302",
+                "snippet": "모아스토리는 서울의 539개 스타벅스를 자체 조사하고 그 중 장애인도 편하게 이용할 수 있는 접근성이 좋은 스타벅스 26개소를 선정했다.\n선정기준은 지하철역에 인접해 있고 역의 엘리베이터를 이용할 수 있는 위치, 매장 입구에 턱이 없거나 경사로 설치되어있는 곳, 마지막으로 매장 이용시 장애인 화장실 이용이 가능한 곳이다.",
+                "date": "2021-04-20",
+                "last_updated": "2025-03-02"
+              },
+              {
+                "title": "모아스토리, 장애인 접근성 좋은 스타벅스 26개소 선정 - 인더뉴스",
+                "url": "https://www.inthenews.co.kr/news/article.html?no=33321",
+                "snippet": "선정기준은 지하철역에 인접해 있고 역의 엘리베이터를 이용할 수 있는 위치, 매장 입구에 턱이 없거나 경사로가 설치되어있는 곳, 매장 이용 시 장애인 화장실 이용이 가능한 곳입니다.",
+                "date": "2021-04-20",
+                "last_updated": "2026-09-06"
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 17017,
+      "outputTokens": 190,
+      "thoughtTokens": 667,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "스타벅스 길동역점(서울 강동구 양재대로 1487)은 무장애 편의시설 정보(한국관광공사 DB)에 등록되어 있지 않아, **장애인 화장실 설치 여부를 알 수 없습니다.** (정보가 등록되어 있지 않은 상태이며, 편의시설이 없다고 단정할 수는 없습니다.)\n\n정확한 확인을 원하실 경우 스타벅스 고객센터(1522-3232)로 직접 문의해 보시는 것을 권장합니다.",
+      "renders": [
+        "places",
+        "web-results"
+      ],
+      "sources": 3
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "60-무장애-미등록",
+      "roundStats": [
+        {
+          "ms": 3047,
+          "promptTokens": 4787,
+          "outputTokens": 32,
+          "thoughtTokens": 66,
+          "toolCalls": [
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "name": "스타벅스 길동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 7558,
+          "promptTokens": 4971,
+          "outputTokens": 95,
+          "thoughtTokens": 108,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 10605,
+      "latencyMs": 11103,
+      "toolCalls": [
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "name": "스타벅스 길동역점"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_barrier_free_detail",
+          "response": {
+            "matched": false,
+            "searchedPlace": "스타벅스 길동역점 (서울 강동구 양재대로 1487)",
+            "notice": "한국관광공사 무장애 여행 정보에서 이 이름으로 등록된 편의시설 정보를 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다."
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9758,
+      "outputTokens": 127,
+      "thoughtTokens": 174,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**스타벅스 길동역점**(서울 강동구 양재대로 1487)은 한국관광공사 무장애 여행 정보에 등록된 편의시설 정보가 없어 장애인 화장실 여부를 확인할 수 없습니다.\n\n등록된 정보가 없는 것이지 실제 시설이 없다는 뜻은 아니며, 원하시면 가까운 **길동역**의 장애인 화장실 등 역사 내 편의시설이나 주변 무장애 관광지를 조회해 드릴 수 있습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "61-입구-오른쪽-지명",
+      "roundStats": [
+        {
+          "ms": 1974,
+          "promptTokens": 4919,
+          "outputTokens": 25,
+          "thoughtTokens": 169,
+          "toolCalls": [
+            "get_entrance_sides"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_entrance_sides",
+              "args": {
+                "place": "현대백화점 천호점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3527,
+          "promptTokens": 6875,
+          "outputTokens": 199,
+          "thoughtTokens": 334,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5501,
+      "latencyMs": 6534,
+      "toolCalls": [
+        "get_entrance_sides"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_entrance_sides",
+          "args": {
+            "place": "현대백화점 천호점"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_entrance_sides",
+          "response": {
+            "searchedPlace": "현대백화점 천호점 (서울 강동구 천호대로 1005)",
+            "address": "서울특별시 강동구 천호2동, 서울특별시 강동구 천호대로 1005",
+            "frame": "entrance",
+            "basis": "입구를 마주 보고 섰을 때 기준입니다. 왼쪽·오른쪽은 입구를 바라보는 사람의 왼손·오른손 쪽, 맞은편은 길 건너, 건물 너머는 건물 뒤쪽(돌아가야 하는 곳)입니다.",
+            "total": 107,
+            "sides": [
+              {
+                "side": "왼쪽",
+                "count": 32,
+                "places": [
+                  {
+                    "name": "하츠베이커리 현대백화점 천호점",
+                    "nameRoman": "Hacheubeikeori Hyeondaebaekhwajeom Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 6
+                  },
+                  {
+                    "name": "본가스시 현대백화점 천호점",
+                    "nameRoman": "Bongaseusi Hyeondaebaekhwajeom Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "고향전주비빔밥 현대백화점천호점",
+                    "nameRoman": "Gohyangjeonjubibimbap Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "카페 사브르",
+                    "nameRoman": "Kape Sabeureu",
+                    "category": "cafe",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "오뉴 현대백화점천호점",
+                    "nameRoman": "Onyu Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "청계산뚝배기수제비 천호점",
+                    "nameRoman": "Cheonggyesanttukbaegisujebi Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "아트앤에디션갤러리&카페 현대백화점천호점",
+                    "nameRoman": "Ateuaenedisyeongaelleori&kape Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "신한 길동 ATM 현대백화점천호점2층",
+                    "nameRoman": "Sinhan Gildong ATM Hyeondaebaekhwajeomcheonhojeom2cheung",
+                    "category": "bank",
+                    "distanceMeters": 14
+                  }
+                ]
+              },
+              {
+                "side": "오른쪽",
+                "count": 23,
+                "places": [
+                  {
+                    "name": "내일도두부",
+                    "nameRoman": "Naeildodubu",
+                    "category": "restaurant",
+                    "distanceMeters": 1
+                  },
+                  {
+                    "name": "쁘띠이자뷰",
+                    "nameRoman": "Ppeuttiijabyu",
+                    "category": "restaurant",
+                    "distanceMeters": 3
+                  },
+                  {
+                    "name": "현대백화점 천호점 문화홀",
+                    "nameRoman": "Hyeondaebaekhwajeom Cheonhojeom Munhwahol",
+                    "category": "culture",
+                    "distanceMeters": 3
+                  },
+                  {
+                    "name": "신한은행 365코너 현대백화점천호점",
+                    "nameRoman": "Sinhaneunhaeng 365koneo Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "bank",
+                    "distanceMeters": 4
+                  },
+                  {
+                    "name": "2046오리엔탈그릴",
+                    "nameRoman": "2046orientalgeuril",
+                    "category": "restaurant",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "아웃백스테이크하우스 현대백화점천호점",
+                    "nameRoman": "Autbaekseuteikeuhauseu Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 9
+                  },
+                  {
+                    "name": "서청미역 현대백화점천호점",
+                    "nameRoman": "Seocheongmiyeok Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "신룽푸마라탕 현대백화점천호점",
+                    "nameRoman": "Sillungpumaratang Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 14
+                  }
+                ]
+              },
+              {
+                "side": "맞은편",
+                "count": 20,
+                "places": [
+                  {
+                    "name": "핑크리본외과의원",
+                    "nameRoman": "Pingkeuribonoegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 99
+                  },
+                  {
+                    "name": "양시강성형외과의원",
+                    "nameRoman": "Yangsigangseonghyeongoegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 99
+                  },
+                  {
+                    "name": "드림온비뇨의학과의원 천호",
+                    "nameRoman": "Deurimonbinyouihakgwauiwon Cheonho",
+                    "category": "hospital",
+                    "distanceMeters": 102
+                  },
+                  {
+                    "name": "한일어학원",
+                    "nameRoman": "Hanireohagwon",
+                    "category": "academy",
+                    "distanceMeters": 103
+                  },
+                  {
+                    "name": "쿨맨비뇨의학과의원",
+                    "nameRoman": "Kulmaenbinyouihakgwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 104
+                  },
+                  {
+                    "name": "SC제일은행 365코너 브라운스톤천호점",
+                    "nameRoman": "SCjeireunhaeng 365koneo Beuraunseutoncheonhojeom",
+                    "category": "bank",
+                    "distanceMeters": 105
+                  },
+                  {
+                    "name": "연세비전안과의원",
+                    "nameRoman": "Yeonsebijeonangwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 105
+                  },
+                  {
+                    "name": "이지함피부과 천호점",
+                    "nameRoman": "Ijihampibugwa Cheonhojeom",
+                    "category": "hospital",
+                    "distanceMeters": 105
+                  }
+                ]
+              },
+              {
+                "side": "건물 너머",
+                "count": 32,
+                "places": [
+                  {
+                    "name": "카페H 현대백화점천호점",
+                    "nameRoman": "KapeH Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 33
+                  },
+                  {
+                    "name": "현대백화점 옥외주차장",
+                    "nameRoman": "Hyeondaebaekhwajeom Ogoejuchajang",
+                    "category": "parking",
+                    "distanceMeters": 67
+                  },
+                  {
+                    "name": "스타벅스 천호이마트점",
+                    "nameRoman": "Seutabeokseu Cheonhoimateujeom",
+                    "category": "cafe",
+                    "distanceMeters": 69
+                  },
+                  {
+                    "name": "바나프레소 천호현대점",
+                    "nameRoman": "Banapeureso Cheonhohyeondaejeom",
+                    "category": "cafe",
+                    "distanceMeters": 81,
+                    "road": "올림픽로70길"
+                  },
+                  {
+                    "name": "호텔더블루",
+                    "nameRoman": "Hoteldeobeullu",
+                    "category": "lodging",
+                    "distanceMeters": 84,
+                    "road": "올림픽로72길"
+                  },
+                  {
+                    "name": "무오래모텔",
+                    "nameRoman": "Muoraemotel",
+                    "category": "lodging",
+                    "distanceMeters": 92,
+                    "road": "올림픽로"
+                  },
+                  {
+                    "name": "매머드익스프레스 천호점",
+                    "nameRoman": "Maemeodeuikseupeureseu Cheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 94,
+                    "road": "올림픽로72길"
+                  },
+                  {
+                    "name": "GS25 천호점",
+                    "nameRoman": "GS25 Cheonhojeom",
+                    "category": "convenience",
+                    "distanceMeters": 100,
+                    "road": "올림픽로70길"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11794,
+      "outputTokens": 224,
+      "thoughtTokens": 503,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현대백화점 천호점 입구를 마주 보고 섰을 때 **오른쪽**에 있는 주요 장소들입니다. (거리순)\n\n- **내일도두부** (약 1m)\n- **쁘띠이자뷰** (약 3m)\n- **현대백화점 천호점 문화홀** (약 3m)\n- **신한은행 365코너 현대백화점천호점** (약 4m)\n- **2046오리엔탈그릴** (약 7m)\n- **아웃백스테이크하우스 현대백화점천호점** (약 9m)\n- **서청미역 현대백화점천호점** (약 13m)\n- **신룽푸마라탕 현대백화점천호점** (약 14m)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "61-입구-오른쪽-지명",
+      "roundStats": [
+        {
+          "ms": 3408,
+          "promptTokens": 4789,
+          "outputTokens": 30,
+          "thoughtTokens": 72,
+          "toolCalls": [
+            "get_entrance_sides"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_entrance_sides",
+              "args": {
+                "place": "현대백화점 천호점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3484,
+          "promptTokens": 6606,
+          "outputTokens": 228,
+          "thoughtTokens": 225,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6892,
+      "latencyMs": 7801,
+      "toolCalls": [
+        "get_entrance_sides"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_entrance_sides",
+          "args": {
+            "place": "현대백화점 천호점"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_entrance_sides",
+          "response": {
+            "searchedPlace": "현대백화점 천호점 (서울 강동구 천호대로 1005)",
+            "address": "서울특별시 강동구 천호2동, 서울특별시 강동구 천호대로 1005",
+            "frame": "entrance",
+            "basis": "입구를 마주 보고 섰을 때 기준입니다. 왼쪽·오른쪽은 입구를 바라보는 사람의 왼손·오른손 쪽, 맞은편은 길 건너, 건물 너머는 건물 뒤쪽(돌아가야 하는 곳)입니다.",
+            "total": 107,
+            "sides": [
+              {
+                "side": "왼쪽",
+                "count": 32,
+                "places": [
+                  {
+                    "name": "하츠베이커리 현대백화점 천호점",
+                    "nameRoman": "Hacheubeikeori Hyeondaebaekhwajeom Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 6
+                  },
+                  {
+                    "name": "본가스시 현대백화점 천호점",
+                    "nameRoman": "Bongaseusi Hyeondaebaekhwajeom Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "고향전주비빔밥 현대백화점천호점",
+                    "nameRoman": "Gohyangjeonjubibimbap Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "카페 사브르",
+                    "nameRoman": "Kape Sabeureu",
+                    "category": "cafe",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "오뉴 현대백화점천호점",
+                    "nameRoman": "Onyu Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 12
+                  },
+                  {
+                    "name": "청계산뚝배기수제비 천호점",
+                    "nameRoman": "Cheonggyesanttukbaegisujebi Cheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "아트앤에디션갤러리&카페 현대백화점천호점",
+                    "nameRoman": "Ateuaenedisyeongaelleori&kape Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "신한 길동 ATM 현대백화점천호점2층",
+                    "nameRoman": "Sinhan Gildong ATM Hyeondaebaekhwajeomcheonhojeom2cheung",
+                    "category": "bank",
+                    "distanceMeters": 14
+                  }
+                ]
+              },
+              {
+                "side": "오른쪽",
+                "count": 23,
+                "places": [
+                  {
+                    "name": "내일도두부",
+                    "nameRoman": "Naeildodubu",
+                    "category": "restaurant",
+                    "distanceMeters": 1
+                  },
+                  {
+                    "name": "쁘띠이자뷰",
+                    "nameRoman": "Ppeuttiijabyu",
+                    "category": "restaurant",
+                    "distanceMeters": 3
+                  },
+                  {
+                    "name": "현대백화점 천호점 문화홀",
+                    "nameRoman": "Hyeondaebaekhwajeom Cheonhojeom Munhwahol",
+                    "category": "culture",
+                    "distanceMeters": 3
+                  },
+                  {
+                    "name": "신한은행 365코너 현대백화점천호점",
+                    "nameRoman": "Sinhaneunhaeng 365koneo Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "bank",
+                    "distanceMeters": 4
+                  },
+                  {
+                    "name": "2046오리엔탈그릴",
+                    "nameRoman": "2046orientalgeuril",
+                    "category": "restaurant",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "아웃백스테이크하우스 현대백화점천호점",
+                    "nameRoman": "Autbaekseuteikeuhauseu Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 9
+                  },
+                  {
+                    "name": "서청미역 현대백화점천호점",
+                    "nameRoman": "Seocheongmiyeok Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 13
+                  },
+                  {
+                    "name": "신룽푸마라탕 현대백화점천호점",
+                    "nameRoman": "Sillungpumaratang Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "restaurant",
+                    "distanceMeters": 14
+                  }
+                ]
+              },
+              {
+                "side": "맞은편",
+                "count": 20,
+                "places": [
+                  {
+                    "name": "핑크리본외과의원",
+                    "nameRoman": "Pingkeuribonoegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 99
+                  },
+                  {
+                    "name": "양시강성형외과의원",
+                    "nameRoman": "Yangsigangseonghyeongoegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 99
+                  },
+                  {
+                    "name": "드림온비뇨의학과의원 천호",
+                    "nameRoman": "Deurimonbinyouihakgwauiwon Cheonho",
+                    "category": "hospital",
+                    "distanceMeters": 102
+                  },
+                  {
+                    "name": "한일어학원",
+                    "nameRoman": "Hanireohagwon",
+                    "category": "academy",
+                    "distanceMeters": 103
+                  },
+                  {
+                    "name": "쿨맨비뇨의학과의원",
+                    "nameRoman": "Kulmaenbinyouihakgwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 104
+                  },
+                  {
+                    "name": "SC제일은행 365코너 브라운스톤천호점",
+                    "nameRoman": "SCjeireunhaeng 365koneo Beuraunseutoncheonhojeom",
+                    "category": "bank",
+                    "distanceMeters": 105
+                  },
+                  {
+                    "name": "연세비전안과의원",
+                    "nameRoman": "Yeonsebijeonangwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 105
+                  },
+                  {
+                    "name": "이지함피부과 천호점",
+                    "nameRoman": "Ijihampibugwa Cheonhojeom",
+                    "category": "hospital",
+                    "distanceMeters": 105
+                  }
+                ]
+              },
+              {
+                "side": "건물 너머",
+                "count": 32,
+                "places": [
+                  {
+                    "name": "카페H 현대백화점천호점",
+                    "nameRoman": "KapeH Hyeondaebaekhwajeomcheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 33
+                  },
+                  {
+                    "name": "현대백화점 옥외주차장",
+                    "nameRoman": "Hyeondaebaekhwajeom Ogoejuchajang",
+                    "category": "parking",
+                    "distanceMeters": 67
+                  },
+                  {
+                    "name": "스타벅스 천호이마트점",
+                    "nameRoman": "Seutabeokseu Cheonhoimateujeom",
+                    "category": "cafe",
+                    "distanceMeters": 69
+                  },
+                  {
+                    "name": "바나프레소 천호현대점",
+                    "nameRoman": "Banapeureso Cheonhohyeondaejeom",
+                    "category": "cafe",
+                    "distanceMeters": 81,
+                    "road": "올림픽로70길"
+                  },
+                  {
+                    "name": "호텔더블루",
+                    "nameRoman": "Hoteldeobeullu",
+                    "category": "lodging",
+                    "distanceMeters": 84,
+                    "road": "올림픽로72길"
+                  },
+                  {
+                    "name": "무오래모텔",
+                    "nameRoman": "Muoraemotel",
+                    "category": "lodging",
+                    "distanceMeters": 92,
+                    "road": "올림픽로"
+                  },
+                  {
+                    "name": "매머드익스프레스 천호점",
+                    "nameRoman": "Maemeodeuikseupeureseu Cheonhojeom",
+                    "category": "cafe",
+                    "distanceMeters": 94,
+                    "road": "올림픽로72길"
+                  },
+                  {
+                    "name": "GS25 천호점",
+                    "nameRoman": "GS25 Cheonhojeom",
+                    "category": "convenience",
+                    "distanceMeters": 100,
+                    "road": "올림픽로70길"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11395,
+      "outputTokens": 258,
+      "thoughtTokens": 297,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:150m"
+          ]
+        }
+      },
+      "text": "현대백화점 천호점 입구를 마주 보고 섰을 때 오른쪽(반경 150m 내 총 23곳)에는 다음과 같은 곳들이 있습니다.\n\n- **내일도두부** (음식점, 1m)\n- **쁘띠이자뷰** (음식점, 3m)\n- **현대백화점 천호점 문화홀** (문화시설, 3m)\n- **신한은행 365코너 현대백화점천호점** (은행/ATM, 4m)\n- **2046오리엔탈그릴** (음식점, 7m)\n- **아웃백스테이크하우스 현대백화점천호점** (음식점, 9m)\n- **서청미역 현대백화점천호점** (음식점, 13m)\n- **신룽푸마라탕 현대백화점천호점** (음식점, 14m)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "62-입구-맞은편-장소채팅",
+      "roundStats": [
+        {
+          "ms": 2285,
+          "promptTokens": 5062,
+          "outputTokens": 24,
+          "thoughtTokens": 186,
+          "toolCalls": [
+            "get_entrance_sides"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_entrance_sides",
+              "args": {
+                "place": "스타벅스 강동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3093,
+          "promptTokens": 6792,
+          "outputTokens": 203,
+          "thoughtTokens": 220,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5378,
+      "latencyMs": 6165,
+      "toolCalls": [
+        "get_entrance_sides"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_entrance_sides",
+          "args": {
+            "place": "스타벅스 강동역점"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_entrance_sides",
+          "response": {
+            "searchedPlace": "스타벅스 강동역점",
+            "address": "서울특별시 강동구 천호3동, 서울특별시 강동구 천호대로 1089",
+            "frame": "entrance",
+            "basis": "입구를 마주 보고 섰을 때 기준입니다. 왼쪽·오른쪽은 입구를 바라보는 사람의 왼손·오른손 쪽, 맞은편은 길 건너, 건물 너머는 건물 뒤쪽(돌아가야 하는 곳)입니다.",
+            "total": 91,
+            "sides": [
+              {
+                "side": "왼쪽",
+                "count": 9,
+                "places": [
+                  {
+                    "name": "테이블12",
+                    "nameRoman": "Teibeul12",
+                    "category": "restaurant",
+                    "distanceMeters": 15
+                  },
+                  {
+                    "name": "스타약국",
+                    "nameRoman": "Seutayakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 27
+                  },
+                  {
+                    "name": "뚜레쥬르 카페강동역점",
+                    "nameRoman": "Tturejyureu Kapegangdongyeokjeom",
+                    "category": "restaurant",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "365힐링의원",
+                    "nameRoman": "365hillinguiwon",
+                    "category": "hospital",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "강동역명당공인중개사사무소",
+                    "nameRoman": "Gangdongyeongmyeongdanggonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "강동역 5호선",
+                    "nameRoman": "Gangdong Station, Line 5",
+                    "category": "subway",
+                    "distanceMeters": 55
+                  },
+                  {
+                    "name": "투썸플레이스 강동역점",
+                    "nameRoman": "Tusseompeulleiseu Gangdongyeokjeom",
+                    "category": "cafe",
+                    "distanceMeters": 64
+                  },
+                  {
+                    "name": "힐탑프라자 주차장",
+                    "nameRoman": "Hiltappeuraja Juchajang",
+                    "category": "parking",
+                    "distanceMeters": 138
+                  }
+                ]
+              },
+              {
+                "side": "오른쪽",
+                "count": 41,
+                "places": [
+                  {
+                    "name": "청두마라탕훠궈",
+                    "nameRoman": "Cheongdumaratanghwogwo",
+                    "category": "restaurant",
+                    "distanceMeters": 6
+                  },
+                  {
+                    "name": "빽다방 강동역헤르셔점",
+                    "nameRoman": "Ppaekdabang Gangdongyeokhereusyeojeom",
+                    "category": "cafe",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "대학치과의원 천호",
+                    "nameRoman": "Daehakchigwauiwon Cheonho",
+                    "category": "hospital",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "봉평막국수보쌈",
+                    "nameRoman": "Bongpyeongmakguksubossam",
+                    "category": "restaurant",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "순남시래기 강동역점",
+                    "nameRoman": "Sunnamsiraegi Gangdongyeokjeom",
+                    "category": "restaurant",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "참편한하지외과의원",
+                    "nameRoman": "Champyeonhanhajioegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "라면공방",
+                    "nameRoman": "Ramyeongongbang",
+                    "category": "restaurant",
+                    "distanceMeters": 9
+                  },
+                  {
+                    "name": "프로공인중개사사무소",
+                    "nameRoman": "Peurogonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 10
+                  }
+                ]
+              },
+              {
+                "side": "맞은편",
+                "count": 18,
+                "places": [
+                  {
+                    "name": "CU 강동역점",
+                    "nameRoman": "CU Gangdongyeokjeom",
+                    "category": "convenience",
+                    "distanceMeters": 68
+                  },
+                  {
+                    "name": "늘푸른정신과",
+                    "nameRoman": "Neulpureunjeongsingwa",
+                    "category": "hospital",
+                    "distanceMeters": 69
+                  },
+                  {
+                    "name": "커피빈 현대자동차성내점",
+                    "nameRoman": "Keopibin Hyeondaejadongchaseongnaejeom",
+                    "category": "cafe",
+                    "distanceMeters": 83
+                  },
+                  {
+                    "name": "허브온누리약국",
+                    "nameRoman": "Heobeuonnuriyakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 87
+                  },
+                  {
+                    "name": "월가공인중개사사무소",
+                    "nameRoman": "Wolgagonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 89
+                  },
+                  {
+                    "name": "강동열린의원",
+                    "nameRoman": "Gangdongyeollinuiwon",
+                    "category": "hospital",
+                    "distanceMeters": 91
+                  },
+                  {
+                    "name": "시네마뷰티미용학원",
+                    "nameRoman": "Sinemabyutimiyonghagwon",
+                    "category": "academy",
+                    "distanceMeters": 93
+                  },
+                  {
+                    "name": "시네마뷰티 미용학원 천호점",
+                    "nameRoman": "Sinemabyuti Miyonghagwon Cheonhojeom",
+                    "category": "academy",
+                    "distanceMeters": 96
+                  }
+                ]
+              },
+              {
+                "side": "건물 너머",
+                "count": 23,
+                "places": [
+                  {
+                    "name": "매머드익스프레스 강동역점",
+                    "nameRoman": "Maemeodeuikseupeureseu Gangdongyeokjeom",
+                    "category": "cafe",
+                    "distanceMeters": 58
+                  },
+                  {
+                    "name": "카페63도",
+                    "nameRoman": "Kape63do",
+                    "category": "cafe",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "카페 그로브",
+                    "nameRoman": "Kape Geurobeu",
+                    "category": "cafe",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "하나은행365 강동역 ATM",
+                    "nameRoman": "Hanaeunhaeng365 Gangdongyeok ATM",
+                    "category": "bank",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "하나은행 강동역지점",
+                    "nameRoman": "Hanaeunhaeng Gangdongyeokjijeom",
+                    "category": "bank",
+                    "distanceMeters": 67
+                  },
+                  {
+                    "name": "참새약국",
+                    "nameRoman": "Chamsaeyakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 75
+                  },
+                  {
+                    "name": "세븐일레븐 뉴웨이브오리진점",
+                    "nameRoman": "Sebeunillebeun Nyuweibeuorijinjeom",
+                    "category": "convenience",
+                    "distanceMeters": 89
+                  },
+                  {
+                    "name": "래미안삼성공인중개사사무소",
+                    "nameRoman": "Raemiansamseonggonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 90
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11854,
+      "outputTokens": 227,
+      "thoughtTokens": 406,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "스타벅스 강동역점 입구를 마주 보고 섰을 때 길 건너(맞은편) 주요 장소는 다음과 같습니다:\n\n- **CU 강동역점** (편의점, 약 68m)\n- **늘푸른정신과** (병원, 약 69m)\n- **커피빈 현대자동차성내점** (카페, 약 83m)\n- **허브온누리약국** (약국, 약 87m)\n- **월가공인중개사사무소** (부동산, 약 89m)\n- **강동열린의원** (병원, 약 91m)\n- **시네마뷰티미용학원** (학원, 약 93~96m)\n\n이 외에도 맞은편 반경 내 총 18 곳의 장소가 등록되어 있습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "62-입구-맞은편-장소채팅",
+      "roundStats": [
+        {
+          "ms": 2883,
+          "promptTokens": 4926,
+          "outputTokens": 30,
+          "thoughtTokens": 64,
+          "toolCalls": [
+            "get_entrance_sides"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_entrance_sides",
+              "args": {
+                "place": "스타벅스 강동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2810,
+          "promptTokens": 6488,
+          "outputTokens": 146,
+          "thoughtTokens": 142,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5693,
+      "latencyMs": 6682,
+      "toolCalls": [
+        "get_entrance_sides"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_entrance_sides",
+          "args": {
+            "place": "스타벅스 강동역점"
+          }
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_entrance_sides",
+          "response": {
+            "searchedPlace": "스타벅스 강동역점",
+            "address": "서울특별시 강동구 천호3동, 서울특별시 강동구 천호대로 1089",
+            "frame": "entrance",
+            "basis": "입구를 마주 보고 섰을 때 기준입니다. 왼쪽·오른쪽은 입구를 바라보는 사람의 왼손·오른손 쪽, 맞은편은 길 건너, 건물 너머는 건물 뒤쪽(돌아가야 하는 곳)입니다.",
+            "total": 91,
+            "sides": [
+              {
+                "side": "왼쪽",
+                "count": 9,
+                "places": [
+                  {
+                    "name": "테이블12",
+                    "nameRoman": "Teibeul12",
+                    "category": "restaurant",
+                    "distanceMeters": 15
+                  },
+                  {
+                    "name": "스타약국",
+                    "nameRoman": "Seutayakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 27
+                  },
+                  {
+                    "name": "뚜레쥬르 카페강동역점",
+                    "nameRoman": "Tturejyureu Kapegangdongyeokjeom",
+                    "category": "restaurant",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "365힐링의원",
+                    "nameRoman": "365hillinguiwon",
+                    "category": "hospital",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "강동역명당공인중개사사무소",
+                    "nameRoman": "Gangdongyeongmyeongdanggonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 29
+                  },
+                  {
+                    "name": "강동역 5호선",
+                    "nameRoman": "Gangdong Station, Line 5",
+                    "category": "subway",
+                    "distanceMeters": 55
+                  },
+                  {
+                    "name": "투썸플레이스 강동역점",
+                    "nameRoman": "Tusseompeulleiseu Gangdongyeokjeom",
+                    "category": "cafe",
+                    "distanceMeters": 64
+                  },
+                  {
+                    "name": "힐탑프라자 주차장",
+                    "nameRoman": "Hiltappeuraja Juchajang",
+                    "category": "parking",
+                    "distanceMeters": 138
+                  }
+                ]
+              },
+              {
+                "side": "오른쪽",
+                "count": 41,
+                "places": [
+                  {
+                    "name": "청두마라탕훠궈",
+                    "nameRoman": "Cheongdumaratanghwogwo",
+                    "category": "restaurant",
+                    "distanceMeters": 6
+                  },
+                  {
+                    "name": "빽다방 강동역헤르셔점",
+                    "nameRoman": "Ppaekdabang Gangdongyeokhereusyeojeom",
+                    "category": "cafe",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "대학치과의원 천호",
+                    "nameRoman": "Daehakchigwauiwon Cheonho",
+                    "category": "hospital",
+                    "distanceMeters": 7
+                  },
+                  {
+                    "name": "봉평막국수보쌈",
+                    "nameRoman": "Bongpyeongmakguksubossam",
+                    "category": "restaurant",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "순남시래기 강동역점",
+                    "nameRoman": "Sunnamsiraegi Gangdongyeokjeom",
+                    "category": "restaurant",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "참편한하지외과의원",
+                    "nameRoman": "Champyeonhanhajioegwauiwon",
+                    "category": "hospital",
+                    "distanceMeters": 8
+                  },
+                  {
+                    "name": "라면공방",
+                    "nameRoman": "Ramyeongongbang",
+                    "category": "restaurant",
+                    "distanceMeters": 9
+                  },
+                  {
+                    "name": "프로공인중개사사무소",
+                    "nameRoman": "Peurogonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 10
+                  }
+                ]
+              },
+              {
+                "side": "맞은편",
+                "count": 18,
+                "places": [
+                  {
+                    "name": "CU 강동역점",
+                    "nameRoman": "CU Gangdongyeokjeom",
+                    "category": "convenience",
+                    "distanceMeters": 68
+                  },
+                  {
+                    "name": "늘푸른정신과",
+                    "nameRoman": "Neulpureunjeongsingwa",
+                    "category": "hospital",
+                    "distanceMeters": 69
+                  },
+                  {
+                    "name": "커피빈 현대자동차성내점",
+                    "nameRoman": "Keopibin Hyeondaejadongchaseongnaejeom",
+                    "category": "cafe",
+                    "distanceMeters": 83
+                  },
+                  {
+                    "name": "허브온누리약국",
+                    "nameRoman": "Heobeuonnuriyakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 87
+                  },
+                  {
+                    "name": "월가공인중개사사무소",
+                    "nameRoman": "Wolgagonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 89
+                  },
+                  {
+                    "name": "강동열린의원",
+                    "nameRoman": "Gangdongyeollinuiwon",
+                    "category": "hospital",
+                    "distanceMeters": 91
+                  },
+                  {
+                    "name": "시네마뷰티미용학원",
+                    "nameRoman": "Sinemabyutimiyonghagwon",
+                    "category": "academy",
+                    "distanceMeters": 93
+                  },
+                  {
+                    "name": "시네마뷰티 미용학원 천호점",
+                    "nameRoman": "Sinemabyuti Miyonghagwon Cheonhojeom",
+                    "category": "academy",
+                    "distanceMeters": 96
+                  }
+                ]
+              },
+              {
+                "side": "건물 너머",
+                "count": 23,
+                "places": [
+                  {
+                    "name": "매머드익스프레스 강동역점",
+                    "nameRoman": "Maemeodeuikseupeureseu Gangdongyeokjeom",
+                    "category": "cafe",
+                    "distanceMeters": 58
+                  },
+                  {
+                    "name": "카페63도",
+                    "nameRoman": "Kape63do",
+                    "category": "cafe",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "카페 그로브",
+                    "nameRoman": "Kape Geurobeu",
+                    "category": "cafe",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "하나은행365 강동역 ATM",
+                    "nameRoman": "Hanaeunhaeng365 Gangdongyeok ATM",
+                    "category": "bank",
+                    "distanceMeters": 63
+                  },
+                  {
+                    "name": "하나은행 강동역지점",
+                    "nameRoman": "Hanaeunhaeng Gangdongyeokjijeom",
+                    "category": "bank",
+                    "distanceMeters": 67
+                  },
+                  {
+                    "name": "참새약국",
+                    "nameRoman": "Chamsaeyakguk",
+                    "category": "pharmacy",
+                    "distanceMeters": 75
+                  },
+                  {
+                    "name": "세븐일레븐 뉴웨이브오리진점",
+                    "nameRoman": "Sebeunillebeun Nyuweibeuorijinjeom",
+                    "category": "convenience",
+                    "distanceMeters": 89
+                  },
+                  {
+                    "name": "래미안삼성공인중개사사무소",
+                    "nameRoman": "Raemiansamseonggonginjunggaesasamuso",
+                    "category": "realEstate",
+                    "distanceMeters": 90
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11414,
+      "outputTokens": 176,
+      "thoughtTokens": 206,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "스타벅스 강동역점 입구 맞은편(길 건너)에는 총 18곳의 장소가 있습니다. 가까운 주요 장소는 다음과 같습니다.\n\n- **편의점**: CU 강동역점 (68m)\n- **병원·약국**: 늘푸른정신과 (69m), 허브온누리약국 (87m), 강동열린의원 (91m)\n- **카페**: 커피빈 현대자동차성내점 (83m)\n- **기타**: 월가공인중개사사무소 (89m), 시네마뷰티미용학원 (93m)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "63-현재위치-오른쪽",
+      "roundStats": [
+        {
+          "ms": 3238,
+          "promptTokens": 4911,
+          "outputTokens": 12,
+          "thoughtTokens": 332,
+          "toolCalls": [
+            "get_surroundings"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_surroundings",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5374,
+          "promptTokens": 7497,
+          "outputTokens": 288,
+          "thoughtTokens": 596,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 8612,
+      "latencyMs": 8783,
+      "toolCalls": [
+        "get_surroundings"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_surroundings",
+          "args": {}
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_surroundings",
+          "response": {
+            "count": 50,
+            "places": [
+              {
+                "id": "kakao-398064365",
+                "name": "길동골목냉면",
+                "nameRoman": "Gildonggolmongnaengmyeon",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 냉면",
+                "categoryEn": "Restaurants > Korean > Naengmyeon (Cold Noodles)",
+                "distanceMeters": 20,
+                "bearing": "sw",
+                "lat": 37.5376733232183,
+                "lng": 127.141528119632,
+                "phone": "02-477-4181",
+                "link": "http://place.map.kakao.com/398064365",
+                "roadAddress": "서울 강동구 양재대로114길 25"
+              },
+              {
+                "id": "kakao-1224684181",
+                "name": "얼음왕국 길동297호점",
+                "nameRoman": "Eoreumwangguk Gildong297hojeom",
+                "category": "restaurant",
+                "categoryRaw": "가정,생활 > 식품판매 > 아이스크림판매 > 얼음왕국",
+                "distanceMeters": 20,
+                "bearing": "sw",
+                "lat": 37.5376733232183,
+                "lng": 127.141528119632,
+                "link": "http://place.map.kakao.com/1224684181",
+                "roadAddress": "서울 강동구 양재대로114길 25"
+              },
+              {
+                "id": "kakao-552843370",
+                "name": "아구세상 길동점",
+                "nameRoman": "Agusesang Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 해물,생선 > 아구",
+                "categoryEn": "Restaurants > Korean > Seafood > Monkfish",
+                "distanceMeters": 20,
+                "bearing": "s",
+                "lat": 37.537610021349344,
+                "lng": 127.14172148017602,
+                "phone": "02-478-5855",
+                "link": "http://place.map.kakao.com/552843370",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-19032431",
+                "name": "GS25 우성스타점",
+                "nameRoman": "GS25 Useongseutajeom",
+                "category": "convenience",
+                "categoryRaw": "가정,생활 > 편의점 > GS25",
+                "categoryEn": "Home & Living > Convenience Store > GS25",
+                "distanceMeters": 22,
+                "bearing": "se",
+                "lat": 37.5376117296262,
+                "lng": 127.14179955436157,
+                "link": "http://place.map.kakao.com/19032431",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-160234206",
+                "name": "박가면장 길동점",
+                "nameRoman": "Bakgamyeonjang Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 국수",
+                "categoryEn": "Restaurants > Korean > Noodles",
+                "distanceMeters": 33,
+                "bearing": "se",
+                "lat": 37.53754222232718,
+                "lng": 127.14190804309696,
+                "phone": "02-474-6643",
+                "link": "http://place.map.kakao.com/160234206",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-253166579",
+                "name": "서향중국집",
+                "nameRoman": "Seohyangjunggukjip",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 중식 > 중국요리",
+                "categoryEn": "Restaurants > Chinese > Chinese Cuisine",
+                "distanceMeters": 35,
+                "bearing": "ne",
+                "lat": 37.53796734355618,
+                "lng": 127.14203331025675,
+                "phone": "02-484-2155",
+                "link": "http://place.map.kakao.com/253166579",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-2084430060",
+                "name": "페리카나 길동3점",
+                "nameRoman": "Perikana Gildong3jeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 치킨 > 페리카나",
+                "categoryEn": "Restaurants > Fried Chicken > Pelicana",
+                "distanceMeters": 36,
+                "bearing": "ne",
+                "lat": 37.5380151154834,
+                "lng": 127.1420175603,
+                "phone": "02-470-3580",
+                "link": "http://place.map.kakao.com/2084430060",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-711066073",
+                "name": "스윗하나",
+                "nameRoman": "Seuwithana",
+                "category": "cafe",
+                "categoryRaw": "음식점 > 카페 > 테마카페 > 디저트카페",
+                "categoryEn": "Restaurants > Cafe > Themed Cafe > Dessert Cafe",
+                "distanceMeters": 36,
+                "bearing": "ne",
+                "lat": 37.53801421720069,
+                "lng": 127.14201529565753,
+                "phone": "0507-1475-2126",
+                "link": "http://place.map.kakao.com/711066073",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-15682418",
+                "name": "또바기치킨 길동점",
+                "nameRoman": "Ttobagichikin Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 치킨",
+                "categoryEn": "Restaurants > Fried Chicken",
+                "distanceMeters": 41,
+                "bearing": "s",
+                "lat": 37.5374498676645,
+                "lng": 127.14153448607198,
+                "phone": "02-475-3392",
+                "link": "http://place.map.kakao.com/15682418",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1499644896",
+                "name": "육회란연어다 강동구점",
+                "nameRoman": "Yukhoeranyeoneoda Gangdonggujeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 해물,생선 > 회",
+                "categoryEn": "Restaurants > Korean > Seafood > Sashimi (Hoe)",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.53746266189252,
+                "lng": 127.141384025963,
+                "phone": "070-8890-0707",
+                "link": "http://place.map.kakao.com/1499644896",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1845258606",
+                "name": "키아네",
+                "nameRoman": "Kiane",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 패스트푸드",
+                "categoryEn": "Restaurants > Fast Food",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.5374626618991,
+                "lng": 127.14138402596389,
+                "link": "http://place.map.kakao.com/1845258606",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1302818618",
+                "name": "힛힛",
+                "nameRoman": "Hithit",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 술집 > 호프,요리주점",
+                "categoryEn": "Restaurants > Bar > Pub",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.5374626618991,
+                "lng": 127.141384025964,
+                "link": "http://place.map.kakao.com/1302818618",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12408,
+      "outputTokens": 300,
+      "thoughtTokens": 928,
+      "ok": true,
+      "checks": {
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:45m"
+          ]
+        }
+      },
+      "text": "바라보는 방향에 따라 '오른쪽'이 달라질 수 있어, **현재 위치 기준 절대 방위(방위각)**로 주변 장소를 안내해 드립니다.\n\n* **동남쪽 (약 20~35m)**\n  * GS25 우성스타점 (약 22m)\n  * 박가면장 길동점 (약 33m)\n* **북동쪽 (약 35m)**\n  * 서향중국집 (약 35m)\n  * 페리카나 길동3점 (약 36m)\n  * 스윗하나 (약 36m)\n* **남쪽 (약 20~40m)**\n  * 아구세상 길동점 (약 20m)\n  * 또바기치킨 길동점 (약 41m)\n* **남서쪽 (약 20~45m)**\n  * 길동골목냉면 (약 20m)\n  * 얼음왕국 길동297호점 (약 20m)\n\n북쪽을 바라보고 서 계시다면 **동쪽·동남쪽(GS25 우성스타점, 박가면장 등)** 방향이 오른쪽에 위치합니다.",
+      "renders": [
+        "surroundings-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-4-hydrogen@low",
+      "rep": 1,
+      "caseId": "63-현재위치-오른쪽",
+      "roundStats": [
+        {
+          "ms": 2860,
+          "promptTokens": 4782,
+          "outputTokens": 17,
+          "thoughtTokens": 200,
+          "toolCalls": [
+            "get_surroundings"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_surroundings",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3426,
+          "promptTokens": 7208,
+          "outputTokens": 212,
+          "thoughtTokens": 233,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6286,
+      "latencyMs": 6759,
+      "toolCalls": [
+        "get_surroundings"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_surroundings",
+          "args": {}
+        }
+      ],
+      "toolOutputs": [
+        {
+          "name": "get_surroundings",
+          "response": {
+            "count": 50,
+            "places": [
+              {
+                "id": "kakao-398064365",
+                "name": "길동골목냉면",
+                "nameRoman": "Gildonggolmongnaengmyeon",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 냉면",
+                "categoryEn": "Restaurants > Korean > Naengmyeon (Cold Noodles)",
+                "distanceMeters": 20,
+                "bearing": "sw",
+                "lat": 37.5376733232183,
+                "lng": 127.141528119632,
+                "phone": "02-477-4181",
+                "link": "http://place.map.kakao.com/398064365",
+                "roadAddress": "서울 강동구 양재대로114길 25"
+              },
+              {
+                "id": "kakao-1224684181",
+                "name": "얼음왕국 길동297호점",
+                "nameRoman": "Eoreumwangguk Gildong297hojeom",
+                "category": "restaurant",
+                "categoryRaw": "가정,생활 > 식품판매 > 아이스크림판매 > 얼음왕국",
+                "distanceMeters": 20,
+                "bearing": "sw",
+                "lat": 37.5376733232183,
+                "lng": 127.141528119632,
+                "link": "http://place.map.kakao.com/1224684181",
+                "roadAddress": "서울 강동구 양재대로114길 25"
+              },
+              {
+                "id": "kakao-552843370",
+                "name": "아구세상 길동점",
+                "nameRoman": "Agusesang Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 해물,생선 > 아구",
+                "categoryEn": "Restaurants > Korean > Seafood > Monkfish",
+                "distanceMeters": 20,
+                "bearing": "s",
+                "lat": 37.537610021349344,
+                "lng": 127.14172148017602,
+                "phone": "02-478-5855",
+                "link": "http://place.map.kakao.com/552843370",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-19032431",
+                "name": "GS25 우성스타점",
+                "nameRoman": "GS25 Useongseutajeom",
+                "category": "convenience",
+                "categoryRaw": "가정,생활 > 편의점 > GS25",
+                "categoryEn": "Home & Living > Convenience Store > GS25",
+                "distanceMeters": 22,
+                "bearing": "se",
+                "lat": 37.5376117296262,
+                "lng": 127.14179955436157,
+                "link": "http://place.map.kakao.com/19032431",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-160234206",
+                "name": "박가면장 길동점",
+                "nameRoman": "Bakgamyeonjang Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 국수",
+                "categoryEn": "Restaurants > Korean > Noodles",
+                "distanceMeters": 33,
+                "bearing": "se",
+                "lat": 37.53754222232718,
+                "lng": 127.14190804309696,
+                "phone": "02-474-6643",
+                "link": "http://place.map.kakao.com/160234206",
+                "roadAddress": "서울 강동구 양재대로114길 31"
+              },
+              {
+                "id": "kakao-253166579",
+                "name": "서향중국집",
+                "nameRoman": "Seohyangjunggukjip",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 중식 > 중국요리",
+                "categoryEn": "Restaurants > Chinese > Chinese Cuisine",
+                "distanceMeters": 35,
+                "bearing": "ne",
+                "lat": 37.53796734355618,
+                "lng": 127.14203331025675,
+                "phone": "02-484-2155",
+                "link": "http://place.map.kakao.com/253166579",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-2084430060",
+                "name": "페리카나 길동3점",
+                "nameRoman": "Perikana Gildong3jeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 치킨 > 페리카나",
+                "categoryEn": "Restaurants > Fried Chicken > Pelicana",
+                "distanceMeters": 36,
+                "bearing": "ne",
+                "lat": 37.5380151154834,
+                "lng": 127.1420175603,
+                "phone": "02-470-3580",
+                "link": "http://place.map.kakao.com/2084430060",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-711066073",
+                "name": "스윗하나",
+                "nameRoman": "Seuwithana",
+                "category": "cafe",
+                "categoryRaw": "음식점 > 카페 > 테마카페 > 디저트카페",
+                "categoryEn": "Restaurants > Cafe > Themed Cafe > Dessert Cafe",
+                "distanceMeters": 36,
+                "bearing": "ne",
+                "lat": 37.53801421720069,
+                "lng": 127.14201529565753,
+                "phone": "0507-1475-2126",
+                "link": "http://place.map.kakao.com/711066073",
+                "roadAddress": "서울 강동구 천호대로185길 89"
+              },
+              {
+                "id": "kakao-15682418",
+                "name": "또바기치킨 길동점",
+                "nameRoman": "Ttobagichikin Gildongjeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 치킨",
+                "categoryEn": "Restaurants > Fried Chicken",
+                "distanceMeters": 41,
+                "bearing": "s",
+                "lat": 37.5374498676645,
+                "lng": 127.14153448607198,
+                "phone": "02-475-3392",
+                "link": "http://place.map.kakao.com/15682418",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1499644896",
+                "name": "육회란연어다 강동구점",
+                "nameRoman": "Yukhoeranyeoneoda Gangdonggujeom",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 한식 > 해물,생선 > 회",
+                "categoryEn": "Restaurants > Korean > Seafood > Sashimi (Hoe)",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.53746266189252,
+                "lng": 127.141384025963,
+                "phone": "070-8890-0707",
+                "link": "http://place.map.kakao.com/1499644896",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1845258606",
+                "name": "키아네",
+                "nameRoman": "Kiane",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 패스트푸드",
+                "categoryEn": "Restaurants > Fast Food",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.5374626618991,
+                "lng": 127.14138402596389,
+                "link": "http://place.map.kakao.com/1845258606",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              },
+              {
+                "id": "kakao-1302818618",
+                "name": "힛힛",
+                "nameRoman": "Hithit",
+                "category": "restaurant",
+                "categoryRaw": "음식점 > 술집 > 호프,요리주점",
+                "categoryEn": "Restaurants > Bar > Pub",
+                "distanceMeters": 46,
+                "bearing": "sw",
+                "lat": 37.5374626618991,
+                "lng": 127.141384025964,
+                "link": "http://place.map.kakao.com/1302818618",
+                "roadAddress": "서울 강동구 양재대로114길 26"
+              }
+            ]
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11990,
+      "outputTokens": 229,
+      "thoughtTokens": 433,
+      "ok": true,
+      "checks": {
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "지금 어느 방향을 바라보고 계신지 알 수 없어 오른쪽을 정확히 특정하기는 어렵습니다. 현재 위치 주변의 가장 가까운 장소들을 방위별로 안내해 드립니다.\n\n* **남서쪽**: 길동골목냉면(20m), 얼음왕국 길동297호점(20m), 육회란연어다 강동구점(46m)\n* **남쪽**: 아구세상 길동점(20m), 또바기치킨 길동점(41m)\n* **남동쪽**: GS25 우성스타점(22m), 박가면장 길동점(33m)\n* **북동쪽**: 서향중국집(35m), 페리카나 길동3점(36m), 스윗하나(36m)\n\n바라보고 계신 방향이나 앞에 있는 건물 이름을 알려주시면 그 기준으로 다시 확인해 드리겠습니다.",
+      "renders": [
+        "surroundings-nearby"
+      ],
+      "sources": 1
+    }
+  ]
+}
