@@ -18,6 +18,10 @@
 - 미러링 확인(2026-11-15, 실험판·정식판 실기기): V14 시트 맨 앞 「말로 묻기」(동의한 기기) 통과, V23 설정 AI 묶음 「답변 모델」 OpenAI → Claude Sonnet → Claude Opus → Google Gemini 통과, V33 정식판에 메뉴·설정 행 없음 통과. 서버 `/providers`에 OpenAI 포함 확인. 받아쓰기·대기음·답 낭독·횡단보도 끊기·VoiceOver 순서(V14~V17·V29·V30)는 미확인, 위원장 실기기 확인으로 넘김.
 - 설정 「답변 모델」의 이름을 회사에서 모델 이름으로 바꿨다(GPT-6.1 Terra·Claude Sonnet·Claude Opus·Gemini 3.5 Flash-Lite, 위원장 요청). 서버 모델 상수와 이름이 어긋나면 게이트 테스트가 실패한다. 실험판 실기기 미러링에서 네 이름과 순서 확인(값 GPT-6.1 Terra 유지).
 
+### 베르길리우스 답변 모델에 Claude Haiku를 더한다 (E82, 서버·iOS Kit)
+- 선택지 `claude-haiku`(Haiku 5.5)가 `claude-sonnet` 뒤에 서고, 설정 화면에서는 Claude Opus 다음 「Claude Haiku」다(위원장 요청). 같은 키 게이트, 생각 설정 없이 effort `low`, 거절·잘림은 실패이고 다른 모델로 돌리지 않는다. `usage-report` Anthropic 프로브가 세 모델을 본다.
+- 실호출(질문당 2~3회)에서 재료 밖 이름·좌우 불일치·지나온 가게를 앞이라 함 0건, 제안 2/2. 첫 글은 가장 느린 회차가 6.0초(12초 기준 안), 조회 낀 질문은 3.5~4.1초로 Opus·Sonnet보다 빠르다. 괄호를 25번 중 3번 썼다. 지출 약 $0.02. 리포트 `docs/evals/2026-11-15-vergilius-claude-haiku.md`.
+
 ### 길동무 OpenAI 키를 공용 환경과 분리
 
 - 앱과 사용량 리포트는 `GILDONGMU_OPENAI_API_KEY`만 읽고 공용 키로 폴백하지 않는다. 공용 키만 있을 때의 기능 차단과 두 키가 함께 있을 때의 전용 키 인증을 회귀 테스트로 확인한다.
