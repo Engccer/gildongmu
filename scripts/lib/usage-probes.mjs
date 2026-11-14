@@ -185,6 +185,16 @@ export const MONEY_PROBES = [
     note: "잔액은 조회 API가 없어 정보 없음. 콘솔 console.perplexity.ai",
   },
   {
+    id: "openai",
+    label: "OpenAI",
+    envKeys: ["OPENAI_API_KEY"],
+    build: (env) => ({
+      url: "https://api.openai.com/v1/models/gpt-6.1-terra",
+      init: { headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` } },
+    }),
+    note: "베르길리우스 말로 묻기(E82). 모델 조회라 과금 0, 월 지출 상한은 콘솔 platform.openai.com",
+  },
+  {
     id: "deepgram-balance",
     label: "Deepgram 잔액",
     envKeys: ["DEEPGRAM_MANAGE_KEY"],

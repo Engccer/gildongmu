@@ -40976,37 +40976,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송되며, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 답변은 AI가 생성하며 부정확할 수 있습니다."
+            "value": "AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송되며, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 길 위에서 말로 묻기 기능에서는 질문 글, 현재 위치, 주변 장소 목록, 방금 안내한 내용이 답변 생성을 위해 OpenAI 또는 Google Gemini에 전송되며, 음성은 기기 밖으로 나가지 않습니다. 답변은 AI가 생성하며 부정확할 수 있습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "In AI chat, your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity. Answers are AI-generated and may be inaccurate."
+            "value": "In AI chat, your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity. When you ask by voice while walking, the text of your question, your current location, the list of nearby places, and what was just announced to you are sent to OpenAI or Google Gemini to generate answers, and your voice audio never leaves your device. Answers are AI-generated and may be inaccurate."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En el chat con IA, sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity. Las respuestas son generadas por IA y pueden ser inexactas."
+            "value": "En el chat con IA, sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity. Al preguntar por voz mientras camina, el texto de su pregunta, su ubicación actual, la lista de lugares cercanos y lo que se le acaba de anunciar se envían a OpenAI o a Google Gemini para generar respuestas, y el audio de su voz no sale de su dispositivo. Las respuestas son generadas por IA y pueden ser inexactas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dans le chat IA, vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity. Les réponses sont générées par IA et peuvent être inexactes."
+            "value": "Dans le chat IA, vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity. Lorsque vous posez une question à voix haute en marchant, le texte de votre question, votre position actuelle, la liste des lieux à proximité et ce qui vient de vous être annoncé sont envoyés à OpenAI ou à Google Gemini pour générer les réponses, et l'audio de votre voix ne quitte pas votre appareil. Les réponses sont générées par IA et peuvent être inexactes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Le risposte sono generate dall'IA e possono essere imprecise."
+            "value": "Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Quando si pone una domanda a voce mentre si cammina, il testo della domanda, la posizione attuale, l'elenco dei luoghi vicini e quanto appena annunciato vengono inviati a OpenAI o a Google Gemini per generare le risposte, e l'audio della voce non lascia il dispositivo. Le risposte sono generate dall'IA e possono essere imprecise."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "AIチャットでは、質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにGoogle Geminiに送信され、ウェブ検索が必要な質問はPerplexityにも送信されます。回答はAIが生成するため、不正確な場合があります。"
+            "value": "AIチャットでは、質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにGoogle Geminiに送信され、ウェブ検索が必要な質問はPerplexityにも送信されます。歩きながら声で質問する機能では、質問のテキスト、現在地、周辺の場所のリスト、直前に案内した内容が回答生成のためにOpenAIまたはGoogle Geminiに送信され、音声が端末の外に出ることはありません。回答はAIが生成するため、不正確な場合があります。"
           }
         }
       }
