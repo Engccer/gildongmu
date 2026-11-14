@@ -609,6 +609,7 @@
     <string name="chat_progress_tool_get_bus_arrivals">バス到着</string>
     <string name="chat_progress_tool_get_bus_route">バス路線</string>
     <string name="chat_progress_tool_get_car_route">車の経路</string>
+    <string name="chat_progress_tool_get_entrance_sides">入口周辺</string>
     <string name="chat_progress_tool_get_kids_places">子どもの遊び場</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">バリアフリー観光地</string>
     <string name="chat_progress_tool_get_night_clinics">夜間診療</string>

@@ -65,6 +65,7 @@ describe("TAGO 출처 이름(A60 위원장 판정 2026-10-05)", () => {
   it("버스 도착과 지하철 첫차·막차가 같은 키를 쓰고, 그 이름은 수단 중립 「국토부 TAGO」다", async () => {
     expect(sourceFor("get_bus_arrivals", { dataLocale: "ko" })).toEqual([{ label: "source.tago" }]);
     expect(sourceFor("get_bus_route", { dataLocale: "ko" })).toEqual([{ label: "source.tago" }]);
+    expect(sourceFor("get_entrance_sides", { dataLocale: "ko" })).toEqual([{ label: "source.kakao" }]);
     expect(sourceFor("get_station_timetable", { dataLocale: "ko" })).toEqual([{ label: "source.tago" }]);
     const ko = (await import("../../../../messages/ko.json")).default;
     const en = (await import("../../../../messages/en.json")).default;

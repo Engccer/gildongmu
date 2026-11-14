@@ -60,6 +60,8 @@ import { overviewSources, sourceFor } from "./sources";
 import { assembleWhereAmI } from "@/lib/where-am-i";
 import { assembleNearbyOverview } from "@/lib/nearby-overview";
 import { isInKorea } from "@/lib/coverage";
+import { assembleScene } from "@/lib/surroundings-scene";
+import { entranceSidesData } from "./entrance-sides";
 
 /** 좌표 도구의 기준 좌표 — 장소 앵커 우선, 없으면 현재 위치. */
 export function anchorOf(
@@ -84,6 +86,8 @@ interface ResolvedCoord {
   lng: number;
   /** 지명을 해석했을 때 실제로 고른 장소(이름·주소). 키워드 검색 1위라 사용자의 지명과 어긋날 수 있다. */
   resolvedPlace?: string;
+  /** 고른 장소의 이름만(주소 없이). 결과에서 그 장소 자신을 가를 때 쓴다(E88 ⓒ). 모델 재료에 싣지 않는다. */
+  resolvedName?: string;
 }
 
 /**
@@ -100,7 +104,7 @@ async function resolveCoord(
     const p = r.places[0];
     if (!p) return undefined;
     const addr = p.roadAddress || p.address;
-    return { lat: p.lat, lng: p.lng, resolvedPlace: addr ? `${p.name} (${addr})` : p.name };
+    return { lat: p.lat, lng: p.lng, resolvedPlace: addr ? `${p.name} (${addr})` : p.name, resolvedName: p.name };
   }
   return anchorOf(ctx);
 }
@@ -213,6 +217,14 @@ const BARRIER_FREE_NOT_REGISTERED =
   "한국관광공사 무장애 여행 정보에 이 이름으로 등록된 곳을 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.";
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
+
+/**
+ * 장소 채팅에서 모델이 넘긴 장소 이름이 보고 있는 장소(앵커)인가(E88 ⓑ·ⓒ). 맞으면 이름을 다시 검색하지 않고 앵커 좌표를 쓴다 —
+ * 다시 검색하면 다른 지점의 같은 이름으로 갈 수 있다. 비교는 공백·괄호·흔한 지점 접미를 뗀 보수적 동일성(`normalizeName`).
+ */
+function isAnchorName(named: string, anchor: ExecutionContext["placeAnchor"]): anchor is NonNullable<ExecutionContext["placeAnchor"]> {
+  return !!anchor && normalizeName(named) === normalizeName(anchor.name);
+}
 
 /** 지명 해석 실패는 위치 부재가 아니다 — 같은 문장으로 답하면 사용자가 권한을 의심한다. */
 function placeNotFound(place: string) {
@@ -599,7 +611,7 @@ export async function executeFunction(
         const named = typeof args.name === "string" ? args.name.trim() : "";
         const anchor = ctx.placeAnchor;
         let target: { lat: number; lng: number; names: string[]; label: string };
-        if (anchor && (!named || normalizeName(named) === normalizeName(anchor.name))) {
+        if (anchor && (!named || isAnchorName(named, anchor))) {
           // 보고 있는 장소는 앱이 좌표를 쥐고 있다 — 이름을 다시 검색하면 다른 지점의 같은 이름으로 갈 수 있다.
           target = { lat: anchor.lat, lng: anchor.lng, names: [anchor.name], label: anchor.name };
         } else if (named) {
@@ -639,6 +651,25 @@ export async function executeFunction(
       if (!detail) return { data: { detail: null }, source: src };
       const { name, ...rest } = detail;
       return { data: { detail: name ? detail : rest }, source: src };
+    }
+    case "get_entrance_sides": {
+      // 입구 기준 좌우(E88 spec ⓒ). 이름이 필수다 — 현재 위치(보도 위 GPS)에서는 방향 축이 거의 서지 않는다.
+      const named = typeof args.place === "string" ? args.place.trim() : "";
+      if (!named) return { data: { error: "장소 이름(place)이 필요합니다. 현재 위치를 기준으로는 입구 방향을 정할 수 없습니다." } };
+      // names: 그 장소를 부르는 이름들 — 결과에서 그 장소 자신을 뺀다(「경복궁 입구 오른쪽에 경복궁」).
+      let target: { lat: number; lng: number; label: string; names: string[] };
+      if (isAnchorName(named, ctx.placeAnchor)) {
+        const a = ctx.placeAnchor;
+        target = { lat: a.lat, lng: a.lng, label: a.name, names: [a.name] };
+      } else {
+        const c = await resolveCoord(named, ctx);
+        if (!c) return { data: placeNotFound(named) };
+        target = { lat: c.lat, lng: c.lng, label: c.resolvedPlace ?? named, names: [named, c.resolvedName ?? named] };
+      }
+      const gated = coverageGate(target);
+      if (gated) return gated;
+      const scene = await assembleScene(target.lat, target.lng);
+      return { data: entranceSidesData(scene, target.label, target.names), source: src };
     }
     case "get_car_route": {
       const destination = String(args.destination ?? "");

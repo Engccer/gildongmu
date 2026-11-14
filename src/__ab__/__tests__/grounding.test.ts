@@ -333,6 +333,38 @@ describe("전화번호·이름으로 무장애 정보 케이스(E88 ⓑ) — 202
   });
 });
 
+describe("입구 기준 좌우 케이스(E88 ⓒ) — 2026-11-14 실호출의 도구 반환으로 채점기를 맞춘다", () => {
+  const c61 = CASES.find((c) => c.id === "61-입구-오른쪽-지명")!;
+  const outputs = [
+    {
+      name: "get_entrance_sides",
+      response: {
+        searchedPlace: "현대백화점 천호점 (서울 강동구 천호대로 1005)",
+        frame: "entrance",
+        total: 107,
+        sides: [
+          { side: "오른쪽", count: 23, places: [
+            { name: "내일도두부", category: "restaurant", distanceMeters: 1 },
+            { name: "현대백화점 천호점 문화홀", category: "culture", distanceMeters: 3 },
+            { name: "아웃백스테이크하우스 현대백화점천호점", category: "restaurant", distanceMeters: 9 },
+          ] },
+          { side: "맞은편", count: 20, places: [{ name: "핑크리본외과의원", category: "hospital", distanceMeters: 45 }] },
+        ],
+      },
+    },
+  ];
+
+  it("도구 값만 말한 답은 통과한다", () => {
+    const text = "현대백화점 천호점 입구를 마주 보고 섰을 때 오른쪽에는 내일도두부(약 1m), 현대백화점 천호점 문화홀(약 3m), 아웃백스테이크하우스 현대백화점천호점(약 9m)이 있습니다. 오른쪽에는 모두 23곳이 있습니다.";
+    expect(scoreGrounding(c61.grounding!, outputs, text, c61.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("도구에 없는 거리와 가게 이름은 잡힌다", () => {
+    expect(scoreGrounding(c61.grounding!, outputs, "오른쪽 약 37m에 내일도두부가 있습니다.", c61.turns).pass).toBe(false);
+    expect(scoreGrounding(c61.grounding!, outputs, "오른쪽에는 GS25 천호역점이 있습니다.", c61.turns).pass).toBe(false);
+  });
+});
+
 describe("passK", () => {
   it("k 회 전부 통과해야 통과다", () => {
     expect(passK([true, true, true])).toBe(true);

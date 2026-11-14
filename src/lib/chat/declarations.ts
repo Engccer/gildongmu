@@ -211,6 +211,23 @@ const DECLARATIONS: GatedDeclaration[] = [
   {
     gate: hasKakaoKey,
     declaration: {
+      name: "get_entrance_sides",
+      description:
+        "장소 하나의 입구를 마주 보고 섰을 때 왼쪽·오른쪽·맞은편·건물 너머(반경 150m)에 무엇이 있는지 알려 준다. " +
+        "사용자가 특정 장소의 옆·맞은편·왼쪽·오른쪽을 물을 때 쓴다(현재 위치 주변은 get_surroundings). " +
+        "sidesUnavailable이 오면 왼쪽·오른쪽을 말하지 말고 입구 방향을 정하지 못했다고 전한다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: { type: "string", description: "장소 이름(보고 있는 장소를 물으면 그 장소 이름)" },
+        },
+        required: ["place"],
+      },
+    },
+  },
+  {
+    gate: hasKakaoKey,
+    declaration: {
       name: "get_where_am_i",
       description:
         "현재 위치(또는 지명)가 어디인지 정위한다 — 도로명·지번 주소, 행정동, 1km 안 가장 가까운 지하철역(방위·거리), 주변 기준점. " +

@@ -104,6 +104,18 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations(new Set()).some((d) => d.name === "get_surroundings")).toBe(false);
   });
 
+  // get_entrance_sides(E88 ⓒ) — 카카오 키 게이트, 장소 이름이 필수 인자(현재 위치로 부르지 못한다)
+  it("카카오 키 있으면 get_entrance_sides 노출(place 필수), 없으면 미노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    let { availableDeclarations } = await import("../declarations");
+    const decl = availableDeclarations(new Set()).find((d) => d.name === "get_entrance_sides");
+    expect((decl?.parametersJsonSchema as { required?: string[] }).required).toEqual(["place"]);
+    vi.resetModules();
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
+    ({ availableDeclarations } = await import("../declarations"));
+    expect(availableDeclarations(new Set()).some((d) => d.name === "get_entrance_sides")).toBe(false);
+  });
+
   // get_bus_arrivals — DATA_GO_KR_API_KEY 게이트
   it("data.go.kr 키 있으면 get_bus_arrivals 노출", async () => {
     vi.stubEnv("DATA_GO_KR_API_KEY", "d");
@@ -310,7 +322,7 @@ describe("availableDeclarations", () => {
   });
 
   // 도구 총수 — 새 도구를 더하면 이 숫자도 함께 올린다(누락 시 실패로 알린다).
-  it("모든 키가 있으면 25개 도구가 노출된다(여정 도구는 능력 신고가 있어야 열려 여기 없다 — 합쳐 26개)", async () => {
+  it("모든 키가 있으면 26개 도구가 노출된다(여정 도구는 능력 신고가 있어야 열려 여기 없다 — 합쳐 27개)", async () => {
     for (const k of [
       "KAKAO_REST_API_KEY",
       "JUSO_CONFM_KEY",
@@ -324,6 +336,6 @@ describe("availableDeclarations", () => {
       vi.stubEnv(k, "x");
     }
     const { availableDeclarations } = await import("../declarations");
-    expect(availableDeclarations(new Set())).toHaveLength(25);
+    expect(availableDeclarations(new Set())).toHaveLength(26);
   });
 });

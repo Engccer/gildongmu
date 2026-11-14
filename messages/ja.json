@@ -586,6 +586,7 @@
         "get_surroundings": "周辺",
         "get_bus_arrivals": "バス到着",
         "get_bus_route": "バス路線",
+        "get_entrance_sides": "入口周辺",
         "get_bike_stations": "タルンイ",
         "get_air_quality": "大気質",
         "get_weather": "天気",

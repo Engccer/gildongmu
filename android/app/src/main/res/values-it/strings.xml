@@ -609,6 +609,7 @@
     <string name="chat_progress_tool_get_bus_arrivals">arrivi degli autobus</string>
     <string name="chat_progress_tool_get_bus_route">linea dell\'autobus</string>
     <string name="chat_progress_tool_get_car_route">percorso in auto</string>
+    <string name="chat_progress_tool_get_entrance_sides">intorno all\'ingresso</string>
     <string name="chat_progress_tool_get_kids_places">luoghi per bambini</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">luoghi accessibili</string>
     <string name="chat_progress_tool_get_night_clinics">cliniche notturne</string>

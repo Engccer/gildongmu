@@ -53,6 +53,7 @@ export function sourceFor(
       return [TAGO];
     case "get_kids_places":
     case "get_surroundings":
+    case "get_entrance_sides":
       return [KAKAO];
     case "get_station_meta":
       return [KRIC];
