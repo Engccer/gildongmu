@@ -27,3 +27,19 @@ export function validateProposal(args: Record<string, unknown>, allowed: Readonl
 export function routeStartRendersOnly(renders: readonly RenderPayload[]): RouteStartRenderPayload[] {
   return renders.filter((r): r is RouteStartRenderPayload => r.type === "route-start");
 }
+
+/**
+ * 도구 결과에서 좌표 키(`lat`·`lng`)를 뗀다(spec §4: 모델에게 주는 글에 좌표를 넣지 않는다). 채팅 실행부의 결과는 주변 정류소·
+ * 장소의 좌표를 싣는데, 그 좌표들은 사용자 위치를 수십 m 안으로 좁힌다. 답에 쓰이는 값도 아니다(거리는 `distanceMeters`로 온다).
+ * 앱에 가는 렌더(`route-start`)는 이 함수를 지나지 않는다.
+ */
+export function withoutCoordinates<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutCoordinates) as T;
+  if (value === null || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "lat" || key === "lng") continue;
+    out[key] = withoutCoordinates(v);
+  }
+  return out as T;
+}

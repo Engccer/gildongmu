@@ -134,6 +134,28 @@ describe("runVergiliusLoop", () => {
     ]);
   });
 
+  it("도구 결과의 좌표는 모델에 가지 않고(깊이 무관), 렌더의 좌표는 앱에 그대로 간다", async () => {
+    const routeStart = {
+      type: "route-start", mode: "walk", dest: { lat: 37.5547, lng: 126.9707 }, destLabel: "서울역", destRoman: null,
+      via: null, accessible: false, carProvider: null, transit: null,
+    } satisfies RenderPayload;
+    const execute = vi.fn(async (): Promise<ToolResult> => ({
+      data: {
+        count: 1,
+        stops: [{ name: "종로1가", lat: 37.5702, lng: 126.9816, distanceMeters: 134, arrivals: [{ routeNo: "101", lat: 1, lng: 2 }] }],
+      },
+      render: routeStart,
+    }));
+    const r = run([[call("get_bus_arrivals")], [text("101번이 섭니다.")]], execute);
+    const result = await r.promise;
+    expect(r.pushed[0][0].response).toEqual({
+      count: 1,
+      stops: [{ name: "종로1가", distanceMeters: 134, arrivals: [{ routeNo: "101" }] }],
+    });
+    expect(JSON.stringify(r.pushed)).not.toMatch(/"lat"|"lng"|37\.57|126\.98/);
+    expect(result.renders).toEqual([routeStart]);
+  });
+
   it("route-start 렌더만 결과에 남는다", async () => {
     const routeStart = {
       type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null,

@@ -6,9 +6,10 @@
  * - `propose_guide`는 종결 도구다: 요청에 있던 id면 그 자리에서 끝내고(`text`는 비운다), 아니면 버리고 모델에 오류로 돌려준다.
  * - 열어 준 이름이 아닌 도구 호출은 실행하지 않는다(채팅 실행부는 25개 도구를 다 실행할 수 있다).
  * - 도구 실패는 모델에 `error`로 돌려준다(루프를 죽이지 않는다, 채팅 루프와 같다).
+ * - 도구 결과는 좌표 키를 뗀 뒤 모델에 준다(`withoutCoordinates`). 렌더는 그대로 앱에 간다.
  */
 import type { ExecutionContext, RenderPayload, RouteStartRenderPayload, ToolResult } from "@/lib/chat/types";
-import { routeStartRendersOnly, validateProposal } from "./guard";
+import { routeStartRendersOnly, validateProposal, withoutCoordinates } from "./guard";
 import { PROPOSE_GUIDE_NAME } from "./tools";
 import type { VergiliusModelSession, VergiliusStreamEvent, VergiliusToolCall, VergiliusToolOutcome } from "./types";
 
@@ -95,7 +96,7 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
     try {
       const result = await execute(call.name, call.args, ctx);
       if (result.render) renders.push(result.render);
-      return { call, response: result.data };
+      return { call, response: withoutCoordinates(result.data) };
     } catch (e) {
       return { call, response: { error: e instanceof Error ? e.message : String(e) } };
     }
