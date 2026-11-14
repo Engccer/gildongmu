@@ -13,8 +13,10 @@
  * - 닫힌 인자(길찾기의 말한 출발지 `origin`, E88)는 실행 직전에 뗀다. 이 끝점의 경로 조회는 늘 실제 위치에서 출발한다.
  * - 도구 실패는 모델에 `error`로 돌려준다(루프를 죽이지 않는다, 채팅 루프와 같다).
  * - 도구 결과는 좌표 키를 뗀 뒤 모델에 준다(`withoutCoordinates`). 렌더는 그대로 앱에 간다.
+ * - 같은 도착지의 경로를 여러 수단으로 조회했으면 가장 빠른 수단을 결과에 덧붙여 준다(`annotateFastestRoute`, 회차를 넘어 잰다).
  */
 import type { ExecutionContext, RenderPayload, RouteStartRenderPayload, ToolResult } from "@/lib/chat/types";
+import { annotateFastestRoute, type RouteMinutesSeen } from "./fastest";
 import { routeStartRendersOnly, validateProposal, withoutCoordinates } from "./guard";
 import { PROPOSE_GUIDE_NAME, withoutClosedArgs } from "./tools";
 import type { VergiliusModelSession, VergiliusStreamEvent, VergiliusToolCall, VergiliusToolOutcome } from "./types";
@@ -81,6 +83,7 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
   const { session, execute, ctx, allowedTools, emit } = opts;
   const maxToolRounds = opts.maxToolRounds ?? VERGILIUS_MAX_TOOL_ROUNDS;
   const renders: RenderPayload[] = [];
+  const routeMinutesSeen: RouteMinutesSeen = new Map();
 
   for (let round = 0; ; round++) {
     const toolsOpen = round < maxToolRounds;
@@ -132,7 +135,7 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
         return runCall(call);
       }),
     );
-    session.pushToolResults(outcomes);
+    session.pushToolResults(annotateFastestRoute(outcomes, routeMinutesSeen));
   }
 
   /** 실행하지 않을 호출이면 모델에 돌려줄 사유를, 실행할 호출이면 null을 낸다. */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FASTEST_FIELD } from "../fastest";
 import { buildVergiliusInstruction } from "../instruction";
 import { buildVergiliusMaterial } from "../materials";
 import { vergiliusAskSchema } from "../types";
@@ -119,6 +120,11 @@ describe("지침(buildVergiliusInstruction)", () => {
     expect(text).toContain("지나옴인 가게를 앞에 있다고 말하지 않는다");
     expect(text).toContain("지어내거나 바꾸지 않는다");
     expect(text).toContain("조회하지 못했다고 말한다");
+  });
+
+  it("답변 모델 판정 ②④(2026-11-15): 0건이면 다른 도구를 부르고, 가장 빠른 수단은 서버가 덧붙인 필드를 옮긴다", () => {
+    expect(text).toContain("0건을 돌려주면 없다고 답하기 전에 맞는 다른 도구를 부른다");
+    expect(text).toContain(`${FASTEST_FIELD}에 적힌 수단을 가장 빠르다고 말한다`);
   });
 
   it("채팅 지침의 「카드로 보인다」 전제가 없다", () => {

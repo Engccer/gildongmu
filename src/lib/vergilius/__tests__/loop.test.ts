@@ -281,6 +281,31 @@ describe("runVergiliusLoop", () => {
     expect(result.text).toBe("버스는 조회하지 못했습니다.");
   });
 
+  it("같은 도착지를 여러 수단으로 조회하면 가장 빠른 수단을 결과에 덧붙여 모델에 준다(판정 ④)", async () => {
+    const s = scriptedSession([
+      [call("get_transit_route", { destination: "서울역" }, "t"), call("get_car_route", { destination: "서울역" }, "c")],
+      [text("자동차로 약 13분이 가장 빠릅니다.")],
+    ]);
+    const execute = vi.fn(async (name: string): Promise<ToolResult> =>
+      name === "get_car_route"
+        ? { data: { destination: "서울역", briefing: { durationSeconds: 769 } } }
+        : { data: { destination: "서울역", route: { recommended: { summary: { totalMinutes: 17 } }, alternatives: [] } } },
+    );
+    await runVergiliusLoop({
+      session: s.session,
+      execute,
+      ctx,
+      allowedTools: new Set(["get_transit_route", "get_car_route"]),
+      proposableIds: new Set(),
+      listedPlaceNames: new Set(),
+      emit: () => {},
+    });
+    expect(s.pushed[0].map((o) => o.response.fastestAmongQueried)).toEqual([
+      { modes: ["car"], minutes: 13 },
+      { modes: ["car"], minutes: 13 },
+    ]);
+  });
+
   it("3-state: 모델 호출이 던지면 루프도 던진다(라우트가 error 이벤트로 바꾼다)", async () => {
     const events: VergiliusStreamEvent[] = [];
     const session: VergiliusModelSession = {
