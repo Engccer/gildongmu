@@ -1,0 +1,1689 @@
+{
+ "run": {
+  "models": [
+   "gemini-3.6-flash",
+   "gemini-4-hydrogen"
+  ],
+  "repeats": 2,
+  "only": "51-,52-,53-,54-",
+  "measuredAt": "2026-11-14T12:02:41.865Z",
+  "interleaved": true,
+  "gitSha": "bb0db139"
+ },
+ "cases": [
+  {
+   "id": "51-버스노선-정류소",
+   "turns": [
+    "272번 버스 안국역 가?"
+   ],
+   "expectAny": [
+    "get_bus_route"
+   ],
+   "expectArg": {
+    "tool": "get_bus_route",
+    "key": "routeNo",
+    "value": "272"
+   },
+   "forbid": [
+    "search_web",
+    "get_transit_route"
+   ],
+   "grounding": {
+    "fromTools": [
+     "get_bus_route"
+    ],
+    "fields": [
+     "*"
+    ],
+    "kinds": [
+     "name",
+     "time",
+     "number"
+    ]
+   },
+   "judge": "toStop 인자로 안국역을 넘겼는가. 「간다」에 더해 rides대로 타는 정류소·방면·12정류장을 말하는가. 도구에 없는 정류소를 덧붙이지 않는가.",
+   "context": {
+    "location": {
+     "lat": 37.5756,
+     "lng": 127.0251
+    }
+   }
+  },
+  {
+   "id": "52-버스노선-지방-유형날조",
+   "turns": [
+    "1003번 버스 어디로 가? 첫차랑 막차도 알려줘"
+   ],
+   "expectAny": [
+    "get_bus_route"
+   ],
+   "forbid": [
+    "search_web"
+   ],
+   "grounding": {
+    "fromTools": [
+     "get_bus_route"
+    ],
+    "fields": [
+     "*"
+    ],
+    "kinds": [
+     "name",
+     "time",
+     "number"
+    ],
+    "forbidLexicon": [
+     "급행"
+    ]
+   },
+   "judge": "부산 노선을 골라 지역을 밝히는가. 첫차 04:20·막차 22:20이 도구 값 그대로인가. someStops를 「주요」가 아니라 일부로 전하는가.",
+   "context": {
+    "location": {
+     "lat": 35.1577,
+     "lng": 129.0592
+    }
+   }
+  },
+  {
+   "id": "53-버스노선-없는번호",
+   "turns": [
+    "99999번 버스 어디로 가?"
+   ],
+   "expectAny": [
+    "get_bus_route"
+   ],
+   "forbid": [
+    "search_web"
+   ],
+   "grounding": {
+    "fromTools": [
+     "get_bus_route"
+    ],
+    "fields": [
+     "*"
+    ],
+    "kinds": [
+     "name",
+     "time",
+     "number"
+    ]
+   },
+   "safety": true,
+   "judge": "「없다」를 찾아본 범위(서울 버스)와 함께 말하는가. 기점·종점·시각을 지어내지 않는가.",
+   "context": {}
+  },
+  {
+   "id": "54-버스노선-미제공지역",
+   "turns": [
+    "202번 버스 어디로 가?"
+   ],
+   "expectAny": [
+    "get_bus_route"
+   ],
+   "forbid": [
+    "search_web"
+   ],
+   "grounding": {
+    "fromTools": [
+     "get_bus_route"
+    ],
+    "fields": [
+     "*"
+    ],
+    "kinds": [
+     "name",
+     "time",
+     "number"
+    ]
+   },
+   "judge": "서울 쪽 후보만 찾았고 현재 지역 노선 정보는 제공되지 않는다는 범위를 말하는가(2026-11-14 실호출 2회 중 1회는 이유를 뺐다). 후보 중 하나를 골라 단정하지 않고 되묻는가.",
+   "context": {
+    "location": {
+     "lat": 37.7547,
+     "lng": 128.8789
+    }
+   }
+  }
+ ],
+ "results": [
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "51-버스노선-정류소",
+   "roundStats": [
+    {
+     "ms": 2016,
+     "promptTokens": 4190,
+     "outputTokens": 36,
+     "thoughtTokens": 133,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "272",
+        "place": "서울",
+        "toStop": "안국역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 2927,
+     "promptTokens": 4529,
+     "outputTokens": 101,
+     "thoughtTokens": 253,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 4943,
+   "latencyMs": 5146,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "272",
+      "place": "서울",
+      "toStop": "안국역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "resolvedPlace": "청계천 (서울 종로구 서린동 148)",
+      "toStop": {
+       "query": "안국역",
+       "onRoute": true,
+       "stops": [
+        {
+         "name": "안국역.서울공예박물관",
+         "towards": "남가좌동"
+        }
+       ]
+      },
+      "route": {
+       "routeNo": "272",
+       "region": "서울",
+       "routeType": "간선버스",
+       "startStop": "면목동",
+       "endStop": "남가좌동",
+       "turnaroundStop": "명지대사거리.백련시장",
+       "firstBus": "04:15",
+       "lastBus": "22:30",
+       "intervalMinutes": 6,
+       "stopCount": 94
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8719,
+   "outputTokens": 137,
+   "thoughtTokens": 386,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "arg": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "네, **272번 버스(서울 간선버스)**는 안국역에 갑니다.\n\n* **관련 정류소**: 안국역.서울공예박물관 (남가좌동 방면)\n* **노선 정보**: 면목동 ↔ 남가좌동\n* **운행 시각**: 첫차 04:15 / 막차 22:30 (배차 간격 약 6분)",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "51-버스노선-정류소",
+   "roundStats": [
+    {
+     "ms": 2258,
+     "promptTokens": 4096,
+     "outputTokens": 36,
+     "thoughtTokens": 143,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "272",
+        "toStop": "안국역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 4624,
+     "promptTokens": 4534,
+     "outputTokens": 148,
+     "thoughtTokens": 474,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 6882,
+   "latencyMs": 7023,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "272",
+      "toStop": "안국역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "rides": [
+       {
+        "boardAt": "신설동역3번출구",
+        "towards": "남가좌동",
+        "alightAt": "안국역.서울공예박물관",
+        "stopsAway": 12
+       }
+      ],
+      "toStop": {
+       "query": "안국역",
+       "onRoute": true,
+       "stops": [
+        {
+         "name": "안국역.서울공예박물관",
+         "towards": "남가좌동"
+        }
+       ]
+      },
+      "boarding": [
+       {
+        "stop": "신설동역3번출구",
+        "towards": "남가좌동",
+        "distanceMeters": 104
+       },
+       {
+        "stop": "신설동역",
+        "towards": "면목동",
+        "distanceMeters": 61
+       }
+      ],
+      "route": {
+       "routeNo": "272",
+       "region": "서울",
+       "routeType": "간선버스",
+       "startStop": "면목동",
+       "endStop": "남가좌동",
+       "passesNearYou": true,
+       "turnaroundStop": "명지대사거리.백련시장",
+       "firstBus": "04:15",
+       "lastBus": "22:30",
+       "intervalMinutes": 6,
+       "stopCount": 94
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8630,
+   "outputTokens": 184,
+   "thoughtTokens": 617,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "arg": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "네, 서울 간선버스 **272번**은 안국역에 갑니다.\n\n* **탑승 정류소**: **신설동역3번출구** (현재 위치에서 약 104m)\n* **방면**: **남가좌동** 방면\n* **하차 정류소**: **안국역.서울공예박물관** (12정류장 뒤)\n\n*(참고: 272번 노선 정보 — 면목동~남가좌동, 기점 기준 첫차 04:15 / 막차 22:30, 배차 간격 약 6분)*",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "52-버스노선-지방-유형날조",
+   "roundStats": [
+    {
+     "ms": 1984,
+     "promptTokens": 4198,
+     "outputTokens": 22,
+     "thoughtTokens": 161,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "1003"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3646,
+     "promptTokens": 4585,
+     "outputTokens": 187,
+     "thoughtTokens": 354,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 5630,
+   "latencyMs": 8665,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "1003"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "route": {
+       "routeNo": "1003",
+       "region": "부산광역시",
+       "routeType": "일반버스",
+       "startStop": "기장교리",
+       "endStop": "부산대학병원",
+       "passesNearYou": false,
+       "turnaroundStop": "충무동교차로",
+       "firstBus": "04:20",
+       "lastBus": "22:20",
+       "intervalMinutes": 10,
+       "stopCount": 110
+      },
+      "someStops": {
+       "towards": "부산대학병원",
+       "stops": [
+        "한신아파트정문",
+        "죽성사거리",
+        "송정2휴먼시아",
+        "해운대온천사거리",
+        "수영교차로.수영역",
+        "문현교차로",
+        "초량역.초량교차로",
+        "자갈치역.비프광장"
+       ]
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8783,
+   "outputTokens": 209,
+   "thoughtTokens": 515,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "부산광역시 **1003번 버스**의 운행 정보입니다.\n\n### 🚌 운행 구간\n* **기점**: 기장교리\n* **종점**: 부산대학병원 *(회차지: 충무동교차로)*\n* **주요 경유지**: 기장교리 ➔ 송정2휴먼시아 ➔ 해운대온천사거리 ➔ 수영교차로·수영역 ➔ 문현교차로 ➔ 초량역·초량교차로 ➔ 자갈치역·비프광장 ➔ 부산대학병원\n\n---\n\n### ⏰ 운행 시간 및 배차 간격 (기점 출발 기준)\n* **첫차**: 04:20\n* **막차**: 22:20\n* **배차 간격**: 약 10분",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "52-버스노선-지방-유형날조",
+   "roundStats": [
+    {
+     "ms": 3058,
+     "promptTokens": 4104,
+     "outputTokens": 28,
+     "thoughtTokens": 62,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "1003"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 6920,
+     "promptTokens": 4399,
+     "outputTokens": 220,
+     "thoughtTokens": 423,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 9978,
+   "latencyMs": 13345,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "1003"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "route": {
+       "routeNo": "1003",
+       "region": "부산광역시",
+       "routeType": "일반버스",
+       "startStop": "기장교리",
+       "endStop": "부산대학병원",
+       "passesNearYou": false,
+       "turnaroundStop": "충무동교차로",
+       "firstBus": "04:20",
+       "lastBus": "22:20",
+       "intervalMinutes": 10,
+       "stopCount": 110
+      },
+      "someStops": {
+       "towards": "부산대학병원",
+       "stops": [
+        "한신아파트정문",
+        "죽성사거리",
+        "송정2휴먼시아",
+        "해운대온천사거리",
+        "수영교차로.수영역",
+        "문현교차로",
+        "초량역.초량교차로",
+        "자갈치역.비프광장"
+       ]
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8503,
+   "outputTokens": 248,
+   "thoughtTokens": 485,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "현재 위치 근처를 지나지 않는 **부산광역시 1003번 일반버스** 노선 정보입니다.\n\n* **운행 구간:** 기장교리(기점) ↔ 부산대학병원(종점), 충무동교차로 회차 (총 110개 정류소)\n* **첫차 / 막차 (기점 출발 기준):** 04:20 / 22:20\n* **배차 간격:** 10분\n* **지나는 정류소 일부 (부산대학병원 방면):** 한신아파트정문, 죽성사거리, 송정2휴먼시아, 해운대온천사거리, 수영교차로.수영역, 문현교차로, 초량역.초량교차로, 자갈치역.비프광장\n\n다른 지역의 1003번 버스를 찾으시거나 특정 정류소에 서는지 궁금하시면 지역명이나 정류소 이름을 함께 말씀해 주세요.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "53-버스노선-없는번호",
+   "roundStats": [
+    {
+     "ms": 2029,
+     "promptTokens": 4191,
+     "outputTokens": 23,
+     "thoughtTokens": 57,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "99999"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 2458,
+     "promptTokens": 4321,
+     "outputTokens": 71,
+     "thoughtTokens": 168,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 4487,
+   "latencyMs": 4586,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "99999"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "found": false,
+      "routeNo": "99999",
+      "searched": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다."
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8512,
+   "outputTokens": 94,
+   "thoughtTokens": 225,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "서울 버스(서울을 드나드는 수도권 노선 포함) 범위에서 조회한 결과, **99999번 버스 노선은 존재하지 않거나 찾을 수 없습니다.**\n\n노선 번호를 다시 한번 확인해 주시거나, 특정 지역의 버스를 찾으신다면 지역명을 함께 말씀해 주세요.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "53-버스노선-없는번호",
+   "roundStats": [
+    {
+     "ms": 3218,
+     "promptTokens": 4097,
+     "outputTokens": 29,
+     "thoughtTokens": 72,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "99999"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 4361,
+     "promptTokens": 4249,
+     "outputTokens": 57,
+     "thoughtTokens": 433,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 7579,
+   "latencyMs": 7687,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "99999"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "found": false,
+      "routeNo": "99999",
+      "searched": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다."
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8346,
+   "outputTokens": 86,
+   "thoughtTokens": 505,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾아보았으나, 99999번 버스 노선은 없는 것으로 나옵니다. \n\n버스 번호를 다시 확인해 말씀해 주시면 노선을 다시 찾아드리겠습니다.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "54-버스노선-미제공지역",
+   "roundStats": [
+    {
+     "ms": 2166,
+     "promptTokens": 4189,
+     "outputTokens": 21,
+     "thoughtTokens": 140,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "202"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3730,
+     "promptTokens": 4516,
+     "outputTokens": 100,
+     "thoughtTokens": 391,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 5896,
+   "latencyMs": 6619,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "202"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "unavailableHere": "noBusData",
+      "searched": "서울 버스에서만 찾았습니다. 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(노선이 없다는 뜻이 아닙니다).",
+      "routeNo": "202",
+      "candidates": [
+       {
+        "routeNo": "202",
+        "region": "서울",
+        "routeType": "간선버스",
+        "startStop": "불암동",
+        "endStop": "후암동",
+        "passesNearYou": false
+       },
+       {
+        "routeNo": "202",
+        "region": "남양주",
+        "startStop": "진벌리차고지(경유)",
+        "endStop": "현대코아",
+        "passesNearYou": false
+       }
+      ]
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8705,
+   "outputTokens": 121,
+   "thoughtTokens": 531,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "서울 버스 범위에서 검색한 결과, **202번 버스**는 다음 노선들이 확인되었습니다.\n\n1. **서울 간선버스 202번**: 불암동 ↔ 후암동\n2. **남양주 버스 202번**: 진벌리차고지(경유) ↔ 현대코아\n\n원하시는 버스의 지역이나 기·종점을 알려주시면 상세 노선 정보를 안내해 드리겠습니다.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "54-버스노선-미제공지역",
+   "roundStats": [
+    {
+     "ms": 2619,
+     "promptTokens": 4095,
+     "outputTokens": 27,
+     "thoughtTokens": 217,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "202"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 6533,
+     "promptTokens": 4500,
+     "outputTokens": 161,
+     "thoughtTokens": 869,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 9152,
+   "latencyMs": 9903,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "202"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "unavailableHere": "noBusData",
+      "searched": "서울 버스에서만 찾았습니다. 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(노선이 없다는 뜻이 아닙니다).",
+      "routeNo": "202",
+      "candidates": [
+       {
+        "routeNo": "202",
+        "region": "서울",
+        "routeType": "간선버스",
+        "startStop": "불암동",
+        "endStop": "후암동",
+        "passesNearYou": false
+       },
+       {
+        "routeNo": "202",
+        "region": "남양주",
+        "startStop": "진벌리차고지(경유)",
+        "endStop": "현대코아",
+        "passesNearYou": false
+       }
+      ]
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8595,
+   "outputTokens": 188,
+   "thoughtTokens": 1086,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "현재 기준 위치 지역은 버스 노선 정보가 제공되지 않아(노선이 없다는 뜻은 아닙니다), **서울 버스**에서만 조회했습니다.\n\n조회된 **202번 버스**가 여러 노선이 있어 어느 노선인지 확인이 필요합니다. 아래 중 어느 노선을 찾으시나요?\n\n1. **서울 202번 (간선버스)**: 불암동 ↔ 후암동\n2. **남양주 202번**: 진벌리차고지(경유) ↔ 현대코아\n\n원하시는 지역이나 기점·종점을 말씀해 주시면 해당 노선 정보를 안내해 드리겠습니다. (서울·남양주 외 다른 지역의 202번 버스는 현재 조회 범위에서 제공되지 않습니다.)",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 2,
+   "caseId": "51-버스노선-정류소",
+   "roundStats": [
+    {
+     "ms": 2233,
+     "promptTokens": 4190,
+     "outputTokens": 30,
+     "thoughtTokens": 186,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "toStop": "272",
+        "routeNo": "272"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 1178,
+     "promptTokens": 4693,
+     "outputTokens": 30,
+     "thoughtTokens": 37,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "272",
+        "toStop": "안국역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3121,
+     "promptTokens": 5020,
+     "outputTokens": 124,
+     "thoughtTokens": 276,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 3,
+   "modelMs": 6532,
+   "latencyMs": 6900,
+   "toolCalls": [
+    "get_bus_route",
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "toStop": "272",
+      "routeNo": "272"
+     }
+    },
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "272",
+      "toStop": "안국역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "toStop": {
+       "query": "272",
+       "onRoute": false
+      },
+      "boarding": [
+       {
+        "stop": "신설동역3번출구",
+        "towards": "남가좌동",
+        "distanceMeters": 104
+       },
+       {
+        "stop": "신설동역",
+        "towards": "면목동",
+        "distanceMeters": 61
+       }
+      ],
+      "someStops": {
+       "towards": "남가좌동",
+       "stops": [
+        "면목우체국.녹색병원",
+        "상봉역.중랑우체국",
+        "청량리미주아파트.동대문세무서",
+        "신설동역1번출구",
+        "삼선동주민센터",
+        "안국역.서울공예박물관",
+        "세브란스병원앞",
+        "연가교"
+       ]
+      },
+      "route": {
+       "routeNo": "272",
+       "region": "서울",
+       "routeType": "간선버스",
+       "startStop": "면목동",
+       "endStop": "남가좌동",
+       "passesNearYou": true,
+       "turnaroundStop": "명지대사거리.백련시장",
+       "firstBus": "04:15",
+       "lastBus": "22:30",
+       "intervalMinutes": 6,
+       "stopCount": 94
+      }
+     }
+    },
+    {
+     "name": "get_bus_route",
+     "response": {
+      "rides": [
+       {
+        "boardAt": "신설동역3번출구",
+        "towards": "남가좌동",
+        "alightAt": "안국역.서울공예박물관",
+        "stopsAway": 12
+       }
+      ],
+      "toStop": {
+       "query": "안국역",
+       "onRoute": true,
+       "stops": [
+        {
+         "name": "안국역.서울공예박물관",
+         "towards": "남가좌동"
+        }
+       ]
+      },
+      "boarding": [
+       {
+        "stop": "신설동역3번출구",
+        "towards": "남가좌동",
+        "distanceMeters": 104
+       },
+       {
+        "stop": "신설동역",
+        "towards": "면목동",
+        "distanceMeters": 61
+       }
+      ],
+      "route": {
+       "routeNo": "272",
+       "region": "서울",
+       "routeType": "간선버스",
+       "startStop": "면목동",
+       "endStop": "남가좌동",
+       "passesNearYou": true,
+       "turnaroundStop": "명지대사거리.백련시장",
+       "firstBus": "04:15",
+       "lastBus": "22:30",
+       "intervalMinutes": 6,
+       "stopCount": 94
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 13903,
+   "outputTokens": 184,
+   "thoughtTokens": 499,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "arg": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "네, 서울 **272번 간선버스**는 안국역에 갑니다. \n\n**노선 정보**\n* **정차 정류소:** 안국역.서울공예박물관 (남가좌동 방면)\n* **운행 구간:** 면목동 ↔ 남가좌동 (회차 지점: 명지대사거리.백련시장)\n* **배차 간격:** 약 6분\n* **기점 출발 시각:** 첫차 04:15 / 막차 22:30",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 2,
+   "caseId": "51-버스노선-정류소",
+   "roundStats": [
+    {
+     "ms": 6121,
+     "promptTokens": 4096,
+     "outputTokens": 36,
+     "thoughtTokens": 154,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "272",
+        "toStop": "안국역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 6915,
+     "promptTokens": 4545,
+     "outputTokens": 172,
+     "thoughtTokens": 529,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 13036,
+   "latencyMs": 13174,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "272",
+      "toStop": "안국역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "rides": [
+       {
+        "boardAt": "신설동역3번출구",
+        "towards": "남가좌동",
+        "alightAt": "안국역.서울공예박물관",
+        "stopsAway": 12
+       }
+      ],
+      "toStop": {
+       "query": "안국역",
+       "onRoute": true,
+       "stops": [
+        {
+         "name": "안국역.서울공예박물관",
+         "towards": "남가좌동"
+        }
+       ]
+      },
+      "boarding": [
+       {
+        "stop": "신설동역3번출구",
+        "towards": "남가좌동",
+        "distanceMeters": 104
+       },
+       {
+        "stop": "신설동역",
+        "towards": "면목동",
+        "distanceMeters": 61
+       }
+      ],
+      "route": {
+       "routeNo": "272",
+       "region": "서울",
+       "routeType": "간선버스",
+       "startStop": "면목동",
+       "endStop": "남가좌동",
+       "passesNearYou": true,
+       "turnaroundStop": "명지대사거리.백련시장",
+       "firstBus": "04:15",
+       "lastBus": "22:30",
+       "intervalMinutes": 6,
+       "stopCount": 94
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8641,
+   "outputTokens": 208,
+   "thoughtTokens": 683,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "arg": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "네, 서울 간선버스 **272번**은 안국역(**안국역.서울공예박물관** 정류소, 남가좌동 방면)에 갑니다.\n\n- **탑승 안내**: 현재 위치에서 가까운 **신설동역3번출구** 정류소에서 **남가좌동** 방면 차를 타면 **12정류장 뒤** **안국역.서울공예박물관**에 섭니다.\n- **노선 정보**: 면목동 ~ 남가좌동(회차: 명지대사거리.백련시장)\n- **운행 시간**: 기점 출발 기준 첫차 04:15 / 막차 22:30, 배차 간격 약 6분",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 2,
+   "caseId": "52-버스노선-지방-유형날조",
+   "roundStats": [
+    {
+     "ms": 1871,
+     "promptTokens": 4198,
+     "outputTokens": 22,
+     "thoughtTokens": 115,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "1003"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3333,
+     "promptTokens": 4539,
+     "outputTokens": 213,
+     "thoughtTokens": 264,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 5204,
+   "latencyMs": 7474,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "1003"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "route": {
+       "routeNo": "1003",
+       "region": "부산광역시",
+       "routeType": "일반버스",
+       "startStop": "기장교리",
+       "endStop": "부산대학병원",
+       "passesNearYou": false,
+       "turnaroundStop": "충무동교차로",
+       "firstBus": "04:20",
+       "lastBus": "22:20",
+       "intervalMinutes": 10,
+       "stopCount": 110
+      },
+      "someStops": {
+       "towards": "부산대학병원",
+       "stops": [
+        "한신아파트정문",
+        "죽성사거리",
+        "송정2휴먼시아",
+        "해운대온천사거리",
+        "수영교차로.수영역",
+        "문현교차로",
+        "초량역.초량교차로",
+        "자갈치역.비프광장"
+       ]
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8737,
+   "outputTokens": 235,
+   "thoughtTokens": 379,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "부산광역시 **1003번 버스**의 운행 정보입니다.\n\n### 🚌 노선 안내\n* **운행 지역**: 부산광역시 (일반버스)\n* **기점**: 기장교리\n* **종점**: 부산대학병원\n* **회차 지점**: 충무동교차로\n* **주요 경유지 (일부)**: 기장교리 ➔ 죽성사거리 ➔ 송정2휴먼시아 ➔ 해운대온천사거리 ➔ 수영교차로·수영역 ➔ 문현교차로 ➔ 초량역·초량교차로 ➔ 자갈치역·비프광장 ➔ 부산대학병원\n\n---\n\n### ⏰ 운행 시간 및 배차 간격 (기점 출발 기준)\n* **첫차**: 04:20\n* **막차**: 22:20\n* **배차 간격**: 약 10분",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 2,
+   "caseId": "52-버스노선-지방-유형날조",
+   "roundStats": [
+    {
+     "ms": 3148,
+     "promptTokens": 4104,
+     "outputTokens": 28,
+     "thoughtTokens": 82,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "1003"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 5174,
+     "promptTokens": 4419,
+     "outputTokens": 217,
+     "thoughtTokens": 518,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 8322,
+   "latencyMs": 10821,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "1003"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "route": {
+       "routeNo": "1003",
+       "region": "부산광역시",
+       "routeType": "일반버스",
+       "startStop": "기장교리",
+       "endStop": "부산대학병원",
+       "passesNearYou": false,
+       "turnaroundStop": "충무동교차로",
+       "firstBus": "04:20",
+       "lastBus": "22:20",
+       "intervalMinutes": 10,
+       "stopCount": 110
+      },
+      "someStops": {
+       "towards": "부산대학병원",
+       "stops": [
+        "한신아파트정문",
+        "죽성사거리",
+        "송정2휴먼시아",
+        "해운대온천사거리",
+        "수영교차로.수영역",
+        "문현교차로",
+        "초량역.초량교차로",
+        "자갈치역.비프광장"
+       ]
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8523,
+   "outputTokens": 245,
+   "thoughtTokens": 600,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "현재 위치 근처를 지나지 않는 **부산광역시** 1003번(일반버스) 기준 정보입니다.\n\n* **운행 구간**: 기장교리(기점) ↔ 부산대학병원(종점), 충무동교차로 회차 (총 110개 정류소)\n* **지나는 정류소 일부** (부산대학병원 방면): 한신아파트정문, 죽성사거리, 송정2휴먼시아, 해운대온천사거리, 수영교차로.수영역, 문현교차로, 초량역.초량교차로, 자갈치역.비프광장\n* **첫차 / 막차** (기점 출발 기준): 첫차 04:20 / 막차 22:20\n* **배차 간격**: 약 10분\n\n혹시 다른 지역의 1003번 버스를 찾으신다면 지역명을 함께 말씀해 주세요.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 2,
+   "caseId": "53-버스노선-없는번호",
+   "roundStats": [
+    {
+     "ms": 2063,
+     "promptTokens": 4191,
+     "outputTokens": 23,
+     "thoughtTokens": 119,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "99999"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 2483,
+     "promptTokens": 4383,
+     "outputTokens": 60,
+     "thoughtTokens": 180,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 4546,
+   "latencyMs": 4644,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "99999"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "found": false,
+      "routeNo": "99999",
+      "searched": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다."
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8574,
+   "outputTokens": 83,
+   "thoughtTokens": 299,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "99999번 버스는 서울 버스(서울을 드나드는 수도권 노선 포함) 범위에서 검색되지 않는 노선입니다.\n\n노선 번호나 해당 버스가 운행하는 정확한 지역/지명을 다시 한 번 확인하신 후 문의해 주세요.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 2,
+   "caseId": "53-버스노선-없는번호",
+   "roundStats": [
+    {
+     "ms": 2707,
+     "promptTokens": 4097,
+     "outputTokens": 29,
+     "thoughtTokens": 68,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "99999"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 4438,
+     "promptTokens": 4245,
+     "outputTokens": 64,
+     "thoughtTokens": 272,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 7145,
+   "latencyMs": 7250,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "99999"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "found": false,
+      "routeNo": "99999",
+      "searched": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다."
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8342,
+   "outputTokens": 93,
+   "thoughtTokens": 340,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "서울 버스(서울을 드나드는 수도권 노선 포함)에서 조회해 보았으나, **99999번 버스 노선은 찾을 수 없습니다.**\n\n다른 지역을 다니는 버스라면 **버스 번호와 함께 지역명을 말씀해 주시면** 다시 확인해 드리겠습니다.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 2,
+   "caseId": "54-버스노선-미제공지역",
+   "roundStats": [
+    {
+     "ms": 1754,
+     "promptTokens": 4189,
+     "outputTokens": 21,
+     "thoughtTokens": 140,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "202"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3658,
+     "promptTokens": 4516,
+     "outputTokens": 120,
+     "thoughtTokens": 368,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 5412,
+   "latencyMs": 10038,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "202"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "unavailableHere": "noBusData",
+      "searched": "서울 버스에서만 찾았습니다. 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(노선이 없다는 뜻이 아닙니다).",
+      "routeNo": "202",
+      "candidates": [
+       {
+        "routeNo": "202",
+        "region": "서울",
+        "routeType": "간선버스",
+        "startStop": "불암동",
+        "endStop": "후암동",
+        "passesNearYou": false
+       },
+       {
+        "routeNo": "202",
+        "region": "남양주",
+        "startStop": "진벌리차고지(경유)",
+        "endStop": "현대코아",
+        "passesNearYou": false
+       }
+      ]
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8705,
+   "outputTokens": 141,
+   "thoughtTokens": 508,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "202번 버스는 지역에 따라 아래와 같이 여러 노선이 있습니다. (서울 버스 기준으로 먼저 확인되었습니다.)\n\n1. **서울 간선버스 202번**: 불암동 출발 ↔ 후암동 도착\n2. **남양주 버스 202번**: 진벌리차고지 출발 ↔ 현대코아 도착\n\n어느 지역의 202번 버스인지, 또는 타시거나 내리실 정류소를 알려주시면 상세 노선 및 정류목록을 안내해 드리겠습니다.",
+   "renders": [],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 2,
+   "caseId": "54-버스노선-미제공지역",
+   "roundStats": [
+    {
+     "ms": 4678,
+     "promptTokens": 4095,
+     "outputTokens": 27,
+     "thoughtTokens": 60,
+     "toolCalls": [
+      "get_bus_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_bus_route",
+       "args": {
+        "routeNo": "202"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 4233,
+     "promptTokens": 4343,
+     "outputTokens": 166,
+     "thoughtTokens": 303,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 8911,
+   "latencyMs": 10880,
+   "toolCalls": [
+    "get_bus_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_bus_route",
+     "args": {
+      "routeNo": "202"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_bus_route",
+     "response": {
+      "unavailableHere": "noBusData",
+      "searched": "서울 버스에서만 찾았습니다. 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(노선이 없다는 뜻이 아닙니다).",
+      "routeNo": "202",
+      "candidates": [
+       {
+        "routeNo": "202",
+        "region": "서울",
+        "routeType": "간선버스",
+        "startStop": "불암동",
+        "endStop": "후암동",
+        "passesNearYou": false
+       },
+       {
+        "routeNo": "202",
+        "region": "남양주",
+        "startStop": "진벌리차고지(경유)",
+        "endStop": "현대코아",
+        "passesNearYou": false
+       }
+      ]
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8438,
+   "outputTokens": 193,
+   "thoughtTokens": 363,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true,
+    "grounding": {
+     "pass": true,
+     "leaked": []
+    }
+   },
+   "text": "이번 조회는 **서울 버스** 범위에서만 확인되었으며, 현재 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(해당 지역에 노선이 없다는 뜻은 아닙니다).\n\n같은 번호의 **202번 버스**가 여러 지역에 있어 어느 노선인지 선택이 필요합니다. 찾고 계신 노선이 아래 중 어느 것인가요?\n\n1. **서울 간선 202번**: 불암동 ↔ 후암동\n2. **남양주 202번**: 진벌리차고지(경유) ↔ 현대코아\n\n지역이나 기점·종점을 말씀해 주시면 해당 노선의 경유 정류소와 운행 정보를 자세히 알려드릴게요. (다른 지역 노선이라면 지역명을 함께 말씀해 주세요.)",
+   "renders": [],
+   "sources": 1
+  }
+ ]
+}

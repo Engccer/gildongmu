@@ -617,6 +617,7 @@
     <string name="chat_progress_tool_get_bus_arrivals">bus arrivals</string>
     <string name="chat_progress_tool_get_bus_route">bus route</string>
     <string name="chat_progress_tool_get_car_route">driving route</string>
+    <string name="chat_progress_tool_get_entrance_sides">around the entrance</string>
     <string name="chat_progress_tool_get_kids_places">kids places</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">barrier-free places</string>
     <string name="chat_progress_tool_get_night_clinics">night clinics</string>

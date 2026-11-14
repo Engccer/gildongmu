@@ -586,6 +586,7 @@
         "get_surroundings": "주변",
         "get_bus_arrivals": "버스 도착",
         "get_bus_route": "버스 노선",
+        "get_entrance_sides": "입구 주변",
         "get_bike_stations": "따릉이",
         "get_air_quality": "공기질",
         "get_weather": "날씨",

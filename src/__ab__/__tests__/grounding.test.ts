@@ -89,6 +89,22 @@ describe("scoreGrounding — 엔티티 대조", () => {
     expect(scoreGrounding(g, outputs, "약 130m").leaked).toEqual(["number:130m"]);
     expect(scoreGrounding(g, outputs, "약 125m").leaked).toEqual(["number:125m"]);
   });
+  it("쉼표는 천 단위 자리에서만 수의 일부다 — 층 나열 '1,2,5층'은 125층이 아니다(E86 04 실측)", () => {
+    const outputs = [{ name: "t", response: { address: "서울특별시 강동구 양재대로 1313, 1,2,5층 (성내동)", fare: 3400 } }];
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["number"] as const };
+    expect(scoreGrounding(g, outputs, "주소: 서울특별시 강동구 양재대로 1313, 1,2,5층. 요금 3,400원")).toEqual({ pass: true, leaked: [] });
+    expect(extractEntities("요금 12,345원, 1,2,5층", ["number"]).map((e) => e.norm)).toEqual(["12345원", "5층"]);
+    // 도구에 없는 층은 여전히 잡는다.
+    expect(scoreGrounding(g, outputs, "1,2,7층").leaked).toEqual(["number:7층"]);
+  });
+  it("'12정류장 뒤'는 정류장 이름이 아니라 정류장 수다(E86 51 실측)", () => {
+    const outputs = [{ name: "t", response: { rides: [{ boardAt: "신설동역3번출구", alightAt: "안국역.서울공예박물관", stopsAway: 12 }] } }];
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name", "number"] as const };
+    expect(scoreGrounding(g, outputs, "신설동역3번출구에서 타면 12정류장 뒤 안국역.서울공예박물관에 섭니다.")).toEqual({ pass: true, leaked: [] });
+    // 도구에 없는 정류장 수는 수치 축이 잡는다.
+    expect(scoreGrounding(g, outputs, "9정거장 뒤에 내립니다").leaked).toEqual(["number:9정거장"]);
+    expect(scoreGrounding(g, outputs, "9정류소 뒤에 내립니다").leaked).toEqual(["number:9정류소"]);
+  });
   it("도로명 '인제로193번길'의 193번은 수치가 아니고, 공공 상담 창구 이름은 시설이 아니다", () => {
     expect(extractEntities("인제군 인제읍 인제로193번길 1", ["number"])).toEqual([]);
     expect(extractEntities("마을버스 3번을 타세요", ["number"]).map((e) => e.norm)).toEqual(["3번"]);
@@ -110,6 +126,15 @@ describe("scoreGrounding — 엔티티 대조", () => {
   it("범주 이름(달빛어린이병원·종합병원)은 시설명 후보가 아니다", () => {
     const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
     expect(scoreGrounding(g, [], "달빛어린이병원이 없습니다. 인근 종합병원 응급실을 고려하세요.")).toEqual({ pass: true, leaked: [] });
+  });
+  it("범주 낱말(편의점·음식점·주차구역·고객센터)은 시설명 후보가 아니다(E86 E88 보충 실측)", () => {
+    // 도구는 범주를 영문 키(convenience·restaurant)로 주고 모델이 한국어로 옮긴다. 주차구역은 '역' 접미사로 잡혔다.
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+    const text = "- **편의점**: CU 강동역점 / 내일도두부 (음식점, 1m) / 장애인 주차구역 9면 / 스타벅스 고객센터로 문의";
+    const outputs = [{ name: "t", response: { places: [{ name: "CU 강동역점", category: "convenience" }] } }];
+    expect(scoreGrounding(g, outputs, text)).toEqual({ pass: true, leaked: [] });
+    // 면제는 낱말 전체 일치뿐이다: 범주 낱말로 끝나는 도구 밖 이름은 그대로 잡는다.
+    expect(scoreGrounding(g, outputs, "편의점: 행복편의점, 근처 가나다음식점").leaked).toEqual(["name:행복편의점", "name:가나다음식점"]);
   });
   it("도구에 없는 전화번호·수치는 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과 02-999-0000, 3층에 있어요");
@@ -235,6 +260,133 @@ describe("버스 노선 도구 케이스(E87) — 2026-11-14 실호출의 도구
     const empty = [{ name: "get_bus_route", response: { found: false, routeNo: "99999", searched: "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다." } }];
     expect(scoreGrounding(c53.grounding!, empty, "99999번 버스는 서울 버스에서 찾지 못했습니다.", c53.turns).pass).toBe(true);
     expect(scoreGrounding(c53.grounding!, empty, "99999번은 서울역에서 04:00에 출발합니다.", c53.turns).pass).toBe(false);
+  });
+});
+
+describe("길찾기 출발지·수단 한정 케이스(E88 ⓐ) — 2026-11-14 실호출의 도구 반환과 답으로 채점기를 맞춘다", () => {
+  const c57 = CASES.find((c) => c.id === "57-수단한정-지하철만-없음")!;
+  // 모델은 수단 한정 조회(없음)와 한정 없는 조회를 함께 불렀다. 두 반환을 그대로 줄였다.
+  const outputs = [
+    {
+      name: "get_transit_route",
+      response: { destination: "남한산성 행궁", mode: "subway", route: null, noRouteWithMode: true, notice: "이 수단만 타고 가는 경로가 없습니다." },
+    },
+    {
+      name: "get_transit_route",
+      response: {
+        destination: "남한산성 행궁",
+        route: {
+          recommended: {
+            summary: { totalMinutes: 52, fare: 3500, transfers: 2, walkMinutes: 10, walkMeters: 631, departName: "길동", arriveName: "남한산성도립공원" },
+            legs: [
+              { mode: "walk", minutes: 2, distanceMeters: 150, toName: "길동" },
+              { mode: "subway", lineName: "수도권 5호선", fromName: "길동", toName: "천호", stationCount: 2, minutes: 4 },
+              { mode: "subway", lineName: "수도권 8호선", fromName: "천호", toName: "산성", stationCount: 11, minutes: 20 },
+              { mode: "walk", minutes: 3, distanceMeters: 207, toName: "한국폴리텍대학.성남문화예술교육센터" },
+              { mode: "bus", lineName: "53(주말운행)", fromName: "한국폴리텍대학.성남문화예술교육센터", toName: "남한산성도립공원", stationCount: 5, minutes: 17 },
+              { mode: "walk", minutes: 4, distanceMeters: 274 },
+            ],
+          },
+        },
+      },
+    },
+  ];
+
+  it("도구 값만 말한 답은 통과한다", () => {
+    const text =
+      "지하철만 타고 가는 경로는 없습니다. 지하철과 버스를 함께 타면 약 52분 걸립니다. " +
+      "5호선 길동역에서 천호역까지 간 뒤 8호선으로 갈아타 산성역에서 내리고, 53번 버스로 남한산성도립공원까지 약 17분 갑니다.";
+    expect(scoreGrounding(c57.grounding!, outputs, text, c57.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("도구에 없는 버스 번호는 잡힌다. 작은 출구 번호는 채점기가 못 잡는다(실호출에서 나온 두 날조)", () => {
+    // ⚠ 채점기는 수치를 단위 없이 값으로만 맞춘다: 같은 답의 「52번」은 총 소요 52분과 값이 같아 새지 않는다(판정은 「9번」이 맡는다).
+    const buses = scoreGrounding(c57.grounding!, outputs, "산성역에서 남한산성 방면 버스(52번, 9번)를 탑니다.", c57.turns);
+    expect(buses.leaked).toEqual(["number:9번"]);
+    // 「2번 출구」의 2는 환승 2회·도보 2분과 값이 같다 — 자동 판정 밖이라 케이스의 judge(사람 판정)에 적어 둔다.
+    const exit = scoreGrounding(c57.grounding!, outputs, "산성역 2번 출구 근처 정류장으로 이동합니다.", c57.turns);
+    expect(exit.leaked).toEqual([]);
+    expect(c57.judge).toContain("출구 번호");
+  });
+});
+
+describe("전화번호·이름으로 무장애 정보 케이스(E88 ⓑ) — 2026-11-14 실호출의 도구 반환으로 채점기를 맞춘다", () => {
+  const c58 = CASES.find((c) => c.id === "58-장소-전화번호")!;
+  const places = [
+    {
+      name: "search_places",
+      response: {
+        count: 12,
+        places: [
+          { name: "길동 보룡약국", category: "의료,건강 > 약국", address: "서울 강동구 양재대로 1478", phone: "02-477-4114" },
+          { name: "시민당약국", category: "의료,건강 > 약국", address: "서울 강동구 양재대로 1479", phone: "02-476-8100" },
+          // 전화번호가 없는 곳은 키가 없다.
+          { name: "길동생태공원 탐방객안내소", category: "서비스,산업 > 관리,운영 > 공원관리운영", address: "서울 강동구 천호대로 1291" },
+        ],
+      },
+    },
+  ];
+
+  it("도구가 준 번호를 그대로 말한 답은 통과한다(구분 기호가 달라도)", () => {
+    const text = "길동 보룡약국은 02-477-4114, 시민당약국은 02 476 8100입니다.";
+    expect(scoreGrounding(c58.grounding!, places, text, c58.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("번호가 없는 곳에 지어 붙인 번호와 한 자리 바뀐 번호는 잡힌다", () => {
+    const made = scoreGrounding(c58.grounding!, places, "길동생태공원 탐방객안내소는 02-472-0000입니다.", c58.turns);
+    expect(made.leaked).toContain("phone:02-472-0000");
+    const typo = scoreGrounding(c58.grounding!, places, "시민당약국은 02-476-8101입니다.", c58.turns);
+    expect(typo.pass).toBe(false);
+  });
+
+  it("무장애 미등록 케이스: 등록 정보가 없다고만 말하면 통과하고, 도구에 없는 전화번호를 덧붙이면 잡힌다", () => {
+    const c60 = CASES.find((c) => c.id === "60-무장애-미등록")!;
+    expect(c60.safety).toBe(true);
+    const outputs = [
+      {
+        name: "get_barrier_free_detail",
+        response: {
+          matched: false,
+          searchedPlace: "스타벅스 길동역점 (서울 강동구 양재대로 1487)",
+          notice: "한국관광공사 무장애 여행 정보에 이 이름으로 등록된 곳을 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.",
+        },
+      },
+    ];
+    const honest = "스타벅스 길동역점은 무장애 여행 정보에 등록된 정보가 없어 장애인 화장실 여부를 알 수 없습니다.";
+    expect(scoreGrounding(c60.grounding!, outputs, honest, c60.turns).pass).toBe(true);
+    expect(scoreGrounding(c60.grounding!, outputs, "매장(02-123-4567)에 문의하세요.", c60.turns).pass).toBe(false);
+  });
+});
+
+describe("입구 기준 좌우 케이스(E88 ⓒ) — 2026-11-14 실호출의 도구 반환으로 채점기를 맞춘다", () => {
+  const c61 = CASES.find((c) => c.id === "61-입구-오른쪽-지명")!;
+  const outputs = [
+    {
+      name: "get_entrance_sides",
+      response: {
+        searchedPlace: "현대백화점 천호점 (서울 강동구 천호대로 1005)",
+        frame: "entrance",
+        total: 107,
+        sides: [
+          { side: "오른쪽", count: 23, places: [
+            { name: "내일도두부", category: "restaurant", distanceMeters: 1 },
+            { name: "현대백화점 천호점 문화홀", category: "culture", distanceMeters: 3 },
+            { name: "아웃백스테이크하우스 현대백화점천호점", category: "restaurant", distanceMeters: 9 },
+          ] },
+          { side: "맞은편", count: 20, places: [{ name: "핑크리본외과의원", category: "hospital", distanceMeters: 45 }] },
+        ],
+      },
+    },
+  ];
+
+  it("도구 값만 말한 답은 통과한다", () => {
+    const text = "현대백화점 천호점 입구를 마주 보고 섰을 때 오른쪽에는 내일도두부(약 1m), 현대백화점 천호점 문화홀(약 3m), 아웃백스테이크하우스 현대백화점천호점(약 9m)이 있습니다. 오른쪽에는 모두 23곳이 있습니다.";
+    expect(scoreGrounding(c61.grounding!, outputs, text, c61.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("도구에 없는 거리와 가게 이름은 잡힌다", () => {
+    expect(scoreGrounding(c61.grounding!, outputs, "오른쪽 약 37m에 내일도두부가 있습니다.", c61.turns).pass).toBe(false);
+    expect(scoreGrounding(c61.grounding!, outputs, "오른쪽에는 GS25 천호역점이 있습니다.", c61.turns).pass).toBe(false);
   });
 });
 

@@ -78,7 +78,7 @@ class ChatSourceGuardTest {
         val strings = code("ChatStrings.kt")
         val kotlinTools = Regex(""""([a-z_]+)" -> R\.string\.chat_progress_tool_""").findAll(strings).map { it.groupValues[1] }.toSet()
         val kotlinSources = Regex(""""(source\.[a-z]+)" -> R\.string\.chat_source_""").findAll(strings).map { it.groupValues[1] }.toSet()
-        assertEquals(19, iosTools.size)
+        assertEquals(22, iosTools.size)
         assertEquals(iosTools, kotlinTools)
         assertEquals(iosSources, kotlinSources)
         iosTools.forEach { assertTrue(toolLabelId(it) != null, it) }

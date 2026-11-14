@@ -86,7 +86,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | 대중교통 추적 | `transit-track.ts`(TOPIS·TAGO·서울 지하철) / `/api/transit/track` | 판별 union으로 봉투 차이 흡수, 3-state, `no-store`(라우트 `use cache` 없음), IP 60초 20회. ⚠ 지하철 `arvlCd`는 문장과 맞춘 뒤에만 싣는다(`reconcileArvlCd` — 8호선은 「[N]번째 전역」에 코드 1을 싣는다, A73) |
 | 한눈에 보기 | `nearby-overview.ts` / `/api/nearby/overview` | 주변 6종을 반경 1km로 집계, 키 게이트는 불릿 단위, 조각 실패는 불릿 `failed`로 200(3-state), 옵트인 `places=1`(E65) |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 + `/api/search/web`(검색창 웹섹션, 1시간 캐시) | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
-| 베르길리우스 말로 묻기(E82, iOS 실험판) | `vergilius/*` → OpenAI Responses API·Gemini / `/api/vergilius/ask`(NDJSON)·`/api/vergilius/providers` | 모델에게 주는 글에 좌표를 넣지 않는다(`materials.ts`). 제안은 요청에 있던 가게 id만 통과, 렌더는 `route-start`만, 도구는 채팅 실행부의 다섯 개를 왕복 2회·회차당 3건까지(도착지가 목록의 가게 이름이면 실행하지 않는다), 도구 결과의 좌표는 떼고 준다. 요청 전체 25초. Google은 E86 판정 전까지 닫혀 있다(`VERGILIUS_GOOGLE_OPEN`). IP 60초 10회·인스턴스 일 300. 질문 글·재료는 로그 금지. → spec `2026-11-14-e82-vergilius-v1-design.md` §4 |
+| 베르길리우스 말로 묻기(E82, iOS 실험판) | `vergilius/*` → OpenAI Responses API·Gemini / `/api/vergilius/ask`(NDJSON)·`/api/vergilius/providers` | 모델에게 주는 글에 좌표를 넣지 않는다(`materials.ts`). 제안은 요청에 있던 가게 id만 통과, 렌더는 `route-start`만, 도구는 채팅 실행부의 다섯 개를 왕복 2회·회차당 3건까지(도착지가 목록의 가게 이름이면 실행하지 않는다), 도구 결과의 좌표는 떼고 준다. 요청 전체 25초. 회사는 키 있는 쪽이 선택지로 선다(OpenAI `gpt-6.1-terra`, Google `gemini-3.5-flash-lite`. E86 판정 2026-11-14로 Google도 연다). IP 60초 10회·인스턴스 일 300. 질문 글·재료는 로그 금지. → spec `2026-11-14-e82-vergilius-v1-design.md` §4 |
 
 ## API 키 현황
 

@@ -6,7 +6,8 @@
  * ($1.50/$7.50)로 복귀하므로 단가를 상수로 박지 않고 `run.measuredAt`으로 고른다.
  * thinking 토큰은 출력 단가로 과금된다(`candidatesTokenCount`와 분리돼 오므로 더해야 한다).
  */
-import { passK, type EntityKind } from "./grounding";
+// @ts-expect-error `eval:ab:report`는 노드 타입 스트리핑으로 이 파일을 읽는다 — 상대 import에 .ts 확장자가 필수이고 tsc는 그것을 금지한다(런타임이 정본, `report-cli.mts`와 같은 사정).
+import { passK, type EntityKind } from "./grounding.ts";
 
 export interface EvalCase {
   id: string;
@@ -60,21 +61,38 @@ export interface ResultFile {
 
 const PROMO_END = "2026-12-31T23:59:59.999Z";
 
-/** 모델별 단가표(USD per 1M 토큰). 두 모델이 같은 값인 것은 실측 사실이지 가정이 아니다 — 새 모델은 여기 등록한다. */
-const PRICE_TABLE: Record<string, { promo: [number, number]; list: [number, number] }> = {
+/**
+ * 모델별 단가표(USD per 1M 토큰). 두 모델이 같은 값인 것은 실측 사실이지 가정이 아니다 — 새 모델은 여기 등록한다.
+ * `promo`가 없는 모델은 기간 할인이 없다(날짜와 무관하게 `list`).
+ * 2026-11-14 공식 요금표 확인: 3.6-flash는 2026-12-31까지 $0.75/$3.75, 그 뒤 $1.50/$7.50. 4-hydrogen은 할인 없이 $1.50/$7.50.
+ */
+const PRICE_TABLE: Record<string, { promo?: [number, number]; list: [number, number] }> = {
   "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
   "gemini-3.7-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
+  "gemini-4-hydrogen": { list: [1.5, 7.5] },
 };
 const FALLBACK_MODEL = "gemini-3.6-flash";
 
-export function pricesAt(measuredAt: string, model = FALLBACK_MODEL): { inPerToken: number; outPerToken: number; label: string } {
+/**
+ * 실행기의 모델 표기 `<모델 id>@<생각 수준>`(예: `gemini-4-hydrogen@low`)을 가른다. 접미사가 없으면 생각 설정을
+ * 넣지 않는다(그 모델의 기본값). 결과 파일의 `model`에는 접미사까지 그대로 남아 같은 모델의 두 설정이 따로 집계된다.
+ */
+export function parseModelSpec(spec: string): { model: string; thinkingLevel: string | null } {
+  const at = spec.indexOf("@");
+  if (at < 0) return { model: spec, thinkingLevel: null };
+  return { model: spec.slice(0, at), thinkingLevel: spec.slice(at + 1).toUpperCase() };
+}
+
+export function pricesAt(measuredAt: string, modelSpec = FALLBACK_MODEL): { inPerToken: number; outPerToken: number; label: string } {
+  const { model } = parseModelSpec(modelSpec);
   const known = PRICE_TABLE[model];
   const row = known ?? PRICE_TABLE[FALLBACK_MODEL];
   const unknown = known ? "" : ` ⚠ ${model} 단가 미등록 — ${FALLBACK_MODEL} 기준 가정`;
-  if (new Date(measuredAt).getTime() <= new Date(PROMO_END).getTime()) {
+  if (row.promo && new Date(measuredAt).getTime() <= new Date(PROMO_END).getTime()) {
     return { inPerToken: row.promo[0] / 1e6, outPerToken: row.promo[1] / 1e6, label: `프로모 $${row.promo[0]}/$${row.promo[1]} per 1M, 2026-12-31까지${unknown}` };
   }
-  return { inPerToken: row.list[0] / 1e6, outPerToken: row.list[1] / 1e6, label: `정가 $${row.list[0]}/$${row.list[1]} per 1M (프로모 종료 후)${unknown}` };
+  const note = row.promo ? " (프로모 종료 후)" : " (기간 할인 없음)";
+  return { inPerToken: row.list[0] / 1e6, outPerToken: row.list[1] / 1e6, label: `정가 $${row.list[0]}/$${row.list[1]} per 1M${note}${unknown}` };
 }
 
 const AXES = ["expect", "forbid", "arg", "langInvariant", "grounding"] as const;

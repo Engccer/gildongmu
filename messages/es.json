@@ -586,6 +586,7 @@
         "get_surroundings": "alrededores",
         "get_bus_arrivals": "llegadas de autobús",
         "get_bus_route": "línea de autobús",
+        "get_entrance_sides": "alrededor de la entrada",
         "get_bike_stations": "estaciones de bicicleta",
         "get_air_quality": "calidad del aire",
         "get_weather": "tiempo",

@@ -33,7 +33,12 @@ import {
 } from "@/lib/bus-route";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
-import { getBarrierFreeDetail, searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
+import {
+  findBarrierFreeByName,
+  getBarrierFreeDetail,
+  normalizeName,
+  searchBarrierFreeNearby,
+} from "@/lib/providers/tour-barrier-free";
 import { fetchStationTimetable } from "@/lib/providers/tago-subway";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
@@ -55,6 +60,8 @@ import { overviewSources, sourceFor } from "./sources";
 import { assembleWhereAmI } from "@/lib/where-am-i";
 import { assembleNearbyOverview } from "@/lib/nearby-overview";
 import { isInKorea } from "@/lib/coverage";
+import { assembleScene } from "@/lib/surroundings-scene";
+import { entranceSidesData } from "./entrance-sides";
 
 /** 좌표 도구의 기준 좌표 — 장소 앵커 우선, 없으면 현재 위치. */
 export function anchorOf(
@@ -79,6 +86,8 @@ interface ResolvedCoord {
   lng: number;
   /** 지명을 해석했을 때 실제로 고른 장소(이름·주소). 키워드 검색 1위라 사용자의 지명과 어긋날 수 있다. */
   resolvedPlace?: string;
+  /** 고른 장소의 이름만(주소 없이). 결과에서 그 장소 자신을 가를 때 쓴다(E88 ⓒ). 모델 재료에 싣지 않는다. */
+  resolvedName?: string;
 }
 
 /**
@@ -95,7 +104,7 @@ async function resolveCoord(
     const p = r.places[0];
     if (!p) return undefined;
     const addr = p.roadAddress || p.address;
-    return { lat: p.lat, lng: p.lng, resolvedPlace: addr ? `${p.name} (${addr})` : p.name };
+    return { lat: p.lat, lng: p.lng, resolvedPlace: addr ? `${p.name} (${addr})` : p.name, resolvedName: p.name };
   }
   return anchorOf(ctx);
 }
@@ -114,6 +123,62 @@ async function resolveVia(
   const p = r.places[0];
   return p ? { name: p.name, lat: p.lat, lng: p.lng } : null;
 }
+
+/**
+ * 길찾기의 말한 출발지(E88 spec A1): 사용자가 현재 위치가 아닌 출발지를 말했을 때만 온다. 없으면 undefined.
+ * 좌표는 `resolveCoord`가 풀고, 못 풀면 호출부가 `placeNotFound`로 돌린다(현재 위치로 대신하면 틀린 경로를 맞는 것처럼 답한다).
+ */
+function originArg(args: Record<string, unknown>): string | undefined {
+  const origin = typeof args.origin === "string" ? args.origin.trim() : "";
+  return origin || undefined;
+}
+
+/**
+ * 말한 출발지가 한국 밖으로 풀렸을 때(E88 리뷰 S2). 종전 커버리지 안내는 「현재 위치」를 말해 사용자의 위치가 한국 밖이라고
+ * 읽히고, 고른 장소가 없으면 키워드 검색이 엉뚱한 곳을 고른 사실을 모델이 말할 수 없다. 출발지를 말하지 않은 조회는 종전 게이트 그대로다.
+ */
+function originCoverageGate(named: ResolvedCoord | undefined, origin: { lat: number; lng: number }) {
+  if (!named || isInKorea(named.lat, named.lng)) return coverageGate(origin);
+  return {
+    data: {
+      outOfCoverage: true,
+      origin: named.resolvedPlace,
+      notice: "말한 출발지가 대한민국 밖의 장소로 잡혔습니다. 길찾기는 대한민국 안에서만 됩니다.",
+    },
+  };
+}
+
+/**
+ * 이름으로 지목한 장소가 한국 밖일 때(E88 ⓑ·ⓒ, 리뷰). 종전 커버리지 안내는 「현재 위치」를 말해 사용자의 위치가 한국 밖이라고 읽힌다.
+ * 고른 장소(`searchedPlace`)를 함께 실어 키워드 검색이 엉뚱한 곳을 고른 사실을 모델이 말할 수 있게 한다.
+ */
+function namedPlaceCoverageGate(target: { lat: number; lng: number; label: string }) {
+  if (isInKorea(target.lat, target.lng)) return null;
+  return {
+    data: {
+      outOfCoverage: true,
+      searchedPlace: target.label,
+      notice: "말한 장소가 대한민국 밖의 장소로 잡혔습니다. 이 기능은 대한민국 안에서만 됩니다.",
+    },
+  };
+}
+
+/** 말한 출발지로 조회한 답에 싣는 조각 — 실제로 고른 장소(키워드 검색 첫 결과라 말한 곳과 다를 수 있다). */
+function originNote(named: ResolvedCoord | undefined): { origin?: string } {
+  return named ? { origin: named.resolvedPlace } : {};
+}
+
+/** 대중교통 수단 한정(E88 spec A2) — 도구 인자 `mode` → provider의 수단 축. 모르는 값은 한정 없음. */
+const TRANSIT_MODE_AXIS = { subway: "subwayOnly", bus: "busOnly" } as const;
+
+/**
+ * 그 수단만으로 가는 경로가 없을 때. `route: null`만 주면 「경로 없음」으로 낭독돼 거짓이다.
+ * ⚠ 다른 경로가 「있다」고 단정하지 않는다: provider의 null은 「수단 거르기 뒤 0건」과 「출발·도착이 너무 가까움(-98)」을 가르지 못한다(E88 리뷰 S1).
+ */
+const NO_ROUTE_WITH_MODE = {
+  noRouteWithMode: true,
+  notice: "이 수단만 타고 가는 경로를 찾지 못했습니다. 다른 수단을 섞으면 경로가 있을 수 있습니다(수단을 한정하지 않고 조회해야 알 수 있습니다).",
+};
 
 /** 경유지 미지원 마커(대중교통 전부, 자동차 en). `null`만 주면 "경로 없음"으로 낭독돼 거짓. */
 const TRANSIT_WAYPOINT_UNSUPPORTED = {
@@ -159,7 +224,23 @@ const BUS_ROUTE_SEARCHED: Record<LocalSearch, string> = {
   noLocation: "서울 버스에서만 찾았습니다. 현재 위치를 몰라 다른 지역 버스는 찾아보지 못했습니다(지역 이름을 알려 주면 찾을 수 있습니다).",
 };
 
+/**
+ * 이름으로 찾은 무장애 정보가 없을 때(E88 spec B2). 「등록된 정보가 없음」이지 「편의시설이 없음」이 아니다 —
+ * `detail: null`만 주면 모델이 시설이 없다고 답한다.
+ */
+// 「등록된 곳을 못 찾음」이 아니라 「편의시설 정보를 못 찾음」이다: 이름은 맞았는데 상세가 빈 갈래도 이 문장을 받는다(E88 리뷰).
+const BARRIER_FREE_NOT_REGISTERED =
+  "한국관광공사 무장애 여행 정보에서 이 이름으로 등록된 편의시설 정보를 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.";
+
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
+
+/**
+ * 장소 채팅에서 모델이 넘긴 장소 이름이 보고 있는 장소(앵커)인가(E88 ⓑ·ⓒ). 맞으면 이름을 다시 검색하지 않고 앵커 좌표를 쓴다 —
+ * 다시 검색하면 다른 지점의 같은 이름으로 갈 수 있다. 비교는 공백·괄호·흔한 지점 접미를 뗀 보수적 동일성(`normalizeName`).
+ */
+function isAnchorName(named: string, anchor: ExecutionContext["placeAnchor"]): anchor is NonNullable<ExecutionContext["placeAnchor"]> {
+  return !!anchor && normalizeName(named) === normalizeName(anchor.name);
+}
 
 /** 지명 해석 실패는 위치 부재가 아니다 — 같은 문장으로 답하면 사용자가 권한을 의심한다. */
 function placeNotFound(place: string) {
@@ -541,7 +622,44 @@ export async function executeFunction(
     }
     case "get_barrier_free_detail": {
       const contentId = String(args.contentId ?? "");
-      if (!contentId) return { data: { error: "contentId가 필요합니다." } };
+      if (!contentId) {
+        // 이름으로 찾기(E88 spec B2): `name` 인자, 없으면 장소 채팅의 앵커 장소.
+        const named = typeof args.name === "string" ? args.name.trim() : "";
+        const anchor = ctx.placeAnchor;
+        let target: { lat: number; lng: number; names: string[]; label: string };
+        if (anchor && (!named || isAnchorName(named, anchor))) {
+          // 보고 있는 장소는 앱이 좌표를 쥐고 있다 — 이름을 다시 검색하면 다른 지점의 같은 이름으로 갈 수 있다.
+          target = { lat: anchor.lat, lng: anchor.lng, names: [anchor.name], label: anchor.name };
+        } else if (named) {
+          const found = await searchPlaces({ query: named, lang: ctx.dataLocale });
+          const place = found.places[0];
+          if (!place) return { data: placeNotFound(named) };
+          const addr = place.roadAddress || place.address;
+          target = {
+            lat: place.lat,
+            lng: place.lng,
+            names: [named, place.name],
+            label: addr ? `${place.name} (${addr})` : place.name,
+          };
+        } else {
+          return { data: { error: "contentId 또는 장소 이름(name)이 필요합니다." } };
+        }
+        const gated = namedPlaceCoverageGate(target);
+        if (gated) return gated;
+        const lookup = await findBarrierFreeByName(target);
+        if (!lookup.detail) {
+          return {
+            data: {
+              matched: false,
+              searchedPlace: target.label,
+              ...(lookup.similar.length > 0 ? { similar: lookup.similar } : {}),
+              notice: BARRIER_FREE_NOT_REGISTERED,
+            },
+            source: src,
+          };
+        }
+        return { data: { matched: true, searchedPlace: target.label, detail: lookup.detail }, source: src };
+      }
       // null=항목 없음, facilities:[]=등록 시설 없음 — 두 상태를 뭉개지 않는다. 카드 없음.
       // detailWithTour2는 title을 주지 않아 name이 빈 문자열로 온다(실호출 2026-08-23) —
       // 이름은 LLM이 연쇄 원본(get_nearby_barrier_free)에서 이미 알고 있으므로 빈 값은 싣지 않는다.
@@ -549,6 +667,25 @@ export async function executeFunction(
       if (!detail) return { data: { detail: null }, source: src };
       const { name, ...rest } = detail;
       return { data: { detail: name ? detail : rest }, source: src };
+    }
+    case "get_entrance_sides": {
+      // 입구 기준 좌우(E88 spec ⓒ). 이름이 필수다 — 현재 위치(보도 위 GPS)에서는 방향 축이 거의 서지 않는다.
+      const named = typeof args.place === "string" ? args.place.trim() : "";
+      if (!named) return { data: { error: "장소 이름(place)이 필요합니다. 현재 위치를 기준으로는 입구 방향을 정할 수 없습니다." } };
+      // names: 그 장소를 부르는 이름들 — 결과에서 그 장소 자신을 뺀다(「경복궁 입구 오른쪽에 경복궁」).
+      let target: { lat: number; lng: number; label: string; names: string[] };
+      if (isAnchorName(named, ctx.placeAnchor)) {
+        const a = ctx.placeAnchor;
+        target = { lat: a.lat, lng: a.lng, label: a.name, names: [a.name] };
+      } else {
+        const c = await resolveCoord(named, ctx);
+        if (!c) return { data: placeNotFound(named) };
+        target = { lat: c.lat, lng: c.lng, label: c.resolvedPlace ?? named, names: [named, c.resolvedName ?? named] };
+      }
+      const gated = namedPlaceCoverageGate(target);
+      if (gated) return gated;
+      const scene = await assembleScene(target.lat, target.lng);
+      return { data: entranceSidesData(scene, target.label, target.names), source: src };
     }
     case "get_car_route": {
       const destination = String(args.destination ?? "");
@@ -560,33 +697,41 @@ export async function executeFunction(
       // 카드는 경유 없는 경로를 self-fetch하므로 경유지가 있으면 내지 않는다(산문이 정본).
       // 안내 시작 카드를 신고한 요청(E83 R2)에는 옛 요약 카드를 어느 갈래에서도 내지 않는다 — 경로를 찾은 때에만 `route-start`가 간다(R3).
       const startCard = ctx.routeStart !== undefined;
-      const render = args.via || startCard ? undefined : { type: "car-route" as const, dest };
+      // 말한 출발지(E88): 종전 카드는 기기 위치로 다시 조회하고 안내 시작 카드는 실제 위치에서만 시작하므로 어느 렌더도 내지 않는다.
+      const originName = originArg(args);
+      const render = args.via || startCard || originName ? undefined : { type: "car-route" as const, dest };
       const useEn = ctx.dataLocale === "en" && hasNcpMapsKeys();
       // en(NCP)은 경유지 계약이 없다 — ko 서비스로 내리면 영어 사용자에게 한국어 안내문이 간다(리뷰
       // 검출). 대중교통과 같은 정직 마커로 답한다(upstream·지명 해석 미호출).
       if (args.via && useEn) {
         return { data: { destination: p.name, briefing: null, ...TRANSIT_WAYPOINT_UNSUPPORTED }, source: src };
       }
-      if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
-      const gated = coverageGate(ctx.userLocation);
+      const named = originName ? await resolveCoord(originName, ctx) : undefined;
+      if (originName && !named) return { data: placeNotFound(originName) };
+      const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
+      if (!origin) return { data: NO_LOCATION, render, source: src };
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
       const via = await resolveVia(args, ctx);
       if (via === null) return { data: placeNotFound(String(args.via)) };
       const viaGated = via && coverageGate(via);
       if (viaGated) return viaGated;
       const briefing = useEn
-        ? await getCarRouteBriefingEn({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } })
-        : await getCarRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng }, via });
+        ? await getCarRouteBriefingEn({ origin, dest: { lat: p.lat, lng: p.lng } })
+        : await getCarRoute({ origin, dest: { lat: p.lat, lng: p.lng }, via });
       return {
         data: {
           destination: p.name,
+          ...originNote(named),
           ...(via ? { via: { name: via.name, stepIndex: briefing.waypoint?.stepIndex ?? null } } : {}),
           briefing,
         },
         // 경유지가 있어도 낸다(`via` 실음, 판정 7) — 그 경유지로 안내를 시작할 수 있는지는 클라이언트가 가른다(R9·R10).
-        render: startCard
-          ? routeStartRender(p, { mode: "car", via: routeStartVia(via), carProvider: briefing.provider ?? null })
-          : render,
+        render: named
+          ? undefined
+          : startCard
+            ? routeStartRender(p, { mode: "car", via: routeStartVia(via), carProvider: briefing.provider ?? null })
+            : render,
         source: src,
       };
     }
@@ -601,14 +746,31 @@ export async function executeFunction(
       // upstream·지명 해석 모두 미호출(라우트 동형).
       if (args.via) return { data: { destination: p.name, route: null, ...TRANSIT_WAYPOINT_UNSUPPORTED }, source: src };
       const routeStart = ctx.routeStart;
-      // 안내 시작 카드를 신고한 요청(E83 R2)에는 옛 요약 카드를 내지 않는다.
-      const render = routeStart ? undefined : { type: "transit-route" as const, dest };
-      if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
-      const gated = coverageGate(ctx.userLocation);
+      const originName = originArg(args);
+      // 수단 한정(E88): 지하철만·버스만. 두 값이 아니면 한정 없이 조회한다.
+      const mode = args.mode === "subway" || args.mode === "bus" ? args.mode : undefined;
+      const modeAxis = mode ? { modeAxis: TRANSIT_MODE_AXIS[mode] } : {};
+      // 안내 시작 카드를 신고한 요청(E83 R2)에는 옛 요약 카드를 내지 않는다. 옛 카드는 기기 위치에서 수단 한정 없이 다시
+      // 조회하므로 말한 출발지·수단 한정의 답과 어긋난다(E88) — 그 답에도 내지 않는다.
+      const render = routeStart || originName || mode ? undefined : { type: "transit-route" as const, dest };
+      const named = originName ? await resolveCoord(originName, ctx) : undefined;
+      if (originName && !named) return { data: placeNotFound(originName) };
+      const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
+      if (!origin) return { data: NO_LOCATION, render, source: src };
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
-      const origin = ctx.userLocation;
-      const route = await getTransitRoute({ origin, dest: { lat: p.lat, lng: p.lng } });
-      if (!routeStart || !route) return { data: { destination: p.name, route }, render, source: src };
+      // ⚠ 과금: 수단을 한정한 조회는 URL에 `SearchPathType`이 붙어 한정 없는 조회와 캐시 항목이 따로다(ODsay 호출 1회).
+      const route = await getTransitRoute({ origin, dest: { lat: p.lat, lng: p.lng }, ...modeAxis });
+      const data = {
+        destination: p.name,
+        ...originNote(named),
+        ...(mode ? { mode } : {}),
+        route,
+        // 「그 수단만으로는 없음」은 「경로 없음」과 다르다(조회 실패는 위에서 throw).
+        ...(mode && !route ? NO_ROUTE_WITH_MODE : {}),
+      };
+      // 말한 출발지의 답에는 안내 시작 카드도 없다(안내는 실제 위치에서만 시작한다) — 카드용 조회도 하지 않는다.
+      if (!routeStart || !route || named) return { data, render, source: src };
       // 카드가 싣는 결과는 길찾기 화면이 받는 것과 같은 옵션으로 한 번 더 받는다(E83 spec §4 — 경유 정류장·노선 집합·데이터 언어):
       // 화면이 그 결과로 대중교통 섹션을 그대로 세우고 안내를 시작한다. 모델에 주는 `data`는 위 조회 그대로다(신고와 무관하게 같다).
       // ⚠ 과금: 한국어 데이터 로케일은 위 조회와 ODsay URL이 같아 캐시를 탄다(추가 호출 0). 영어 데이터 로케일은 `lang`이 달라
@@ -622,12 +784,14 @@ export async function executeFunction(
           includeStops: true,
           includeLanes: true,
           lang: ctx.dataLocale,
+          // 수단을 한정한 답이면 카드도 같은 수단의 경로를 싣는다(답과 카드가 같은 경로).
+          ...modeAxis,
         });
       } catch (e) {
         console.error("[chat] 안내 시작 카드용 대중교통 조회 실패:", e);
       }
       return {
-        data: { destination: p.name, route },
+        data,
         render: cardResult
           ? routeStartRender(p, {
               mode: "transit",
@@ -653,8 +817,12 @@ export async function executeFunction(
       const r = await searchPlaces({ query: destination, lang: ctx.dataLocale });
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
-      if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
-      const gated = coverageGate(ctx.userLocation);
+      const originName = originArg(args);
+      const named = originName ? await resolveCoord(originName, ctx) : undefined;
+      if (originName && !named) return { data: placeNotFound(originName) };
+      const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
+      if (!origin) return { data: NO_LOCATION, source: src };
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
       const via = await resolveVia(args, ctx);
       if (via === null) return { data: placeNotFound(String(args.via)) };
@@ -662,7 +830,7 @@ export async function executeFunction(
       if (viaGated) return viaGated;
       const accessible = args.accessible === true;
       const briefing = await getWalkRoute({
-        origin: ctx.userLocation,
+        origin,
         dest: { lat: p.lat, lng: p.lng },
         // 채팅 도구는 ko 고정이다 — 이 도구는 ko 트리거 문구로만 노출된다(E16 축3 범위 밖).
         lang: "ko",
@@ -675,7 +843,7 @@ export async function executeFunction(
       });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
-      if (!briefing) return { data: { destination: p.name, briefing: null }, source: src };
+      if (!briefing) return { data: { destination: p.name, ...originNote(named), briefing: null }, source: src };
       // 경유지 도착 스텝은 절단 밖에 두지 않는다 — stepIndex가 LLM이 받은 배열 범위 밖을 가리키면
       // 존재하지 않는 스텝을 추론(날조)하게 된다(리뷰 검출 2026-08-23).
       const stepsCap = Math.max(WALK_STEPS_CAP, (briefing.waypoint?.stepIndex ?? -1) + 1);
@@ -684,6 +852,7 @@ export async function executeFunction(
       return {
         data: {
           destination: p.name,
+          ...originNote(named),
           distanceMeters: briefing.distanceMeters,
           durationSeconds: briefing.durationSeconds,
           steps,
@@ -695,7 +864,8 @@ export async function executeFunction(
           ...(briefing.stepFree ? { stepFree: briefing.stepFree } : {}),
         },
         // 안내 시작 카드(E83) — 신고한 요청에만. 도보 안내는 시작할 때 경로를 새로 받으므로 도착지·경유지·계단 회피만 싣는다(R4).
-        ...(ctx.routeStart ? { render: routeStartRender(p, { mode: "walk", via: routeStartVia(via), accessible }) } : {}),
+        // 말한 출발지의 답에는 내지 않는다(E88 — 안내는 실제 위치에서만 시작한다).
+        ...(ctx.routeStart && !named ? { render: routeStartRender(p, { mode: "walk", via: routeStartVia(via), accessible }) } : {}),
         source: src,
       };
     }

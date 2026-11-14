@@ -10,7 +10,7 @@ export function placesToRender(places: Place[], sort?: PlaceSort): RenderPayload
   return sort === "review" ? { type: "places", places, sort: "review" } : { type: "places", places };
 }
 
-/** LLM용: 상위 N건·핵심 필드만(토큰 절약). */
+/** LLM용: 상위 N건·핵심 필드만(토큰 절약). 전화번호는 있는 곳에만 싣는다(E88 — 없는 곳은 키가 없다). */
 export function placesToData(places: Place[]): Record<string, unknown> {
   return {
     count: places.length,
@@ -18,6 +18,7 @@ export function placesToData(places: Place[]): Record<string, unknown> {
       name: p.name,
       category: p.category,
       address: p.roadAddress || p.address,
+      ...(p.phone ? { phone: p.phone } : {}),
     })),
   };
 }

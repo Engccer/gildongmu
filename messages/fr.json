@@ -586,6 +586,7 @@
         "get_surroundings": "alentours",
         "get_bus_arrivals": "arrivées de bus",
         "get_bus_route": "ligne de bus",
+        "get_entrance_sides": "autour de l'entrée",
         "get_bike_stations": "stations de vélo",
         "get_air_quality": "qualité de l'air",
         "get_weather": "météo",

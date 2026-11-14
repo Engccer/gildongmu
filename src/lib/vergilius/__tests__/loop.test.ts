@@ -168,6 +168,12 @@ describe("runVergiliusLoop", () => {
     ]);
   });
 
+  it("길찾기의 말한 출발지는 실행부에 닿지 않는다(E88): 모델이 origin을 보내도 떼고 실행한다", async () => {
+    const r = run([[call("get_walk_route", { destination: "서울역", origin: "부산역", accessible: true })], [text("끝")]]);
+    await r.promise;
+    expect(r.execute).toHaveBeenCalledWith("get_walk_route", { destination: "서울역", accessible: true }, ctx);
+  });
+
   it("도구 결과의 좌표는 모델에 가지 않고(깊이 무관), 렌더의 좌표는 앱에 그대로 간다", async () => {
     const routeStart = {
       type: "route-start", mode: "walk", dest: { lat: 37.5547, lng: 126.9707 }, destLabel: "서울역", destRoman: null,

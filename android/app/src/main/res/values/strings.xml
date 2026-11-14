@@ -702,6 +702,7 @@
     <string name="chat_progress_tool_get_bus_arrivals">버스 도착</string>
     <string name="chat_progress_tool_get_bus_route">버스 노선</string>
     <string name="chat_progress_tool_get_car_route">자동차 경로</string>
+    <string name="chat_progress_tool_get_entrance_sides">입구 주변</string>
     <string name="chat_progress_tool_get_kids_places">아이 놀 곳</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">무장애 관광지</string>
     <string name="chat_progress_tool_get_night_clinics">야간 진료</string>
