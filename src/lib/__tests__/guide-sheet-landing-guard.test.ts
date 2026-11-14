@@ -99,7 +99,11 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(OUTPUT).toContain("UIAccessibility.announcementStringValueUserInfoKey");
     // 끝 신호의 문장 형은 실측이 없다 — 두 형을 다 받는다(설계 리뷰 MAJOR 2: 어긋나면 모든 착지가 상한까지 기다린다).
     expect(OUTPUT).toContain("let text = (value as? String) ?? (value as? NSAttributedString)?.string");
-    expect(OUTPUT).not.toContain("announcementWasSuccessfulUserInfoKey");
+    // 착지 장부는 끝까지 말했는지를 보지 않는다(끊겨도 끝이다). 성공 여부 키는 E82 발화 전달 계약(V0a)의 전달 장부만
+    // 읽는다 — 그쪽은 「끝까지 말했는가」가 판정이라 따로 둔 장부다(Kit `VoiceOverDeliveryLedger`).
+    expect(OUTPUT).toContain("if let text { ledger.finished(text, at: now) }");
+    expect(OUTPUT.split("announcementWasSuccessfulUserInfoKey").length - 1).toBe(1);
+    expect(OUTPUT).toContain("deliveries.finished(text, successful: successful)");
     // 장부 만료는 착지 대기 상한보다 길어야 짝 실패가 `cap open=1`로 드러난다(접근성 감사 M1 — 같으면 거짓 `settled`).
     const ledger = readFileSync(join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/GuideAnnouncementLedger.swift"), "utf8");
     const expiry = Number(ledger.match(/public static let expirySeconds = ([\d.]+)/)?.[1]);

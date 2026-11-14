@@ -977,7 +977,7 @@ final class OutingModel {
         if now >= protectedUntil, let low = deferredLow {
             deferredLow = nil
             lastAmbientAt = now
-            say(low, speechClass: .actionable)
+            say(low, speechClass: .ambient)
         }
         // 국면 무관 안전망(spec §5.3·§9). 나들이엔 도착 창이 없으므로 두 축 모두 산다.
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
@@ -1055,12 +1055,18 @@ final class OutingModel {
     }
 
     /// 문장 창구 — 톤 뒤 지연(`DeferredAnnouncer`)을 지나 `post`에서 채널이 갈린다. `speechClass`는 기본값 없는 필수
-    /// 인자다(E53 spec §3.4 — 나들이의 주변 문장은 본 기능이라 행동 문장, 안전망 종료만 미룸).
+    /// 인자다(E53 spec §3.4). 주변 문장(가게·도로명·출발점)은 `.ambient`(E82 V0b — 백그라운드 발화 여부는 행동 문장과
+    /// 같고, 서열은 맨 아래라 안전 문장이 끊는다), 안전망 종료만 미룸이다.
+    ///
+    /// 발화 전달 계약(E82 V0a): `onSpoken`은 그 문장이 **끝까지 말해졌을 때**, `onDropped`는 채널에 실리지 못했거나
+    /// 말해지기 전에 밀려났거나 말하다 끊겼을 때 불린다 — 한 문장에 둘 중 많아야 하나, 한 번이다. 세션 경계(`stop()`)가
+    /// 버린 문장은 어느 쪽도 불리지 않는다. 「말했다」 표시와 기록은 `onSpoken`에서 넣는다(V5).
     private func say(
         _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
-        onDropped: (() -> Void)? = nil
+        onDropped: (() -> Void)? = nil, onSpoken: (() -> Void)? = nil
     ) {
-        announcer.announce(text, highPriority: highPriority, speechClass: speechClass, onDropped: onDropped)
+        announcer.announce(
+            text, highPriority: highPriority, speechClass: speechClass, onDropped: onDropped, onSpoken: onSpoken)
     }
 
     /// 종료 문장 — 전하지 못하면(백그라운드 버림·대기 칸에서 사라짐) 장부에 남겨 복귀 때 갚는다(설계 리뷰 M6).
@@ -1094,17 +1100,21 @@ final class OutingModel {
         }
         deferredLow = nil  // 미뤄 둔 옛 문장보다 지금 문장이 이긴다 — 다음 틱에 옛 문장이 뒤늦게 나오지 않게(구현 검증 N8)
         lastAmbientAt = uptimeNow
-        say(text, speechClass: .actionable)
+        say(text, speechClass: .ambient)
     }
 
     /// 실제 게시. 채널은 게시 시점에 하나만(spec §7.3, E53 spec §2): 전경 ∧ VoiceOver면 VoiceOver 통지, 전경 ∧
-    /// VoiceOver 꺼짐은 기기 음성, 백그라운드는 토글 켬 ∧ 행동 문장이면 기기 음성이고 그 밖은 버린다(판정 ② — 끄면
+    /// VoiceOver 꺼짐은 기기 음성, 백그라운드는 토글 켬 ∧ 행동·주변 문장이면 기기 음성이고 그 밖은 버린다(판정 ② — 끄면
     /// 화면이 꺼진 동안은 효과음만).
+    ///
+    /// 돌려주는 값은 「채널에 실렸는가」다(E82 V0a). 실린 뒤의 끝은 채널이 알린다: 끝까지 말했으면 창구가 넘긴
+    /// `onSpoken`(지연 슬롯에서 `claimSpokenHandler()`로 가져온다), 밀려나거나 끊겼으면 `onLateDrop`.
     @discardableResult
     private func post(
         _ message: String, highPriority: Bool, bypassSuppression: Bool,
         speechClass: GuideSpeechClass, onLateDrop: (() -> Void)?
     ) -> Bool {
+        let onSpoken = announcer.claimSpokenHandler()
         guard bypassSuppression || !outputSuppressed else { return false }
         let channel = GuideSpeechOutput.channel(
             speechClass, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible)
@@ -1115,15 +1125,26 @@ final class OutingModel {
                 + "fg=\(GuideSpeechOutput.isForeground ? 1 : 0) class=\(speechClass.rawValue) text=\(message)")
         switch channel {
         case .voiceOver:
-            GuideSpeechOutput.postVoiceOver(spokenUnits(message), highPriority: highPriority)
+            // 전달을 묻는 문장만 끝 신호를 추적한다 — 끝까지 말했으면 `onSpoken`, 끊겼거나 신호가 없으면 버림이다.
+            GuideSpeechOutput.postVoiceOver(
+                spokenUnits(message), highPriority: highPriority,
+                outcome: onSpoken.map { onSpoken in
+                    { outcome in
+                        switch outcome {
+                        case .spoken: onSpoken()
+                        case .dropped: onLateDrop?()
+                        }
+                    }
+                })
             return true
         case .device:
             // 보호 문장(시작·횡단보도)은 유효 시간으로 버리지 않고 주변 문장에 밀리지 않는다(구현 검증 N6·보호 창).
-            // 종료·거절(.high)은 대기하지 않고 선점한다(설계 리뷰 M2).
+            // 종료·거절(.high)은 대기하지 않고 선점한다(설계 리뷰 M2). 안전·행동 문장은 말하는 중인 주변 문장을 끊는다
+            // (E82 V0b, 대기 칸 계약 8).
             deviceSpeech.submit(
                 spokenUnits(message), highPriority: highPriority, protected: message == protectedText,
                 bypassSuppression: bypassSuppression, speechClass: speechClass,
-                onDropped: { _ in onLateDrop?() })
+                onDropped: { _ in onLateDrop?() }, onSpoken: onSpoken)
             return true
         case .drop:
             return false

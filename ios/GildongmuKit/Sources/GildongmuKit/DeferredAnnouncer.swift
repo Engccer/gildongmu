@@ -31,6 +31,10 @@ public final class DeferredAnnouncer {
     /// 명령은 이미 돈 모퉁이를 돌라는 명령이 된다). onDropped를 함께 보관하는 이유는
     /// 아래 `invalidatePending()` 참조.
     private var slot: (token: Int, task: Task<Void, Never>, onDropped: (() -> Void)?)?
+    /// 지금 `post`에 넘기고 있는 문장의 「말했다」 통지(E82 V0a). `post` 구현이 그 호출 안에서 `claimSpokenHandler()`로
+    /// 가져가 채널의 끝 신호에 잇는다. `post` 클로저의 형을 바꾸지 않으려고 호출 동안만 여기에 둔다(도보·대중교통 모델과
+    /// 안드로이드 미러의 `post`는 그대로다).
+    private var postingOnSpoken: (() -> Void)?
 
     public init(
         clock: @escaping () -> Double,
@@ -93,14 +97,18 @@ public final class DeferredAnnouncer {
     /// "게시했는가"를 물어볼 방법 자체가 없다).
     ///
     /// `speechClass`는 기본값이 없다(E53 — 새 통지 경로가 분류를 빠뜨리면 컴파일이 멈춘다).
+    ///
+    /// `onSpoken`(E82 V0a 발화 전달 계약): 그 문장이 끝까지 말해졌을 때 한 번 불린다 — `post` 구현이
+    /// `claimSpokenHandler()`로 가져가 채널의 끝 신호에 이었을 때만이다. 한 문장에 `onSpoken`과 `onDropped`는 **많아야
+    /// 하나만** 불린다(세션 경계 폐기는 둘 다 부르지 않는다). 지연 슬롯에서 밀려난 문장은 `onDropped`다.
     public func announce(
         _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
-        onDropped: (() -> Void)? = nil
+        onDropped: (() -> Void)? = nil, onSpoken: (() -> Void)? = nil
     ) {
         invalidatePending()  // §4-1: 새 통지가 옛 보류 문장을 버린다(latest-wins)
         let wait = speechDeferStep(now: clock(), toneEndsAt: toneEndsAt())
         guard wait > 0 else {
-            if !post(text, highPriority, false, speechClass, onDropped) { onDropped?() }
+            attempt(text, highPriority, speechClass, onSpoken, onDropped)
             return
         }
         nextToken += 1
@@ -128,10 +136,28 @@ public final class DeferredAnnouncer {
                 // §4-3 ABA: 슬롯 해제는 **자기 토큰일 때만**. 무조건 지우면 옛 Task의
                 // 종료 코드가 새 슬롯 참조를 지워 teardown이 아무것도 취소하지 못한다.
                 if self.slot?.token == token { self.slot = nil }
-                if !self.post(text, highPriority, false, speechClass, onDropped) { onDropped?() }
+                self.attempt(text, highPriority, speechClass, onSpoken, onDropped)
                 return
             }
         }
         slot = (token, task, onDropped)
+    }
+
+    /// 지금 `post`에 넘기고 있는 문장의 「말했다」 통지를 가져간다(한 번, E82 V0a). `post` 구현만 부른다. 가져가지 않으면
+    /// 그 문장의 `onSpoken`은 불리지 않는다(끝 신호를 이을 채널이 없는 구현 — 「말했다」가 서지 않는 쪽이 보수적이다).
+    public func claimSpokenHandler() -> (() -> Void)? {
+        defer { postingOnSpoken = nil }
+        return postingOnSpoken
+    }
+
+    /// 게시 시도 한 번. `post`가 거짓이면 그 자리에서 `onDropped`다(§4-4).
+    private func attempt(
+        _ text: String, _ highPriority: Bool, _ speechClass: GuideSpeechClass,
+        _ onSpoken: (() -> Void)?, _ onDropped: (() -> Void)?
+    ) {
+        postingOnSpoken = onSpoken
+        let posted = post(text, highPriority, false, speechClass, onDropped)
+        postingOnSpoken = nil
+        if !posted { onDropped?() }
     }
 }

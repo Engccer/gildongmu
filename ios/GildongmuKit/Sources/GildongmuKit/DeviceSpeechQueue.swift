@@ -17,10 +17,12 @@ public enum DeviceSpeechDrop: String, Sendable {
 public final class DeviceSpeechHandover {
     public let texts: [String]
     private var drops: [((DeviceSpeechDrop) -> Void)?]
+    private var spokens: [(() -> Void)?]
 
-    init(_ items: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?)]) {
+    init(_ items: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?, onSpoken: (() -> Void)?)]) {
         texts = items.map(\.text)
         drops = items.map(\.onDropped)
+        spokens = items.map(\.onSpoken)
     }
 
     /// 넘길 문장이 없는 인계(백그라운드를 거치지 않은 복귀·정식판).
@@ -32,7 +34,18 @@ public final class DeviceSpeechHandover {
     public func undelivered() {
         let pending = drops
         drops = []
+        spokens = []
         pending.forEach { $0?(.undelivered) }
+    }
+
+    /// 합본 통지가 끝까지 말해졌다(E82 V0a) — 인계한 문장마다 「말했다」를 통지한다. `undelivered()`와 둘 중 먼저 불린 쪽만.
+    /// 지금 부르는 자리는 없다: 인계에 실리는 안전 문장은 아직 「말했다」를 쓰지 않는다. 안전 문장의 표시를 「말했다」에
+    /// 거는 단계(spec §8 S4)가 합본 통지의 끝 신호에 이을 자리다.
+    public func spoken() {
+        let pending = spokens
+        spokens = []
+        drops = []
+        pending.forEach { $0?() }
     }
 }
 
@@ -55,7 +68,16 @@ public final class DeviceSpeechHandover {
 /// 7. 칸 밖의 정지가 이 칸의 발화를 끊으면 그 문장에 버림을 통지한다(`speechInterrupted(token:reason:)`, 통합본 횡단 리뷰 F4):
 ///    받아쓰기 시작·채팅 화면 이탈·채팅 듣기·오디오 인터럽션은 `undelivered`, 더 새 안내 발화는 `superseded`. 칸 자신의 선점은
 ///    먼저 `lastSpoken`을 비우고 `superseded`로, 인계는 넘긴 목록으로 처리한다.
-/// 버림 통지(`onDropped`)는 문장마다 **최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은 `DeviceSpeechHandover`가).
+/// 8. 서열(E82 V0b, `GuideSpeechClass.interruptRank`): 새 문장이 **이 칸이 말하는 중인 문장**보다 위 분류면 끊고 즉시
+///    말한다(끊긴 문장은 `superseded`). 대기 칸의 문장보다 아래 분류인 새 문장은 들이지 않는다(`undelivered`). 종전 세 분류는
+///    서열이 같아 이 규칙에 걸리지 않는다. 답·주변 문장은 복귀 인계에 싣지 않는다(V0c — 자리에 묶인 문장은 다시 계산해
+///    말하고, 답은 기록에서 다시 듣는다): 채널이 VoiceOver로 바뀌었으면 끊고 `undelivered`로 통지한다.
+/// 9. 「말했다」(E82 V0a, `onSpoken`): 합성기가 그 발화를 **끝까지 말했다고 알렸을 때만** 선다(`speechEnded(token:
+///    completed: true)` — 앱은 합성기 델리게이트의 끝 신호를 잇는다). 합성기가 스스로 취소했다고 알렸거나, 끝 신호 없이
+///    합성기에서 사라진 채 확인(0.3초 간격)을 두 번 넘기면 말하지 못한 것이다(`undelivered` — 의심스러우면 「말하지
+///    않았다」). `onSpoken`을 준 문장만 다룬다.
+/// 버림 통지(`onDropped`)와 `onSpoken`은 문장마다 **합쳐 최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은
+/// `DeviceSpeechHandover`가).
 ///
 /// `isSpeaking`은 **안내** 발화만 본다 — 채팅 듣기는 안내를 막지 않는다(설계 리뷰 M3, 안내가 채팅을 끊는다. 운전자 채널과 같다).
 /// 일시정지로 남은 발화(인터럽션 뒤)는 말하는 중이 아니다(앱 `TtsPlayer.isSpeakingGuidance`, 횡단 리뷰 F5) — 그러지 않으면 칸이
@@ -77,7 +99,17 @@ public final class DeviceSpeechQueue {
         let bypassSuppression: Bool
         let speechClass: GuideSpeechClass
         let onDropped: ((DeviceSpeechDrop) -> Void)?
+        let onSpoken: (() -> Void)?
         let at: Double
+
+        var rank: Int { speechClass.interruptRank }
+        /// 복귀 인계에 싣는가(계약 8) — 답·주변은 싣지 않는다. 망라 switch(새 분류가 생기면 여기서 판정된다).
+        var handsOver: Bool {
+            switch speechClass {
+            case .actionable, .urgent, .deferrable: true
+            case .answer, .ambient: false
+            }
+        }
 
         /// 기다리지 않고 선점하는가(계약 2).
         var preempts: Bool { highPriority || speechClass == .urgent }
@@ -94,11 +126,14 @@ public final class DeviceSpeechQueue {
     private let speak: (String) -> Int
     private let stopSpeaking: () -> Void
     private let postVoiceOver: (String, Bool) -> Void
+    private let postVoiceOverTracked: ((String, Bool, @escaping (GuideSpeechOutcome) -> Void) -> Void)?
 
     private var pending: Item?
-    /// 이 칸이 마지막으로 기기 음성에 넘긴 문장과 그 발화 토큰. 토큰이 아직 말하는 중일 때만 "지금 이 칸의 문장"이다.
+    /// 이 칸이 마지막으로 기기 음성에 넘긴 문장과 그 발화 토큰·넘긴 시각. 토큰이 아직 말하는 중일 때만 "지금 이 칸의 문장"이다.
     private var lastSpoken: (item: Item, token: Int)?
     private var drain: Task<Void, Never>?
+    /// 「말했다」 확인(계약 9) — `onSpoken`을 준 문장을 합성기에 넘겼을 때만 돈다.
+    private var spokenWatch: Task<Void, Never>?
     /// 경계 세대 — `reset`·`handOver`·선점 뒤에 깨어난 옛 드레인이 새 칸을 건드리지 않게.
     private var generation = 0
 
@@ -110,6 +145,8 @@ public final class DeviceSpeechQueue {
     /// - `route`: 지금 채널(채널 술어를 그 시점 상태로 다시 부른다).
     /// - `speak`: 안내 발화(`TtsPlayer.speakGuidance` — 직전 발화를 끊고 말한다). 발화 토큰을 돌려준다.
     /// - `stopSpeaking`: 안내 발화 중단. `postVoiceOver`: 드레인 시점에 채널이 VoiceOver로 바뀐 문장의 게시(텍스트, 고우선).
+    /// - `postVoiceOverTracked`: 같은 게시인데 전달 신호를 돌려준다(E82 V0a) — `onSpoken`을 준 문장에만 쓴다. 없으면
+    ///   그런 문장도 `postVoiceOver`로 내고 「말했다」는 서지 않는다.
     public init(
         clock: @escaping () -> Double,
         sleeper: @escaping (Double) async -> Void = { seconds in
@@ -123,7 +160,8 @@ public final class DeviceSpeechQueue {
         route: @escaping (GuideSpeechClass) -> GuideSpeechChannel,
         speak: @escaping (String) -> Int,
         stopSpeaking: @escaping () -> Void,
-        postVoiceOver: @escaping (String, Bool) -> Void
+        postVoiceOver: @escaping (String, Bool) -> Void,
+        postVoiceOverTracked: ((String, Bool, @escaping (GuideSpeechOutcome) -> Void) -> Void)? = nil
     ) {
         self.clock = clock
         self.sleeper = sleeper
@@ -136,6 +174,7 @@ public final class DeviceSpeechQueue {
         self.speak = speak
         self.stopSpeaking = stopSpeaking
         self.postVoiceOver = postVoiceOver
+        self.postVoiceOverTracked = postVoiceOverTracked
     }
 
     /// 대기 칸에 문장이 있는가 — 세션 종료 원복이 이 동안 기다린다(`BeaconTonePlayer.endSession`).
@@ -144,16 +183,22 @@ public final class DeviceSpeechQueue {
     /// 기기 음성 채널로 고른 문장을 낸다(계약 1~3).
     /// - `protected`: 보호 문장(나들이 시작·횡단보도) — 유효 시간으로 버리지 않고 보호 문장이 아닌 새 문장에 밀리지 않는다.
     /// - `bypassSuppression`: 사용자 활성화의 직접 응답 — 꺼낼 때 억제 검사를 면제한다(`DeferredAnnouncer.announceNow` 동형).
-    /// - `onDropped`: 끝내 나가지 못하면 이유와 함께 한 번 불린다. 즉시 말했거나 나중에 게시했으면 부르지 않는다.
+    /// - `onDropped`: 끝내 나가지 못하면(말하다 끊긴 것 포함) 이유와 함께 한 번 불린다.
+    /// - `onSpoken`: 끝까지 말했을 때 한 번 불린다(계약 9, E82 V0a). 주지 않으면 확인하지 않는다(종전 동작).
     public func submit(
         _ text: String, highPriority: Bool, protected: Bool, bypassSuppression: Bool,
-        speechClass: GuideSpeechClass, onDropped: ((DeviceSpeechDrop) -> Void)?
+        speechClass: GuideSpeechClass, onDropped: ((DeviceSpeechDrop) -> Void)?,
+        onSpoken: (() -> Void)? = nil
     ) {
         let item = Item(
             text: text, highPriority: highPriority, protected: protected,
-            bypassSuppression: bypassSuppression, speechClass: speechClass, onDropped: onDropped, at: clock())
+            bypassSuppression: bypassSuppression, speechClass: speechClass, onDropped: onDropped,
+            onSpoken: onSpoken, at: clock())
+        settleSpoken()
         let speakingNow = isSpeaking()
-        if item.preempts || !speakingNow {
+        // 서열(계약 8): 이 칸이 말하는 중인 문장이 새 문장보다 아래 분류면 끊는다. 종전 세 분류끼리는 늘 거짓이다.
+        let outranks = lastSpoken.map { isSpeakingToken($0.token) && $0.item.rank < item.rank } ?? false
+        if item.preempts || !speakingNow || outranks {
             clearPending(.superseded)
             // 끊길 이 칸의 문장 — 말하는 중이든 일시정지로 남았든(`isSpeakingToken`은 일시정지 포함). `speakingNow`로 거르면
             // 일시정지된 1회성 경고가 버림 통지 없이 사라진다(코드 품질 리뷰 M1).
@@ -164,7 +209,7 @@ public final class DeviceSpeechQueue {
             say(item)
             return
         }
-        if let current = pending, current.protected, !protected {
+        if let current = pending, (current.protected && !protected) || current.rank > item.rank {
             onDropped?(.undelivered)
             return
         }
@@ -181,6 +226,8 @@ public final class DeviceSpeechQueue {
         generation += 1
         drain?.cancel()
         drain = nil
+        spokenWatch?.cancel()
+        spokenWatch = nil
         pending = nil
         lastSpoken = nil
     }
@@ -191,14 +238,15 @@ public final class DeviceSpeechQueue {
         // VoiceOver가 꺼진 전경(도보·대중교통은 채널이 VoiceOver 게시라 듣는 사람이 없다): 말하는 기기 음성을 끊지 않고 칸은
         // 드레인에 맡긴다(접근성 m2, 검증 리뷰 N3 — VoiceOver를 쓰지 않는 사용자는 끝까지 기기 음성으로 듣는다).
         guard voiceOverRunning() else { return .empty }
-        var handed: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?)] = []
+        settleSpoken()
+        var handed: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?, onSpoken: (() -> Void)?)] = []
         if let current = lastSpoken, isSpeakingToken(current.token),
            route(current.item.speechClass) == .voiceOver {
             // 들을 채널이 VoiceOver로 바뀌었다 — 기기 음성을 끊고 처음부터 넘긴다(반쯤 들린 문장은 정보가 아니다).
             stopSpeaking()
             lastSpoken = nil
-            if current.item.bypassSuppression || !isSuppressed() {
-                handed.append((current.item.text, current.item.onDropped))
+            if current.item.handsOver, current.item.bypassSuppression || !isSuppressed() {
+                handed.append((current.item.text, current.item.onDropped, current.item.onSpoken))
             } else {
                 current.item.onDropped?(.undelivered)
             }
@@ -210,8 +258,8 @@ public final class DeviceSpeechQueue {
             case .voiceOver:
                 clearDrain()
                 pending = nil
-                if isDeliverable(waiting) {
-                    handed.append((waiting.text, waiting.onDropped))
+                if waiting.handsOver, isDeliverable(waiting) {
+                    handed.append((waiting.text, waiting.onDropped, waiting.onSpoken))
                 } else {
                     waiting.onDropped?(.undelivered)
                 }
@@ -233,6 +281,21 @@ public final class DeviceSpeechQueue {
         current.item.onDropped?(reason)
     }
 
+    /// 합성기가 그 발화의 끝을 알렸다(계약 9) — `completed`는 끝까지 말했는가(거짓 = 합성기가 스스로 취소했다). 이 칸이
+    /// 낸 추적 문장이면 「말했다」 또는 버림을 한 번 통지한다. 이 칸이나 칸 밖의 정지가 끊은 발화는 그보다 먼저
+    /// `lastSpoken`이 비어 여기에 닿지 않는다. `onSpoken`이 없는 문장은 종전 그대로 건드리지 않는다.
+    public func speechEnded(token: Int, completed: Bool) {
+        guard let current = lastSpoken, current.token == token, let onSpoken = current.item.onSpoken else { return }
+        lastSpoken = nil
+        spokenWatch?.cancel()
+        spokenWatch = nil
+        if completed {
+            onSpoken()
+        } else {
+            current.item.onDropped?(.undelivered)
+        }
+    }
+
     private func clearDrain() {
         generation += 1
         drain?.cancel()
@@ -247,8 +310,41 @@ public final class DeviceSpeechQueue {
     }
 
     private func say(_ item: Item) {
+        settleSpoken()
         let token = speak(item.text)
         lastSpoken = (item, token)
+        if item.onSpoken != nil { startSpokenWatch(token: token) }
+    }
+
+    /// 끝 신호 없이 합성기에서 사라진 추적 문장을 닫는다(계약 9) — 말했는지 알 수 없으니 버림이다. 끝 신호가 먼저 왔으면
+    /// `speechEnded`가 `lastSpoken`을 비워 여기에 닿지 않는다. `onSpoken`이 없는 문장은 건드리지 않는다.
+    private func settleSpoken() {
+        guard let current = lastSpoken, current.item.onSpoken != nil, !isSpeakingToken(current.token)
+        else { return }
+        lastSpoken = nil
+        current.item.onDropped?(.undelivered)
+    }
+
+    private func startSpokenWatch(token: Int) {
+        spokenWatch?.cancel()
+        let sleeper = self.sleeper
+        spokenWatch = Task { [weak self] in
+            // 합성기에서 사라진 것을 처음 본 확인은 넘긴다 — 끝 신호가 한 박자 늦게 닿는 경우를 버림으로 닫지 않는다.
+            var goneOnce = false
+            while true {
+                await sleeper(Self.pollSeconds)
+                guard let self, !Task.isCancelled else { return }
+                // 이미 정리됐거나(끊김·세션 경계) 다른 문장이 그 자리를 이었다 — 이 확인은 끝났다.
+                guard let current = self.lastSpoken, current.token == token else { return }
+                if !self.isSpeakingToken(token) {
+                    if goneOnce {
+                        self.settleSpoken()
+                        return
+                    }
+                    goneOnce = true
+                }
+            }
+        }
     }
 
     /// 꺼내는 순간의 검사(계약 4) — 억제(우회 제외)·유효 시간(보호 제외).
@@ -300,7 +396,17 @@ public final class DeviceSpeechQueue {
         case .device: say(item)
         // 전경 ∧ VoiceOver로 바뀌었다(복귀 인계보다 드레인이 먼저 깬 짧은 창, 또는 나들이 전경에서 VoiceOver를 켠 경우).
         // 인계와 같은 이유로 `.high` — 앱 활성화 순간의 기본 우선순위 통지는 화면 낭독에 잠식된다(검증 리뷰 N5).
-        case .voiceOver: postVoiceOver(item.text, true)
+        case .voiceOver:
+            if let onSpoken = item.onSpoken, let postVoiceOverTracked {
+                postVoiceOverTracked(item.text, true) { outcome in
+                    switch outcome {
+                    case .spoken: onSpoken()
+                    case .dropped: item.onDropped?(.undelivered)
+                    }
+                }
+            } else {
+                postVoiceOver(item.text, true)
+            }
         case .drop: item.onDropped?(.undelivered)
         }
     }

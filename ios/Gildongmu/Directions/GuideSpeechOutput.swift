@@ -32,20 +32,55 @@ enum GuideSpeechOutput {
             speechClass: speechClass,
             backgroundSpeechEnabled: backgroundSpeechEnabled,
             backgroundAudible: backgroundAudible,
-            foregroundDeviceSpeech: foregroundDeviceSpeech)
+            foregroundDeviceSpeech: foregroundDeviceSpeech,
+            // 묻고 답하는 구간(E82 V0c)의 자리 — 켜는 쪽은 말로 묻기(S6)가 만든다. 그 전에는 어느 모델도 구간에 들지 않는다.
+            askWindowActive: false)
     }
 
     /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5). 안내 VoiceOver 게시의 **유일한
     /// 창구**라 게시 장부를 여기서 적는다(E57 착지 대기 — 소스 가드가 다른 게시 자리를 막는다).
-    static func postVoiceOver(_ text: String, highPriority: Bool) {
+    ///
+    /// `outcome`(E82 V0a 발화 전달 계약): 주면 이 통지가 끝까지 말해졌는지를 한 번 돌려준다 — 끝 신호가 「끝까지 말했다」를
+    /// 실어 왔을 때만 `spoken`, 끊겼거나 신호가 오지 않으면(만료 `VoiceOverDeliveryLedger.expirySeconds(for:)`) `dropped`다.
+    /// VoiceOver가 꺼진 채 게시하면 듣는 사람이 없어 곧장 `dropped`다.
+    static func postVoiceOver(
+        _ text: String, highPriority: Bool, outcome: ((GuideSpeechOutcome) -> Void)? = nil
+    ) {
         var attributed = AttributedString(text)
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         // VoiceOver가 꺼진 채 게시한 통지는 끝 신호가 오지 않는다 — 적지 않는다.
         if UIAccessibility.isVoiceOverRunning {
             observeAnnouncementFinishes()
             ledger.posted(text, at: ProcessInfo.processInfo.systemUptime)
+            if let outcome { trackDelivery(text, outcome: outcome) }
+        } else {
+            outcome?(.dropped)  // 들을 VoiceOver가 없다 — 끝 신호를 기다리지 않고 말하지 않은 것으로 닫는다
         }
         AccessibilityNotification.Announcement(attributed).post()
+    }
+
+    /// 전달을 추적하는 통지의 장부와 그 통지(E82 V0a, Kit `VoiceOverDeliveryLedger`).
+    private static var deliveries = VoiceOverDeliveryLedger()
+    private static var deliveryHandlers: [Int: (GuideSpeechOutcome) -> Void] = [:]
+
+    private static func trackDelivery(_ text: String, outcome: @escaping (GuideSpeechOutcome) -> Void) {
+        let id = deliveries.posted(text, at: ProcessInfo.processInfo.systemUptime)
+        deliveryHandlers[id] = outcome
+        // 끝 신호가 오지 않는 통지를 만료로 닫는다 — 닫지 않으면 그 문장은 말했는지 버렸는지 영영 모른다.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(VoiceOverDeliveryLedger.expirySeconds(for: text) + 0.1))
+            for expired in deliveries.expire(at: ProcessInfo.processInfo.systemUptime) {
+                guideDiagLog("announceExpired id=\(expired)")
+                deliveryHandlers.removeValue(forKey: expired)?(.dropped)
+            }
+        }
+    }
+
+    /// 전달 추적을 결과 없이 비운다(세션 경계 — 끝난 세션의 문장이 다음 세션에 「말했다」나 버림을 통지하지 않게).
+    /// 추적하는 통지는 나들이의 주변 문장뿐이라 나들이 세션 경계만 부른다.
+    static func resetDeliveries() {
+        deliveries.reset()
+        deliveryHandlers.removeAll()
     }
 
     /// 안내가 게시한 VoiceOver 통지 중 끝나지 않은 것(E57 spec 2026-09-30 §3.3, Kit `GuideAnnouncementLedger`). 세 모델 공용 —
@@ -70,14 +105,20 @@ enum GuideSpeechOutput {
             let value = note.userInfo?[UIAccessibility.announcementStringValueUserInfoKey]
             let text = (value as? String) ?? (value as? NSAttributedString)?.string
             let valueType = value.map { "\(Swift.type(of: $0))" } ?? "nil"
+            // 끝까지 말했는가(E82 V0a). 키가 없으면 nil이고 전달 장부는 그것을 「말하지 않았다」로 친다.
+            let successful = (note.userInfo?[UIAccessibility.announcementWasSuccessfulUserInfoKey] as? NSNumber)?.boolValue
             MainActor.assumeIsolated {
                 let now = ProcessInfo.processInfo.systemUptime
                 let before = ledger.openCount(at: now)
                 if let text { ledger.finished(text, at: now) }
+                if let text, let closed = deliveries.finished(text, successful: successful) {
+                    deliveryHandlers.removeValue(forKey: closed.id)?(closed.outcome)
+                }
                 guard before > 0 else { return }  // 안내 통지가 없을 때의 다른 화면 통지는 남기지 않는다
                 // 문장 앞부분: `matched=false`가 짝 실패인지 다른 화면 통지의 끝인지 가른다(spec 준수 리뷰 m6).
                 guideDiagLog(
                     "announceFinish type=\(valueType) matched=\(ledger.openCount(at: now) < before) "
+                        + "ok=\(successful.map { $0 ? "1" : "0" } ?? "-") "
                         + "open=\(ledger.openCount(at: now)) text=\((text ?? "").prefix(20))")
             }
         }
@@ -100,10 +141,15 @@ enum GuideSpeechOutput {
             route: { channel($0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible()) },
             speak: { TtsPlayer.shared.speakGuidance($0) },
             stopSpeaking: { TtsPlayer.shared.stopGuidance() },
-            postVoiceOver: { postVoiceOver($0, highPriority: $1) })
+            postVoiceOver: { postVoiceOver($0, highPriority: $1) },
+            postVoiceOverTracked: { postVoiceOver($0, highPriority: $1, outcome: $2) })
         // 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기)가 이 칸의 발화를 끊었는가(횡단 리뷰 F4, 계약 ⑨).
         TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token, reason in
             queue?.speechInterrupted(token: token, reason: reason)
+        }
+        // 합성기가 이 칸의 발화를 끝까지 말했는가(E82 V0a 계약 9 — 「말했다」는 이 신호로만 선다).
+        TtsPlayer.shared.observeGuidanceEnd { [weak queue] token, completed in
+            queue?.speechEnded(token: token, completed: completed)
         }
         return queue
     }
