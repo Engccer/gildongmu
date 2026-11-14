@@ -50,7 +50,7 @@ const GEMINI_GCP_PROJECT = "gildongmu-prod";
 export const GILDONGMU_GEMINI_MODEL = "gemini-3.6-flash";
 
 // ⚠ src/lib/vergilius/claude.ts의 CLAUDE_VERGILIUS_MODELS 값과 같아야 한다(drift 테스트가 강제).
-export const VERGILIUS_CLAUDE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5"];
+export const VERGILIUS_CLAUDE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
 
 /** Models API 목록 본문에서 빠진 베르길리우스 Claude 모델. 본문을 못 읽으면 전부 빠진 것으로 본다 */
 export function missingClaudeModels(bodyText) {
@@ -224,7 +224,7 @@ export const MONEY_PROBES = [
       return missingClaudeModels(bodyText).length === 0 ? STATUS.OK : STATUS.ERROR;
     },
     describe: () => `${VERGILIUS_CLAUDE_MODELS.join(", ")} 확인`,
-    note: "베르길리우스 말로 묻기(E82)의 Claude 둘. 모델 목록 조회라 과금 0, 지출 상한은 콘솔 platform.claude.com",
+    note: "베르길리우스 말로 묻기(E82)의 Claude 셋. 모델 목록 조회라 과금 0, 지출 상한은 콘솔 platform.claude.com",
   },
   {
     id: "deepgram-balance",

@@ -6,7 +6,12 @@
  * - **생각 설정은 모델마다 다르다.** Opus 5.5는 생각을 끌 수 없다(`thinking`의 `disabled`·`budget_tokens`는 400): `thinking`을
  *   보내지 않고 effort를 `low`로 낮춘다. Sonnet 5.5는 `{type:"between_tools"}`가 생각을 끄는 유일한 값이고(effort `high` 이하,
  *   다른 필드를 같이 보내면 400) effort `low`와 함께 쓴다. 첫 문장까지의 시간이 이 기능의 품질이라 둘 다 가장 낮은 값이다.
- * - **도구 선택은 `auto`(열린 회차)와 `none`(닫힌 회차)뿐이다.** 두 모델 다 강제 선택(`any`·`tool`)이 400이다.
+ * - **Haiku 5.5는 `thinking`을 보내지 않고 effort `low`다**(2026-11-15 추가, claude-api 스킬의 Haiku 5.5 이행 문서와 모델 조회 API의
+ *   `capabilities`로 확인). effort는 `low`~`max`를 받고(기본 `medium`), 생각은 생략하면 적응형이다. `disabled`도 `low`에서는 받지만
+ *   회사 문서가 「생각을 줄이려면 끄지 말고 effort를 낮추라, 쉬운 요청은 생각을 건너뛴다」고 권한다. `between_tools`는 Sonnet 5.5 전용이라
+ *   400이고 `budget_tokens`도 400이다. 서버 측 `fallbacks`는 이 모델에 아예 없다(목록 형태는 400).
+ * - **도구 선택은 `auto`(열린 회차)와 `none`(닫힌 회차)뿐이다.** Opus·Sonnet은 강제 선택(`any`·`tool`)이 400이다(Haiku는 받지만
+ *   생각 없이 바로 호출하므로 같은 두 값만 쓴다).
  *   닫힌 회차도 선언은 그대로 둔다(이력의 `tool_use`가 가리키는 도구가 요청에 있어야 하고, 선언이 바뀌면 캐시와 생각 블록이 깨진다).
  * - **도구를 부른 회차의 응답 내용은 받은 그대로 이력에 넣는다.** 생각 블록(빈 글과 서명)은 모델과 대화에 묶여 있어 바꾸거나
  *   빼면 다음 요청에서 버려지거나 400이다. 지침·도구·앞선 메시지는 회차 사이에 바이트 그대로다(추가만 한다).
@@ -16,7 +21,7 @@
  * - **서버 측 `fallbacks`(거절 시 다른 모델로 다시 돌리기)는 쓰지 않는다.** 사용자가 설정에서 고른 모델이 답한다는 계약이라,
  *   거절되면 다른 모델이 몰래 대신 답하지 않고 실패로 끝난다(앱은 실패 문장을 읽는다, V17).
  * - **지침(system)에 캐시 표시를 둔다.** 도구 선언과 지침은 요청마다 같고(요청 순서 tools → system), 재료와 질문만 바뀐다.
- *   표시 앞의 도구 선언과 지침은 합쳐 두 모델의 최소 캐시 길이(512토큰)를 넘는다. 효과는 `usage.cache_read_input_tokens`로 본다.
+ *   표시 앞의 도구 선언과 지침은 합쳐 세 모델의 최소 캐시 길이(512토큰)를 넘는다. 효과는 `usage.cache_read_input_tokens`로 본다.
  *   재료에는 표시를 두지 않는다: 질문마다 바뀌어 쓰기 값(1.25배)만 치르고 다시 읽히지 않는다.
  * - **eager input streaming과 strict는 쓰지 않는다.** 도구 인자가 이름 몇 글자라 eager로 앞당길 시간이 없고, 끄면 API가 인자를
  *   검증해 준다. strict는 채팅 선언(선택 인자·enum)의 스키마 조건을 실호출 전에 보장할 수 없고 첫 요청에 문법 컴파일 시간이 붙는다.
@@ -36,10 +41,14 @@ import type {
   VergiliusToolOutcome,
 } from "./types";
 
-/** 모델 이름의 정본. 바꿀 때는 `docs/evals/2026-11-14-vergilius-claude.md`의 표를 다시 낸다. */
+/**
+ * 모델 이름의 정본. 바꿀 때는 그 모델의 표를 다시 낸다(Opus·Sonnet `docs/evals/2026-11-14-vergilius-claude.md`,
+ * Haiku `docs/evals/2026-11-15-vergilius-claude-haiku.md`).
+ */
 export const CLAUDE_VERGILIUS_MODELS: Record<ClaudeVergiliusProvider, string> = {
   "claude-opus": "claude-opus-5-5",
   "claude-sonnet": "claude-sonnet-5-5",
+  "claude-haiku": "claude-haiku-5-5",
 };
 
 interface ClaudeRequestSettings {
@@ -51,6 +60,7 @@ interface ClaudeRequestSettings {
 export const CLAUDE_VERGILIUS_SETTINGS: Record<ClaudeVergiliusProvider, ClaudeRequestSettings> = {
   "claude-opus": { effort: "low" },
   "claude-sonnet": { thinking: { type: "between_tools" }, effort: "low" },
+  "claude-haiku": { effort: "low" },
 };
 
 export const CLAUDE_ROUND_TIMEOUT_MS = 20_000;
@@ -179,7 +189,7 @@ export function createClaudeSession(opts: ClaudeSessionOptions): VergiliusModelS
             text += event.delta.text;
             roundOpts.onText(event.delta.text);
           }
-          // 생각 블록(Opus의 빈 생각, Sonnet의 도구 사이 진행 메모)은 글로 내보내지 않는다.
+          // 생각 블록(Opus·Haiku의 빈 생각, Sonnet의 도구 사이 진행 메모)은 글로 내보내지 않는다.
         }
         message = await stream.finalMessage();
       } catch (e) {

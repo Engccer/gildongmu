@@ -107,7 +107,29 @@ describe("Claude 어댑터(Messages API 스트림)", () => {
     expect(h.bodies[0].model).toBe("claude-sonnet-5-5");
     expect(h.bodies[0].thinking).toEqual({ type: "between_tools" });
     expect(h.bodies[0].output_config).toEqual({ effort: "low" });
-    expect(CLAUDE_VERGILIUS_MODELS).toEqual({ "claude-opus": "claude-opus-5-5", "claude-sonnet": "claude-sonnet-5-5" });
+  });
+
+  it("요청(Haiku): 생각 설정 없이 effort low, 서버 fallbacks 없음", async () => {
+    const h = claudeHarness(
+      [{ events: [textDelta(0, "답.")], final: message([{ type: "text", text: "답." }], "end_turn") }],
+      { provider: "claude-haiku" },
+    );
+    await h.session.round({ tools: true, ...noop });
+    expect(h.bodies[0].model).toBe("claude-haiku-5-5");
+    // between_tools는 Sonnet 5.5 전용(Haiku는 400), budget_tokens도 400: 생각은 생략(적응형)하고 effort로 줄인다.
+    expect("thinking" in h.bodies[0]).toBe(false);
+    expect(h.bodies[0].output_config).toEqual({ effort: "low" });
+    expect(h.bodies[0].tool_choice).toEqual({ type: "auto" });
+    // Haiku 5.5에는 서버 측 fallbacks가 없다(목록 형태는 400).
+    expect("fallbacks" in h.bodies[0]).toBe(false);
+  });
+
+  it("모델 이름 상수: Claude 식별자 셋이 각자의 모델을 가리킨다", () => {
+    expect(CLAUDE_VERGILIUS_MODELS).toEqual({
+      "claude-opus": "claude-opus-5-5",
+      "claude-sonnet": "claude-sonnet-5-5",
+      "claude-haiku": "claude-haiku-5-5",
+    });
   });
 
   it("글 조각은 그대로 흘리고 생각 조각은 글로 내보내지 않는다", async () => {

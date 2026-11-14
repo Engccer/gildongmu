@@ -76,13 +76,13 @@ beforeEach(() => {
 });
 
 describe("GET /api/vergilius/providers", () => {
-  it("키 있는 회사가 목록에 선다: OpenAI, Google(E86 판정 2026-11-14로 연다), Claude Opus, Claude Sonnet 순", async () => {
+  it("키 있는 회사가 목록에 선다: OpenAI, Google(E86 판정 2026-11-14로 연다), Claude Opus, Claude Sonnet, Claude Haiku 순", async () => {
     const res = await GET();
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ providers: ["openai", "google", "claude-opus", "claude-sonnet"] });
+    expect(await res.json()).toEqual({ providers: ["openai", "google", "claude-opus", "claude-sonnet", "claude-haiku"] });
   });
 
-  it("키 없는 회사는 목록에 없다: Claude 둘은 한 키로 함께 빠진다", async () => {
+  it("키 없는 회사는 목록에 없다: Claude 셋은 한 키로 함께 빠진다", async () => {
     gates.anthropic = false;
     expect(await (await GET()).json()).toEqual({ providers: ["openai", "google"] });
     gates.openai = false;
@@ -90,7 +90,7 @@ describe("GET /api/vergilius/providers", () => {
     gates.gemini = false;
     expect(await (await GET()).json()).toEqual({ providers: [] });
     gates.anthropic = true;
-    expect(await (await GET()).json()).toEqual({ providers: ["claude-opus", "claude-sonnet"] });
+    expect(await (await GET()).json()).toEqual({ providers: ["claude-opus", "claude-sonnet", "claude-haiku"] });
   });
 });
 
@@ -138,8 +138,8 @@ describe("POST /api/vergilius/ask", () => {
     expect(spies.createOpenAiSession).not.toHaveBeenCalled();
   });
 
-  it("Claude를 고르면 그 모델의 Claude 세션을 만든다(Opus·Sonnet, 키는 서버 env)", async () => {
-    for (const provider of ["claude-opus", "claude-sonnet"] as const) {
+  it("Claude를 고르면 그 모델의 Claude 세션을 만든다(Opus·Sonnet·Haiku, 키는 서버 env)", async () => {
+    for (const provider of ["claude-opus", "claude-sonnet", "claude-haiku"] as const) {
       vi.clearAllMocks();
       await (await ask(askFixture({ provider }))).text();
       expect(spies.createClaudeSession).toHaveBeenCalledTimes(1);
@@ -152,9 +152,11 @@ describe("POST /api/vergilius/ask", () => {
 
   it("키 없는 회사: Claude를 골랐는데 Anthropic 키가 없으면 502이고 세션도 하루 상한도 쓰지 않는다", async () => {
     gates.anthropic = false;
-    const res = await ask(askFixture({ provider: "claude-sonnet" }));
-    expect(res.status).toBe(502);
-    expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    for (const provider of ["claude-opus", "claude-sonnet", "claude-haiku"] as const) {
+      const res = await ask(askFixture({ provider }));
+      expect(res.status).toBe(502);
+      expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    }
     expect(spies.createClaudeSession).not.toHaveBeenCalled();
     expect(spies.reserveDaily).not.toHaveBeenCalled();
   });

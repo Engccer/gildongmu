@@ -17,9 +17,9 @@ export const VERGILIUS_LOG_MAX = 20;
 
 /**
  * 답변 모델 선택지의 식별자. 앱이 설정에 저장하고 화면에 이름을 붙이는 값이라 바꾸지 않는다.
- * Claude는 회사가 아니라 모델 단위로 둘이다(Opus 5.5·Sonnet 5.5, 모델 이름은 `claude.ts` 상수).
+ * Claude는 회사가 아니라 모델 단위로 셋이다(Opus 5.5·Sonnet 5.5·Haiku 5.5, 모델 이름은 `claude.ts` 상수).
  */
-export const CLAUDE_VERGILIUS_PROVIDERS = ["claude-opus", "claude-sonnet"] as const;
+export const CLAUDE_VERGILIUS_PROVIDERS = ["claude-opus", "claude-sonnet", "claude-haiku"] as const;
 export type ClaudeVergiliusProvider = (typeof CLAUDE_VERGILIUS_PROVIDERS)[number];
 export const VERGILIUS_PROVIDERS = ["openai", "google", ...CLAUDE_VERGILIUS_PROVIDERS] as const;
 export type VergiliusProvider = (typeof VERGILIUS_PROVIDERS)[number];

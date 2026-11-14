@@ -471,14 +471,15 @@ describe("Anthropic 프로브", () => {
     expect(VERGILIUS_CLAUDE_MODELS).toEqual(values);
   });
 
-  it("두 모델이 목록에 있어야 정상이고, 하나라도 빠지면 조회 실패, 인증 오류는 인증 실패다", () => {
+  it("세 모델이 모두 목록에 있어야 정상이고, 하나라도 빠지면 조회 실패, 인증 오류는 인증 실패다", () => {
     const list = (ids) => JSON.stringify({ data: ids.map((id) => ({ id, type: "model" })), has_more: false });
     const { judge } = probe();
     expect(judge({ httpStatus: 200, bodyText: list(["claude-fable-5-2", ...VERGILIUS_CLAUDE_MODELS]) })).toBe(STATUS.OK);
     expect(judge({ httpStatus: 200, bodyText: list(["claude-opus-5-5"]) })).toBe(STATUS.ERROR);
     expect(judge({ httpStatus: 200, bodyText: "<html>" })).toBe(STATUS.ERROR);
     expect(judge({ httpStatus: 401, bodyText: '{"type":"error"}' })).toBe(STATUS.AUTH);
-    expect(missingClaudeModels(list(["claude-opus-5-5"]))).toEqual(["claude-sonnet-5-5"]);
+    expect(missingClaudeModels(list(["claude-opus-5-5"]))).toEqual(["claude-sonnet-5-5", "claude-haiku-5-5"]);
+    expect(judge({ httpStatus: 200, bodyText: list(["claude-opus-5-5", "claude-sonnet-5-5"]) })).toBe(STATUS.ERROR);
   });
 
   it("요청은 키 헤더와 API 버전 헤더를 싣는 목록 조회다(과금 없는 GET)", () => {

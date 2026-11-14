@@ -9,7 +9,16 @@ import { createAnthropicClient, createClaudeSession } from "./claude";
 import { createGoogleSession } from "./google";
 import { createOpenAiSession } from "./openai";
 import { toAnthropicTools, toGeminiDeclarations, toOpenAiTools, type VergiliusToolSpec } from "./tools";
-import { CLAUDE_VERGILIUS_PROVIDERS, type VergiliusModelSession, type VergiliusProvider } from "./types";
+import {
+  CLAUDE_VERGILIUS_PROVIDERS,
+  type ClaudeVergiliusProvider,
+  type VergiliusModelSession,
+  type VergiliusProvider,
+} from "./types";
+
+function isClaudeProvider(p: VergiliusProvider): p is ClaudeVergiliusProvider {
+  return (CLAUDE_VERGILIUS_PROVIDERS as readonly string[]).includes(p);
+}
 
 /**
  * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 걷는 사람은 8초 안에 첫 문장이
@@ -26,7 +35,7 @@ export function availableVergiliusProviders(): VergiliusProvider[] {
   const out: VergiliusProvider[] = [];
   if (hasOpenAiKey()) out.push("openai");
   if (hasGeminiKey()) out.push("google");
-  // Claude 둘은 한 키로 함께 서고 함께 빠진다(2026-11-14 위원장 요청으로 추가).
+  // Claude 셋은 한 키로 함께 서고 함께 빠진다(Opus·Sonnet 2026-11-14, Haiku 2026-11-15 위원장 요청으로 추가).
   if (hasAnthropicKey()) out.push(...CLAUDE_VERGILIUS_PROVIDERS);
   return out;
 }
@@ -51,7 +60,7 @@ export function createVergiliusSession(input: VergiliusSessionInput): VergiliusM
       signal: input.signal,
     });
   }
-  if (input.provider === "claude-opus" || input.provider === "claude-sonnet") {
+  if (isClaudeProvider(input.provider)) {
     if (!hasAnthropicKey()) return null;
     return createClaudeSession({
       client: createAnthropicClient(env.ANTHROPIC_API_KEY!),
