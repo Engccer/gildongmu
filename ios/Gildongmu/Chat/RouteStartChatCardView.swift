@@ -16,7 +16,7 @@ struct RouteStartChatCardView: View {
     /// 답에 도착지가 둘 이상이라 카드 첫 줄에 이름을 두는가(R12).
     let showsDestinationName: Bool
 
-    /// 재진입 가드(여정 카드와 같다). 측위 대기 중 재탭은 무시하고, 시각 표식(흐림)만 바꾼다.
+    /// [대중교통 안내 시작]의 측위 대기 표식. 대기 중 같은 버튼의 재탭은 무시하고, 다른 버튼을 누르면 그 선택이 이긴다(`preemptLocating`).
     @State private var busy = false
     /// 측위를 기다리는 [대중교통 안내 시작]의 Task. 카드가 화면에서 사라지면 취소해 뒤늦은 시작·탭 전환·재조회를 막는다.
     @State private var startTask: Task<Void, Never>?
@@ -79,10 +79,18 @@ struct RouteStartChatCardView: View {
     }
 
     private func cardButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .frame(minHeight: 44)
+        // 44pt 틀은 라벨 안에 둔다 — 버튼 바깥에 두르면 테두리와 탭 영역은 기본 높이로 남는다.
+        Button(action: action) { Text(title).frame(minHeight: 44) }
             .buttonStyle(.bordered)
             .opacity(busy ? 0.5 : 1)
+    }
+
+    /// 측위를 기다리는 동안 다른 버튼을 누르면 그 선택이 이긴다 — 기다리던 대중교통 시작을 거두고 진행한다.
+    /// 조용히 버리면 VoiceOver 사용자에게 버튼이 고장 난 것처럼 들린다(라벨이 바뀌는 것은 대중교통 버튼 하나뿐이다).
+    private func preemptLocating() {
+        startTask?.cancel()
+        startTask = nil
+        busy = false
     }
 
     private func waypoint(_ payload: RouteStartChatPayload) -> BeaconModel.Waypoint? {
@@ -104,7 +112,7 @@ struct RouteStartChatCardView: View {
 
     /// 도보·자동차 [안내 시작](R4·R7): 점유를 확인하고 바로 시작한다. 전송이 아니라 AI 동의와 무관하다.
     private func startNow(_ mode: GuideStartMode, via: RouteStartChatPayload.Via?) {
-        guard !busy else { return }
+        preemptLocating()
         // 다른 안내가 진행 중이면 최근 경로를 남기기 전에 거부한다(길찾기 [안내 시작]이 점유 중에 하는 것과 같은 통지).
         guard !GuideSession.shared.refuseStartIfOccupied() else { return }
         recordRecentRoute(via: via)
@@ -119,7 +127,8 @@ struct RouteStartChatCardView: View {
         guard !GuideSession.shared.refuseStartIfOccupied() else { return }
         busy = true
         startTask = Task { @MainActor in
-            defer { busy = false }
+            // 거둬진 Task가 뒤늦게 끝나며 새 대기의 표식을 지우지 않게, 취소되지 않았을 때만 표식을 내린다.
+            defer { if !Task.isCancelled { busy = false } }
             // 실측위 — 수동 위치 스토어를 거치지 않는다(안내는 늘 실좌표에서 시작한다). 실패하면 `noFix`로 다시 조회한다.
             let fix = try? await LocationService.shared.currentCoordinate(force: true)
             // 측위 중 카드가 사라졌으면 아무것도 하지 않는다.
@@ -132,6 +141,8 @@ struct RouteStartChatCardView: View {
                 requeryInDirections()
                 return
             }
+            // 측위를 기다리는 사이 다른 카드·화면에서 안내가 시작됐으면 최근 경로를 남기지 않고 거부한다.
+            guard !GuideSession.shared.refuseStartIfOccupied() else { return }
             recordRecentRoute(via: nil)
             GuideSession.shared.startGuide(
                 to: destination, mode: .transit(route: route, accessible: group.transit?.accessible ?? false))
@@ -140,7 +151,7 @@ struct RouteStartChatCardView: View {
 
     /// [길찾기에서 열기](R8): 길찾기 탭에 도착지와 경유지를 채우고 평소 조회(전 수단)를 돌린다. 착지는 그 화면의 평소 규칙이다.
     private func openInDirections() {
-        guard !busy else { return }
+        preemptLocating()
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
             role: .to, endpoint: destinationEndpoint,
             via: group.via.map { .place(label: $0.label, lat: $0.lat, lng: $0.lng) })
