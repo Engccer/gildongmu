@@ -110,6 +110,9 @@ final class OutingModel {
     private var askEpoch = 0
     @ObservationIgnored private var askTask: Task<Void, Never>?
     @ObservationIgnored private var askTimeoutTask: Task<Void, Never>?
+    /// 묻고 답하는 구간 전체의 상한(질문 뒤 90초). 다른 화면의 받아쓰기가 출력 억제를 오래 쥐면 답이 기다리는 동안 주변 묶음
+    /// 보류(V28)가 끝없이 이어진다 — 넘으면 남은 문장을 버리고 구간을 닫는다(답의 글은 기록 목록에 있다).
+    @ObservationIgnored private var askWindowCapTask: Task<Void, Never>?
     private var askReader = VergiliusReader()
     /// 읽을 줄 — 한 문장씩 낸다(기기 음성 대기 칸은 한 칸이라 미리 넣으면 앞 문장이 사라진다).
     private var answerQueue: [String] = []
@@ -1169,6 +1172,11 @@ final class OutingModel {
             guard !Task.isCancelled, let self, self.askEpoch == epoch else { return }
             self.applyAsk(self.askReader.timedOut(), epoch: epoch, event: "timeout")
         }
+        askWindowCapTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(90))
+            guard !Task.isCancelled, let self, self.askEpoch == epoch, self.askPhase != .idle else { return }
+            self.endAskWindow(reason: "cap")
+        }
         askTask = Task { [weak self] in await self?.runAsk(question, epoch: epoch) }
     }
 
@@ -1267,7 +1275,8 @@ final class OutingModel {
             case .speak(let sentence):
                 if !answerAbandoned { answerQueue.append(sentence) }
             case .discardUnread:
-                answerQueue.removeAll()
+                // 읽기를 그만둔 뒤의 큐는 「끊겼습니다」 하나뿐이다 — 군말을 버리는 reset이 그것까지 지우면 침묵으로 끝난다.
+                if !answerAbandoned { answerQueue.removeAll() }
             case .finish(let text, let renders, let proposalPlaceId):
                 answerStreamDone = true
                 askTimeoutTask?.cancel()
@@ -1301,7 +1310,7 @@ final class OutingModel {
             return
         }
         let line = appLocalized("ios.outing.askProposal", bilingual(p.name, roman: p.nameRoman).primary)
-        answerQueue = answerAbandoned ? [] : [line]
+        if !answerAbandoned { answerQueue = [line] }  // 그만둔 뒤면 세워 둔 「끊겼습니다」를 남긴다
         if let entryID = recordAnswer(line) {
             askFollowUp = AskFollowUp(
                 entryID: entryID, routeGroups: [],
@@ -1381,7 +1390,9 @@ final class OutingModel {
             } else {
                 guideDiagLog("askAbandoned left=\(answerQueue.count)")
                 answerAbandoned = true
-                answerQueue = [appLocalized("ios.outing.askCutOff")]
+                // 끊긴 것이 실패 문장 자체였으면 그것으로 끝낸다(「받지 못함」을 「끊김」으로 바꿔 말하지 않는다).
+                let failureLines = [appLocalized("ios.outing.askNoAnswer"), appLocalized("ios.outing.askCutOff")]
+                answerQueue = failureLines.contains(sentence) ? [] : [appLocalized("ios.outing.askCutOff")]
             }
         }
         schedulePumpAnswer()
@@ -1397,8 +1408,8 @@ final class OutingModel {
     }
 
     /// 묻고 답하는 구간의 끝 — 쌓인 주변 묶음이 이제 나간다(V28).
-    private func endAskWindow() {
-        guideDiagLog("askEnd")
+    private func endAskWindow(reason: String = "done") {
+        guideDiagLog("askEnd reason=\(reason)")
         resetAskReading()
         askPhase = .idle
         flushAmbient()
@@ -1416,6 +1427,8 @@ final class OutingModel {
     private func resetAskReading() {
         askTimeoutTask?.cancel()
         askTimeoutTask = nil
+        askWindowCapTask?.cancel()
+        askWindowCapTask = nil
         askReader = VergiliusReader()
         answerQueue = []
         answerInFlight = nil
@@ -1729,6 +1742,7 @@ final class OutingModel {
             scheduleHeldCrosswalk(after: outingCrosswalkRetryDelaySeconds, queued: false, mayDefer: true)
         case .giveUp:
             guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=giveUp")
+            if askPhase != .idle { schedulePumpAnswer() }
         case .superseded:
             guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=superseded")
         }
@@ -1784,6 +1798,7 @@ final class OutingModel {
         }
         guard let notice = crosswalkLedger.release(verdict: verdict, silencing: silencing) else {
             guideDiagLog("crosswalkReleased n=\(logSeq(held.id)) spoken=0 reason=\(verdict.rawValue)")
+            if askPhase != .idle { schedulePumpAnswer() }
             return
         }
         lastJunctionNoticeAt = uptimeNow

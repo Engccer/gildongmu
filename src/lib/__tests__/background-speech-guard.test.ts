@@ -267,7 +267,7 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     // 슬롯을 덮어써 답 문장이 끝 신호 없이 사라지고, 묻고 답하는 구간이 열린 채 남는다.
     const body = functionBody(read(join(DIR, "OutingModel.swift")), "answerSentenceEnded");
     expect(body).toContain("schedulePumpAnswer()");
-    expect(body.match(/(?<!schedule)pumpAnswer\(\)/g)).toBeNull();
+    expect(body.match(/(?<![A-Za-z])pumpAnswer\(\)/g)).toBeNull();
     const schedule = functionBody(read(join(DIR, "OutingModel.swift")), "schedulePumpAnswer");
     expect(closureAfter(schedule, "Task {")).toContain("self.pumpAnswer()");
   });

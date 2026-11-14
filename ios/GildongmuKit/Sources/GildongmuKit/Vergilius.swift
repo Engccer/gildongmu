@@ -411,7 +411,7 @@ public enum VergiliusReaderAction: Sendable, Equatable {
 public struct VergiliusReader: Sendable {
     private var splitter = VergiliusSentenceSplitter()
     /// 지금 회차에서 읽을 줄에 세운 문장 수. 0이면 아직 읽을 문장이 오지 않았다. `reset`이 0으로 돌린다 — 버린 군말은
-    /// 답이 아니므로 첫 문장 시한(V17)이 다시 살아난다.
+    /// 답이 아니므로 첫 문장 시한(V17)이 아직 울리지 않았다면 그때 「받지 못함」이 된다(시한은 질문마다 한 번 울린다).
     public private(set) var queuedSentences = 0
     public private(set) var finished = false
 
