@@ -44,7 +44,6 @@ import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import { walkLineAxis, walkLineNameKey, walkLinesFailedKey, walkLineStartKey } from "@/lib/walk-line";
-import type { WalkLineKind as GuideWalkLineKind } from "@/lib/types";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -185,7 +184,7 @@ type QueryResults = {
 };
 
 /** 자동 시작 자리: 도보는 줄(종류), 자동차는 섹션의 하나뿐인 버튼, 대중교통은 경로(`routeKey`). */
-type GuideAutoStart = { mode: "walk"; line: GuideWalkLineKind } | { mode: "car" } | { mode: "transit"; routeKey: string };
+type GuideAutoStart = { mode: "walk"; line: WalkLineKind } | { mode: "car" } | { mode: "transit"; routeKey: string };
 
 /** 여정 갈아탈 곳 칸 하나: null = 칸 없음, `pick: null` = 칸은 열렸고 아직 고르지 않음. */
 type JourneySlot = { pick: JourneyStationPick | null } | null;
@@ -693,6 +692,8 @@ export function DirectionsView({
         ? resultsFromTransitCard(transitSeed.to, transitSeed.transit, dataLocale(locale))
         : null,
   );
+  // 첫 렌더의 결과에 자동 시작 자리가 섰는가 — 마운트 착지가 읽는다(아래 effect가 상태의 표식을 곧 지우므로 따로 굳힌다).
+  const initialAutoStartRef = useRef(results?.autoStart != null);
   // 자동 시작 자리는 그 결과가 선 커밋에서 한 번만 읽힌다(E83) — 시작 버튼의 마운트 effect가 먼저 읽고, 이 effect가 되돌린다.
   // 남겨 두면 줄을 접었다 펴거나 경로를 다시 펼칠 때 버튼이 다시 마운트하며 안내가 저절로 또 시작된다.
   const autoStartPlanId = results?.autoStart ? results.planId : null;
@@ -976,7 +977,9 @@ export function DirectionsView({
     // 안내 시작 카드의 신선한 대중교통 시작(E83)도 같다 — 결과가 이미 서 있고 안내 패널이 세션 시작에서 스스로 착지한다.
     // 조회를 거치는 진입(`open`·도보·자동차 `start`·`requery`)은 제목에 착지한다: 조회가 도는 동안 커서가 설 자리가 있어야
     // 하고(채팅이 닫히며 누른 버튼이 사라졌다), 진행 문장은 이 화면의 창구가 말한다.
-    if (transitSeed) return;
+    // ⚠ 자동 시작이 실제로 선 때만 건너뛴다 — 추천 경로에 탑승 구간이 없어 시작이 서지 않았으면 착지를 가져갈 패널이
+    // 없으므로 평소대로 제목에 착지한다(건너뛰면 커서가 body에 남는다).
+    if (transitSeed && initialAutoStartRef.current) return;
     if (prefillActionRef.current === "landOnTo") toInputRef.current?.focus();
     else titleRef.current?.focus();
     // 첫 렌더에서 굳힌 진입 값으로 도는 마운트 1회 착지다.

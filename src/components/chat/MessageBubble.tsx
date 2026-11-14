@@ -26,6 +26,8 @@ import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 import { WebResults } from "@/components/WebResults";
 import { BarrierFreeNearby } from "@/components/BarrierFreeNearby";
 import { SourceList } from "./SourceList";
+import { CarRouteBriefing } from "@/components/CarRouteBriefing";
+import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
 import { JourneyChatCard, type JourneyActionHandler } from "./JourneyChatCard";
 import { RouteStartCard, type RouteStartActionHandler } from "./RouteStartCard";
 import { groupRouteStartRenders } from "@/lib/chat/route-start-groups";
@@ -227,8 +229,12 @@ function RenderBlock({
           <SeoulMetroFacilities stationName={render.stationName} />
         </>
       );
-    // `car-route`·`transit-route`(버튼 없는 요약 카드)는 웹 채팅이 그리지 않는다(E83 판정 3) — 범용 채팅은 `route-start`를
-    // 신고해 서버가 그 둘을 내지 않고, 신고하지 않는 채팅(장소 상세)에 오면 답의 글만 남는다.
+    // `car-route`·`transit-route`(버튼 없는 요약 카드)는 `route-start`를 신고하지 않는 채팅(장소 상세)에만 온다 — 범용 채팅은
+    // 신고해서 서버가 이 둘 대신 안내 시작 카드를 낸다(E83 판정 3). 그래서 여기 오는 것은 종전대로 그린다.
+    case "car-route":
+      return <CarRouteBriefing dest={render.dest} />;
+    case "transit-route":
+      return <TransitRouteBriefing dest={render.dest} />;
     case "journey":
       return <JourneyChatCard payload={render} onAction={onJourneyAction} />;
     default:

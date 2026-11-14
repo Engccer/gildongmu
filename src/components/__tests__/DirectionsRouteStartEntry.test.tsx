@@ -292,8 +292,9 @@ describe("채팅 경로 안내 시작 카드 → 길찾기 화면(E83)", () => {
     expect(screen.queryByRole("heading", { level: 3, name: "heading" })).toBeNull();
     expect(screen.queryByRole("heading", { level: 3, name: "car" })).toBeNull();
     expect(autoStarted()).toEqual(["transit:p0"]);
-    // 화면 제목이 착지를 빼앗지 않는다(착지는 안내 패널 몫 — 여기선 목).
-    expect(document.activeElement).toBe(document.body);
+    // 화면 제목이 착지를 가져가지 않는다(착지는 안내 패널 몫 — 여기선 목이라, 패널의 착지는
+    // `DirectionsRouteStartTransitFocus.test.tsx`가 실제 패널로 잠근다).
+    expect(document.activeElement).not.toBe(screen.getByRole("heading", { level: 2 }));
     // 조회가 성공했을 때와 같이 최근 경로에 남는다.
     await waitFor(() => expect(loadRecentRoutes()[0]?.to?.label).toBe("강남역"));
     expect(routeCalls()).toEqual([]);
@@ -308,6 +309,8 @@ describe("채팅 경로 안내 시작 카드 → 길찾기 화면(E83)", () => {
     expect(screen.getByRole("heading", { level: 3, name: "public" })).toBeTruthy();
     expect(autoStarted()).toEqual([]);
     expect(routeCalls()).toEqual([]);
+    // 착지를 가져갈 안내 패널이 없으므로 평소대로 화면 제목에 착지한다(커서가 body에 남지 않는다).
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 2 }));
   });
 
   it("대중교통(낡음): 기기 위치에서 전 수단을 다시 조회하고 사유를 단일 창구로 말한다. 안내는 저절로 시작하지 않는다", async () => {
