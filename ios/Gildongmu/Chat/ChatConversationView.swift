@@ -92,7 +92,8 @@ struct ChatConversationView<EmptyContent: View>: View {
                                     pendingOriginKey = originKey
                                     detailPlace = place
                                 },
-                                showsJourneyCard: model.place == nil
+                                showsJourneyCard: model.place == nil,
+                                showsRouteStartCard: model.place == nil && AppConfig.experimentalChatGuideEnabled
                             )
                             .id(message.id)
                             // follow-up 질문 칩(spec 2026-08-24 §3.3): 마지막 assistant 말풍선
@@ -381,6 +382,8 @@ private struct MessageBubbleView: View {
     let onOpenPlace: (Place, String) -> Void
     /// 여정 카드(E70-b)를 그리는 자리인가 — 채팅 탭의 범용 채팅만이다(장소 채팅 시트는 능력을 신고하지 않아 카드가 오지 않는다).
     let showsJourneyCard: Bool
+    /// 경로 카드의 [안내 시작](E83)을 그리는 자리인가 — 실험판 봉인 뒤의 채팅 탭 범용 채팅만이다(능력 신고와 같은 조건).
+    let showsRouteStartCard: Bool
 
     /// 이 답변의 카드 장소 — 산문 블록 커스텀 액션의 유일한 근거(장소 앵커 모드처럼
     /// 서버가 카드를 생략하면 자연히 빈 배열이라 액션도 없다).
@@ -411,6 +414,14 @@ private struct MessageBubbleView: View {
                     sectionHeading(heading)
                 }
                 renderView(render)
+            }
+            // 경로 카드의 [안내 시작](E83 R1·R12): 한 답의 `route-start` 렌더를 도착지별로 묶어 카드 하나씩 그린다. 구획 헤딩은 없다.
+            // 도착지가 둘 이상일 때만 카드 첫 줄에 이름을 둔다.
+            if showsRouteStartCard {
+                let groups = routeStartCardGroups(message.renders)
+                ForEach(groups, id: \.self) { group in
+                    RouteStartChatCardView(group: group, showsDestinationName: groups.count > 1)
+                }
             }
 
             if !message.sources.isEmpty {
@@ -589,6 +600,9 @@ private struct MessageBubbleView: View {
             if showsJourneyCard {
                 JourneyChatCardView(payload: payload)
             }
+        case .routeStart:
+            // 렌더 하나가 카드 하나가 아니다 — 말풍선이 도착지별로 묶어 한 번에 그린다(`routeStartCardGroups`).
+            EmptyView()
         case .unsupported:
             EmptyView()
         }

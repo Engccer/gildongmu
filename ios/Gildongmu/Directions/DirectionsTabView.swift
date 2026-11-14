@@ -35,6 +35,11 @@ struct DirectionsPrefill: Equatable {
     let endpoint: DirectionsEndpoint
     /// 채팅 여정 카드(E70-b)가 넘기는 갈아탈 역·결과. nil이면 종전 프리필이다.
     var journey: JourneyPrefill? = nil
+    /// 함께 채울 경유지(E83 R8 — 채팅 경로 카드의 [길찾기에서 열기]). 장소만 받는다. nil이면 경유지 없음.
+    var via: DirectionsEndpoint? = nil
+    /// 낡은 채팅 경로 카드의 [대중교통 안내 시작]이 넘긴 재조회(E83 R6)의 사유 문장. 값이 있으면 출발지를 수동 지정 위치가 아니라
+    /// 기기 위치로 풀어 조회하고, 조회를 시작할 때 이 문장을 한 번 말한다(여정 카드의 `JourneyPrefill.requeryNotice`와 같은 길).
+    var realOriginRequeryNotice: String? = nil
 }
 
 /// 채팅 여정 카드가 길찾기 탭에 넘기는 재료(E70-b D14·D16). 도착지는 프리필의 끝점(`.to`)이고, 여기엔 갈아탈 역과 카드의 결과가 든다.
@@ -281,6 +286,13 @@ final class DirectionsModel {
                 journeyRequeryNotice = journey.requeryNotice
                 pendingJourneyRealOrigin = journey.realOrigin
             }
+        }
+        // 채팅 경로 카드(E83): 경유지를 칸에 세우고(R8), 낡은 대중교통 카드의 재조회는 기기 위치에서 출발한다(R6).
+        // 최근 기록은 프리필 소비 지점이 한다(init은 재평가마다 돈다).
+        if case .place = prefill?.via { via = prefill?.via }
+        if let notice = prefill?.realOriginRequeryNotice {
+            journeyRequeryNotice = notice
+            pendingJourneyRealOrigin = true
         }
     }
 
@@ -1489,10 +1501,9 @@ struct DirectionsTabView: View {
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     announceGuideStartIfManualOrigin()
-                                    session.startBeacon(BeaconModel.StartRequest(
-                                        dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .car,
-                                        accessible: false, variant: nil, line: nil, alternate: nil,
-                                        waypoint: sessionWaypoint, carListener: nil, exitLead: nil))
+                                    session.startBeacon(BeaconModel.carRequest(
+                                        dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman,
+                                        waypoint: sessionWaypoint))
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
                             }
@@ -2210,11 +2221,9 @@ struct DirectionsTabView: View {
     }
 
     private var carGuideStartable: Bool {
-        guard AppLanguage.dataLocale == "ko", let results = model.results,
-              case let .car(briefing) = results.outcomes[.car],
-              briefing.provider == "tmap"
-        else { return false }
-        return true
+        guard let results = model.results, case let .car(briefing) = results.outcomes[.car] else { return false }
+        // 판정은 Kit 한 곳이다 — 채팅 경로 카드의 자동차 버튼(E83 R10)과 같은 조건.
+        return canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: briefing.provider)
     }
 
     /// 대중교통 시작 게이트(B2 §3.1): 탑승 leg ≥ 1(도보 전용 제외)을 경로 단위로 판정한다 —
@@ -2222,7 +2231,7 @@ struct DirectionsTabView: View {
     /// 상태다. en은 2026-09-01 해제(E27 잔여 ① — 서버가 영문 조각을 싣고 표시 계층이 줄 단위로
     /// 고른다), 실험 봉인은 2026-10-01 2.0에서 졸업했다.
     private func altTransitGuideStartable(_ route: TransitRoute) -> Bool {
-        buildTransitGuideRoute(route) != nil
+        transitGuideStartable(route)
     }
 
     /// 안내 시작의 직접 응답: 이 결과가 수동 위치에서 계산됐다면(`resultsUsedManualOrigin`,
@@ -2583,13 +2592,10 @@ struct DirectionsTabView: View {
                             Button(appLocalized(WalkLineText.startKey(kind))) {
                                 lastGuideStart = .walkLine(kind)
                                 announceGuideStartIfManualOrigin()
-                                session.startBeacon(BeaconModel.StartRequest(
-                                    dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .walk,
-                                    accessible: kind.accessible, variant: kind.variant,
-                                    line: kind,
-                                    alternate: WalkLineKind.switchAlternate(
-                                        for: kind, among: model.walkLines.compactMap(\.lineKind)),
-                                    waypoint: sessionWaypoint, carListener: nil, exitLead: nil))
+                                session.startBeacon(BeaconModel.walkLineRequest(
+                                    dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman,
+                                    line: kind, among: model.walkLines.compactMap(\.lineKind),
+                                    waypoint: sessionWaypoint))
                             }
                             .accessibilityFocused($guideStartFocused, equals: .walkLine(kind))
                         }
@@ -2624,6 +2630,12 @@ struct TransitRouteEntry {
     let route: TransitRoute
     let name: String
     let defaultExpanded: Bool
+}
+
+/// 대중교통 안내를 시작할 수 있는 경로인가(B2 §3.1): 탑승 구간이 하나라도 있어야 한다(도보 전용 제외).
+/// 길찾기 화면의 경로별 시작 버튼과 채팅 경로 카드의 대중교통 버튼(E83 R10)이 함께 쓴다.
+func transitGuideStartable(_ route: TransitRoute) -> Bool {
+    buildTransitGuideRoute(route) != nil
 }
 
 /// 추천은 축 라벨을 갖지 않는다(`annotateHighlights`: "자기보다 나은 자기는 없다") —

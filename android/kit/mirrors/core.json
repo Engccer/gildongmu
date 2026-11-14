@@ -110,6 +110,16 @@
       "note": "E70-b 채팅 여정 카드 신선도(웹 journey-card-freshness.ts 미러, 10분·100m·측위 실패). 안드로이드는 채팅 여정 카드가 비목표라(spec 2026-11-12-e70b-chat-journey-design.md §1) 카드를 이식할 때 함께 이식한다"
     },
     {
+      "swift": "RouteStartChat.swift",
+      "status": "pending",
+      "note": "E83 채팅 경로 카드의 [안내 시작] 렌더와 도착지별 묶기(웹 RouteStartRenderPayload 미러). 안드로이드는 비목표라(spec 2026-11-14-e83-chat-route-start-design.md §1) 카드를 이식할 때 함께 이식한다"
+    },
+    {
+      "swift": "GuideStart.swift",
+      "status": "pending",
+      "note": "E83 도착지와 수단으로 안내 시작이 길찾기 화면과 함께 쓰는 판정(자동차 시작 조건, 도보 기본 줄). 안드로이드는 채팅 경로 카드를 이식할 때 함께 이식한다"
+    },
+    {
       "swift": "InlineTargetSpans.swift",
       "status": "pending",
       "note": "E72 줄 안 대상 이름 링크 범위(iOS 먼저, spec 2026-10-17-e72-visible-row-actions-design.md). 안드로이드는 iOS 실기기 판정 뒤 이식한다 — 오프셋은 Character(확장 자소 덩어리) 단위라 Kotlin은 BreakIterator로 센다"

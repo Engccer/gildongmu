@@ -404,6 +404,11 @@ struct GildongmuApp: App {
                 RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman),
                 scope: prefill.role == .from ? .from : .to)
         }
+        // 채팅 경로 카드가 함께 넘긴 경유지(E83 R8)도 그 칸의 확정이라 경유지 최근 목록에 남긴다.
+        if case .place(let label, let lat, let lng, let roman)? = prefill.via {
+            RecentSearchStore().recordEndpoint(
+                RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman), scope: .via)
+        }
     }
 }
 
