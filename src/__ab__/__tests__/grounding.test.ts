@@ -293,6 +293,54 @@ describe("길찾기 출발지·수단 한정 케이스(E88 ⓐ) — 2026-11-14 �
   });
 });
 
+describe("전화번호·이름으로 무장애 정보 케이스(E88 ⓑ) — 2026-11-14 실호출의 도구 반환으로 채점기를 맞춘다", () => {
+  const c58 = CASES.find((c) => c.id === "58-장소-전화번호")!;
+  const places = [
+    {
+      name: "search_places",
+      response: {
+        count: 12,
+        places: [
+          { name: "길동 보룡약국", category: "의료,건강 > 약국", address: "서울 강동구 양재대로 1478", phone: "02-477-4114" },
+          { name: "시민당약국", category: "의료,건강 > 약국", address: "서울 강동구 양재대로 1479", phone: "02-476-8100" },
+          // 전화번호가 없는 곳은 키가 없다.
+          { name: "길동생태공원 탐방객안내소", category: "서비스,산업 > 관리,운영 > 공원관리운영", address: "서울 강동구 천호대로 1291" },
+        ],
+      },
+    },
+  ];
+
+  it("도구가 준 번호를 그대로 말한 답은 통과한다(구분 기호가 달라도)", () => {
+    const text = "길동 보룡약국은 02-477-4114, 시민당약국은 02 476 8100입니다.";
+    expect(scoreGrounding(c58.grounding!, places, text, c58.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("번호가 없는 곳에 지어 붙인 번호와 한 자리 바뀐 번호는 잡힌다", () => {
+    const made = scoreGrounding(c58.grounding!, places, "길동생태공원 탐방객안내소는 02-472-0000입니다.", c58.turns);
+    expect(made.leaked).toContain("phone:02-472-0000");
+    const typo = scoreGrounding(c58.grounding!, places, "시민당약국은 02-476-8101입니다.", c58.turns);
+    expect(typo.pass).toBe(false);
+  });
+
+  it("무장애 미등록 케이스: 등록 정보가 없다고만 말하면 통과하고, 도구에 없는 전화번호를 덧붙이면 잡힌다", () => {
+    const c60 = CASES.find((c) => c.id === "60-무장애-미등록")!;
+    expect(c60.safety).toBe(true);
+    const outputs = [
+      {
+        name: "get_barrier_free_detail",
+        response: {
+          matched: false,
+          searchedPlace: "스타벅스 길동역점 (서울 강동구 양재대로 1487)",
+          notice: "한국관광공사 무장애 여행 정보에 이 이름으로 등록된 곳을 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.",
+        },
+      },
+    ];
+    const honest = "스타벅스 길동역점은 무장애 여행 정보에 등록된 정보가 없어 장애인 화장실 여부를 알 수 없습니다.";
+    expect(scoreGrounding(c60.grounding!, outputs, honest, c60.turns).pass).toBe(true);
+    expect(scoreGrounding(c60.grounding!, outputs, "매장(02-123-4567)에 문의하세요.", c60.turns).pass).toBe(false);
+  });
+});
+
 describe("passK", () => {
   it("k 회 전부 통과해야 통과다", () => {
     expect(passK([true, true, true])).toBe(true);

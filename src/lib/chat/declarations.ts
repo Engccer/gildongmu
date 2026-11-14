@@ -428,13 +428,16 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_barrier_free_detail",
       description:
         "무장애 관광지 한 곳의 장애인 편의시설 상세(주차·출입구·화장실·휠체어 대여·점자·음성안내 등)를 보여준다. " +
-        "contentId는 get_nearby_barrier_free 결과의 contentId를 넣는다. detail이 null이면 항목이 없는 것이고, facilities가 비어 있으면 등록된 편의시설 정보가 없는 것이다.",
+        "contentId는 get_nearby_barrier_free 결과의 contentId를 넣는다. detail이 null이면 항목이 없는 것이고, facilities가 비어 있으면 등록된 편의시설 정보가 없는 것이다. " +
+        "특정 장소를 이름으로 물으면(「경복궁에 휠체어 대여 돼?」) name에 장소 이름을 넣는다(보고 있는 장소를 물으면 둘 다 비워도 된다). " +
+        "matched가 false면 그 이름으로 등록된 무장애 정보가 없는 것이지 편의시설이 없는 것이 아니다(similar가 오면 근처의 다른 등록 장소이니 그 이름을 알려 주고 맞는지 되물어라). " +
+        "matched가 true인데 facilities에 묻는 항목이 없으면 그 항목은 등록된 정보가 없는 것이다(없다고 단정하지 않는다).",
       parametersJsonSchema: {
         type: "object",
         properties: {
           contentId: { type: "string", description: "get_nearby_barrier_free가 준 contentId" },
+          name: { type: "string", description: "장소 이름(contentId를 모를 때. 예: 경복궁)" },
         },
-        required: ["contentId"],
       },
     },
   },

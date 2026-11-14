@@ -26,6 +26,15 @@ const MAX_DISTANCE_METERS = 3000; // 관광지 — 도보권보다 넓게
 /** 서버 반환 상한(numOfRows로도 전달) — 표시 절단은 클라이언트 몫(V1 동형). */
 const SERVER_CAP = 50;
 const MATCH_RADIUS_METERS = 50; // 장소 상세 매칭 — 좁게(false positive 차단)
+/**
+ * 이름으로 찾기(E88)의 거리 가드. 이름이 같은 등록 장소라도 이보다 멀면 다른 곳으로 본다(다른 도시의 같은 이름).
+ * 넓은 부지는 카카오 좌표와 관광공사 좌표가 수백 m 어긋난다(경복궁 약 400m, 실호출 2026-11-14) — 50m로는 놓친다.
+ */
+export const NAME_MATCH_RADIUS_METERS = 1000;
+/** 이름 검색(`searchKeyword2`)에서 받는 후보 수. */
+const KEYWORD_ROWS = 20;
+/** 이름이 꼭 같지 않은 근처 후보를 돌려주는 수. */
+const SIMILAR_CAP = 3;
 
 /** 무장애 편의시설 필드 화이트리스트 → 한글 라벨. ⚠ Task 6에서 실응답으로 교정. */
 // ⚠ 키 철자는 detailWithTour2 실응답으로 확정(2026-06-30 서울도서관 130183·덕수궁
@@ -187,6 +196,66 @@ export async function matchBarrierFreePlace(args: {
   );
   if (!matched) return null;
   return getBarrierFreeDetail(matched.contentId);
+}
+
+/** 이름(키워드) → 등록 장소 후보(기준 좌표에서 가까운 순). 좌표 없는 항목은 뺀다. 키 없으면 빈 배열. */
+export async function searchBarrierFreeByKeyword(
+  keyword: string,
+  origin: { lat: number; lng: number },
+): Promise<BarrierFreePlace[]> {
+  if (!env.DATA_GO_KR_API_KEY || !keyword.trim()) return [];
+  const raw = await callKorWith("searchKeyword2", { keyword: keyword.trim(), numOfRows: String(KEYWORD_ROWS) });
+  return readItems(raw)
+    .map((it) => normalizePlace(it, origin.lat, origin.lng))
+    .filter((p): p is BarrierFreePlace => p !== null)
+    .sort((a, b) => a.distanceMeters - b.distanceMeters);
+}
+
+export interface BarrierFreeNameLookup {
+  /** 이름이 맞은 등록 장소의 상세. 못 찾았으면 null. */
+  detail: BarrierFreeDetail | null;
+  /** 못 찾았을 때만: 이름 검색에 걸린 근처의 다른 등록 장소(이름이 꼭 같지는 않다). */
+  similar: { contentId: string; name: string; distanceMeters: number }[];
+}
+
+/**
+ * 장소 이름과 좌표 → 무장애 편의시설 상세(E88 채팅 도구의 이름 인자).
+ *
+ * 1. 장소 상세 화면과 같은 판정(`matchBarrierFreePlace`, 좌표 50m ∩ 이름 일치)을 먼저 본다.
+ * 2. 없으면 이름 검색(`searchKeyword2`)에서 이름이 같고 `NAME_MATCH_RADIUS_METERS` 안인 곳을 고른다.
+ *    ⚠ 2가 있는 까닭: 좌표 목록(`locationBasedList2`)이 등록 장소 대부분을 돌려주지 않는 때가 있다(2026-11-14 실호출:
+ *    덕수궁 좌표 3km 조회가 4건, 덕수궁 자신은 없음. 이름 검색은 덕수궁·경복궁을 준다). 1만 쓰면 등록된 곳을
+ *    「정보 없음」으로 답한다.
+ *
+ * `names`는 같은 장소를 부르는 이름들이다(사용자가 말한 이름, 장소 검색이 준 이름). 첫 이름으로 검색하고 어느 이름과든 같으면 맞은 것이다.
+ * 못 찾음은 `detail: null`, 조회 실패는 throw.
+ */
+export async function findBarrierFreeByName(args: {
+  lat: number;
+  lng: number;
+  names: readonly string[];
+}): Promise<BarrierFreeNameLookup> {
+  const names = args.names.map((n) => n.trim()).filter(Boolean);
+  if (!env.DATA_GO_KR_API_KEY || names.length === 0) return { detail: null, similar: [] };
+  for (const name of names) {
+    const strict = await matchBarrierFreePlace({ lat: args.lat, lng: args.lng, name });
+    if (strict) return { detail: { ...strict, name: strict.name || name }, similar: [] };
+  }
+  const targets = new Set(names.map(normalizeName));
+  const near = (await searchBarrierFreeByKeyword(names[0], args)).filter(
+    (p) => p.distanceMeters <= NAME_MATCH_RADIUS_METERS,
+  );
+  const matched = near.find((p) => targets.has(normalizeName(p.name)));
+  const similar = () =>
+    near
+      .filter((p) => p !== matched)
+      .slice(0, SIMILAR_CAP)
+      .map((p) => ({ contentId: p.contentId, name: p.name, distanceMeters: p.distanceMeters }));
+  if (!matched) return { detail: null, similar: similar() };
+  const detail = await getBarrierFreeDetail(matched.contentId);
+  // 상세 응답에는 이름이 없다(detailWithTour2) — 검색이 준 등록 이름을 싣는다.
+  if (!detail) return { detail: null, similar: similar() };
+  return { detail: { ...detail, name: matched.name, ...(matched.nameRoman ? { nameRoman: matched.nameRoman } : {}) }, similar: [] };
 }
 
 /** 공백·괄호·흔한 지점 접미 제거 후 비교(보수적 동일성). */

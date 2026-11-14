@@ -33,7 +33,12 @@ import {
 } from "@/lib/bus-route";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
-import { getBarrierFreeDetail, searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
+import {
+  findBarrierFreeByName,
+  getBarrierFreeDetail,
+  normalizeName,
+  searchBarrierFreeNearby,
+} from "@/lib/providers/tour-barrier-free";
 import { fetchStationTimetable } from "@/lib/providers/tago-subway";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
@@ -181,6 +186,13 @@ const BUS_ROUTE_SEARCHED: Record<LocalSearch, string> = {
   unknown: "서울 버스에서만 찾았습니다. 기준 위치가 어느 지역인지 확인하지 못해 그 지역 버스는 찾아보지 못했습니다.",
   noLocation: "서울 버스에서만 찾았습니다. 현재 위치를 몰라 다른 지역 버스는 찾아보지 못했습니다(지역 이름을 알려 주면 찾을 수 있습니다).",
 };
+
+/**
+ * 이름으로 찾은 무장애 정보가 없을 때(E88 spec B2). 「등록된 정보가 없음」이지 「편의시설이 없음」이 아니다 —
+ * `detail: null`만 주면 모델이 시설이 없다고 답한다.
+ */
+const BARRIER_FREE_NOT_REGISTERED =
+  "한국관광공사 무장애 여행 정보에 이 이름으로 등록된 곳을 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.";
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
 
@@ -564,7 +576,44 @@ export async function executeFunction(
     }
     case "get_barrier_free_detail": {
       const contentId = String(args.contentId ?? "");
-      if (!contentId) return { data: { error: "contentId가 필요합니다." } };
+      if (!contentId) {
+        // 이름으로 찾기(E88 spec B2): `name` 인자, 없으면 장소 채팅의 앵커 장소.
+        const named = typeof args.name === "string" ? args.name.trim() : "";
+        const anchor = ctx.placeAnchor;
+        let target: { lat: number; lng: number; names: string[]; label: string };
+        if (anchor && (!named || normalizeName(named) === normalizeName(anchor.name))) {
+          // 보고 있는 장소는 앱이 좌표를 쥐고 있다 — 이름을 다시 검색하면 다른 지점의 같은 이름으로 갈 수 있다.
+          target = { lat: anchor.lat, lng: anchor.lng, names: [anchor.name], label: anchor.name };
+        } else if (named) {
+          const found = await searchPlaces({ query: named, lang: ctx.dataLocale });
+          const place = found.places[0];
+          if (!place) return { data: placeNotFound(named) };
+          const addr = place.roadAddress || place.address;
+          target = {
+            lat: place.lat,
+            lng: place.lng,
+            names: [named, place.name],
+            label: addr ? `${place.name} (${addr})` : place.name,
+          };
+        } else {
+          return { data: { error: "contentId 또는 장소 이름(name)이 필요합니다." } };
+        }
+        const gated = coverageGate(target);
+        if (gated) return gated;
+        const lookup = await findBarrierFreeByName(target);
+        if (!lookup.detail) {
+          return {
+            data: {
+              matched: false,
+              searchedPlace: target.label,
+              ...(lookup.similar.length > 0 ? { similar: lookup.similar } : {}),
+              notice: BARRIER_FREE_NOT_REGISTERED,
+            },
+            source: src,
+          };
+        }
+        return { data: { matched: true, searchedPlace: target.label, detail: lookup.detail }, source: src };
+      }
       // null=항목 없음, facilities:[]=등록 시설 없음 — 두 상태를 뭉개지 않는다. 카드 없음.
       // detailWithTour2는 title을 주지 않아 name이 빈 문자열로 온다(실호출 2026-08-23) —
       // 이름은 LLM이 연쇄 원본(get_nearby_barrier_free)에서 이미 알고 있으므로 빈 값은 싣지 않는다.
