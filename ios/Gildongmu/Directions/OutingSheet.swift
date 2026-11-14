@@ -25,6 +25,8 @@ struct OutingSheet: View {
     @State private var pendingPlace: Place?
     @State private var detailPlace: Place?
     @State private var showsSettings = false
+    /// 「방금 말한 것」의 지난 시간을 셀 기준 시각 — 시트가 열릴 때와 기록이 바뀔 때만 잡는다(아래 `historySection`).
+    @State private var historyNow = Date().timeIntervalSince1970
     /// 체중 입력 권유(도보 종료 화면과 같은 저장 키·같은 판정, E31).
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
@@ -52,7 +54,11 @@ struct OutingSheet: View {
                 .background(.bar, ignoresSafeAreaEdges: [])
             }
         }
+        .onChange(of: model.history.entries.map(\.id)) {
+            historyNow = Date().timeIntervalSince1970
+        }
         .task {
+            historyNow = Date().timeIntervalSince1970
             // 띠바에서 돌아온 시트도 새로 열림과 같은 착지다(E57 위원장 판정 Q1 — 종전 접기 버튼 착지 폐기).
             if model.endScreen != nil {
                 await land($endFocused, "end")
@@ -120,15 +126,15 @@ struct OutingSheet: View {
 
     /// 「방금 말한 것」(E82 V11) — 끝까지 말한 문장과 말하지 못하고 지나온 가게, 최신이 위. 제목 하나만 heading이고
     /// 한 줄이 한 접근성 객체다. 행의 정체성은 기록 순번이라 새 줄이 들어와도 커서가 있던 줄은 그대로다. 지난 시간은
-    /// 화면을 그릴 때의 값이다(초 단위로 다시 그리지 않는다 — 커서가 머문 줄을 VoiceOver가 다시 읽는다).
+    /// 시트가 열린 때와 기록이 바뀐 때 잡은 기준 시각(`historyNow`)으로 센다 — 그리는 순간의 시각으로 세면 위치 갱신마다
+    /// 다시 그려지면서 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
     private var historySection: some View {
         Section {
             if model.history.entries.isEmpty {
                 Text(appLocalized("ios.outing.historyEmpty"))
             } else {
-                let now = Date().timeIntervalSince1970
                 ForEach(model.history.entries) { entry in
-                    historyRow(entry, now: now)
+                    historyRow(entry, now: historyNow)
                 }
             }
         } header: {

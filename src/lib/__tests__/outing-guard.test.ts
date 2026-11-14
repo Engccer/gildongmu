@@ -230,6 +230,15 @@ describe("나들이 시트 배치(E54)", () => {
     expect(sheet).not.toMatch(/Menu\(appLocalized\("ios\.outing\.narration"/);
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
   });
+
+  it("「방금 말한 것」의 지난 시간은 시트 등장·기록 변경 때 잡은 기준 시각으로 센다(E82 V11)", () => {
+    // 그리는 순간의 시각으로 세면 위치 갱신마다 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
+    const sheet = readFileSync(SHEET, "utf8");
+    const history = sheet.slice(sheet.indexOf("private var historySection"), sheet.indexOf("private func historyRow"));
+    expect(history).not.toContain("Date()");
+    expect(history).toContain("historyRow(entry, now: historyNow)");
+    expect(sheet).toMatch(/\.onChange\(of: model\.history\.entries\.map\(\\\.id\)\) \{\s*historyNow = Date\(\)\.timeIntervalSince1970\s*\}/);
+  });
 });
 
 describe("받아쓰기 중 횡단보도 경고(E82 V25~V27)", () => {
