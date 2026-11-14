@@ -27,7 +27,7 @@ function isClaudeProvider(p: VergiliusProvider): p is ClaudeVergiliusProvider {
 }
 
 /**
- * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 걷는 사람은 8초 안에 첫 문장이
+ * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 걷는 사람은 12초 안에 첫 문장이
  * 없으면 실패 문장을 듣는다(V17) — 그 뒤로 모델을 오래 붙들어 과금할 이유가 없다.
  */
 export const VERGILIUS_REQUEST_TIMEOUT_MS = 25_000;
@@ -39,7 +39,7 @@ export function vergiliusRequestSignal(requestSignal: AbortSignal, timeoutMs: nu
 
 export function availableVergiliusProviders(): VergiliusProvider[] {
   const out: VergiliusProvider[] = [];
-  // OpenAI 둘(Terra·Luna)은 한 키로 함께 서고 함께 빠진다(Luna 2026-11-15 위원장 요청으로 추가). Terra가 처음 값이라 맨 앞이다.
+  // OpenAI 둘(Terra·Luna)은 한 키로 함께 서고 함께 빠진다(Luna 2026-11-15 위원장 요청으로 추가). `OPENAI_VERGILIUS_PROVIDERS` 배열 순서(Terra 먼저)가 곧 이 목록 순서다(`routes.test.ts`가 잠근다).
   if (hasOpenAiKey()) out.push(...OPENAI_VERGILIUS_PROVIDERS);
   if (hasGeminiKey()) out.push("google");
   // Claude 셋은 한 키로 함께 서고 함께 빠진다(Opus·Sonnet 2026-11-14, Haiku 2026-11-15 위원장 요청으로 추가).

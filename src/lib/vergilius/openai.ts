@@ -33,7 +33,7 @@ export const OPENAI_VERGILIUS_MODELS: Record<OpenAiVergiliusProvider, string> = 
 };
 
 const RESPONSES_URL = "https://api.openai.com/v1/responses";
-/** 한 회차의 상한. 걷는 사람은 8초 안에 첫 문장이 없으면 실패 문장을 듣는다(V17) — 그보다 오래 붙들 이유가 없다. */
+/** 한 회차의 상한. 걷는 사람은 12초 안에 첫 문장이 없으면 실패 문장을 듣는다(V17) — 그보다 오래 붙들 이유가 없다. */
 const ROUND_TIMEOUT_MS = 20_000;
 /** 답은 한두 문장이다. 도구 인자까지 넉넉히 잡는다. */
 const MAX_OUTPUT_TOKENS = 600;
