@@ -16,21 +16,27 @@ struct OutingCrosswalkHoldTests {
         OutingCrosswalkNotice(id: id, hasAudioSignal: false)
     }
 
-    /// 북쪽을 보고 걷는 사람이 기준점에서 본 예고 판정(`spoken`은 장부의 것).
+    /// 북쪽을 보고 걷는 사람이 기준점에서 본 예고 판정(앱처럼 장부의 `settled`를 넘긴다).
     private func step(_ crosswalks: [OutingCrosswalk], ledger: OutingCrosswalkLedger) -> OutingCrosswalkNotice? {
         let pairs = crosswalks.map { c in
             (crosswalk: c, relation: outingProject(
                 fixLat: lat0, fixLng: lng0, accuracy: 5, heading: .valid(bearing: 0, uncertaintyDeg: 5),
                 placeLat: c.lat, placeLng: c.lng))
         }
-        return outingCrosswalkNoticeStep(crosswalks: pairs, audioSignals: [], spoken: ledger.spoken)
+        return outingCrosswalkNoticeStep(crosswalks: pairs, audioSignals: [], spoken: ledger.settled)
     }
 
-    @Test("막히지 않았으면 그 자리에서 말하고 표시를 세운다(근접 짝 포함)")
+    @Test("막히지 않았으면 그 자리에서 내고, 「말했다」 표시는 끝 신호에서 근접 짝과 함께 선다")
     func speaksWhenOpen() {
         var ledger = OutingCrosswalkLedger()
         do { let result = ledger.notice(notice("a"), silencing: ["a2"], suppressed: false); #expect(result == .speak) }
+        // 낸 것만으로는 「말했다」가 아니다 — 끝 신호를 기다리는 동안에도 다음 fix가 다시 예고하지는 않는다.
+        #expect(ledger.spoken.isEmpty)
+        #expect(ledger.settled == ["a"])
+        #expect(step([crosswalk("a", north: 20)], ledger: ledger) == nil)
+        ledger.spoke("a")
         #expect(ledger.spoken == ["a", "a2"])
+        #expect(ledger.inFlight.isEmpty)
         #expect(ledger.held == nil)
         #expect(ledger.vibrated.isEmpty)
     }
@@ -42,9 +48,10 @@ struct OutingCrosswalkHoldTests {
         let first = step([ahead], ledger: ledger)
         #expect(first?.id == "a")
         do { let result = ledger.notice(notice("a"), silencing: [], suppressed: true); #expect(result == .vibrate) }
-        // 표시가 먼저 서면 문장 없이 「말한 횡단보도」가 된다 — 다음 fix에도 예고 후보로 남아 있어야 한다.
+        // 표시가 먼저 서면 문장 없이 「말한 횡단보도」가 된다.
         #expect(ledger.spoken.isEmpty)
-        #expect(step([ahead], ledger: ledger)?.id == "a")
+        // 쥔 것은 예고 판정이 다시 고르지 않는다(풀릴 때 장부가 낸다).
+        #expect(step([ahead], ledger: ledger) == nil)
         // 받아쓰기 준비가 길어져 같은 예고가 fix마다 와도 진동은 한 번이고 쥔 것은 그대로다(V26).
         for _ in 1...30 {
             do { let result = ledger.notice(notice("a"), silencing: [], suppressed: true); #expect(result == .hold) }
@@ -53,35 +60,40 @@ struct OutingCrosswalkHoldTests {
         #expect(ledger.spoken.isEmpty)
     }
 
-    @Test("풀리면 한 번 내놓고 그때 표시를 세운다 — 두 번 내놓지 않고 다음 fix가 다시 예고하지도 않는다")
+    @Test("풀리면 한 번 내놓는다 — 두 번 내놓지 않고, 끝 신호 전에도 다음 fix가 다시 예고하지 않는다")
     func releasesOnce() {
         var ledger = OutingCrosswalkLedger()
         let ahead = crosswalk("a", north: 20)
         _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
-        do { let result = ledger.release(surelyBehind: false, silencing: ["a2"]) == notice("a"); #expect(result) }
-        #expect(ledger.spoken == ["a", "a2"])
+        do { let result = ledger.release(verdict: .speak, silencing: ["a2"]) == notice("a"); #expect(result) }
+        #expect(ledger.spoken.isEmpty)
         #expect(ledger.held == nil)
-        do { let result = ledger.release(surelyBehind: false, silencing: []); #expect(result == nil) }
+        do { let result = ledger.release(verdict: .speak, silencing: []); #expect(result == nil) }
         #expect(step([ahead], ledger: ledger) == nil)
+        ledger.spoke("a")
+        #expect(ledger.spoken == ["a", "a2"])
     }
 
     @Test("쥔 것이 없으면 풀려도 아무것도 내놓지 않는다")
     func releaseWithoutHold() {
         var ledger = OutingCrosswalkLedger()
-        do { let result = ledger.release(surelyBehind: false, silencing: []); #expect(result == nil) }
+        do { let result = ledger.release(verdict: .speak, silencing: []); #expect(result == nil) }
         _ = ledger.notice(notice("a"), silencing: [], suppressed: false)
-        do { let result = ledger.release(surelyBehind: false, silencing: []); #expect(result == nil) }
+        do { let result = ledger.release(verdict: .speak, silencing: []); #expect(result == nil) }
     }
 
-    @Test("풀릴 때 뒤쪽이 확실하면 말하지 않고 표시도 세우지 않는다 — 돌아서서 다가가면 다시 예고한다")
-    func skipsWhenSurelyBehind() {
-        var ledger = OutingCrosswalkLedger()
-        _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
-        do { let result = ledger.release(surelyBehind: true, silencing: ["a2"]); #expect(result == nil) }
-        #expect(ledger.held == nil)
-        #expect(ledger.spoken.isEmpty)
-        #expect(step([crosswalk("a", north: 20)], ledger: ledger)?.id == "a")
-        do { let result = ledger.notice(notice("a"), silencing: [], suppressed: false); #expect(result == .speak) }
+    @Test("풀릴 때 말하지 않는 판정이면 표시도 세우지 않는다 — 돌아서서 다가가면 다시 예고한다")
+    func skipsWhenNotSpeakable() {
+        for verdict in [OutingHeldCrosswalkVerdict.behind, .far, .gone] {
+            var ledger = OutingCrosswalkLedger()
+            _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
+            do { let result = ledger.release(verdict: verdict, silencing: ["a2"]); #expect(result == nil) }
+            #expect(ledger.held == nil)
+            #expect(ledger.spoken.isEmpty)
+            #expect(ledger.inFlight.isEmpty)
+            #expect(step([crosswalk("a", north: 20)], ledger: ledger)?.id == "a")
+            do { let result = ledger.notice(notice("a"), silencing: [], suppressed: false); #expect(result == .speak) }
+        }
     }
 
     @Test("진동 표시는 「말했다」 표시와 따로다 — 같은 횡단보도는 다시 막혀도 진동을 한 번만 낸다")
@@ -90,29 +102,123 @@ struct OutingCrosswalkHoldTests {
         do { let result = ledger.notice(notice("a"), silencing: [], suppressed: true); #expect(result == .vibrate) }
         #expect(ledger.vibrated == ["a"])
         #expect(ledger.spoken.isEmpty)
-        do { let result = ledger.release(surelyBehind: true, silencing: []); #expect(result == nil) }
+        do { let result = ledger.release(verdict: .behind, silencing: []); #expect(result == nil) }
         do { let result = ledger.notice(notice("a"), silencing: [], suppressed: true); #expect(result == .hold) }
         // 다른 횡단보도는 따로 진동하고, 쥔 것은 최신으로 바뀐다.
         do { let result = ledger.notice(notice("b"), silencing: [], suppressed: true); #expect(result == .vibrate) }
         #expect(ledger.held == notice("b"))
     }
 
-    @Test("낸 문장이 막힘 때문에 버려지면 다시 쥐었다가 풀릴 때 한 번 말한다")
-    func droppedSentenceIsHeldAgain() {
+    @Test("막히기 직전의 버림(받아쓰기 시작이 기기 음성을 억제보다 먼저 멈춤): 다시 쥐고, 다시 낼 때 막혀 있으면 진동 후 풀릴 때 낸다")
+    func dropJustBeforeSuppression() {
         var ledger = OutingCrosswalkLedger()
-        do { let result = ledger.notice(notice("a"), silencing: [], suppressed: false); #expect(result == .speak) }
-        do { let result = ledger.droppedWhileSuppressed(notice("a")); #expect(result) }
+        do { let result = ledger.notice(notice("a"), silencing: ["a2"], suppressed: false); #expect(result == .speak) }
+        // 끊김은 억제가 서기 전에 닿는다 — 막혀 있지 않아도 버리지 않는다.
+        do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .retry) }
         #expect(ledger.held == notice("a"))
-        do { let result = ledger.release(surelyBehind: false, silencing: []) == notice("a"); #expect(result) }
-        do { let result = ledger.release(surelyBehind: false, silencing: []); #expect(result == nil) }
+        #expect(ledger.spoken.isEmpty)
+        // 재시도 지연 사이에 억제가 섰다: 쥔 채 진동 한 번.
+        do { let first = ledger.stillSuppressed(); #expect(first) }
+        do { let again = ledger.stillSuppressed(); #expect(!again) }
+        #expect(ledger.held == notice("a"))
+        // 풀릴 때 내고, 끝 신호에서 「말했다」.
+        do { let result = ledger.release(verdict: .speak, silencing: ["a2"]) == notice("a"); #expect(result) }
+        ledger.spoke("a")
+        #expect(ledger.spoken == ["a", "a2"])
+        #expect(step([crosswalk("a", north: 20)], ledger: ledger) == nil)
     }
 
-    @Test("막히지 않은 채 말하면 쥐고 있던 것은 내려놓는다 — 풀릴 때 한 번 더 말하지 않는다")
+    @Test("막힌 동안의 버림(VoiceOver 끝 신호가 억제 뒤에 닿음): 다시 쥐고 진동은 횡단보도마다 한 번")
+    func dropWhileSuppressed() {
+        var ledger = OutingCrosswalkLedger()
+        _ = ledger.notice(notice("a"), silencing: [], suppressed: false)
+        do { let result = ledger.dropped(notice("a"), suppressed: true); #expect(result == .hold(vibrate: true)) }
+        #expect(ledger.held == notice("a"))
+        do { let result = ledger.release(verdict: .speak, silencing: []) == notice("a"); #expect(result) }
+        do { let result = ledger.dropped(notice("a"), suppressed: true); #expect(result == .hold(vibrate: false)) }
+    }
+
+    @Test("풀린 직후의 버림(받아쓴 원문 통지·포커스 이동이 끊음): 다시 쥐고 잠시 뒤 다시 낸다")
+    func dropJustAfterRelease() {
+        var ledger = OutingCrosswalkLedger()
+        _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
+        do { let result = ledger.release(verdict: .speak, silencing: []) == notice("a"); #expect(result) }
+        do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .retry) }
+        #expect(ledger.spoken.isEmpty)
+        do { let result = ledger.release(verdict: .speak, silencing: ["a2"]) == notice("a"); #expect(result) }
+        ledger.spoke("a")
+        #expect(ledger.spoken == ["a", "a2"])
+    }
+
+    @Test("풀리는 순간 채널이 없어(화면 꺼짐·음성 토글 끔) 곧장 버려져도 다시 낸다")
+    func dropWhenChannelMissingAtRelease() {
+        var ledger = OutingCrosswalkLedger()
+        _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
+        _ = ledger.release(verdict: .speak, silencing: [])
+        do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .retry) }
+        #expect(ledger.held == notice("a"))
+    }
+
+    @Test("재시도는 횡단보도마다 두 번까지 — 세 번째 버림은 포기하고 「말했다」로 적어 다시 예고하지 않는다")
+    func retryLimit() {
+        var ledger = OutingCrosswalkLedger()
+        _ = ledger.notice(notice("a"), silencing: ["a2"], suppressed: false)
+        for _ in 1...outingCrosswalkRetryLimit {
+            do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .retry) }
+            do { let result = ledger.release(verdict: .speak, silencing: ["a2"]) == notice("a"); #expect(result) }
+        }
+        do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .giveUp) }
+        #expect(ledger.held == nil)
+        #expect(ledger.inFlight.isEmpty)
+        #expect(ledger.spoken == ["a", "a2"])
+        #expect(step([crosswalk("a", north: 20)], ledger: ledger) == nil)
+        // 다른 횡단보도의 횟수는 따로다.
+        _ = ledger.notice(notice("b"), silencing: [], suppressed: false)
+        do { let result = ledger.dropped(notice("b"), suppressed: false); #expect(result == .retry) }
+    }
+
+    @Test("그 뒤에 다른 횡단보도를 냈거나 쥐었으면 앞의 것의 늦은 버림은 다시 내지 않는다(표시도 세우지 않는다)")
+    func lateDropOfOlderIsSuperseded() {
+        var ledger = OutingCrosswalkLedger()
+        _ = ledger.notice(notice("a"), silencing: [], suppressed: false)
+        _ = ledger.notice(notice("b"), silencing: [], suppressed: false)
+        do { let result = ledger.dropped(notice("a"), suppressed: false); #expect(result == .superseded) }
+        #expect(ledger.held == nil)
+        #expect(!ledger.spoken.contains("a"))
+        #expect(ledger.settled == ["b"])
+        // 낸 뒤 막혀서 다음 횡단보도를 쥐었다 — 앞의 것의 버림이 쥔 것을 덮지 않는다.
+        var other = OutingCrosswalkLedger()
+        _ = other.notice(notice("a"), silencing: [], suppressed: false)
+        _ = other.notice(notice("b"), silencing: [], suppressed: true)
+        do { let result = other.dropped(notice("a"), suppressed: true); #expect(result == .superseded) }
+        #expect(other.held == notice("b"))
+        // 장부에 없는 문장의 버림(이미 닫혔다)은 아무것도 하지 않는다.
+        do { let result = other.dropped(notice("z"), suppressed: false); #expect(result == .superseded) }
+    }
+
+    @Test("막히지 않은 채 다른 횡단보도를 내면 쥐고 있던 것은 내려놓는다 — 풀릴 때 한 번 더 말하지 않는다")
     func speakingClearsHold() {
         var ledger = OutingCrosswalkLedger()
         _ = ledger.notice(notice("a"), silencing: [], suppressed: true)
-        do { let result = ledger.notice(notice("a"), silencing: [], suppressed: false); #expect(result == .speak) }
-        do { let result = ledger.release(surelyBehind: false, silencing: []); #expect(result == nil) }
+        do { let result = ledger.notice(notice("b"), silencing: [], suppressed: false); #expect(result == .speak) }
+        do { let result = ledger.release(verdict: .speak, silencing: []); #expect(result == nil) }
+    }
+
+    @Test("쥔 것을 낼지: 후보에 없으면 gone, 예고 범위와 오차 밖이면 far, 뒤쪽이 확실하면 behind, 위치를 모르면 말한다")
+    func heldVerdict() {
+        let fix = (lat: lat0, lng: lng0, accuracy: 5.0)
+        let north = OutingHeading.stale(bearing: 0)
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: north, crosswalk: nil) == .gone)
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: north, crosswalk: crosswalk("a", north: 20)) == .speak)
+        // 예고가 서는 가장 먼 점(앞 30m·옆 15m, 약 33.5m) + 오차 5m 안이면 말한다.
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: north, crosswalk: crosswalk("a", north: 38)) == .speak)
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: north, crosswalk: crosswalk("a", north: 40)) == .far)
+        // 걸어 멀어진 것은 방향과 무관하다(방위 없음).
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: .none, crosswalk: crosswalk("a", north: -60)) == .far)
+        #expect(outingHeldCrosswalkVerdict(fix: fix, heading: north, crosswalk: crosswalk("a", north: -25)) == .behind)
+        #expect(outingHeldCrosswalkVerdict(fix: nil, heading: north, crosswalk: crosswalk("a", north: -25)) == .speak)
+        #expect(outingHeldCrosswalkVerdict(
+            fix: (lat: lat0, lng: lng0, accuracy: .infinity), heading: .none, crosswalk: crosswalk("a", north: 80)) == .speak)
     }
 
     @Test("뒤쪽이 확실한가: 마지막으로 알던 방위로 본다(지금 방위든 마지막 진행 방향이든)")

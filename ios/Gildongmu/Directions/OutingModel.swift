@@ -108,8 +108,13 @@ final class OutingModel {
     /// 횡단보도 후보(OSM·서울 도보 네트워크·탐침을 좌표 근접으로 합친 것, id는 좌표 유도 — `outingMergeCrosswalks`).
     private var crosswalks: [String: OutingCrosswalk] = [:]
     private var audioSignals: [RoutePoint] = []
-    /// 횡단보도 예고 장부(Kit `OutingCrosswalkLedger`): 문장을 낸 것·발화가 막힌 동안 쥔 것·진동을 낸 것(E82 V25).
+    /// 횡단보도 예고 장부(Kit `OutingCrosswalkLedger`): 끝까지 말한 것·낸 채 끝 신호를 기다리는 것·쥔 것·진동을 낸 것
+    /// (E82 V0a·V25). 「말했다」는 끝 신호에서만 선다.
     private var crosswalkLedger = OutingCrosswalkLedger()
+    /// 쥔 횡단보도를 다시 낼 예약(풀림 지연 또는 버림 뒤 재시도) — 한 번에 하나다. 세션 경계에서 취소한다.
+    @ObservationIgnored private var heldCrosswalkTask: Task<Void, Never>?
+    /// VoiceOver 대기열 뒤(낮은 우선순위)로 낼 문장 — 막힘이 풀려 내는 횡단보도 경고다(`post`가 한 번 소비한다).
+    private var queuedText: String?
     /// 교차점 후보(OSM 도로망·서울 도보 네트워크·탐침 꺾임 지점, `outingMergeJunctions`). 세션 메모리에만 — 탐침 결과를
     /// 디스크에 남기지 않는다(카카오 약관, spec §6.6).
     private var junctions: [String: OutingJunction] = [:]
@@ -331,6 +336,8 @@ final class OutingModel {
         crosswalks = [:]
         audioSignals = []
         crosswalkLedger = OutingCrosswalkLedger()
+        heldCrosswalkTask?.cancel()
+        heldCrosswalkTask = nil
         junctions = [:]
         spokenJunctions = []
         lastJunctionNoticeAt = nil
@@ -394,6 +401,8 @@ final class OutingModel {
         crosswalks = [:]
         junctions = [:]
         crosswalkLedger = OutingCrosswalkLedger()
+        heldCrosswalkTask?.cancel()
+        heldCrosswalkTask = nil
         spokenJunctions = []
         nodeLogSeq = [:]
         lastProbe = nil
@@ -806,18 +815,18 @@ final class OutingModel {
                     heading: heading, placeLat: c.lat, placeLng: c.lng))
             }
             if let notice = outingCrosswalkNoticeStep(
-                crosswalks: pairs, audioSignals: audioSignals, spoken: crosswalkLedger.spoken) {
+                crosswalks: pairs, audioSignals: audioSignals, spoken: crosswalkLedger.settled) {
                 // 같은 진행선의 근접 짝(넓은 도로의 연석점·중심점)은 함께 침묵(설계 리뷰 M4).
                 let silencing = outingCrosswalkSilenced(after: notice.id, crosswalks: pairs)
                 // 받아쓰기가 발화를 막고 있으면 문장을 버리지 않는다(E82 V25): 진동은 지금 한 번, 문장은 쥐었다가
-                // 막힘이 풀릴 때 낸다(`releaseHeldCrosswalk`). 「말했다」 표시는 문장을 낸 때에만 선다.
+                // 막힘이 풀릴 때 낸다(`releaseHeldCrosswalk`). 「말했다」 표시는 끝 신호에서만 선다(`crosswalkSpokenToEnd`).
                 switch crosswalkLedger.notice(notice, silencing: silencing, suppressed: outputSuppressed) {
                 case .speak:
                     // 횡단보도 예고도 교차로 간격 시계를 돌린다 — 같은 자리에서 "앞에 횡단보도" 바로 뒤 "앞에 사거리"가
                     // 이어지지 않게(m2).
                     lastJunctionNoticeAt = now
                     guideDiagLog("crosswalk n=\(logSeq(notice.id)) audio=\(notice.hasAudioSignal)")
-                    speakCrosswalk(notice)
+                    speakCrosswalk(notice, queued: false)
                     crosswalkSpoken = true
                 case .vibrate:
                     guideDiagLog("crosswalkHeld n=\(logSeq(notice.id)) haptic=1")
@@ -1303,31 +1312,77 @@ final class OutingModel {
         say(text, speechClass: .actionable, onSpoken: spokenRecorder(record))
     }
 
-    /// 횡단보도 예고 한 문장(안전 문장). 발화 막힘 때문에 실리지 못했거나 끊기면 다시 쥔다 — 예고를 낸 직후에
-    /// 받아쓰기가 시작돼도 문장이 사라지지 않는다(E82 V25).
-    private func speakCrosswalk(_ notice: OutingCrosswalkNotice) {
+    /// 횡단보도 예고 한 문장(안전 문장). 끝까지 말해지면 「말했다」를 세우고(`crosswalkSpokenToEnd`), 실리지 못했거나 끊기면
+    /// 다시 쥔다(`crosswalkDropped`) — 받아쓰기 시작·완료가 막 낸 경고를 끊어도 사라지지 않는다(E82 V25).
+    /// `queued`: VoiceOver 대기열 뒤(낮은 우선순위)로 낸다 — 막힘이 풀려 내는 경고만 참이다(`speakHeldCrosswalk`).
+    private func speakCrosswalk(_ notice: OutingCrosswalkNotice, queued: Bool) {
         let text = appLocalized(notice.hasAudioSignal ? "ios.outing.crosswalkAheadAudio" : "ios.outing.crosswalkAhead")
         protectedUntil = uptimeNow + protectSeconds
         protectedText = text
+        queuedText = queued ? text : nil
         say(
             text, speechClass: .actionable,
             onDropped: { [weak self] in self?.crosswalkDropped(notice) },
-            onSpoken: spokenRecorder(.crosswalk(audioSignal: notice.hasAudioSignal)))
+            onSpoken: { [weak self] in self?.crosswalkSpokenToEnd(notice) })
     }
 
+    private func crosswalkSpokenToEnd(_ notice: OutingCrosswalkNotice) {
+        guard isTracking else { return }
+        crosswalkLedger.spoke(notice.id)
+        guideDiagLog("crosswalkSpoken n=\(logSeq(notice.id))")
+        recordHistory(.crosswalk(audioSignal: notice.hasAudioSignal))
+    }
+
+    /// 낸 경고가 버려졌다 — 막힘 여부와 무관하게 다시 쥔다(Kit `OutingCrosswalkLedger.dropped`). 받아쓰기 시작은 기기 음성을
+    /// 억제보다 먼저 멈추므로 막히기 직전의 버림도 여기 온다: 그때는 잠시 뒤 다시 내려다 막혀 있으면 진동하고 풀릴 때를
+    /// 기다린다. 화면 탐색 낭독이 끊은 것도 같은 길이다(횡단보도마다 재시도 상한 `outingCrosswalkRetryLimit`).
     private func crosswalkDropped(_ notice: OutingCrosswalkNotice) {
-        // 발화가 막혀서 버려진 것만 쥔다. 화면 탐색 낭독이 끊은 것은 종전대로 다시 말하지 않는다.
-        guard isTracking, outputSuppressed else { return }
-        let vibrate = crosswalkLedger.droppedWhileSuppressed(notice)
-        guideDiagLog("crosswalkHeld n=\(logSeq(notice.id)) haptic=\(vibrate ? 1 : 0) after=dropped")
-        if vibrate { ResultHaptic.fire(.attention) }
+        guard isTracking else { return }
+        let action = crosswalkLedger.dropped(notice, suppressed: outputSuppressed)
+        switch action {
+        case .hold(let vibrate):
+            guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=hold haptic=\(vibrate ? 1 : 0)")
+            if vibrate { ResultHaptic.fire(.attention) }
+        case .retry:
+            guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=retry")
+            scheduleHeldCrosswalk(after: outingCrosswalkRetryDelaySeconds, queued: false)
+        case .giveUp:
+            guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=giveUp")
+        case .superseded:
+            guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=superseded")
+        }
     }
 
-    /// 발화 막힘이 풀렸다 — 쥔 횡단보도 경고를 낸다(E82 V25). 사람은 물을 때 서므로 방향을 새로 판정할 수 없다:
-    /// 마지막으로 알던 위치와 방향으로 보아 뒤쪽이 확실할 때만 말하지 않고, 모르면 말한다.
+    /// 발화 막힘이 풀렸다 — 쥔 횡단보도 경고를 낸다(E82 V25). 받아쓰기를 끝낸 화면은 같은 순간 포커스를 옮기고 받아쓴 원문을
+    /// 통지하므로, 그 통지가 먼저 게시되게 잠시 미루고 VoiceOver 대기열 뒤로 낸다(원문 통지 → 경고 순서. `.high`로 내면
+    /// 끊기지는 않지만 시작한 뒤 끊을 수 없어 원문 통지가 밀리거나 버려진다 — 사용자가 방금 말한 내용 전체를 잃는다).
     private func releaseHeldCrosswalk() {
+        guard isTracking, crosswalkLedger.held != nil else { return }
+        scheduleHeldCrosswalk(after: outingCrosswalkReleaseDelaySeconds, queued: true)
+    }
+
+    private func scheduleHeldCrosswalk(after seconds: Double, queued: Bool) {
+        heldCrosswalkTask?.cancel()
+        heldCrosswalkTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.speakHeldCrosswalk(queued: queued)
+        }
+    }
+
+    /// 쥔 경고를 지금 낸다(풀림·재시도 공통). 그 사이 다시 막혔으면 쥔 채 진동만 하고 풀릴 때를 기다린다. 사람은 물을 때
+    /// 서므로 방향을 새로 판정할 수 없다: 후보에서 사라졌거나, 예고 범위 밖으로 멀어졌거나, 마지막으로 알던 위치와 방향으로
+    /// 보아 뒤쪽이 확실하면 말하지 않고, 모르면 말한다(Kit `outingHeldCrosswalkVerdict`).
+    private func speakHeldCrosswalk(queued: Bool) {
+        heldCrosswalkTask = nil
         guard isTracking, let held = crosswalkLedger.held else { return }
-        let behind = outingCrosswalkSurelyBehind(fix: lastFix, heading: heading, crosswalk: crosswalks[held.id])
+        if outputSuppressed {
+            let vibrate = crosswalkLedger.stillSuppressed()
+            guideDiagLog("crosswalkHeld n=\(logSeq(held.id)) haptic=\(vibrate ? 1 : 0) after=retry")
+            if vibrate { ResultHaptic.fire(.attention) }
+            return
+        }
+        let verdict = outingHeldCrosswalkVerdict(fix: lastFix, heading: heading, crosswalk: crosswalks[held.id])
         var silencing: [String] = []
         if let fix = lastFix {
             let pairs = crosswalks.values.map { c in
@@ -1337,13 +1392,13 @@ final class OutingModel {
             }
             silencing = outingCrosswalkSilenced(after: held.id, crosswalks: pairs)
         }
-        guard let notice = crosswalkLedger.release(surelyBehind: behind, silencing: silencing) else {
-            guideDiagLog("crosswalkReleased n=\(logSeq(held.id)) spoken=0 reason=behind")
+        guard let notice = crosswalkLedger.release(verdict: verdict, silencing: silencing) else {
+            guideDiagLog("crosswalkReleased n=\(logSeq(held.id)) spoken=0 reason=\(verdict.rawValue)")
             return
         }
         lastJunctionNoticeAt = uptimeNow
-        guideDiagLog("crosswalkReleased n=\(logSeq(notice.id)) spoken=1 audio=\(notice.hasAudioSignal)")
-        speakCrosswalk(notice)
+        guideDiagLog("crosswalkReleased n=\(logSeq(notice.id)) spoken=1 audio=\(notice.hasAudioSignal) queued=\(queued ? 1 : 0)")
+        speakCrosswalk(notice, queued: queued)
     }
 
     /// 그 문장이 끝까지 말해졌을 때 기록에 적는 콜백(V10). 적을 재료가 없으면 끝 신호를 추적하지 않는다.
@@ -1372,19 +1427,23 @@ final class OutingModel {
         speechClass: GuideSpeechClass, onLateDrop: (() -> Void)?
     ) -> Bool {
         let onSpoken = announcer.claimSpokenHandler()
+        let queued = message == queuedText
+        if queued { queuedText = nil }
         guard bypassSuppression || !outputSuppressed else { return false }
         let channel = GuideSpeechOutput.channel(
             speechClass, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible)
         // `channel=`의 값은 종전 로그와 같은 소문자(voiceover·device) + E53의 drop. `fg=`·`class=`는 E53 판독용 —
         // 종전 로그는 기기 음성이 잠금 때문인지 VoiceOver가 꺼져서인지 가르지 못했다(로그 색인 09-30 행).
+        // 말한 글은 쓰지 않는다 — 종류(`class=`)와 글자 수만(가게·도로 이름이 디스크 로그에 남지 않게, E82 V10).
         guideDiagLog(
             "outingSpeak channel=\(channel == .voiceOver ? "voiceover" : channel.rawValue) "
-                + "fg=\(GuideSpeechOutput.isForeground ? 1 : 0) class=\(speechClass.rawValue) text=\(message)")
+                + "fg=\(GuideSpeechOutput.isForeground ? 1 : 0) class=\(speechClass.rawValue) "
+                + "chars=\(message.count) queued=\(queued ? 1 : 0)")
         switch channel {
         case .voiceOver:
             // 전달을 묻는 문장만 끝 신호를 추적한다 — 끝까지 말했으면 `onSpoken`, 끊겼거나 신호가 없으면 버림이다.
             GuideSpeechOutput.postVoiceOver(
-                spokenUnits(message), highPriority: highPriority,
+                spokenUnits(message), highPriority: highPriority, queued: queued,
                 outcome: onSpoken.map { onSpoken in
                     { outcome in
                         switch outcome {

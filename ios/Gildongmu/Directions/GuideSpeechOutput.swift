@@ -40,14 +40,21 @@ enum GuideSpeechOutput {
     /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5). 안내 VoiceOver 게시의 **유일한
     /// 창구**라 게시 장부를 여기서 적는다(E57 착지 대기 — 소스 가드가 다른 게시 자리를 막는다).
     ///
+    /// `queued`: `.low` — 말하는 중인 낭독을 끊지 않고 그 뒤에 선다(Apple: 다른 발화가 끝난 뒤 말한다). 받아쓰기가 끝나 막힘이
+    /// 풀린 순간의 나들이 횡단보도 경고만 쓴다(E82 V25): 같은 순간 화면이 받아쓴 원문을 통지하므로 그 뒤에 선다.
+    ///
     /// `outcome`(E82 V0a 발화 전달 계약): 주면 이 통지가 끝까지 말해졌는지를 한 번 돌려준다 — 끝 신호가 「끝까지 말했다」를
     /// 실어 왔을 때만 `spoken`, 끊겼거나 신호가 오지 않으면(만료 `VoiceOverDeliveryLedger.expirySeconds(for:)`) `dropped`다.
     /// VoiceOver가 꺼진 채 게시하면 듣는 사람이 없어 곧장 `dropped`다.
     static func postVoiceOver(
-        _ text: String, highPriority: Bool, outcome: ((GuideSpeechOutcome) -> Void)? = nil
+        _ text: String, highPriority: Bool, queued: Bool = false, outcome: ((GuideSpeechOutcome) -> Void)? = nil
     ) {
         var attributed = AttributedString(text)
-        if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
+        if highPriority {
+            attributed.accessibilitySpeechAnnouncementPriority = .high
+        } else if queued {
+            attributed.accessibilitySpeechAnnouncementPriority = .low
+        }
         // VoiceOver가 꺼진 채 게시한 통지는 끝 신호가 오지 않는다 — 적지 않는다.
         if UIAccessibility.isVoiceOverRunning {
             observeAnnouncementFinishes()
@@ -77,7 +84,8 @@ enum GuideSpeechOutput {
     }
 
     /// 전달 추적을 결과 없이 비운다(세션 경계 — 끝난 세션의 문장이 다음 세션에 「말했다」나 버림을 통지하지 않게).
-    /// 추적하는 통지는 나들이의 주변 문장뿐이라 나들이 세션 경계만 부른다.
+    /// 추적하는 통지는 나들이가 끝 신호를 묻는 문장(주변 문장 전부, 횡단보도·갈림길 예고)뿐이라
+    /// 나들이 세션 경계만 부른다.
     static func resetDeliveries() {
         deliveries.reset()
         deliveryHandlers.removeAll()

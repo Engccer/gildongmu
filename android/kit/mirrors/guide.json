@@ -277,7 +277,7 @@
     {
       "swift": "OutingCrosswalkHold.swift",
       "status": "pending",
-      "note": "E82 S4 받아쓰기 중 횡단보도 경고(spec 2026-11-14-e82-vergilius-v1-design.md §3.4 V25~V27): 발화가 막힌 동안 쥔 횡단보도와 말했다·진동 표시의 장부, 풀릴 때 뒤쪽 판정. E82는 iOS 실험판 전용이라 이식하지 않는다"
+      "note": "E82 S4 받아쓰기 중 횡단보도 경고(spec 2026-11-14-e82-vergilius-v1-design.md §3.4 V25~V27): 발화가 막힌 동안 쥔 횡단보도, 낸 채 끝 신호를 기다리는 것, 끝 신호에서만 서는 말했다 표시와 진동 표시의 장부, 버림 뒤 재시도(상한 2), 풀릴 때 낼지 판정(사라짐·멀어짐·뒤쪽). E82는 iOS 실험판 전용이라 이식하지 않는다"
     },
     {
       "swift": "OutingDistanceTone.swift",
