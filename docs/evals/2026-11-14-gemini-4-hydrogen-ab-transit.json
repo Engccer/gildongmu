@@ -1,0 +1,1025 @@
+{
+ "run": {
+  "models": [
+   "gemini-3.6-flash",
+   "gemini-4-hydrogen"
+  ],
+  "repeats": 1,
+  "only": "02-,36-",
+  "measuredAt": "2026-11-14T11:03:16.801Z",
+  "interleaved": true,
+  "gitSha": "0248a82d"
+ },
+ "cases": [
+  {
+   "id": "02-대중교통",
+   "turns": [
+    "지금 여기서 여의도역까지 대중교통으로 어떻게 가?"
+   ],
+   "expectAny": [
+    "get_transit_route"
+   ],
+   "forbid": [
+    "get_air_quality",
+    "get_weather"
+   ],
+   "judge": "환승·소요시간·요금이 도구 값 그대로인가. 낭독하기 좋은 순서인가.",
+   "context": {}
+  },
+  {
+   "id": "36-경유지-대중교통",
+   "turns": [
+    "천호역 거쳐서 잠실역까지 대중교통으로"
+   ],
+   "expectAny": [
+    "get_transit_route"
+   ],
+   "judge": "unsupported:waypoint를 '경로 없음'이 아니라 '경유지 미지원'으로 전하는가. 두 구간 분할 같은 앱 안 대안을 주는가.",
+   "context": {}
+  }
+ ],
+ "results": [
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "02-대중교통",
+   "roundStats": [
+    {
+     "ms": 1979,
+     "promptTokens": 3634,
+     "outputTokens": 21,
+     "thoughtTokens": 87,
+     "toolCalls": [
+      "get_transit_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_transit_route",
+       "args": {
+        "destination": "여의도역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 4545,
+     "promptTokens": 4904,
+     "outputTokens": 388,
+     "thoughtTokens": 339,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 6524,
+   "latencyMs": 7143,
+   "toolCalls": [
+    "get_transit_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_transit_route",
+     "args": {
+      "destination": "여의도역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_transit_route",
+     "response": {
+      "destination": "여의도역 5호선",
+      "route": {
+       "recommended": {
+        "summary": {
+         "totalMinutes": 48,
+         "fare": 1850,
+         "transfers": 0,
+         "walkMinutes": 3,
+         "walkMeters": 184,
+         "departName": "길동",
+         "arriveName": "여의도"
+        },
+        "legs": [
+         {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 150,
+          "toName": "길동"
+         },
+         {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "fromName": "길동",
+          "toName": "여의도",
+          "stationCount": 23,
+          "intervalMinutes": 10,
+          "minutes": 45,
+          "serviceWayCode": 1,
+          "quickExit": {
+           "elevator": {
+            "kind": "door",
+            "doors": [
+             "6-4"
+            ]
+           },
+           "stairs": {
+            "kind": "door",
+            "doors": [
+             "5-4"
+            ]
+           }
+          },
+          "serviceStatus": "running",
+          "firstServiceTime": "05:37",
+          "lastServiceTime": "00:00"
+         },
+         {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 34
+         }
+        ],
+        "routeKey": "p0",
+        "vehicle": "subway"
+       },
+       "alternatives": [
+        {
+         "summary": {
+          "totalMinutes": 45,
+          "fare": 1850,
+          "transfers": 2,
+          "walkMinutes": 6,
+          "walkMeters": 182,
+          "departName": "길동",
+          "arriveName": "여의도"
+         },
+         "legs": [
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 150,
+           "toName": "길동"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 5호선",
+           "fromName": "길동",
+           "toName": "강동",
+           "stationCount": 1,
+           "intervalMinutes": 10,
+           "minutes": 2,
+           "serviceWayCode": 1,
+           "quickExit": {
+            "transfer": {
+             "kind": "door",
+             "doors": [
+              "1-1"
+             ]
+            }
+           },
+           "serviceStatus": "running",
+           "firstServiceTime": "05:37",
+           "lastServiceTime": "00:00"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 5호선",
+           "fromName": "강동",
+           "toName": "올림픽공원",
+           "stationCount": 2,
+           "intervalMinutes": 10,
+           "minutes": 5,
+           "serviceWayCode": 2,
+           "quickExit": {
+            "transfer": {
+             "kind": "door",
+             "doors": [
+              "4-4"
+             ]
+            }
+           },
+           "serviceStatus": "running",
+           "firstServiceTime": "05:30",
+           "lastServiceTime": "00:06"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 9호선(급행)",
+           "fromName": "올림픽공원",
+           "toName": "여의도",
+           "stationCount": 9,
+           "intervalMinutes": 6,
+           "minutes": 30,
+           "serviceWayCode": 2,
+           "serviceStatus": "unknown"
+          },
+          {
+           "mode": "walk",
+           "minutes": 1,
+           "distanceMeters": 32
+          }
+         ],
+         "routeKey": "p1",
+         "vehicle": "subway",
+         "highlight": [
+          "fastest"
+         ]
+        },
+        {
+         "summary": {
+          "totalMinutes": 104,
+          "fare": 2000,
+          "transfers": 2,
+          "walkMinutes": 3,
+          "walkMeters": 218,
+          "departName": "길동역1번출구",
+          "arriveName": "여의도역5번출구"
+         },
+         "legs": [
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 157,
+           "toName": "길동역1번출구"
+          },
+          {
+           "mode": "bus",
+           "lineName": "3413",
+           "fromName": "길동역1번출구",
+           "toName": "가락시장.가락몰",
+           "stationCount": 17,
+           "intervalMinutes": 9,
+           "minutes": 30,
+           "serviceRouteId": "100100225",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:20",
+           "lastServiceTime": "23:00"
+          },
+          {
+           "mode": "bus",
+           "lineName": "401",
+           "fromName": "가락시장.가락몰",
+           "toName": "태화기독교사회복지관",
+           "stationCount": 4,
+           "intervalMinutes": 11,
+           "minutes": 11,
+           "serviceRouteId": "100100062",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:00",
+           "lastServiceTime": "22:30"
+          },
+          {
+           "mode": "bus",
+           "lineName": "361",
+           "fromName": "태화기독교사회복지관",
+           "toName": "여의도역5번출구",
+           "stationCount": 33,
+           "intervalMinutes": 11,
+           "minutes": 60,
+           "serviceRouteId": "100100454",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:00",
+           "lastServiceTime": "22:30"
+          },
+          {
+           "mode": "walk",
+           "minutes": 1,
+           "distanceMeters": 61
+          }
+         ],
+         "routeKey": "p5",
+         "vehicle": "bus",
+         "highlight": [
+          "busOnly"
+         ],
+         "displayIndex": 1
+        }
+       ],
+       "totalCandidates": 6
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8538,
+   "outputTokens": 409,
+   "thoughtTokens": 426,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true
+   },
+   "text": "현재 위치(길동역 근처)에서 여의도역까지 이동하는 대중교통 경로를 안내해 드립니다.\n\n---\n\n### 1. 추천 경로 (환승 없이 이동)\n* **총 소요 시간:** 약 48분\n* **요금:** 1,850원 (카드 기준)\n* **환승:** 0회\n\n1. **도보:** 약 150m (2분) 이동하여 **길동역** 도착\n2. **지하철:** 길동역에서 **수도권 5호선** 탑승 → **여의도역** 하차 (23개 역 이동, 약 45분)\n3. **도보:** 도착 후 약 34m (1분) 이동\n\n---\n\n### 2. 최단 시간 경로 (환승 2회 / 9호선 급행 이용)\n* **총 소요 시간:** 약 45분\n* **요금:** 1,850원\n* **환승:** 2회\n\n1. **길동역**에서 **수도권 5호선** 탑승 → **강동역** 하차 (1개 역, 2분)\n2. **강동역**에서 **수도권 5호선**(마천 방면) 환승 → **올림픽공원역** 하차 (2개 역, 5분)\n3. **올림픽공원역**에서 **수도권 9호선 (급행)** 환승 → **여의도역** 하차 (9개 역, 30분)\n\n---\n\n편안한 이동을 위해 환승 없이 한 번에 가실 수 있는 **5호선 직통 경로**를 추천합니다.",
+   "renders": [
+    "transit-route"
+   ],
+   "sources": 1
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "02-대중교통",
+   "roundStats": [
+    {
+     "ms": 3765,
+     "promptTokens": 3557,
+     "outputTokens": 43,
+     "thoughtTokens": 236,
+     "toolCalls": [
+      "get_transit_route",
+      "get_where_am_i"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_transit_route",
+       "args": {
+        "destination": "여의도역"
+       }
+      },
+      {
+       "name": "get_where_am_i",
+       "args": {}
+      }
+     ]
+    },
+    {
+     "ms": 8582,
+     "promptTokens": 5392,
+     "outputTokens": 707,
+     "thoughtTokens": 759,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 12347,
+   "latencyMs": 12922,
+   "toolCalls": [
+    "get_transit_route",
+    "get_where_am_i"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_transit_route",
+     "args": {
+      "destination": "여의도역"
+     }
+    },
+    {
+     "name": "get_where_am_i",
+     "args": {}
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_transit_route",
+     "response": {
+      "destination": "여의도역 5호선",
+      "route": {
+       "recommended": {
+        "summary": {
+         "totalMinutes": 48,
+         "fare": 1850,
+         "transfers": 0,
+         "walkMinutes": 3,
+         "walkMeters": 184,
+         "departName": "길동",
+         "arriveName": "여의도"
+        },
+        "legs": [
+         {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 150,
+          "toName": "길동"
+         },
+         {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "fromName": "길동",
+          "toName": "여의도",
+          "stationCount": 23,
+          "intervalMinutes": 10,
+          "minutes": 45,
+          "serviceWayCode": 1,
+          "quickExit": {
+           "elevator": {
+            "kind": "door",
+            "doors": [
+             "6-4"
+            ]
+           },
+           "stairs": {
+            "kind": "door",
+            "doors": [
+             "5-4"
+            ]
+           }
+          },
+          "serviceStatus": "running",
+          "firstServiceTime": "05:37",
+          "lastServiceTime": "00:00"
+         },
+         {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 34
+         }
+        ],
+        "routeKey": "p0",
+        "vehicle": "subway"
+       },
+       "alternatives": [
+        {
+         "summary": {
+          "totalMinutes": 45,
+          "fare": 1850,
+          "transfers": 2,
+          "walkMinutes": 6,
+          "walkMeters": 182,
+          "departName": "길동",
+          "arriveName": "여의도"
+         },
+         "legs": [
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 150,
+           "toName": "길동"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 5호선",
+           "fromName": "길동",
+           "toName": "강동",
+           "stationCount": 1,
+           "intervalMinutes": 10,
+           "minutes": 2,
+           "serviceWayCode": 1,
+           "quickExit": {
+            "transfer": {
+             "kind": "door",
+             "doors": [
+              "1-1"
+             ]
+            }
+           },
+           "serviceStatus": "running",
+           "firstServiceTime": "05:37",
+           "lastServiceTime": "00:00"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 5호선",
+           "fromName": "강동",
+           "toName": "올림픽공원",
+           "stationCount": 2,
+           "intervalMinutes": 10,
+           "minutes": 5,
+           "serviceWayCode": 2,
+           "quickExit": {
+            "transfer": {
+             "kind": "door",
+             "doors": [
+              "4-4"
+             ]
+            }
+           },
+           "serviceStatus": "running",
+           "firstServiceTime": "05:30",
+           "lastServiceTime": "00:06"
+          },
+          {
+           "mode": "subway",
+           "lineName": "수도권 9호선(급행)",
+           "fromName": "올림픽공원",
+           "toName": "여의도",
+           "stationCount": 9,
+           "intervalMinutes": 6,
+           "minutes": 30,
+           "serviceWayCode": 2,
+           "serviceStatus": "unknown"
+          },
+          {
+           "mode": "walk",
+           "minutes": 1,
+           "distanceMeters": 32
+          }
+         ],
+         "routeKey": "p1",
+         "vehicle": "subway",
+         "highlight": [
+          "fastest"
+         ]
+        },
+        {
+         "summary": {
+          "totalMinutes": 104,
+          "fare": 2000,
+          "transfers": 2,
+          "walkMinutes": 3,
+          "walkMeters": 218,
+          "departName": "길동역1번출구",
+          "arriveName": "여의도역5번출구"
+         },
+         "legs": [
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 157,
+           "toName": "길동역1번출구"
+          },
+          {
+           "mode": "bus",
+           "lineName": "3413",
+           "fromName": "길동역1번출구",
+           "toName": "가락시장.가락몰",
+           "stationCount": 17,
+           "intervalMinutes": 9,
+           "minutes": 30,
+           "serviceRouteId": "100100225",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:20",
+           "lastServiceTime": "23:00"
+          },
+          {
+           "mode": "bus",
+           "lineName": "401",
+           "fromName": "가락시장.가락몰",
+           "toName": "태화기독교사회복지관",
+           "stationCount": 4,
+           "intervalMinutes": 11,
+           "minutes": 11,
+           "serviceRouteId": "100100062",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:00",
+           "lastServiceTime": "22:30"
+          },
+          {
+           "mode": "bus",
+           "lineName": "361",
+           "fromName": "태화기독교사회복지관",
+           "toName": "여의도역5번출구",
+           "stationCount": 33,
+           "intervalMinutes": 11,
+           "minutes": 60,
+           "serviceRouteId": "100100454",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:00",
+           "lastServiceTime": "22:30"
+          },
+          {
+           "mode": "walk",
+           "minutes": 1,
+           "distanceMeters": 61
+          }
+         ],
+         "routeKey": "p5",
+         "vehicle": "bus",
+         "highlight": [
+          "busOnly"
+         ],
+         "displayIndex": 1
+        }
+       ],
+       "totalCandidates": 6
+      }
+     }
+    },
+    {
+     "name": "get_where_am_i",
+     "response": {
+      "address": {
+       "road": "서울특별시 강동구 천호대로185길 89-5",
+       "jibun": "서울 강동구 길동 393-14"
+      },
+      "region": "서울특별시 강동구 길동",
+      "nearestStation": {
+       "name": "길동",
+       "line": "5호선",
+       "bearing": "w",
+       "distanceMeters": 145
+      },
+      "landmarks": [
+       {
+        "name": "길동골목냉면",
+        "category": "음식점 > 한식 > 냉면",
+        "distanceMeters": 20,
+        "bearing": "sw"
+       },
+       {
+        "name": "얼음왕국 길동297호점",
+        "category": "가정,생활 > 식품판매 > 아이스크림판매 > 얼음왕국",
+        "distanceMeters": 20,
+        "bearing": "sw"
+       },
+       {
+        "name": "아구세상 길동점",
+        "category": "음식점 > 한식 > 해물,생선 > 아구",
+        "distanceMeters": 20,
+        "bearing": "s"
+       },
+       {
+        "name": "GS25 우성스타점",
+        "category": "가정,생활 > 편의점 > GS25",
+        "distanceMeters": 22,
+        "bearing": "se"
+       },
+       {
+        "name": "박가면장 길동점",
+        "category": "음식점 > 한식 > 국수",
+        "distanceMeters": 33,
+        "bearing": "se"
+       },
+       {
+        "name": "서향중국집",
+        "category": "음식점 > 중식 > 중국요리",
+        "distanceMeters": 35,
+        "bearing": "ne"
+       },
+       {
+        "name": "페리카나 길동3점",
+        "category": "음식점 > 치킨 > 페리카나",
+        "distanceMeters": 36,
+        "bearing": "ne"
+       },
+       {
+        "name": "스윗하나",
+        "category": "음식점 > 카페 > 테마카페 > 디저트카페",
+        "distanceMeters": 36,
+        "bearing": "ne"
+       }
+      ]
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 8949,
+   "outputTokens": 750,
+   "thoughtTokens": 995,
+   "ok": true,
+   "checks": {
+    "expect": true,
+    "forbid": true
+   },
+   "text": "현재 위치(서울 강동구 길동, 길동역 인근)에서 **여의도역**까지 가는 대중교통 경로입니다. 환승 없이 한 번에 가는 **5호선 직통(추천 경로)**이 가장 편리합니다.\n\n### 1. 추천 경로 (5호선 직통 · 환승 없음)\n* **소요 시간:** 약 48분 (도보 3분 / 184m 포함)\n* **요금:** 1,850원\n* **이동 순서:**\n  1. **길동역**까지 도보 이동 (약 2분, 150m)\n  2. **길동역(수도권 5호선)** 승차 → **여의도역** 하차 (23개 역, 약 45분, 배차간격 약 10분)\n     * 빠른 하차: 계단 5-4 / 엘리베이터 6-4\n  3. **여의도역** 도착 후 도보 이동 (약 1분, 34m)\n\n### 2. 최단 시간 경로 (5호선 → 9호선 급행 · 환승 2회)\n* **소요 시간:** 약 45분 (도보 6분 / 182m 포함)\n* **요금:** 1,850원\n* **이동 순서:**\n  1. **길동역**까지 도보 이동 (약 2분, 150m)\n  2. **길동역(5호선)** → **강동역** 하차 (1개 역, 약 2분 / 빠른 환승 1-1)\n  3. **강동역(5호선)** → **올림픽공원역** 하차 (2개 역, 약 5분 / 빠른 환승 4-4)\n  4. **올림픽공원역(9호선 급행)** → **여의도역** 하차 (9개 역, 약 30분, 배차간격 약 6분)\n  5. **여의도역** 도착 후 도보 이동 (약 1분, 32m)\n\n### 3. 버스만 이용하는 경로 (환승 2회)\n* **소요 시간:** 약 104분 (도보 3분 / 218m 포함)\n* **요금:** 2,000원\n* **이동 순서:**\n  1. **길동역 1번출구** 정류장까지 도보 이동 (약 2분, 157m)\n  2. **3413번** 승차 → **가락시장·가락몰** 하차 (17정류장, 약 30분)\n  3. **401번** 환승 → **태화기독교사회복지관** 하차 (4정류장, 약 11분)\n  4. **361번** 환승 → **여의도역 5번출구** 하차 (33정류장, 약 60분)\n  5. 하차 후 도보 이동 (약 1분, 61m)",
+   "renders": [
+    "transit-route"
+   ],
+   "sources": 3
+  },
+  {
+   "model": "gemini-3.6-flash",
+   "rep": 1,
+   "caseId": "36-경유지-대중교통",
+   "roundStats": [
+    {
+     "ms": 1720,
+     "promptTokens": 3634,
+     "outputTokens": 28,
+     "thoughtTokens": 176,
+     "toolCalls": [
+      "get_transit_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_transit_route",
+       "args": {
+        "via": "천호역",
+        "destination": "잠실역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3449,
+     "promptTokens": 3903,
+     "outputTokens": 20,
+     "thoughtTokens": 383,
+     "toolCalls": [
+      "get_transit_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_transit_route",
+       "args": {
+        "destination": "천호역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 1730,
+     "promptTokens": 4830,
+     "outputTokens": 40,
+     "thoughtTokens": 117,
+     "toolCalls": [
+      "get_station_meta",
+      "get_station_meta"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_station_meta",
+       "args": {
+        "stationName": "천호"
+       }
+      },
+      {
+       "name": "get_station_meta",
+       "args": {
+        "stationName": "잠실"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 3447,
+     "promptTokens": 5156,
+     "outputTokens": 280,
+     "thoughtTokens": 303,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 4,
+   "modelMs": 10346,
+   "latencyMs": 11001,
+   "toolCalls": [
+    "get_transit_route",
+    "get_transit_route",
+    "get_station_meta",
+    "get_station_meta"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_transit_route",
+     "args": {
+      "via": "천호역",
+      "destination": "잠실역"
+     }
+    },
+    {
+     "name": "get_transit_route",
+     "args": {
+      "destination": "천호역"
+     }
+    },
+    {
+     "name": "get_station_meta",
+     "args": {
+      "stationName": "천호"
+     }
+    },
+    {
+     "name": "get_station_meta",
+     "args": {
+      "stationName": "잠실"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_transit_route",
+     "response": {
+      "destination": "잠실역 2호선",
+      "route": null,
+      "unsupported": "waypoint",
+      "notice": "이 길찾기는 경유지를 지원하지 않습니다. 경유지 없이 조회하거나 두 구간으로 나눠 물을 수 있습니다."
+     }
+    },
+    {
+     "name": "get_transit_route",
+     "response": {
+      "destination": "천호역 5호선",
+      "route": {
+       "recommended": {
+        "summary": {
+         "totalMinutes": 7,
+         "fare": 1550,
+         "transfers": 0,
+         "walkMinutes": 3,
+         "walkMeters": 151,
+         "departName": "길동",
+         "arriveName": "천호"
+        },
+        "legs": [
+         {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 150,
+          "toName": "길동"
+         },
+         {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "fromName": "길동",
+          "toName": "천호",
+          "stationCount": 2,
+          "intervalMinutes": 10,
+          "minutes": 4,
+          "serviceWayCode": 1,
+          "quickExit": {
+           "elevator": {
+            "kind": "door",
+            "doors": [
+             "6-1"
+            ]
+           },
+           "stairs": {
+            "kind": "door",
+            "doors": [
+             "5-1"
+            ]
+           }
+          },
+          "serviceStatus": "running",
+          "firstServiceTime": "05:37",
+          "lastServiceTime": "00:00"
+         },
+         {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 1
+         }
+        ],
+        "routeKey": "p0",
+        "vehicle": "subway"
+       },
+       "alternatives": [
+        {
+         "summary": {
+          "totalMinutes": 15,
+          "fare": 1500,
+          "transfers": 0,
+          "walkMinutes": 4,
+          "walkMeters": 320,
+          "departName": "길동역1번출구",
+          "arriveName": "천호역1번출구.문구거리"
+         },
+         "legs": [
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 157,
+           "toName": "길동역1번출구"
+          },
+          {
+           "mode": "bus",
+           "lineName": "130",
+           "fromName": "길동역1번출구",
+           "toName": "천호역1번출구.문구거리",
+           "stationCount": 5,
+           "intervalMinutes": 7,
+           "minutes": 11,
+           "serviceRouteId": "100100018",
+           "serviceCityCode": 1000,
+           "serviceStatus": "running",
+           "firstServiceTime": "04:20",
+           "lastServiceTime": "22:50"
+          },
+          {
+           "mode": "walk",
+           "minutes": 2,
+           "distanceMeters": 163
+          }
+         ],
+         "routeKey": "p1",
+         "vehicle": "bus",
+         "highlight": [
+          "busOnly"
+         ],
+         "displayIndex": 1
+        }
+       ],
+       "totalCandidates": 12
+      }
+     }
+    },
+    {
+     "name": "get_station_meta",
+     "response": {
+      "meta": {
+       "name": "천호(풍납토성)",
+       "nameEn": "Cheonho (Pungnaptoseong)",
+       "lines": [
+        "5호선",
+        "8호선"
+       ],
+       "isTransfer": true,
+       "operator": "서울교통공사",
+       "nameHanja": "千戶(風納土城)"
+      }
+     }
+    },
+    {
+     "name": "get_station_meta",
+     "response": {
+      "meta": {
+       "name": "잠실(송파구청)",
+       "nameEn": "Jamsil (Songpa-gu Office)",
+       "lines": [
+        "2호선",
+        "8호선"
+       ],
+       "isTransfer": true,
+       "operator": "서울교통공사",
+       "nameHanja": "蠶室(松坡區廳)"
+      }
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 17523,
+   "outputTokens": 368,
+   "thoughtTokens": 979,
+   "ok": true,
+   "checks": {
+    "expect": true
+   },
+   "text": "대중교통 길찾기는 **경유지를 포함한 일괄 경로 안내를 지원하지 않습니다.** 이에 따라 경로를 두 구간으로 나누어 안내해 드립니다.\n\n---\n\n### 1구간: 출발지(현재 위치) → 천호역\n* **지하철 이용 (추천, 약 7분 소요):**\n  * **길동역**에서 **지하철 5호선**(방화 방면) 탑승 → **천호역** 하차 (2개 역 이동, 약 4분 탑승)\n* **버스 이용 (약 15분 소요):**\n  * **길동역1번출구** 정류장에서 **130번 버스** 탑승 → **천호역1번출구.문구거리** 정류장 하차 (5개 정류장 이동, 약 11분 탑승)\n\n---\n\n### 2구간: 천호역 → 잠실역\n* **지하철 8호선 직통 이용:**\n  * **천호역**에서 **8호선**(모란 방면) 탑승 → 환승 없이 **잠실역** 하차 (3개 역 이동: 강동구청역 → 몽촌토성역 → 잠실역)",
+   "renders": [
+    "transit-route",
+    "station-meta",
+    "station-meta"
+   ],
+   "sources": 2
+  },
+  {
+   "model": "gemini-4-hydrogen",
+   "rep": 1,
+   "caseId": "36-경유지-대중교통",
+   "roundStats": [
+    {
+     "ms": 18623,
+     "promptTokens": 3556,
+     "outputTokens": 34,
+     "thoughtTokens": 281,
+     "toolCalls": [
+      "get_transit_route"
+     ],
+     "toolArgs": [
+      {
+       "name": "get_transit_route",
+       "args": {
+        "destination": "잠실역",
+        "via": "천호역"
+       }
+      }
+     ]
+    },
+    {
+     "ms": 9500,
+     "promptTokens": 3936,
+     "outputTokens": 105,
+     "thoughtTokens": 1181,
+     "toolCalls": [],
+     "toolArgs": []
+    }
+   ],
+   "rounds": 2,
+   "modelMs": 28123,
+   "latencyMs": 28231,
+   "toolCalls": [
+    "get_transit_route"
+   ],
+   "toolArgs": [
+    {
+     "name": "get_transit_route",
+     "args": {
+      "destination": "잠실역",
+      "via": "천호역"
+     }
+    }
+   ],
+   "toolOutputs": [
+    {
+     "name": "get_transit_route",
+     "response": {
+      "destination": "잠실역 2호선",
+      "route": null,
+      "unsupported": "waypoint",
+      "notice": "이 길찾기는 경유지를 지원하지 않습니다. 경유지 없이 조회하거나 두 구간으로 나눠 물을 수 있습니다."
+     }
+    }
+   ],
+   "unstubbed": [],
+   "promptTokens": 7492,
+   "outputTokens": 139,
+   "thoughtTokens": 1462,
+   "ok": true,
+   "checks": {
+    "expect": true
+   },
+   "text": "대중교통 길찾기는 경유지를 지원하지 않아 **천호역을 거쳐 잠실역까지** 가는 경로를 한 번에 안내해 드릴 수 없습니다.\n\n대신 **먼저 '천호역까지 대중교통'으로 경로를 조회해 이동하신 뒤, 천호역에서 다시 '잠실역까지 대중교통'으로 두 구간을 나눠 조회**해 보시겠어요? (경유지 없이 잠실역까지 바로 가는 경로를 조회하는 것도 가능합니다.)",
+   "renders": [],
+   "sources": 1
+  }
+ ]
+}
