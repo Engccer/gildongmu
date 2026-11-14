@@ -145,6 +145,11 @@ describe("runOpenAiAgentLoop 도구 왕복", () => {
     const trace = newTrace();
     await runOpenAiAgentLoop(opts(call), trace);
     expect(trace.toolOutputs[0].response).toEqual({ ok: true, name: "t", args: {} });
+    expect(trace.rounds[0].brokenArgs).toBe(1);
+    const ok = fakeCall([resp([fnCall("c", "t", ""), fnCall("d", "t", { a: 1 })]), resp([message("답")])]);
+    const t2 = newTrace();
+    await runOpenAiAgentLoop(opts(ok.call), t2);
+    expect(t2.rounds[0].brokenArgs).toBe(0); // 빈 문자열은 깨짐이 아니라 빈 인자
   });
 
   it("Gemini 루프와 같은 상한: 도구 6회차까지 실행하고, 7번째 호출은 실행하지 않은 채 tool_choice none으로 1회 더", async () => {
@@ -185,6 +190,14 @@ describe("runOpenAiAgentLoop 실패 정지", () => {
   it("거절(refusal 내용)은 실패다", async () => {
     const refused = resp([{ type: "message", role: "assistant", content: [{ type: "refusal", refusal: "못 합니다" }] }]);
     await expect(runOpenAiAgentLoop(opts(fakeCall([refused]).call), newTrace())).rejects.toThrow("status=refusal");
+  });
+
+  it("output이 빠진 failed 응답도 TypeError가 아니라 실패 정지이고 그 회차가 trace에 남는다", async () => {
+    const trace = newTrace();
+    const noOutput = { status: "failed", error: { message: "server_error" }, usage: { input_tokens: 10, output_tokens: 0 } } as OpenAiResponse;
+    await expect(runOpenAiAgentLoop(opts(fakeCall([noOutput]).call), trace)).rejects.toThrow(OpenAiStopError);
+    expect(trace.rounds).toHaveLength(1);
+    expect(trace.rounds[0].promptTokens).toBe(10);
   });
 
   it("도구 회차 뒤의 실패도 실패다", async () => {

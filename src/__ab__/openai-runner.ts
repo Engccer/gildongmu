@@ -81,7 +81,8 @@ export interface OpenAiResponse {
   status: string;
   incomplete_details?: { reason?: string } | null;
   error?: { message?: string } | null;
-  output: Record<string, unknown>[];
+  /** `failed` 응답은 빠질 수 있다. */
+  output?: Record<string, unknown>[];
   usage?: {
     input_tokens: number;
     input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
@@ -125,6 +126,8 @@ export interface OpenAiRoundStat {
   thoughtTokens: number;
   toolCalls: string[];
   toolArgs: { name: string; args: Record<string, unknown> }[];
+  /** JSON으로 읽히지 않아 빈 인자로 실행한 호출 수(Gemini·Claude엔 없는 갈래 — `arg` 축 실패가 인자 누락인지 깨짐인지 가른다). */
+  brokenArgs: number;
 }
 
 export class OpenAiStopError extends Error {
@@ -166,22 +169,27 @@ interface FunctionCallItem {
   arguments: string;
 }
 
-function parseArguments(raw: string): Record<string, unknown> {
+/** 객체로 읽히면 그 객체, 아니면 null(깨진 인자). 빈 문자열은 빈 인자다. */
+function tryParseArguments(raw: string): Record<string, unknown> | null {
   if (raw.trim() === "") return {};
   try {
     const v: unknown = JSON.parse(raw);
-    return v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+    return v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
   } catch {
-    // 깨진 인자는 빈 인자로 실행부에 넘긴다(실행부가 오류로 답한다). Gemini·Claude는 SDK가 객체로 주므로 이 갈래가 없다.
-    return {};
+    return null;
   }
+}
+
+/** 깨진 인자는 빈 인자로 실행부에 넘긴다(실행부가 오류로 답한다). Gemini·Claude는 SDK가 객체로 주므로 이 갈래가 없다. */
+function parseArguments(raw: string): Record<string, unknown> {
+  return tryParseArguments(raw) ?? {};
 }
 
 /** 답 글과 거절 여부. 메시지 항목의 `output_text`만 잇는다. */
 function textOf(r: OpenAiResponse): { text: string; refusal: string | null } {
   let text = "";
   let refusal: string | null = null;
-  for (const item of r.output) {
+  for (const item of r.output ?? []) {
     if (item.type !== "message") continue;
     for (const c of (item.content as Record<string, unknown>[] | undefined) ?? []) {
       if (c.type === "output_text") text += String(c.text ?? "");
@@ -220,7 +228,8 @@ export async function runOpenAiAgentLoop(opts: OpenAiLoopOptions, trace: OpenAiL
     };
     const startedAt = Date.now();
     const res = await call(body);
-    const calls = res.output.filter((o): o is FunctionCallItem & Record<string, unknown> => o.type === "function_call");
+    const output = res.output ?? [];
+    const calls = output.filter((o): o is FunctionCallItem & Record<string, unknown> => o.type === "function_call");
     const u = res.usage;
     const cacheRead = u?.input_tokens_details?.cached_tokens ?? 0;
     const cacheWrite = u?.input_tokens_details?.cache_write_tokens ?? 0;
@@ -237,20 +246,21 @@ export async function runOpenAiAgentLoop(opts: OpenAiLoopOptions, trace: OpenAiL
       thoughtTokens: reasoning,
       toolCalls: calls.map((c) => c.name),
       toolArgs: calls.map((c) => ({ name: c.name, args: parseArguments(c.arguments) })),
+      brokenArgs: calls.filter((c) => tryParseArguments(c.arguments) === null).length,
     });
     if (res.status !== "completed") {
       throw new OpenAiStopError(res.status, res.incomplete_details?.reason ?? res.error?.message ?? "");
     }
     const { text, refusal } = textOf(res);
     if (refusal !== null) throw new OpenAiStopError("refusal", refusal.slice(0, 100));
-    return { res, calls, text };
+    return { output, calls, text };
   };
 
   let r = await round("auto");
   for (let iter = 0; iter < maxIterations; iter++) {
     if (r.calls.length === 0) break;
     // 추론·메시지·도구 호출 항목을 바꾸지 않고 붙인다(append-only).
-    input.push(...r.res.output);
+    input.push(...r.output);
     const settled = await Promise.allSettled(r.calls.map((c) => executeFunction(c.name, parseArguments(c.arguments), ctx)));
     settled.forEach((s, i) => {
       const { name, call_id } = r.calls[i];
