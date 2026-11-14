@@ -11,13 +11,6 @@ import { toGeminiDeclarations, toOpenAiTools, type VergiliusToolSpec } from "./t
 import type { VergiliusModelSession, VergiliusProvider } from "./types";
 
 /**
- * Google 모델을 선택지로 여는가. **E86 판정 전까지 닫는다**: `gemini-3.5-flash-lite`가 종류로 거르는 질문(「이 근처에 카페
- * 있어?」)에서 좌우를 틀리게 말했다(실측 `docs/evals/2026-11-14-e82-vergilius-ask.md`). 위원장이 새 Google 모델 평가
- * (BACKLOG E86)를 한 뒤 모델을 정한다. 어댑터(`google.ts`)와 그 테스트는 그대로 둔다 — 여는 일은 이 상수 하나다.
- */
-export const VERGILIUS_GOOGLE_OPEN: boolean = false;
-
-/**
  * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 걷는 사람은 8초 안에 첫 문장이
  * 없으면 실패 문장을 듣는다(V17) — 그 뒤로 모델을 오래 붙들어 과금할 이유가 없다.
  */
@@ -31,7 +24,7 @@ export function vergiliusRequestSignal(requestSignal: AbortSignal, timeoutMs: nu
 export function availableVergiliusProviders(): VergiliusProvider[] {
   const out: VergiliusProvider[] = [];
   if (hasOpenAiKey()) out.push("openai");
-  if (VERGILIUS_GOOGLE_OPEN && hasGeminiKey()) out.push("google");
+  if (hasGeminiKey()) out.push("google");
   return out;
 }
 
@@ -55,7 +48,6 @@ export function createVergiliusSession(input: VergiliusSessionInput): VergiliusM
       signal: input.signal,
     });
   }
-  if (!VERGILIUS_GOOGLE_OPEN) return null;
   const ai = getGeminiClient();
   if (!ai) return null;
   return createGoogleSession({

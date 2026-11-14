@@ -40,7 +40,6 @@ vi.mock("@/lib/vergilius/loop", () => ({ runVergiliusLoop: spies.runVergiliusLoo
 import { POST } from "../ask/route";
 import { GET } from "../providers/route";
 import {
-  VERGILIUS_GOOGLE_OPEN,
   VERGILIUS_REQUEST_TIMEOUT_MS,
   vergiliusRequestSignal,
 } from "@/lib/vergilius/providers";
@@ -70,15 +69,16 @@ beforeEach(() => {
 });
 
 describe("GET /api/vergilius/providers", () => {
-  it("E86 판정 전까지 Google은 닫혀 있다: Gemini 키가 있어도 목록은 OpenAI뿐이다", async () => {
-    expect(VERGILIUS_GOOGLE_OPEN).toBe(false);
+  it("키 있는 회사가 목록에 선다: OpenAI 다음 Google(E86 판정 2026-11-14로 Google을 연다)", async () => {
     const res = await GET();
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ providers: ["openai"] });
+    expect(await res.json()).toEqual({ providers: ["openai", "google"] });
   });
 
   it("키 없는 회사는 목록에 없다", async () => {
     gates.openai = false;
+    expect(await (await GET()).json()).toEqual({ providers: ["google"] });
+    gates.gemini = false;
     expect(await (await GET()).json()).toEqual({ providers: [] });
   });
 });
@@ -121,7 +121,14 @@ describe("POST /api/vergilius/ask", () => {
     expect(prompt).toContain("k101 | 가나카페");
   });
 
-  it("닫아 둔 회사: provider가 google이면 키 없는 회사와 같은 502이고 어느 세션도 만들지 않는다", async () => {
+  it("Google을 고르면 Google 세션을 만든다", async () => {
+    await (await ask(askFixture({ provider: "google" }))).text();
+    expect(spies.createGoogleSession).toHaveBeenCalledTimes(1);
+    expect(spies.createOpenAiSession).not.toHaveBeenCalled();
+  });
+
+  it("키 없는 회사: provider가 google인데 Gemini 키가 없으면 502이고 어느 세션도 만들지 않는다", async () => {
+    gates.gemini = false;
     const res = await ask(askFixture({ provider: "google" }));
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "provider_unavailable" });
