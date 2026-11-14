@@ -446,7 +446,7 @@ export async function executeFunction(
       const fromStop = args.fromStop ? String(args.fromStop) : undefined;
       const toStop = args.toStop ? String(args.toStop) : undefined;
       const roman = ctx.dataLocale === "en";
-      const found = await lookupBusRoute({ routeNo, coord, fromStop }, busRouteDeps);
+      const found = await lookupBusRoute({ routeNo, coord, fromStop, regionOnly: Boolean(explicit) }, busRouteDeps);
       const note = resolved ? placeNote(resolved) : {};
       // 지명은 지역을 가리는 데만 쓴다: 「부산」이 해운대해수욕장으로 풀린 실측이 있어(2026-11-14), 그 좌표로 타는 정류소나
       // 「근처를 지난다」를 말하면 사용자가 말하지 않은 곳이 답에 선다.
@@ -469,7 +469,13 @@ export async function executeFunction(
       };
       if (found.kind === "ambiguous") {
         return {
-          data: { ...scope, ...note, routeNo, candidates: found.candidates.map((c) => summarizeBusLine(shown(c), roman)) },
+          data: {
+            ...scope,
+            ...note,
+            routeNo,
+            candidates: found.candidates.map((c) => summarizeBusLine(shown(c), roman)),
+            ...(found.more ? { moreCandidates: true } : {}),
+          },
           source: src,
         };
       }

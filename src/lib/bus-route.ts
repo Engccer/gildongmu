@@ -91,7 +91,7 @@ export interface BusRouteCandidate {
 
 export type BusRouteLookup =
   | { kind: "found"; chosen: BusRouteCandidate; local: LocalSearch; searchFailed: BusSource[] }
-  | { kind: "ambiguous"; candidates: BusRouteCandidate[]; local: LocalSearch; searchFailed: BusSource[] }
+  | { kind: "ambiguous"; candidates: BusRouteCandidate[]; /** 후보가 더 있어 잘랐다. */ more?: true; local: LocalSearch; searchFailed: BusSource[] }
   | { kind: "notFound"; similar: string[]; local: LocalSearch };
 
 export interface BusRouteQuery {
@@ -99,6 +99,8 @@ export interface BusRouteQuery {
   routeNo: string;
   coord?: Coord;
   fromStop?: string;
+  /** 좌표가 사용자가 말한 지명에서 왔다: 지역(도시코드)만 가리고 「근처를 지나는 노선」으로 고르지 않는다. */
+  regionOnly?: boolean;
 }
 
 function minDistance(stops: BusLineStop[], coord: Coord): number {
@@ -196,7 +198,8 @@ export async function lookupBusRoute(q: BusRouteQuery, deps: BusRouteDeps): Prom
             : await deps.tagoStops(line);
         // 빈 목록은 「정류소 0개인 노선」이 아니라 받지 못한 것이다.
         if (r.stops.length === 0) return { ...base, stops: null, truncated: false, nearYou: null };
-        const nearYou = q.coord ? minDistance(r.stops, q.coord) <= BUS_ROUTE_NEAR_M : null;
+        // 지명으로 푼 좌표는 지역만 가린다: 그 한 점 근처를 지나는지로 노선을 고르지 않는다(spec §2).
+        const nearYou = q.coord && !q.regionOnly ? minDistance(r.stops, q.coord) <= BUS_ROUTE_NEAR_M : null;
         return { ...base, stops: r.stops, truncated: r.truncated, nearYou };
       } catch (e) {
         console.error("[bus-route] 경유 정류소 조회 실패", e);
@@ -230,7 +233,13 @@ export async function lookupBusRoute(q: BusRouteQuery, deps: BusRouteDeps): Prom
     const byStop = pool.filter((c) => c.stops && matchLineStops(c.stops, from).length > 0);
     if (byStop.length === 1) return pick(byStop[0]);
   }
-  return { kind: "ambiguous", candidates: pool.slice(0, MAX_LISTED), local, searchFailed: failed };
+  return {
+    kind: "ambiguous",
+    candidates: pool.slice(0, MAX_LISTED),
+    ...(pool.length > MAX_LISTED ? { more: true as const } : {}),
+    local,
+    searchFailed: failed,
+  };
 }
 
 function compact(name: string): string {
@@ -377,8 +386,10 @@ export function describeBusRoute(c: BusRouteCandidate, ask: BusRouteAsk): Record
       const rides = refs.flatMap((r) => {
         const t = targets.find((i) => i > r.idx);
         if (t === undefined) return [];
-        // 타는 곳과 내리는 곳의 방면이 다르면 회차 지점을 지나 되돌아오는 길이다.
-        const viaTurnaround = stops[r.idx].towards !== stops[t].towards;
+        // 회차 지점을 사이에 두면 되돌아오는 길이다. 회차 표식이 없는 노선만 방면 이름으로 가른다
+        // (기점과 종점 이름이 같은 노선은 방면 이름이 양쪽 같다).
+        const viaTurnaround =
+          turnaroundIdx >= 0 ? r.idx < turnaroundIdx && t > turnaroundIdx : stops[r.idx].towards !== stops[t].towards;
         return [
           {
             boardAt: nm(stops[r.idx].name),
@@ -390,9 +401,12 @@ export function describeBusRoute(c: BusRouteCandidate, ask: BusRouteAsk): Record
         ];
       });
       const direct = rides.filter((r) => !r.viaTurnaround);
-      out.rides = (direct.length > 0 ? direct : rides).map(({ viaTurnaround, ...r }) =>
-        viaTurnaround ? { ...r, viaTurnaround } : r,
-      );
+      // 타는 곳에서 앞으로 그 정류소가 없으면(이미 지난 정류소) 빈 목록 대신 그 사실을 싣는다.
+      if (rides.length === 0) out.toStop = { ...(out.toStop as object), behindBoarding: true };
+      else
+        out.rides = (direct.length > 0 ? direct : rides).map(({ viaTurnaround, ...r }) =>
+          viaTurnaround ? { ...r, viaTurnaround } : r,
+        );
     }
     return finish();
   }

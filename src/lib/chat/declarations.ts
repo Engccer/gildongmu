@@ -236,9 +236,9 @@ const DECLARATIONS: GatedDeclaration[] = [
         "버스 노선 번호로 그 노선의 기점·종점·회차 지점, 첫차·막차·배차 간격, 특정 정류소에 서는지와 몇 정류장 뒤인지를 알려준다(「272번 어디로 가?」「이 버스 시청 가?」). " +
         "정류소에 버스가 언제 오는지는 get_bus_arrivals를 쓴다. 버스의 현재 위치와 요금은 제공하지 않는다. " +
         "rides가 오면 어느 정류소(boardAt)에서 어느 방면(towards) 차를 타면 몇 정류장 뒤(stopsAway)에 alightAt에 서는지 말하라(viaTurnaround가 true면 회차 지점을 지나 돌아가는 길이다). " +
-        "toStop.onRoute가 true인데 rides가 없으면 타는 정류소를 몰라 세지 못한 것이고, false면 그 이름의 정류소가 이 노선에 없는 것이다. " +
+        "toStop.onRoute가 true인데 rides가 없으면 타는 정류소를 몰라 세지 못한 것이고(toStop.behindBoarding이 true면 타는 곳에서는 이미 지난 정류소다), false면 그 이름의 정류소가 이 노선에 없는 것이다. " +
         "nextStops는 타는 곳 다음 정류소 몇 개이고, someStops는 경유 정류소에서 고르게 뽑은 몇 곳이니 「지나는 정류소 일부」라고 부른다. firstBus·lastBus는 기점 출발 시각이고 null이면 알 수 없는 것이다. " +
-        "candidates가 오면 같은 번호 노선이 여럿이라 고르지 못한 것이니 기점·종점이나 지역으로 어느 노선인지 되물어라. " +
+        "candidates가 오면 같은 번호 노선이 여럿이라 고르지 못한 것이니 기점·종점이나 지역으로 어느 노선인지 되물어라(moreCandidates가 true면 후보가 더 있다). " +
         "found가 false면 그 번호가 없는 것이다. searched가 오면 거기 적힌 범위만 찾아본 것이니 노선을 찾았든 못 찾았든 그 범위를 먼저 말하라. route.passesNearYou가 false면 현재 위치 근처를 지나지 않는 노선이니 지역(route.region)을 함께 말하라.",
       parametersJsonSchema: {
         type: "object",

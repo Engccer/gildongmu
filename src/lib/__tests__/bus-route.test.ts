@@ -175,6 +175,41 @@ describe("lookupBusRoute", () => {
     expect(r.candidates.every((c) => c.nearYou === false)).toBe(true);
   });
 
+  it("지명에서 온 좌표(regionOnly)는 근처 노선 고르기에 쓰지 않는다 — 지역 노선이 여럿이면 되묻는다", async () => {
+    const q = { routeNo: "1003", coord: 부산서면 };
+    const two = deps({
+      region: async () => ({ province: "부산광역시", city: "부산진구" }),
+      searchTago: async (code) => [
+        line({ source: "tago", cityCode: code, routeId: "near", routeNo: "1003", startStop: "A", endStop: "B" }),
+        line({ source: "tago", cityCode: code, routeId: "far", routeNo: "1003", startStop: "C", endStop: "D" }),
+      ],
+      tagoStops: async (l) => ({ stops: roundTrip(l.routeId === "near" ? 부산서면 : { lat: 35.3, lng: 129.2 }), truncated: false }),
+    });
+    // 현재 위치면 근처를 지나는 쪽을 고른다.
+    const here = await lookupBusRoute(q, two);
+    expect(here.kind === "found" && here.chosen.line.routeId).toBe("near");
+    // 지명이면 그 한 점으로 고르지 않는다.
+    const named = await lookupBusRoute({ ...q, regionOnly: true }, two);
+    expect(named.kind).toBe("ambiguous");
+    if (named.kind !== "ambiguous") return;
+    expect(named.candidates.every((c) => c.nearYou === null)).toBe(true);
+    expect(named.more).toBeUndefined();
+  });
+
+  it("후보가 다섯을 넘으면 다섯만 싣고 더 있음을 남긴다", async () => {
+    const r = await lookupBusRoute(
+      { routeNo: "1" },
+      deps({
+        searchSeoul: async () =>
+          Array.from({ length: 7 }, (_, i) => line({ routeNo: "1", routeId: `r${i}`, startStop: `기점${i}`, endStop: `종점${i}` })),
+      }),
+    );
+    expect(r.kind).toBe("ambiguous");
+    if (r.kind !== "ambiguous") return;
+    expect(r.candidates).toHaveLength(5);
+    expect(r.more).toBe(true);
+  });
+
   it("위치가 없고 서울 노선이 여럿이면 후보를 돌려주고, 지역 꼬리가 지역 이름이 된다", async () => {
     const r = await lookupBusRoute(
       { routeNo: "1003" },
@@ -363,6 +398,27 @@ describe("describeBusRoute", () => {
     expect(d.rides).toEqual([
       { boardAt: "나역.나사거리", towards: "라종점", alightAt: "가동", stopsAway: 4, viaTurnaround: true },
     ]);
+  });
+
+  it("타는 곳에서 이미 지난 정류소면 빈 rides 대신 behindBoarding을 싣는다(회차 없는 편도 노선)", () => {
+    const oneWay = ["가동", "나역", "다시장", "라종점"].map((name, i) => ({
+      name,
+      order: i + 1,
+      lat: 37.5663 + i * 0.001,
+      lng: 126.9779,
+      towards: "라종점",
+      turnaround: false,
+    }));
+    const d = describeBusRoute(candidate({ stops: oneWay }), { fromStop: "다시장", toStop: "가동", roman: false });
+    expect(d.rides).toBeUndefined();
+    expect(d.toStop).toMatchObject({ onRoute: true, behindBoarding: true });
+  });
+
+  it("기점과 종점 이름이 같아 방면 이름이 양쪽 같아도 회차 지점을 넘으면 viaTurnaround다", () => {
+    const loop = roundTrip(서울시청).map((s) => ({ ...s, towards: "가동" }));
+    const d = describeBusRoute(candidate({ stops: loop }), { fromStop: "다시장", toStop: "가동", roman: false });
+    // 가는 길의 다시장(3번째)에서는 회차 지점을 돌아 4정류장, 오는 길의 다시장(5번째)에서는 곧장 2정류장: 곧장 가는 줄만 남는다.
+    expect(d.rides).toEqual([{ boardAt: "다시장", towards: "가동", alightAt: "가동", stopsAway: 2 }]);
   });
 
   it("가려는 정류소가 노선에 없으면 onRoute false이고 rides를 만들지 않는다", () => {

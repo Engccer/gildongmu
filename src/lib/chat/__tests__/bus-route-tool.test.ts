@@ -59,7 +59,7 @@ describe("get_bus_route (채팅 도구)", () => {
   it("번호를 정규화해 넘기고, 찾은 노선은 카드 없이 글 재료와 출처만 돌려준다", async () => {
     mockLookup.mockResolvedValue({ kind: "found", chosen, local: "seoul", searchFailed: [] });
     const r = await executeFunction("get_bus_route", { routeNo: "272번", toStop: "안국역" }, ctx({ userLocation: 길동 }));
-    expect(mockLookup).toHaveBeenCalledWith({ routeNo: "272", coord: 길동, fromStop: undefined }, expect.anything());
+    expect(mockLookup).toHaveBeenCalledWith({ routeNo: "272", coord: 길동, fromStop: undefined, regionOnly: false }, expect.anything());
     expect(r.render).toBeUndefined();
     expect((r.data as { searched?: string }).searched).toBeUndefined();
     expect(r.source).toEqual([{ label: "source.tago" }]);
@@ -74,7 +74,7 @@ describe("get_bus_route (채팅 도구)", () => {
   it("위치가 없어도 답한다(좌표 없이 조회)", async () => {
     mockLookup.mockResolvedValue({ kind: "found", chosen: { ...chosen, nearYou: null }, local: "noLocation", searchFailed: [] });
     const r = await executeFunction("get_bus_route", { routeNo: "272" }, ctx());
-    expect(mockLookup).toHaveBeenCalledWith({ routeNo: "272", coord: undefined, fromStop: undefined }, expect.anything());
+    expect(mockLookup).toHaveBeenCalledWith({ routeNo: "272", coord: undefined, fromStop: undefined, regionOnly: false }, expect.anything());
     expect(r.data).toMatchObject({ route: { routeNo: "272" } });
     // 찾았어도 못 본 지역이 있으면 범위를 싣는다(더 맞는 노선이 그 지역에 있을 수 있다).
     expect((r.data as { searched: string }).searched).toContain("현재 위치를 몰라");
@@ -93,7 +93,8 @@ describe("get_bus_route (채팅 도구)", () => {
     mockLookup.mockResolvedValue({ kind: "notFound", similar: ["1003(심야)"], local: "searched" });
     const r = await executeFunction("get_bus_route", { routeNo: "1003", place: "부산" }, ctx({ userLocation: 길동 }));
     expect(mockLookup).toHaveBeenCalledWith(
-      expect.objectContaining({ coord: expect.objectContaining({ lat: 35.1796, lng: 129.0756 }) }),
+      // 지명 좌표는 지역만 가린다(근처 노선 고르기에 쓰지 않는다).
+      expect.objectContaining({ coord: expect.objectContaining({ lat: 35.1796, lng: 129.0756 }), regionOnly: true }),
       expect.anything(),
     );
     expect(r.data).toEqual({
@@ -143,6 +144,7 @@ describe("get_bus_route (채팅 도구)", () => {
     mockLookup.mockResolvedValue({
       kind: "ambiguous",
       candidates: [chosen, { ...chosen, region: "부산광역시", line: { ...chosen.line, source: "tago", startStop: "기장", endStop: "서면" } }],
+      more: true,
       local: "searched",
       searchFailed: ["tago"],
     });
@@ -153,6 +155,7 @@ describe("get_bus_route (채팅 도구)", () => {
         { routeNo: "272", region: "서울", routeType: "간선버스", startStop: "면목동", endStop: "남가좌동", passesNearYou: false },
         { routeNo: "272", region: "부산광역시", routeType: "간선버스", startStop: "기장", endStop: "서면", passesNearYou: false },
       ],
+      moreCandidates: true,
       searchIncomplete: true,
     });
   });
