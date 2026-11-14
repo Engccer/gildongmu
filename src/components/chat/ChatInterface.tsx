@@ -121,10 +121,18 @@ export function ChatInterface({
   );
   // 경로 안내 시작 카드 버튼(E83). 도보·자동차는 길찾기 화면이 위치를 받으므로 여기서 기다리지 않는다 — 대중교통 [안내 시작]만
   // 신선도 판정(R6)을 위해 위치를 새로 받고, 그 대기를 여정 카드와 같은 문구로 말한다.
+  // 통지는 **실제로 측위를 시작하는 누름에만** 나간다: 측위가 도는 동안의 누름(다른 카드의 버튼 포함)은 통로가 어차피 버리므로
+  // 여기서 먼저 버린다 — 버려질 누름이 "현재 위치 확인 중"을 다시 말하지 않게.
+  const routeStartLocating = useRef(false);
   const handleRouteStartAction = useCallback<RouteStartActionHandler>(
     (group, action) => {
-      if (action.kind === "start" && action.mode === "transit") announce(tDirections("locating"));
-      return onRouteStartAction?.(group, action);
+      if (routeStartLocating.current) return;
+      if (!(action.kind === "start" && action.mode === "transit")) return onRouteStartAction?.(group, action);
+      routeStartLocating.current = true;
+      announce(tDirections("locating"));
+      return Promise.resolve(onRouteStartAction?.(group, action)).finally(() => {
+        routeStartLocating.current = false;
+      });
     },
     [announce, onRouteStartAction, tDirections],
   );

@@ -4,7 +4,7 @@
  * 여정 신고와 서로 독립이다. 위치를 새로 받는 대중교통 [안내 시작]의 대기만 이 화면의 통지 창구 하나로 알린다.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 afterEach(() => {
   cleanup();
@@ -105,5 +105,26 @@ describe("ChatInterface 경로 안내 시작 카드 배선", () => {
     expect(onRouteStartAction).toHaveBeenLastCalledWith(GROUP, { kind: "start", mode: "transit" });
     expect(regions[0].textContent).toBe("directions.locating");
     expect(regions[0].getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("측위가 도는 동안의 누름은 통지도 통로 호출도 내지 않고, 끝나면 다시 받는다", async () => {
+    let release: () => void = () => {};
+    const onRouteStartAction = vi.fn(
+      (_group: unknown, action: Action): void | Promise<void> =>
+        action.kind === "start" && action.mode === "transit" ? new Promise<void>((resolve) => (release = resolve)) : undefined,
+    );
+    render(<ChatInterface onRouteStartAction={onRouteStartAction} />);
+    fireEvent.click(screen.getByRole("button", { name: "card-start-transit" }));
+    expect(onRouteStartAction).toHaveBeenCalledTimes(1);
+    // 다른 카드의 버튼에서 온 누름(카드 자신의 잠금 밖)도 여기서 버린다.
+    fireEvent.click(screen.getByRole("button", { name: "card-start-transit" }));
+    fireEvent.click(screen.getByRole("button", { name: "card-open" }));
+    fireEvent.click(screen.getByRole("button", { name: "card-start-walk" }));
+    expect(onRouteStartAction).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "card-open" }));
+    expect(onRouteStartAction).toHaveBeenCalledTimes(2);
   });
 });

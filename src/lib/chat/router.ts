@@ -146,23 +146,29 @@ function placeNotFound(place: string) {
 }
 
 /**
- * 경로 안내 시작 카드 렌더(E83 spec §4)의 수단 공통 뼈대 — 수단별 호출부가 자기 칸만 덮는다. **모든 키가 늘 있다**
- * (없는 값은 `null`·`false`): Kit 디코딩이 키 부재를 실패로 읽는다.
+ * 수단별로 호출부가 **반드시** 밝히는 칸(E83 spec §4) — 선택 인자·기본값이 없다. 빠뜨린 경유지·계단 회피·provider·결과가
+ * 조용히 `null`·`false`로 접히면 카드가 다른 경로의 안내를 시작한다.
  */
-function routeStartRender(
-  p: Place,
-  fields: Pick<RouteStartRenderPayload, "mode"> & Partial<Pick<RouteStartRenderPayload, "via" | "accessible" | "carProvider" | "transit">>,
-): RouteStartRenderPayload {
+type RouteStartFields =
+  | { mode: "walk"; via: RouteStartRenderPayload["via"]; accessible: boolean }
+  | { mode: "car"; via: RouteStartRenderPayload["via"]; carProvider: string | null }
+  | { mode: "transit"; transit: NonNullable<RouteStartRenderPayload["transit"]> };
+
+/**
+ * 경로 안내 시작 카드 렌더(E83 spec §4). **모든 키가 늘 있다**(그 수단에 없는 값은 `null`·`false`): Kit 디코딩이 키 부재를
+ * 실패로 읽는다.
+ */
+function routeStartRender(p: Place, fields: RouteStartFields): RouteStartRenderPayload {
   return {
     type: "route-start",
+    mode: fields.mode,
     dest: { lat: p.lat, lng: p.lng },
     destLabel: p.name,
     destRoman: p.nameRoman ?? null,
-    via: null,
-    accessible: false,
-    carProvider: null,
-    transit: null,
-    ...fields,
+    via: fields.mode === "transit" ? null : fields.via,
+    accessible: fields.mode === "walk" ? fields.accessible : false,
+    carProvider: fields.mode === "car" ? fields.carProvider : null,
+    transit: fields.mode === "transit" ? fields.transit : null,
   };
 }
 
@@ -537,7 +543,9 @@ export async function executeFunction(
       if (!routeStart || !route) return { data: { destination: p.name, route }, render, source: src };
       // 카드가 싣는 결과는 길찾기 화면이 받는 것과 같은 옵션으로 한 번 더 받는다(E83 spec §4 — 경유 정류장·노선 집합·데이터 언어):
       // 화면이 그 결과로 대중교통 섹션을 그대로 세우고 안내를 시작한다. 모델에 주는 `data`는 위 조회 그대로다(신고와 무관하게 같다).
-      // ko는 ODsay URL이 같아 캐시를 탄다(추가 과금 0). 이 조회만 실패하면 카드 없이 답한다(경로를 못 찾은 것이 아니다).
+      // ⚠ 과금: 한국어 데이터 로케일은 위 조회와 ODsay URL이 같아 캐시를 탄다(추가 호출 0). 영어 데이터 로케일은 `lang`이 달라
+      // **별도 ODsay 호출 1회**가 더 나간다(호출 수가 곧 비용 — 신고한 영어 채팅의 대중교통 질문마다).
+      // 이 조회만 실패하면 카드 없이 답한다(경로를 못 찾은 것이 아니다).
       let cardResult: Awaited<ReturnType<typeof getTransitRoute>> = null;
       try {
         cardResult = await getTransitRoute({
