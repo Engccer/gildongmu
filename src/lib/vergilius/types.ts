@@ -94,6 +94,21 @@ export type VergiliusStreamEvent =
   | { type: "done"; text: string; renders: RouteStartRenderPayload[]; proposal: { placeId: string } | null }
   | { type: "error"; code: string };
 
+/**
+ * 모델 호출의 실패. 로그에는 `kind`와 `status`만 남긴다 — 회사 응답의 메시지 본문에는 요청 글이 되비칠 수 있다.
+ * `kind`는 코드에 적힌 고정 문구만 받는다(upstream이 준 글을 넣지 않는다).
+ */
+export class VergiliusModelError extends Error {
+  readonly kind: string;
+  readonly status: number | null;
+  constructor(kind: string, status: number | null = null) {
+    super(status === null ? kind : `${kind} ${status}`);
+    this.name = "VergiliusModelError";
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
 /** 모델의 도구 호출 하나(두 회사 공통 모양). `id`는 OpenAI의 호출 id이고 Gemini는 없을 수 있다(이름과 순서로 짝을 맞춘다). */
 export interface VergiliusToolCall {
   id: string | null;

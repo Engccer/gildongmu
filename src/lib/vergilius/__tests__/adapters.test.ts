@@ -28,7 +28,7 @@ const fnDone = (callId: string, name: string, args: Record<string, unknown>) => 
 const textDelta = (delta: string) => ({ type: "response.output_text.delta", delta });
 const completed = { type: "response.completed", response: { output: [] } };
 
-function openAiHarness(responses: Response[]) {
+function openAiHarness(responses: Response[], signal?: AbortSignal) {
   const bodies: Record<string, unknown>[] = [];
   const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
     bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
@@ -42,6 +42,7 @@ function openAiHarness(responses: Response[]) {
     material: "재료와 질문",
     tools: toOpenAiTools([PROPOSE_GUIDE_TOOL]),
     fetchImpl,
+    signal,
   });
   return { session, bodies, fetchImpl };
 }
@@ -109,6 +110,19 @@ describe("OpenAI 어댑터(Responses API)", () => {
     expect(h.bodies[1].tools).toEqual(h.bodies[0].tools);
   });
 
+  it("요청 신호가 fetch에 닿는다: 바깥에서 거두면 모델 호출의 신호도 닫힌다(신호가 없어도 회차 시한은 걸린다)", async () => {
+    const controller = new AbortController();
+    const h = openAiHarness([sseResponse([textDelta("답."), completed])], controller.signal);
+    await h.session.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+    const sent = (vi.mocked(h.fetchImpl).mock.calls[0][1] as RequestInit).signal as AbortSignal;
+    expect(sent.aborted).toBe(false);
+    controller.abort();
+    expect(sent.aborted).toBe(true);
+    const bare = openAiHarness([sseResponse([textDelta("답."), completed])]);
+    await bare.session.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+    expect((vi.mocked(bare.fetchImpl).mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("깨진 인자 JSON은 빈 인자가 된다(실행부가 오류로 답한다)", async () => {
     const h = openAiHarness([
       sseResponse([
@@ -130,14 +144,22 @@ describe("OpenAI 어댑터(Responses API)", () => {
   });
 });
 
-function googleHarness(rounds: unknown[][]) {
+function googleHarness(rounds: unknown[][], opts: { signal?: AbortSignal; finish?: (string | undefined)[] } = {}) {
   const requests: Record<string, unknown>[] = [];
+  const signals: (AbortSignal | undefined)[] = [];
+  const finish = opts.finish ?? [];
   const generateContentStream = vi.fn(async (params: Record<string, unknown>) => {
     // 이력은 세션이 계속 고치는 배열이라 호출 시점의 모양을 떠 둔다.
     requests.push(JSON.parse(JSON.stringify(params, (k, v) => (k === "abortSignal" ? undefined : v))) as Record<string, unknown>);
+    signals.push((params.config as { abortSignal?: AbortSignal }).abortSignal);
     const chunks = rounds.shift() ?? [];
+    // 실제 API처럼 마지막 조각에만 finishReason을 싣는다(기본 STOP).
+    const reason = requests.length <= finish.length ? finish[requests.length - 1] : "STOP";
     return (async function* () {
-      for (const parts of chunks) yield { candidates: [{ content: { role: "model", parts } }] };
+      for (const [i, parts] of chunks.entries()) {
+        const last = i === chunks.length - 1;
+        yield { candidates: [{ content: { role: "model", parts }, ...(last && reason ? { finishReason: reason } : {}) }] };
+      }
     })();
   });
   const ai = { models: { generateContentStream } } as unknown as Pick<GoogleGenAI, "models">;
@@ -146,8 +168,9 @@ function googleHarness(rounds: unknown[][]) {
     instruction: "지침",
     material: "재료와 질문",
     declarations: toGeminiDeclarations([PROPOSE_GUIDE_TOOL]),
+    signal: opts.signal,
   });
-  return { session, requests };
+  return { session, requests, signals };
 }
 
 describe("Google 어댑터(Gemini)", () => {
@@ -166,6 +189,26 @@ describe("Google 어댑터(Gemini)", () => {
         toolConfig: { functionCallingConfig: { mode: "AUTO" } },
       },
     });
+  });
+
+  it("3-state: 마지막 finishReason이 STOP이 아니거나 없으면 던진다(잘린 글을 답으로 접지 않는다)", async () => {
+    const round = (finish: string | undefined) =>
+      googleHarness([[[{ text: "왼쪽 12미터에 가나" }]]], { finish: [finish] }).session.round({
+        tools: true, onText: vi.fn(), onCall: vi.fn(),
+      });
+    await expect(round("MAX_TOKENS")).rejects.toThrow("google finish MAX_TOKENS");
+    await expect(round("SAFETY")).rejects.toThrow("google finish SAFETY");
+    await expect(round(undefined)).rejects.toThrow("ended early");
+    await expect(round("STOP")).resolves.toEqual({ text: "왼쪽 12미터에 가나", calls: [] });
+  });
+
+  it("요청 신호가 모델 호출에 닿는다", async () => {
+    const controller = new AbortController();
+    const h = googleHarness([[[{ text: "답." }]]], { signal: controller.signal });
+    await h.session.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+    expect(h.signals[0]?.aborted).toBe(false);
+    controller.abort();
+    expect(h.signals[0]?.aborted).toBe(true);
   });
 
   it("생각 서명 보존: 모델 회차의 parts를 서명째 그대로 다음 요청에 싣는다", async () => {

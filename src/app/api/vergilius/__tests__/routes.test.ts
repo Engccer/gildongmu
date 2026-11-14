@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VergiliusLoopOptions } from "@/lib/vergilius/loop";
-import type { VergiliusStreamEvent } from "@/lib/vergilius/types";
+import { VergiliusModelError, type VergiliusStreamEvent } from "@/lib/vergilius/types";
 import { askFixture } from "@/lib/vergilius/__tests__/fixtures";
 
 const gates = vi.hoisted(() => ({ openai: true, gemini: true, ip: true, daily: true }));
@@ -39,12 +39,18 @@ vi.mock("@/lib/vergilius/loop", () => ({ runVergiliusLoop: spies.runVergiliusLoo
 
 import { POST } from "../ask/route";
 import { GET } from "../providers/route";
+import {
+  VERGILIUS_GOOGLE_OPEN,
+  VERGILIUS_REQUEST_TIMEOUT_MS,
+  vergiliusRequestSignal,
+} from "@/lib/vergilius/providers";
 
-function ask(body: unknown): Promise<Response> {
+function ask(body: unknown, signal?: AbortSignal): Promise<Response> {
   return POST(
     new Request("http://x/api/vergilius/ask", {
       method: "POST",
       body: typeof body === "string" ? body : JSON.stringify(body),
+      signal,
     }),
   );
 }
@@ -64,16 +70,15 @@ beforeEach(() => {
 });
 
 describe("GET /api/vergilius/providers", () => {
-  it("키가 있는 회사만, OpenAI가 앞이다", async () => {
+  it("E86 판정 전까지 Google은 닫혀 있다: Gemini 키가 있어도 목록은 OpenAI뿐이다", async () => {
+    expect(VERGILIUS_GOOGLE_OPEN).toBe(false);
     const res = await GET();
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ providers: ["openai", "google"] });
+    expect(await res.json()).toEqual({ providers: ["openai"] });
   });
 
   it("키 없는 회사는 목록에 없다", async () => {
     gates.openai = false;
-    expect(await (await GET()).json()).toEqual({ providers: ["google"] });
-    gates.gemini = false;
     expect(await (await GET()).json()).toEqual({ providers: [] });
   });
 });
@@ -116,10 +121,34 @@ describe("POST /api/vergilius/ask", () => {
     expect(prompt).toContain("k101 | 가나카페");
   });
 
-  it("회사 고르기: provider가 google이면 Gemini 세션만 만든다", async () => {
-    await (await ask(askFixture({ provider: "google" }))).text();
-    expect(spies.createGoogleSession).toHaveBeenCalledTimes(1);
+  it("닫아 둔 회사: provider가 google이면 키 없는 회사와 같은 502이고 어느 세션도 만들지 않는다", async () => {
+    const res = await ask(askFixture({ provider: "google" }));
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    expect(spies.createGoogleSession).not.toHaveBeenCalled();
     expect(spies.createOpenAiSession).not.toHaveBeenCalled();
+    expect(spies.reserveDaily).not.toHaveBeenCalled();
+  });
+
+  it("요청 전체 시한: 세션이 받는 신호는 요청 취소와 25초 시한을 합친 것이다", async () => {
+    expect(VERGILIUS_REQUEST_TIMEOUT_MS).toBe(25_000);
+    const controller = new AbortController();
+    await (await ask(askFixture(), controller.signal)).text();
+    const sent = spies.createOpenAiSession.mock.calls[0][0] as { signal: AbortSignal };
+    expect(sent.signal.aborted).toBe(false);
+    controller.abort();
+    expect(sent.signal.aborted).toBe(true);
+    // 시한 쪽: 요청이 살아 있어도 시간이 지나면 닫힌다.
+    const timed = vergiliusRequestSignal(new AbortController().signal, 5);
+    await new Promise((r) => setTimeout(r, 40));
+    expect(timed.aborted).toBe(true);
+    expect((timed.reason as Error).name).toBe("TimeoutError");
+  });
+
+  it("실행 금지 재료: 목록의 가게 이름이 루프에 간다(경로 도구의 도착지 대조용)", async () => {
+    await (await ask(askFixture())).text();
+    const opts = spies.runVergiliusLoop.mock.calls[0][0] as VergiliusLoopOptions;
+    expect([...opts.listedPlaceNames].sort()).toEqual(askFixture().places.map((p) => p.name).sort());
   });
 
   it("검증 실패는 400이고 틀린 필드 이름만 돌려준다", async () => {
@@ -154,8 +183,6 @@ describe("POST /api/vergilius/ask", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "provider_unavailable" });
     expect(spies.reserveDaily).not.toHaveBeenCalled();
-    // 다른 회사는 그대로 답한다.
-    expect((await ask(askFixture({ provider: "google" }))).status).toBe(200);
   });
 
   it("하루 상한: 503, 모델을 부르지 않는다", async () => {
@@ -179,6 +206,32 @@ describe("POST /api/vergilius/ask", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     spies.runVergiliusLoop.mockRejectedValueOnce(new Error("openai responses 500"));
     expect(await readNdjson(await ask(askFixture()))).toEqual([{ type: "error", code: "vergilius_failed" }]);
+    errorSpy.mockRestore();
+  });
+
+  it("오류 로그에는 종류와 상태 코드만 남는다(메시지 본문은 쓰지 않는다)", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    spies.runVergiliusLoop.mockRejectedValueOnce(new VergiliusModelError("openai responses", 429));
+    await (await ask(askFixture())).text();
+    spies.runVergiliusLoop.mockRejectedValueOnce(
+      Object.assign(new Error("지금 내 앞에 어떤 식당이 있어? 가나카페 37.5704"), { status: 400 }),
+    );
+    await (await ask(askFixture())).text();
+    const logged = errorSpy.mock.calls.map((c) => c.join(" "));
+    expect(logged).toEqual(["[vergilius] 답변 루프 오류: openai responses 429", "[vergilius] 답변 루프 오류: Error 400"]);
+    errorSpy.mockRestore();
+  });
+
+  it("요청이 거둬졌으면 오류 로그도 error 이벤트도 내지 않고 조용히 닫는다", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const controller = new AbortController();
+    spies.runVergiliusLoop.mockImplementationOnce(async () => {
+      controller.abort();
+      throw new DOMException("aborted", "AbortError");
+    });
+    const res = await ask(askFixture(), controller.signal);
+    expect(await res.text()).toBe("");
+    expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
 

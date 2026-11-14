@@ -1,4 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// 선언은 키 게이트를 지난 것만 나온다. 키가 없는 환경(CI)에서도 여는 도구의 집합을 못 박으려고 게이트를 전부 참으로 둔다.
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
+  const open: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(actual)) {
+    open[key] = typeof value === "function" && key.startsWith("has") ? () => true : value;
+  }
+  return open;
+});
+
 import type { FunctionDeclaration } from "@google/genai";
 import type { RenderPayload, RouteStartRenderPayload } from "@/lib/chat/types";
 import { proposableIds, routeStartRendersOnly, validateProposal } from "../guard";
@@ -65,9 +76,10 @@ describe("도구 선언 변환층", () => {
   it("여는 도구는 다섯 채팅 도구와 종결 도구뿐이다(여정·웹 검색 등은 열지 않는다)", () => {
     const names = vergiliusToolSpecs().map((s) => s.name);
     expect(names.at(-1)).toBe(PROPOSE_GUIDE_NAME);
-    for (const n of names.slice(0, -1)) expect(VERGILIUS_CHAT_TOOL_NAMES).toContain(n);
-    expect(names).not.toContain("plan_journey");
-    expect(names).not.toContain("search_web");
+    expect([...names].sort()).toEqual(
+      ["get_bus_arrivals", "get_car_route", "get_transit_route", "get_walk_route", "propose_guide", "search_places"],
+    );
+    expect([...VERGILIUS_CHAT_TOOL_NAMES, PROPOSE_GUIDE_NAME].sort()).toEqual([...names].sort());
   });
 
   it("스키마 타입 표기: Gemini Schema의 대문자 타입은 OpenAI용 소문자 JSON Schema가 된다", () => {

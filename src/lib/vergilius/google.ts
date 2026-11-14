@@ -8,9 +8,12 @@
  * - 도구 결과의 **짝은 이름과 순서**다(`functionResponse.name`, 호출에 `id`가 있으면 그것도 싣는다). 한 회차의 결과는
  *   호출 순서 그대로 한 `user` content에 담는다.
  * - 생각 part(`thought: true`)는 글로 내보내지 않는다.
+ * - 마지막 `finishReason`이 `STOP`이 아니면 던진다(토큰 상한·안전 차단·끊긴 스트림). OpenAI 어댑터의 `incomplete`·
+ *   끝맺음 없는 스트림 처리와 같은 3-state다: 잘린 글을 답으로 읽히지 않는다.
  */
-import { FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
+import { FinishReason, FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
 import type { Content, FunctionDeclaration, GoogleGenAI, Part } from "@google/genai";
+import { VergiliusModelError } from "./types";
 import type {
   VergiliusModelSession,
   VergiliusRoundOptions,
@@ -64,8 +67,10 @@ export function createGoogleSession(opts: GoogleSessionOptions): VergiliusModelS
       let text = "";
       const calls: VergiliusToolCall[] = [];
       const modelParts: Part[] = [];
+      let finishReason: FinishReason | undefined;
 
       for await (const chunk of stream) {
+        finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason;
         const parts: Part[] = chunk.candidates?.[0]?.content?.parts ?? [];
         for (const part of parts) {
           modelParts.push(part);
@@ -82,6 +87,10 @@ export function createGoogleSession(opts: GoogleSessionOptions): VergiliusModelS
           }
         }
       }
+
+      if (finishReason === undefined) throw new VergiliusModelError("google stream ended early");
+      // 값은 SDK enum의 고정 낱말이다(MAX_TOKENS·SAFETY…).
+      if (finishReason !== FinishReason.STOP) throw new VergiliusModelError(`google finish ${finishReason}`);
 
       if (calls.length > 0) contents.push({ role: "model", parts: modelParts });
       return { text, calls };

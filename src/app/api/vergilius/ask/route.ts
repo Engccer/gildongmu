@@ -2,10 +2,10 @@
 //
 // 끝점은 공개 서버에 선다(「실험판」은 앱 쪽 봉인일 뿐이다). 순서가 계약이다:
 //   IP 상한(60초 10회) → 본문 검증(zod) → 커버리지(한국 밖이면 200 `{"outOfCoverage":true}`, 모델·도구 미호출)
-//   → 키 게이트(그 회사 키 없음 502) → 인스턴스 하루 상한(503) → 모델 스트림.
+//   → 키 게이트(그 회사 키 없음 502) → 인스턴스 하루 상한(503) → 모델 스트림(요청 전체 시한 25초).
 // 도구 실행은 채팅 라우터의 실행부를 그대로 부른다(`router.ts`는 고치지 않는다). 실행 컨텍스트는 이 끝점이 채운다:
 // `userLocation` = 요청 좌표, `routeStart` 능력 켬, 장소 앵커 없음.
-// ⚠ 질문 글·재료·좌표를 로그에 쓰지 않는다(V10·V34).
+// ⚠ 질문 글·재료·좌표를 로그에 쓰지 않는다(V10·V34). 오류 로그는 종류와 상태 코드뿐이다(메시지 본문에는 요청 글이 되비칠 수 있다).
 import { executeFunction } from "@/lib/chat/router";
 import type { ExecutionContext } from "@/lib/chat/types";
 import { isInKorea } from "@/lib/coverage";
@@ -16,11 +16,24 @@ import { buildVergiliusInstruction } from "@/lib/vergilius/instruction";
 import { runVergiliusLoop } from "@/lib/vergilius/loop";
 import { buildVergiliusMaterial } from "@/lib/vergilius/materials";
 import { toVergiliusNdjsonLine } from "@/lib/vergilius/ndjson";
-import { availableVergiliusProviders, createVergiliusSession } from "@/lib/vergilius/providers";
+import {
+  availableVergiliusProviders,
+  createVergiliusSession,
+  VERGILIUS_REQUEST_TIMEOUT_MS,
+  vergiliusRequestSignal,
+} from "@/lib/vergilius/providers";
 import { PROPOSE_GUIDE_NAME, vergiliusToolSpecs } from "@/lib/vergilius/tools";
-import { vergiliusAskSchema, type VergiliusStreamEvent } from "@/lib/vergilius/types";
+import { VergiliusModelError, vergiliusAskSchema, type VergiliusStreamEvent } from "@/lib/vergilius/types";
 
 export const maxDuration = 60; // 도구 왕복 2회 + 마지막 글 회차
+
+/** 로그에 남길 오류의 종류와 상태 코드. 메시지 본문은 넣지 않는다. */
+function errorKind(e: unknown): string {
+  if (e instanceof VergiliusModelError) return e.status === null ? e.kind : `${e.kind} ${e.status}`;
+  const name = e instanceof Error ? e.name : "unknown";
+  const status = (e as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? `${name} ${status}` : name;
+}
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -58,7 +71,7 @@ export async function POST(request: Request) {
     instruction: buildVergiliusInstruction(body.locale),
     material: buildVergiliusMaterial(body),
     tools,
-    signal: request.signal,
+    signal: vergiliusRequestSignal(request.signal, VERGILIUS_REQUEST_TIMEOUT_MS),
   });
   if (!session) return json({ error: "provider_unavailable" }, 502);
 
@@ -81,6 +94,7 @@ export async function POST(request: Request) {
           ctx,
           allowedTools,
           proposableIds: proposableIds(body),
+          listedPlaceNames: new Set(body.places.map((p) => p.name)),
           emit: send,
         });
         if (result.proposal === null && result.text.trim() === "") {
@@ -90,10 +104,21 @@ export async function POST(request: Request) {
           send({ type: "done", text: result.text, renders: result.renders, proposal: result.proposal });
         }
       } catch (e) {
-        console.error("[vergilius] 답변 루프 오류:", e instanceof Error ? e.message : "unknown");
-        send({ type: "error", code: "vergilius_failed" });
+        // 앱이 요청을 거뒀으면(연결 끊김) 받을 곳이 없다 — 오류로 세지 않고 조용히 끝낸다.
+        if (!request.signal.aborted) {
+          console.error("[vergilius] 답변 루프 오류:", errorKind(e));
+          try {
+            send({ type: "error", code: "vergilius_failed" });
+          } catch {
+            // 스트림이 이미 닫혔다.
+          }
+        }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // 거둬진 스트림은 이미 닫혀 있다.
+        }
       }
     },
   });

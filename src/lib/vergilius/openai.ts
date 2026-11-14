@@ -10,6 +10,7 @@
  * - 저장하지 않는다(`store: false`). 이력은 매 회차 전량을 다시 보낸다.
  */
 import type { OpenAiFunctionTool } from "./tools";
+import { VergiliusModelError } from "./types";
 import type {
   VergiliusModelSession,
   VergiliusRoundOptions,
@@ -109,7 +110,7 @@ export function createOpenAiSession(opts: OpenAiSessionOptions): VergiliusModelS
       });
       if (!res.ok || !res.body) {
         // 본문에는 요청 글이 되비칠 수 있어 상태만 남긴다(질문 글·재료를 로그에 쓰지 않는다).
-        throw new Error(`openai responses ${res.status}`);
+        throw new VergiliusModelError("openai responses", res.status);
       }
 
       let text = "";
@@ -138,10 +139,10 @@ export function createOpenAiSession(opts: OpenAiSessionOptions): VergiliusModelS
         } else if (type === "response.completed") {
           completed = true;
         } else if (type === "response.failed" || type === "response.incomplete" || type === "error") {
-          throw new Error(`openai stream ${String(type)}`);
+          throw new VergiliusModelError(`openai stream ${type}`);
         }
       }
-      if (!completed) throw new Error("openai stream ended early");
+      if (!completed) throw new VergiliusModelError("openai stream ended early");
 
       // 도구 호출이 있는 회차의 글(군말)도 이력에는 남긴다 — 모델이 자기 말을 이어받는다.
       if (calls.length > 0 && text !== "") input.push({ role: "assistant", content: text });

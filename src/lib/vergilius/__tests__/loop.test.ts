@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExecutionContext, RenderPayload, ToolResult } from "@/lib/chat/types";
-import { runVergiliusLoop, VERGILIUS_MAX_TOOL_ROUNDS } from "../loop";
+import { runVergiliusLoop, VERGILIUS_MAX_CALLS_PER_ROUND, VERGILIUS_MAX_TOOL_ROUNDS } from "../loop";
 import type {
   VergiliusModelSession,
   VergiliusRoundOptions,
@@ -63,7 +63,8 @@ function run(
     execute,
     ctx,
     allowedTools: new Set(["get_bus_arrivals", "get_walk_route"]),
-    proposableIds: new Set(["k101"]),
+    proposableIds: new Set(["k101", "k102"]),
+    listedPlaceNames: new Set(["가나카페", "다라약국"]),
     emit: (e) => events.push(e),
   });
   return { promise, events, execute, ...s };
@@ -114,6 +115,39 @@ describe("runVergiliusLoop", () => {
     expect(r.execute).toHaveBeenCalledTimes(VERGILIUS_MAX_TOOL_ROUNDS);
     expect(r.pushed).toHaveLength(VERGILIUS_MAX_TOOL_ROUNDS);
     expect(result).toEqual({ text: "조회하지 못했습니다.", renders: [], proposal: null });
+  });
+
+  it(`한 회차에 실행하는 도구는 ${VERGILIUS_MAX_CALLS_PER_ROUND}건까지다: 넘친 호출은 실행하지 않고 오류로 돌려준다`, async () => {
+    expect(VERGILIUS_MAX_CALLS_PER_ROUND).toBe(3);
+    const many = ["시청", "광화문", "서울역", "남대문", "동대문"].map((d, i) => call("get_walk_route", { destination: d }, `c${i}`));
+    // 실행하지 않는 호출(열지 않은 도구)은 상한을 쓰지 않는다.
+    const r = run([[call("search_web", {}, "x"), ...many], [text("시청이 가장 가깝습니다.")]]);
+    await r.promise;
+    expect(r.execute).toHaveBeenCalledTimes(3);
+    for (const [i, d] of ["시청", "광화문", "서울역"].entries()) {
+      expect(r.execute).toHaveBeenNthCalledWith(i + 1, "get_walk_route", { destination: d }, ctx);
+    }
+    // 결과는 호출 수만큼, 호출 순서대로 돌아간다(회사 쪽 짝 맞춤이 깨지지 않는다).
+    expect(r.pushed[0].map((o) => [o.call.id, "error" in o.response])).toEqual([
+      ["x", true], ["c0", false], ["c1", false], ["c2", false], ["c3", true], ["c4", true],
+    ]);
+  });
+
+  it("경로 도구의 도착지가 목록의 가게 이름과 같으면 실행하지 않고 제안 도구로 돌려보낸다", async () => {
+    const r = run([
+      [call("get_walk_route", { destination: " 가나카페 " }, "c1"), call("get_car_route", { destination: "가나카페" }, "c2"),
+       call("get_walk_route", { destination: "시청" }, "c3")],
+      [call("propose_guide", { placeId: "k101" })],
+    ]);
+    // get_car_route는 이 테스트의 허용 목록에 없다 — 어느 쪽 사유로든 실행되지 않는다.
+    await expect(r.promise).resolves.toEqual({ text: "", renders: [], proposal: { placeId: "k101" } });
+    expect(r.execute).toHaveBeenCalledTimes(1);
+    expect(r.execute).toHaveBeenCalledWith("get_walk_route", { destination: "시청" }, ctx);
+    expect(String(r.pushed[0][0].response.error)).toContain("propose_guide");
+    // 목록에 없는 이름과 다른 도구의 같은 인자 이름은 막지 않는다.
+    const other = run([[call("get_bus_arrivals", { destination: "가나카페" }), call("get_walk_route", { destination: "가나카페 2호점" })], [text("끝.")]]);
+    await other.promise;
+    expect(other.execute).toHaveBeenCalledTimes(2);
   });
 
   it("실행 컨텍스트와 인자를 그대로 실행부에 넘기고, 결과는 호출 순서대로 세션에 돌려준다", async () => {
@@ -177,6 +211,32 @@ describe("runVergiliusLoop", () => {
     expect(r.seen).toHaveLength(1);
   });
 
+  it("제안으로 끝나는 답에는 앞 회차의 경로 렌더를 싣지 않는다", async () => {
+    const execute = vi.fn(async (): Promise<ToolResult> => ({
+      data: {},
+      render: {
+        type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null,
+        via: null, accessible: false, carProvider: null, transit: null,
+      },
+    }));
+    const r = run([[call("get_walk_route", { destination: "시청" })], [call("propose_guide", { placeId: "k101" })]], execute);
+    await expect(r.promise).resolves.toEqual({ text: "", renders: [], proposal: { placeId: "k101" } });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("제안: 한 회차에 서로 다른 id를 가리키는 제안이 둘이면 전부 버린다(같은 id의 중복은 통과한다)", async () => {
+    const r = run([
+      [call("propose_guide", { placeId: "k101" }, "p1"), call("propose_guide", { placeId: "k102" }, "p2")],
+      [text("가나카페와 다라약국 중 어느 곳인가요?")],
+    ]);
+    const result = await r.promise;
+    expect(result.proposal).toBeNull();
+    expect(result.text).toBe("가나카페와 다라약국 중 어느 곳인가요?");
+    expect(r.pushed[0].map((o) => "error" in o.response)).toEqual([true, true]);
+    const same = run([[call("propose_guide", { placeId: "k101" }), call("propose_guide", { placeId: " k101 " })]]);
+    expect((await same.promise).proposal).toEqual({ placeId: "k101" });
+  });
+
   it("제안: 없는 id는 버리고 모델에 오류로 돌려준 뒤 글로 끝낸다", async () => {
     const r = run([[call("propose_guide", { placeId: "k999" }, "c9")], [text("어느 곳인지 다시 말씀해 주세요.")]]);
     const result = await r.promise;
@@ -216,7 +276,8 @@ describe("runVergiliusLoop", () => {
     };
     await expect(
       runVergiliusLoop({
-        session, execute: vi.fn(), ctx, allowedTools: new Set(), proposableIds: new Set(), emit: (e) => events.push(e),
+        session, execute: vi.fn(), ctx, allowedTools: new Set(), proposableIds: new Set(), listedPlaceNames: new Set(),
+        emit: (e) => events.push(e),
       }),
     ).rejects.toThrow("openai responses 500");
     expect(events).toEqual([]);
