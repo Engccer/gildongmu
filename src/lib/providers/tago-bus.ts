@@ -1,4 +1,5 @@
-import type { BusArrival, BusRouteStop, BusStop, JourneyStopHit } from "../types";
+import type { BusArrival, BusLine, BusLineStop, BusRouteStop, BusStop, JourneyStopHit } from "../types";
+import { parseServiceTime } from "../service-hours";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 import {
@@ -277,4 +278,105 @@ export async function searchTagoStopsByName(
   const stops = [first, ...rest].flatMap(parseTagoStopsByName);
   const received = [first, ...rest].reduce<number>((n, raw) => n + readItems(raw).length, 0);
   return { stops, truncated: received < total };
+}
+
+/** TAGO 운행 시각은 값에 따라 숫자로도 온다(2200, 900): 4자리 문자열로 맞춘 뒤 읽는다(`bus-service-hours.ts`와 같은 함정). */
+function tagoMinutes(v: unknown): number | null {
+  if (v == null) return null;
+  return parseServiceTime(typeof v === "number" ? String(v).padStart(4, "0") : String(v));
+}
+
+/**
+ * 노선 번호 검색 응답(`getRouteNoList`) → 노선 목록(E87). 부분 일치라 「1003」에 「1003(심야)」도 온다 — 번호 대조는 호출부가 한다.
+ * 배차 간격은 이 응답에 없다(`fetchTagoRouteInterval`).
+ */
+export function parseTagoRouteList(raw: unknown, cityCode: string): BusLine[] {
+  return readItems(raw)
+    .map((it): BusLine => ({
+      source: "tago",
+      routeId: str(it.routeid).trim(),
+      cityCode,
+      routeNo: str(it.routeno).trim(),
+      routeType: str(it.routetp).trim(),
+      startStop: str(it.startnodenm).trim(),
+      endStop: str(it.endnodenm).trim(),
+      firstMinutes: tagoMinutes(it.startvehicletime),
+      lastMinutes: tagoMinutes(it.endvehicletime),
+      intervalMinutes: null,
+    }))
+    .filter((l) => l.routeId !== "" && l.routeNo !== "");
+}
+
+/** 노선 번호 검색(E87, 도시 단위). 하루 캐시. */
+export async function searchTagoRoutesByNo(cityCode: string, routeNo: string): Promise<BusLine[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchTago(
+    RTE_BASE,
+    "getRouteNoList",
+    { cityCode, routeNo, numOfRows: 100, pageNo: 1 },
+    { next: { revalidate: 86_400 } },
+  );
+  return parseTagoRouteList(raw, cityCode);
+}
+
+/**
+ * 경유 정류소 응답 → 방면·회차를 붙인 줄(E87). 방면은 `updowncd`의 값이 아니라 **순번상 첫 묶음인가**로 정한다
+ * (첫 정류소와 같은 값이면 종점 방면, 달라지면 기점 방면) — 코드의 0·1 뜻을 도시마다 믿지 않기 위해서다.
+ * 회차 지점은 첫 묶음의 마지막 정류소이고, 묶음이 하나뿐인 노선(편도·순환)에는 없다.
+ */
+export function parseTagoLineStops(raw: unknown, line: { startStop: string; endStop: string }): BusLineStop[] {
+  const rows = readItems(raw)
+    .map((it) => ({
+      name: str(it.nodenm).trim(),
+      order: nonNegInt(it.nodeord),
+      lat: numF(it.gpslati),
+      lng: numF(it.gpslong),
+      updown: str(it.updowncd),
+    }))
+    .filter((s) => s.name !== "")
+    .sort((a, b) => a.order - b.order);
+  const first = rows[0]?.updown;
+  const lastOfFirst = rows.findLastIndex((r) => r.updown === first);
+  const twoWay = lastOfFirst >= 0 && lastOfFirst < rows.length - 1;
+  return rows.map(({ updown, ...s }, i) => ({
+    ...s,
+    towards: updown === first ? line.endStop : line.startStop,
+    turnaround: twoWay && i === lastOfFirst,
+  }));
+}
+
+/**
+ * 노선 경유 정류소(E87). `truncated`는 받은 줄이 `totalCount`보다 적다는 뜻이다 — 그때 「그 정류소에 서지 않는다」고
+ * 단정하면 거짓이 될 수 있어 호출부가 알린다.
+ */
+export async function fetchTagoLineStops(
+  line: Pick<BusLine, "routeId" | "cityCode" | "startStop" | "endStop">,
+): Promise<{ stops: BusLineStop[]; truncated: boolean }> {
+  if (!env.DATA_GO_KR_API_KEY || !line.cityCode) return { stops: [], truncated: false };
+  const raw = await fetchTago(
+    RTE_BASE,
+    "getRouteAcctoThrghSttnList",
+    { cityCode: line.cityCode, routeId: line.routeId, numOfRows: 500, pageNo: 1 },
+    { next: { revalidate: 86_400 } },
+  );
+  return { stops: parseTagoLineStops(raw, line), truncated: readItems(raw).length < readTotalCount(raw) };
+}
+
+/** `getRouteInfoIem`의 평일 배차 간격(분). 0·결측·비수치는 null. */
+export function parseTagoRouteInterval(raw: unknown): number | null {
+  const n = numF(readItems(raw)[0]?.intervaltime);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+
+/** 배차 간격(E87). 부가 정보라 실패해도 throw하지 않고 null이다(노선 답 전체를 죽이지 않는다). */
+export async function fetchTagoRouteInterval(cityCode: string, routeId: string): Promise<number | null> {
+  if (!env.DATA_GO_KR_API_KEY) return null;
+  try {
+    return parseTagoRouteInterval(
+      await fetchTago(RTE_BASE, "getRouteInfoIem", { cityCode, routeId }, { next: { revalidate: 86_400 } }),
+    );
+  } catch (e) {
+    console.error("[tago] 배차 간격 조회 실패", e);
+    return null;
+  }
 }

@@ -264,6 +264,8 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 지방=TAGO·서울=TOPIS, `mergeBusStops`가 `allSettled`로 병합한다(envelope는 서로 다르다 — `CLAUDE.md` 횡단 함정 참조). spec `2026-08-02-bus-uncovered-region-design.md`.
 
+**노선 번호 조회(`src/lib/bus-route.ts`, 채팅 `get_bus_route`, E87)**: TOPIS `getBusRouteList`는 서울 밖 노선을 이름 꼬리(「1003남양주」)로 주고 그 첫차·막차는 `000000`이다(「00:00」이 아니라 정보 없음). TAGO `getRouteNoList`는 부분 일치라 「1003(심야)」가 함께 오고 시각이 숫자와 문자열로 섞여 온다. TAGO 경유 정류소의 방면은 `updowncd` 값이 아니라 순번상 첫 묶음인지로 가른다. TOPIS `buspos`는 활용신청이 없어 빈 응답이다. spec `2026-11-14-e87-chat-bus-route-tool-design.md`.
+
 - ⚠ **TAGO `getCrdntPrxmtSttnList`는 ~700m 고정 반경**이다(반경 파라미터 없음. 해남 서림승강장 기준 600m 2건 → 800m 0건 실측). 그래서 **0건은 대개 "이 지역 미커버"가 아니라 정상적인 반경 밖**이고, 둘을 뭉개면 전국 시골이 미제공으로 낙인찍힌다.
 - 미커버 판정 정본은 `isUncoveredBusRegion`(`src/lib/bus.ts`, 라우트·채팅 공용 — **provider 직접 호출 금지**). seed는 `getCtyCodeList` 138개(`scripts/build-tago-cities.mjs` → `tago-cities.json`).
 - ⚠ **이 마커만 upstream 뒤에 온다**(다른 도메인은 파싱→마커→키 게이트→upstream). 좌표만으로 사전 판정하면 담양·화순처럼 인접 광역시 버스가 넘어오는 지역에 거짓 미제공이 나간다. **0건일 때만** 발동시키면 그 지역은 분기에 들어오지 않아 반례가 스스로 사라진다.
