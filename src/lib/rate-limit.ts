@@ -271,3 +271,52 @@ export function journeyIpExhausted(ip: string, now: number): boolean {
 export function journeyTmapExhausted(now: number): boolean {
   return journeyTmapBudget.exhausted(now);
 }
+
+// 베르길리우스 「말로 묻기」(E82 spec §4): 끝점은 공개 서버에 서고 「실험판」은 앱 쪽 봉인일 뿐이라 서버가 스스로 지킨다.
+// IP당 60초 10회(채팅과 같은 강도, 버킷은 따로 — 묻기가 채팅 예산을 깎지 않는다)와 인스턴스 하루 상한(여정의 예약 방식).
+// 하루 상한은 유료 모델 호출(OpenAI·Gemini)과 도구가 부르는 ODsay·Tmap의 바닥 방어다. ⚠ 머리 주석의 한계 그대로 인스턴스별이다.
+export const VERGILIUS_IP_LIMIT = 10;
+export const VERGILIUS_DAILY_CAP = 300;
+
+/** 베르길리우스 질문 예산(테스트가 새 인스턴스를 만든다). 요청 하나가 한 칸이다. */
+export function createVergiliusBudget() {
+  const ipStore = new Map<string, RateLimitEntry>();
+  let day = -1;
+  let used = 0;
+  const rollDay = (now: number) => {
+    const d = Math.floor((now + KST_OFFSET_MS) / 86_400_000);
+    if (d !== day) {
+      day = d;
+      used = 0;
+    }
+  };
+  return {
+    /** IP 칸 하나(무효 요청도 센다 — 폭주 차단이 목적이다). 하루 상한은 올리지 않는다. */
+    chargeIp(ip: string, now: number): boolean {
+      return evaluateRateLimit(ipStore, ip, now, VERGILIUS_IP_LIMIT, WINDOW_MS).allowed;
+    },
+    /** 하루 상한 한 칸. 모델을 부르기 직전에만 쓴다(검증·커버리지·키 게이트에서 떨어진 요청은 세지 않는다). */
+    reserveDaily(now: number): boolean {
+      rollDay(now);
+      if (used >= VERGILIUS_DAILY_CAP) return false;
+      used += 1;
+      return true;
+    },
+    dailyCount(now: number): number {
+      rollDay(now);
+      return used;
+    },
+  };
+}
+
+const vergiliusBudget = createVergiliusBudget();
+
+/** /api/vergilius/ask 전용 IP 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkVergiliusRateLimit(ip: string, now: number): boolean {
+  return vergiliusBudget.chargeIp(ip, now);
+}
+
+/** /api/vergilius/ask 전용 인스턴스 하루 상한 예약(요청당 한 칸). 남은 칸이 없으면 false. */
+export function reserveVergiliusDaily(now: number): boolean {
+  return vergiliusBudget.reserveDaily(now);
+}
