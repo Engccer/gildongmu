@@ -18,6 +18,7 @@
     "eval:ab:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/__ab__/report-cli.mts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@google/genai": "^2.15.0",
     "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",

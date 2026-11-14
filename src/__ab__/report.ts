@@ -49,6 +49,10 @@ export interface RunResult {
   promptTokens: number;
   outputTokens: number;
   thoughtTokens: number;
+  /** `promptTokens` 가운데 캐시에서 읽은 몫(Claude). 없으면 캐시 할인을 빼고 센다. */
+  cacheReadTokens?: number;
+  /** `promptTokens` 가운데 캐시에 쓴 몫(Claude, 5분 캐시 = 입력 단가의 1.25배). */
+  cacheWriteTokens?: number;
   checks: Checks;
   text: string;
 }
@@ -66,10 +70,13 @@ const PROMO_END = "2026-12-31T23:59:59.999Z";
  * `promo`가 없는 모델은 기간 할인이 없다(날짜와 무관하게 `list`).
  * 2026-11-14 공식 요금표 확인: 3.6-flash는 2026-12-31까지 $0.75/$3.75, 그 뒤 $1.50/$7.50. 4-hydrogen은 할인 없이 $1.50/$7.50.
  */
-const PRICE_TABLE: Record<string, { promo?: [number, number]; list: [number, number] }> = {
+/** Claude 단가는 2026-11-14 claude-api 스킬 모델 표 확인: Opus 5.5 $4/$20(캐시 읽기 $0.20), Sonnet 5.5 $2/$10(캐시 읽기 $0.10). 5분 캐시 쓰기는 입력의 1.25배. */
+const PRICE_TABLE: Record<string, { promo?: [number, number]; list: [number, number]; cacheRead?: number; cacheWriteMultiplier?: number }> = {
   "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
   "gemini-3.7-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
   "gemini-4-hydrogen": { list: [1.5, 7.5] },
+  "claude-opus-5-5": { list: [4, 20], cacheRead: 0.2, cacheWriteMultiplier: 1.25 },
+  "claude-sonnet-5-5": { list: [2, 10], cacheRead: 0.1, cacheWriteMultiplier: 1.25 },
 };
 const FALLBACK_MODEL = "gemini-3.6-flash";
 
@@ -78,21 +85,52 @@ const FALLBACK_MODEL = "gemini-3.6-flash";
  * 넣지 않는다(그 모델의 기본값). 결과 파일의 `model`에는 접미사까지 그대로 남아 같은 모델의 두 설정이 따로 집계된다.
  */
 export function parseModelSpec(spec: string): { model: string; thinkingLevel: string | null } {
+  // Claude 표기(`claude-…@low+between_tools`)의 `+` 꼬리는 단가 조회에 쓰지 않는다 — 해석은 `claude-runner.ts` `parseClaudeSpec`이 정본.
+  if (spec.startsWith("claude-")) spec = spec.split("+")[0];
   const at = spec.indexOf("@");
   if (at < 0) return { model: spec, thinkingLevel: null };
   return { model: spec.slice(0, at), thinkingLevel: spec.slice(at + 1).toUpperCase() };
 }
 
-export function pricesAt(measuredAt: string, modelSpec = FALLBACK_MODEL): { inPerToken: number; outPerToken: number; label: string } {
+export interface Prices {
+  inPerToken: number;
+  outPerToken: number;
+  /** 캐시 단가가 없는 모델은 입력 단가 그대로(할인을 빼고 센 상한). */
+  cacheReadPerToken: number;
+  cacheWritePerToken: number;
+  label: string;
+}
+
+export function pricesAt(measuredAt: string, modelSpec = FALLBACK_MODEL): Prices {
   const { model } = parseModelSpec(modelSpec);
   const known = PRICE_TABLE[model];
   const row = known ?? PRICE_TABLE[FALLBACK_MODEL];
   const unknown = known ? "" : ` ⚠ ${model} 단가 미등록 — ${FALLBACK_MODEL} 기준 가정`;
-  if (row.promo && new Date(measuredAt).getTime() <= new Date(PROMO_END).getTime()) {
-    return { inPerToken: row.promo[0] / 1e6, outPerToken: row.promo[1] / 1e6, label: `프로모 $${row.promo[0]}/$${row.promo[1]} per 1M, 2026-12-31까지${unknown}` };
-  }
-  const note = row.promo ? " (프로모 종료 후)" : " (기간 할인 없음)";
-  return { inPerToken: row.list[0] / 1e6, outPerToken: row.list[1] / 1e6, label: `정가 $${row.list[0]}/$${row.list[1]} per 1M${note}${unknown}` };
+  const promo = row.promo !== undefined && new Date(measuredAt).getTime() <= new Date(PROMO_END).getTime();
+  const [inUsd, outUsd] = promo ? row.promo! : row.list;
+  const cacheNote = row.cacheRead !== undefined ? `, 캐시 읽기 $${row.cacheRead}·쓰기 ×${row.cacheWriteMultiplier}` : "";
+  const label = promo
+    ? `프로모 $${inUsd}/$${outUsd} per 1M, 2026-12-31까지${unknown}`
+    : `정가 $${inUsd}/$${outUsd} per 1M${row.promo ? " (프로모 종료 후)" : " (기간 할인 없음)"}${cacheNote}${unknown}`;
+  return {
+    inPerToken: inUsd / 1e6,
+    outPerToken: outUsd / 1e6,
+    cacheReadPerToken: (row.cacheRead ?? inUsd) / 1e6,
+    cacheWritePerToken: (inUsd * (row.cacheWriteMultiplier ?? 1)) / 1e6,
+    label,
+  };
+}
+
+/** 세션 1회 비용. `promptTokens`는 캐시 몫을 포함한 입력 총량이고, 생각 토큰은 출력 단가다. */
+export function sessionCost(r: RunResult, p: Prices): number {
+  const read = r.cacheReadTokens ?? 0;
+  const write = r.cacheWriteTokens ?? 0;
+  return (
+    (r.promptTokens - read - write) * p.inPerToken +
+    read * p.cacheReadPerToken +
+    write * p.cacheWritePerToken +
+    (r.outputTokens + r.thoughtTokens) * p.outPerToken
+  );
 }
 
 const AXES = ["expect", "forbid", "arg", "langInvariant", "grounding"] as const;
@@ -209,11 +247,13 @@ export function buildReport(file: ResultFile): string {
     const price = pricesAt(run.measuredAt, m);
     const rs = results.filter((r) => r.model === m);
     const core = rs.filter((r) => !isDiag(r));
-    const cost = (xs: RunResult[]) =>
-      xs.reduce((a, r) => a + r.promptTokens * price.inPerToken + (r.outputTokens + r.thoughtTokens) * price.outPerToken, 0);
+    const cost = (xs: RunResult[]) => xs.reduce((a, r) => a + sessionCost(r, price), 0);
     const sum = (xs: RunResult[], f: (r: RunResult) => number) => xs.reduce((a, r) => a + f(r), 0);
+    const cached = core.some((r) => r.cacheReadTokens !== undefined)
+      ? ` (캐시 읽기 ${sum(core, (r) => r.cacheReadTokens ?? 0)} · 쓰기 ${sum(core, (r) => r.cacheWriteTokens ?? 0)})`
+      : "";
     lines.push(
-      `- ${m} [${price.label}]: ${usd(cost(core))} (diagnostic 제외 ${core.length}건 · in ${sum(core, (r) => r.promptTokens)} / out ${sum(core, (r) => r.outputTokens)} / thinking ${sum(core, (r) => r.thoughtTokens)}) · 포함 합계 ${usd(cost(rs))}`,
+      `- ${m} [${price.label}]: ${usd(cost(core))} (diagnostic 제외 ${core.length}건 · in ${sum(core, (r) => r.promptTokens)}${cached} / out ${sum(core, (r) => r.outputTokens)} / thinking ${sum(core, (r) => r.thoughtTokens)}) · 포함 합계 ${usd(cost(rs))}`,
     );
   }
   lines.push("");
