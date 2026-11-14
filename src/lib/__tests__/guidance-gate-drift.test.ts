@@ -306,11 +306,15 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 지금 위치에서 경로를 새로 받는 자리라 수동 위치 고지 대상이 아니고(spec R7), 호출자는 실험판 봉인 뒤 채팅 경로 카드뿐이다(아래 10).
     // E82 S3(2026-11-14)이 나들이 귀환의 직접 호출을 지웠다(다섯 → 넷): 나들이에서 안내로 넘기는 길은 `handOverOuting` 하나이고
     // 그 함수는 `startGuide`를 지난다(spec 2026-11-14-e82-vergilius-v1-design.md V13). 「출발점으로」도 그 길로 간다.
+    // S3 리뷰 반영(2026-11-14)이 「출발점으로」의 시작 요청을 종전(줄 지정 없음)으로 되돌렸다: 인계 함수가 호출자가 조립한 요청을
+    // 받아 `self.startBeacon(`으로 시작하는 갈래 하나를 더해 다시 다섯이다(진입점이 는 것이 아니라 종전 귀환 호출이 인계 함수
+    // 안으로 옮겨졌다).
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(4);
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(5);
     expect(declarationBody(session, "startGuide").match(/self\.startBeacon\(/g)).toHaveLength(2);
     expect(declarationBody(session, "acceptOutingReturn")).not.toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptOutingReturn")).toContain("handOverOuting(");
+    expect(declarationBody(session, "handOverOuting")).toContain("case .request(let request): self.startBeacon(request)");
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "startTransit")).toContain("beginTransit(");
@@ -373,12 +377,14 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   // E82 S3(2026-11-14)이 하나를 줄였다(15 → 14): 나들이 귀환 인계가 `self.startBeacon(`을 직접 부르지 않고 `handOverOuting` →
   // `startGuide`를 지난다(`startGuide(` 호출은 이 형태에 잡히지 않는다). 진입점이 준 것이 아니라 한 길로 합쳐졌다 — 나들이에서
   // 안내로 넘기는 자리(「출발점으로」·기록 줄의 「도보 안내 시작」)는 아래 "나들이에서 안내로 넘기는 길"이 잠근다.
-  it("안내 세션 진입점 호출이 정확히 14곳이다", () => {
+  // S3 리뷰 반영(2026-11-14)이 다시 하나를 더했다(14 → 15): 「출발점으로」가 종전 도보 요청(줄 지정 없음)을 넘기고 인계 함수가
+  // 그 요청을 `self.startBeacon(`으로 시작한다. 진입점은 그대로 「출발점으로」 하나다.
+  it("안내 세션 진입점 호출이 정확히 15곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(14);
+    expect(sites).toHaveLength(15);
   });
 
   /**
@@ -392,7 +398,14 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
     const body = declarationBody(session, "handOverOuting");
     // 순서가 계약이다: 거두기 → 끝내기 → 시작 → 실패 판정.
     expect(body).toMatch(
-      /outing\.withdrawPendingRequest\(\)\s*outing\.endForHandover\(\)[\s\S]*startGuide\(to: destination, mode: mode\)[\s\S]*if !isActive \{ endOutingReturn\(id, reason: \.startFailed, destination: destination\) \}/,
+      /outing\.withdrawPendingRequest\(\)\s*outing\.endForHandover\(\)[\s\S]*case \.guide\(let mode\): startGuide\(to: destination, mode: mode\)\s*case \.request\(let request\): self\.startBeacon\(request\)[\s\S]*if !isActive \{ endOutingReturn\(id, reason: \.startFailed, destination: destination\) \}/,
+    );
+    // 「출발점으로」는 종전 요청(줄 지정 없음)이고, 기록 줄의 도보 시작은 길찾기 화면의 첫 도보 시작과 같은 요청(`startGuide`)이다.
+    expect(declarationBody(session, "acceptOutingReturn")).toMatch(
+      /start: \.request\(BeaconModel\.StartRequest\([\s\S]*kind: \.walk,\s*accessible: false, variant: nil, line: nil, alternate: nil,/,
+    );
+    expect(readFileSync(join(ROOT, "ios/Gildongmu/GildongmuApp.swift"), "utf8")).toContain(
+      "guideSession.handOverOuting(to: $0, start: .guide(.walk(accessible: false, waypoint: nil)))",
     );
     expect(declarationBody(session, "endOutingReturn")).toContain("DirectionsPrefillStore.shared.pending = DirectionsPrefill(");
     // 나들이를 인계용으로 끝내는 호출과 인계 함수의 호출 자리 전수.

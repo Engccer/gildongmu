@@ -167,7 +167,7 @@ struct GildongmuApp: App {
                         onMinimize: { guideSession.isMinimized = true },
                         onReturn: { guideSession.acceptOutingReturn() },
                         // 기록 줄의 「도보 안내 시작」 — 넘기는 길은 `handOverOuting` 하나다(E82 V13).
-                        onStartWalk: { guideSession.handOverOuting(to: $0, mode: .walk(accessible: false, waypoint: nil)) }
+                        onStartWalk: { guideSession.handOverOuting(to: $0, start: .guide(.walk(accessible: false, waypoint: nil))) }
                     )
                 case .journey:
                     JourneySheet(session: guideSession, onMinimize: { guideSession.isMinimized = true })

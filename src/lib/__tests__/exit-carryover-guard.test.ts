@@ -49,8 +49,7 @@ describe("출구 인계의 입구는 하나다", () => {
   it("StartRequest.exitLead는 기본값이 없고, 모든 호출이 명시한다", () => {
     expect(MODEL).toMatch(/let exitLead: ExitLead\?\n {4}\}/);
     const calls = [COORD, TAB, MODEL].flatMap(startRequestCalls);
-    // E82 S3이 나들이 귀환의 직접 조립 하나를 지웠다(10 → 9): 그 길은 `startGuide`의 `walkLineRequest`를 지난다.
-    expect(calls.length).toBeGreaterThanOrEqual(9);
+    expect(calls.length).toBeGreaterThanOrEqual(10);
     for (const call of calls) expect(call, call.slice(0, 80)).toMatch(/exitLead: /);
   });
 
