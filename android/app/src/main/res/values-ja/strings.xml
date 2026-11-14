@@ -520,6 +520,7 @@
     <string name="beacon_farther">%1$s、遠ざかっています</string>
     <string name="beacon_first">目的地まで約%1$s</string>
     <string name="beacon_guideStartCar">自動車案内を開始</string>
+    <string name="beacon_guideStartTransit">公共交通案内を開始</string>
     <string name="beacon_guideStartTransitAlt">案内開始: %1$s</string>
     <string name="beacon_guideStartWalk">徒歩案内を開始</string>
     <string name="beacon_guideStartWalkAccessible">階段を避けるルートで案内を開始</string>

@@ -520,6 +520,7 @@
     <string name="beacon_farther">%1$s, getting farther</string>
     <string name="beacon_first">About %1$s to destination</string>
     <string name="beacon_guideStartCar">Start car guidance</string>
+    <string name="beacon_guideStartTransit">Start transit guidance</string>
     <string name="beacon_guideStartTransitAlt">Start guidance: %1$s</string>
     <string name="beacon_guideStartWalk">Start walking guidance</string>
     <string name="beacon_guideStartWalkAccessible">Start guidance on the route avoiding stairs</string>
