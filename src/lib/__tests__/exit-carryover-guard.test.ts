@@ -146,7 +146,7 @@ describe("출구 대기 창의 수명", () => {
       expect(line).not.toMatch(/\.lat\b|\.lng\b/);
     const fix = body(MODEL, "private func handleExitHoldFix(", "\n    }\n\n");
     const log = fix.slice(fix.indexOf("guideDiagLog("), fix.indexOf("switch exitHoldStep("));
-    expect(log).toMatch(/speed=.*speedAcc=/s);
+    expect(log).toMatch(/speed=[\s\S]*speedAcc=/);
     expect(log).not.toMatch(/candidate\.lat|candidate\.lng|raw\.lat|raw\.lng/);
   });
 });
