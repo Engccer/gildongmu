@@ -229,26 +229,27 @@ struct OutingSheet: View {
         }
     }
 
+    /// 도착지가 둘 이상이면 버튼 라벨에 도착지 이름을 합친다(「도보 안내 시작, ○○역」) — 버튼만 훑어도(로터·제스처 목록)
+    /// 어느 도착지인지 들리게. 따로 둔 이름 줄은 버튼과 떨어져 읽힌다.
     @ViewBuilder
     private func routeGroupButtons(_ group: RouteStartCardGroup, showsName: Bool) -> some View {
         let dest = GuideDestination(
             dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman)
-        if showsName {
-            Text(bilingualName(lang: AppLanguage.current, ko: group.destLabel, en: nil, roman: group.destRoman).primary)
-        }
+        let name = showsName
+            ? bilingualName(lang: AppLanguage.current, ko: group.destLabel, en: nil, roman: group.destRoman).primary : nil
         if let walk = group.walk {
-            Button(appLocalized("beacon.guideStartWalk")) {
+            Button(joinText(appLocalized("beacon.guideStartWalk"), name)) {
                 onHandOver(dest, .guide(.walk(accessible: walk.accessible, waypoint: waypoint(walk))))
             }
         }
         if let car = group.car, canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: car.carProvider) {
-            Button(appLocalized("beacon.guideStartCar")) {
+            Button(joinText(appLocalized("beacon.guideStartCar"), name)) {
                 onHandOver(dest, .guide(.car(waypoint: waypoint(car))))
             }
         }
         if let payload = group.transit, let transit = payload.transit,
            let route = transitRouteEntries(transit.result).first?.route, transitGuideStartable(route) {
-            Button(appLocalized("beacon.guideStartTransit")) {
+            Button(joinText(appLocalized("beacon.guideStartTransit"), name)) {
                 onHandOver(dest, transitStart(route: route, transit: transit, accessible: payload.accessible))
             }
         }

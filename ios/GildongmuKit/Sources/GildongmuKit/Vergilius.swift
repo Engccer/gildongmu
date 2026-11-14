@@ -410,7 +410,8 @@ public enum VergiliusReaderAction: Sendable, Equatable {
 /// 한 질문의 응답 읽기 상태(순수). 시한(12초)은 앱이 재고 `timedOut()`을 부른다.
 public struct VergiliusReader: Sendable {
     private var splitter = VergiliusSentenceSplitter()
-    /// 읽을 줄에 세운 문장 수(버린 것 포함). 0이면 아직 읽을 문장이 오지 않았다.
+    /// 지금 회차에서 읽을 줄에 세운 문장 수. 0이면 아직 읽을 문장이 오지 않았다. `reset`이 0으로 돌린다 — 버린 군말은
+    /// 답이 아니므로 첫 문장 시한(V17)이 다시 살아난다.
     public private(set) var queuedSentences = 0
     public private(set) var finished = false
 
@@ -427,6 +428,7 @@ public struct VergiliusReader: Sendable {
             return sentences.map { .speak($0) }
         case .reset:
             splitter.clear()
+            queuedSentences = 0
             return [.discardUnread]
         case .done(let text, let renders, let proposal):
             finished = true
@@ -484,9 +486,10 @@ public struct VergiliusService: Sendable {
     }
 
     /// 서버에 키가 있는 답변 모델 식별자(서버 순서 그대로 — 화면 순서는 `VergiliusProvider.choices`).
-    public func providers() async throws -> [String] {
+    /// `timeout`: 질문 경로는 짧게 준다(첫 문장 12초 시한 안에서 조회가 묻는 시간을 잠식하지 않게).
+    public func providers(timeout: TimeInterval = 10) async throws -> [String] {
         let response: ProvidersResponse = try await APIClient(baseURL: baseURL, session: session)
-            .get("/api/vergilius/providers", query: [], timeout: 10)
+            .get("/api/vergilius/providers", query: [], timeout: timeout)
         return response.providers
     }
 

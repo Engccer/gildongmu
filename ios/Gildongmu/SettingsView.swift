@@ -110,10 +110,6 @@ struct SettingsView: View {
         w == w.rounded() ? String(Int(w)) : String(w)
     }
 
-    /// 편집 종료 시점의 커밋(A39, spec `docs/superpowers/specs/2026-09-11-settings-weight-commit-design.md`).
-    /// 종전엔 타자 한 글자마다 돌며 범위 밖을 **0으로 덮어** "저장됨"과 "무시됨"을 뭉갰다(헌장 §1).
-    /// 거절은 저장하지 않고 직전 값을 유지하며, 화면 변화가 없는 동작이라 통지가 유일한 증거다(헌장 §5 — `.high`).
-    /// **멱등**이다: 거절 뒤 필드가 유효 표기로 되돌아가므로 두 번째 호출은 통지 없이 저장으로 끝난다.
     /// 답변 모델 선택지를 서버에서 받는다(실험판만). 실패하면 행을 그리지 않는다 — 고를 수 없는 이름을 보이지 않는다.
     private func loadVergiliusChoices() async {
         #if DEBUG || EXPERIMENTAL
@@ -131,6 +127,10 @@ struct SettingsView: View {
     }
     #endif
 
+    /// 편집 종료 시점의 커밋(A39, spec `docs/superpowers/specs/2026-09-11-settings-weight-commit-design.md`).
+    /// 종전엔 타자 한 글자마다 돌며 범위 밖을 **0으로 덮어** "저장됨"과 "무시됨"을 뭉갰다(헌장 §1).
+    /// 거절은 저장하지 않고 직전 값을 유지하며, 화면 변화가 없는 동작이라 통지가 유일한 증거다(헌장 §5 — `.high`).
+    /// **멱등**이다: 거절 뒤 필드가 유효 표기로 되돌아가므로 두 번째 호출은 통지 없이 저장으로 끝난다.
     private func commitWeight() {
         switch WalkHealth.weightCommit(text: weightText) {
         case let .store(weight):

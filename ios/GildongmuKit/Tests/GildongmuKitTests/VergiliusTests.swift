@@ -253,5 +253,12 @@ struct VergiliusTests {
 
         var d = VergiliusReader()
         #expect(d.receive(.outOfCoverage) == [.fail(.noAnswer)])
+
+        // 군말이 읽을 줄에 섰다가 reset으로 버려지면 첫 문장 시한이 다시 산다(답 없이 도구가 늦으면 「받지 못함」).
+        var e = VergiliusReader()
+        _ = e.receive(.text(delta: "찾아볼게요. ", final: true))
+        #expect(e.timedOut() == [])
+        _ = e.receive(.reset)
+        #expect(e.timedOut() == [.fail(.noAnswer)])
     }
 }

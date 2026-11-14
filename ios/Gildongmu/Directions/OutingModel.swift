@@ -115,6 +115,9 @@ final class OutingModel {
     private var answerQueue: [String] = []
     /// 채널에 실려 끝 신호를 기다리는 답 문장의 표식.
     private var answerInFlight: Int?
+    /// 끝 신호가 오지 않는 답 문장의 상한(주변 문장과 같은 30초) — 넘으면 끊긴 것으로 친다. 구간이 열린 채 남으면 주변 묶음이
+    /// 세션 끝까지 보류된다(V28).
+    @ObservationIgnored private var answerInFlightTimeout: Task<Void, Never>?
     private var answerSentenceSeq = 0
     /// 끊긴 답 문장을 한 번 다시 읽었는가(질문마다 한 번 — 횡단보도 경고가 끊은 문장을 경고 뒤에 다시 읽는다, V29).
     private var answerRetried = false
@@ -1206,7 +1209,8 @@ final class OutingModel {
     /// 그 모델이 닫혀 있으면 서버가 502로 답하고 「답을 받지 못했습니다」가 된다.
     private func resolveProvider() async -> String? {
         let stored = UserDefaults.standard.string(forKey: VergiliusProvider.storageKey)
-        if providerChoices == nil, let server = try? await vergilius.providers() {
+        // 질문 경로의 조회는 3초까지(첫 문장 12초 시한 안이다). 실패하면 다음 질문에서 다시 묻는다.
+        if providerChoices == nil, let server = try? await vergilius.providers(timeout: 3) {
             providerChoices = VergiliusProvider.choices(server: server)
         }
         guard let choices = providerChoices else { return stored ?? VergiliusProvider.displayOrder.first }
@@ -1278,9 +1282,11 @@ final class OutingModel {
                 askTimeoutTask?.cancel()
                 askTask?.cancel()  // 시한으로 끝낸 질문의 스트림도 거둔다(늦은 답은 어차피 읽지 않는다)
                 // 받지 못함은 읽을 것이 없다. 끊김은 이미 완결된 문장을 마저 읽고 끊겼다고 말한다.
-                if failure == .noAnswer { answerQueue.removeAll() }
-                if !answerAbandoned {
-                    answerQueue.append(appLocalized(failure == .noAnswer ? "ios.outing.askNoAnswer" : "ios.outing.askCutOff"))
+                // 읽기를 그만둔 뒤(이미 「끊겼습니다」를 세웠다)의 끊김은 더 말하지 않는다.
+                if failure == .noAnswer {
+                    answerQueue = [appLocalized("ios.outing.askNoAnswer")]
+                } else if !answerAbandoned {
+                    answerQueue.append(appLocalized("ios.outing.askCutOff"))
                 }
             }
         }
@@ -1330,36 +1336,64 @@ final class OutingModel {
             if answerStreamDone { endAskWindow() }
             return
         }
-        // 톤 뒤로 미룬 안내 문장(횡단보도 경고 등)이 슬롯에 있으면 기다린다 — 답이 그 슬롯을 밀어내면 안전 문장이 늦어진다.
-        guard !announcer.hasPending else { return }
+        // 보낼 수 없는 동안은 기다린다(매 fix·워치독 틱과 억제 해제가 다시 부른다): 톤 뒤로 미룬 안내 문장(횡단보도 경고 등)이
+        // 슬롯에 있으면 답이 그 슬롯을 밀어내 안전 문장이 늦어지고, 기기 음성 대기 칸에 문장이 있으면 같은 서열 규칙으로
+        // 거절되며, 받아쓰기 억제 중이면 채널이 버린다. 어느 쪽이든 보내면 재시도를 헛되이 쓴다.
+        // 쥐었거나 낸 횡단보도 경고가 끝나기 전에도 기다린다(V25 — 막힘이 풀리면 경고가 답보다 먼저다. 풀린 경고는 잠시 뒤
+        // 슬롯에 들므로 슬롯만 보면 답이 앞선다).
+        guard !announcer.hasPending, !deviceSpeech.hasPending, !outputSuppressed, !crosswalkLedger.busy else { return }
         let sentence = answerQueue.removeFirst()
         askPhase = .reading
         stopWaitSound()
         answerSentenceSeq += 1
         let seq = answerSentenceSeq
         answerInFlight = seq
+        answerInFlightTimeout?.cancel()
+        answerInFlightTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled, let self else { return }
+            guideDiagLog("askSentenceTimeout")
+            self.answerSentenceEnded(seq, sentence: sentence, spoken: false)
+        }
         say(
             sentence, speechClass: .answer,
             onDropped: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: false) },
             onSpoken: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: true) })
     }
 
-    /// 답 문장 하나의 끝(V0a). 끊긴 문장은 질문마다 한 번 다시 읽고(V29 — 경고가 끊은 문장을 경고 뒤에), 또 끊기면 읽기를
-    /// 그만둔다(답의 글은 기록 목록에 남는다).
+    /// 답 문장 하나의 끝(V0a). 끊긴 문장은 질문마다 한 번 다시 읽고(V29 — 경고가 끊은 문장을 경고 뒤에), 또 끊기면 나머지를
+    /// 그만두고 「답이 끊겼습니다」만 말한다(답의 글은 기록 목록에 남는다, 판정 13). 그 문장마저 끊기면 그대로 끝낸다.
+    ///
+    /// ⚠ 다음 문장은 한 틱 미뤄 낸다: 버림 신호는 새 안내 문장의 `announce`가 슬롯을 비우는 도중에 동기로 온다. 여기서 바로
+    /// 다시 `announce`하면 그 바깥 호출이 이어서 자기 문장으로 슬롯을 덮어써, 답 문장은 끝 신호 없이 사라지고 구간이 열린 채
+    /// 남는다.
     private func answerSentenceEnded(_ seq: Int, sentence: String, spoken: Bool) {
         guard answerInFlight == seq else { return }
         answerInFlight = nil
+        answerInFlightTimeout?.cancel()
+        answerInFlightTimeout = nil
         if !spoken {
-            if !answerRetried {
+            if answerAbandoned {
+                answerQueue.removeAll()
+            } else if !answerRetried {
                 answerRetried = true
                 answerQueue.insert(sentence, at: 0)
             } else {
                 guideDiagLog("askAbandoned left=\(answerQueue.count)")
                 answerAbandoned = true
-                answerQueue.removeAll()
+                answerQueue = [appLocalized("ios.outing.askCutOff")]
             }
         }
-        pumpAnswer()
+        schedulePumpAnswer()
+    }
+
+    /// 다음 답 문장을 한 틱 뒤에 낸다 — 끝 신호 콜백 안에서 바로 `announce`하지 않는다(위 ⚠).
+    private func schedulePumpAnswer() {
+        let epoch = askEpoch
+        Task { [weak self] in
+            guard let self, self.askEpoch == epoch else { return }
+            self.pumpAnswer()
+        }
     }
 
     /// 묻고 답하는 구간의 끝 — 쌓인 주변 묶음이 이제 나간다(V28).
@@ -1385,6 +1419,8 @@ final class OutingModel {
         askReader = VergiliusReader()
         answerQueue = []
         answerInFlight = nil
+        answerInFlightTimeout?.cancel()
+        answerInFlightTimeout = nil
         answerRetried = false
         answerAbandoned = false
         answerStreamDone = false
@@ -1675,6 +1711,7 @@ final class OutingModel {
         crosswalkLedger.spoke(notice.id)
         guideDiagLog("crosswalkSpoken n=\(logSeq(notice.id))")
         recordHistory(.crosswalk(audioSignal: notice.hasAudioSignal))
+        if askPhase != .idle { schedulePumpAnswer() }  // 경고를 기다리던 답을 잇는다(그 밖에는 매 fix·2초 틱)
     }
 
     /// 낸 경고가 버려졌다 — 막힘 여부와 무관하게 다시 쥔다(Kit `OutingCrosswalkLedger.dropped`). 받아쓰기 시작은 기기 음성을

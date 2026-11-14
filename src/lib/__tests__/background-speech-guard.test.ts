@@ -261,4 +261,14 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
       }
     }
   });
+
+  it("나들이 답 문장의 끝 신호는 다음 문장을 같은 호출 스택에서 내지 않는다(E82 S6 리뷰 M1)", () => {
+    // 버림 신호는 새 안내 문장의 announce가 슬롯을 비우는 도중에 동기로 온다. 거기서 바로 다시 announce하면 바깥 호출이
+    // 슬롯을 덮어써 답 문장이 끝 신호 없이 사라지고, 묻고 답하는 구간이 열린 채 남는다.
+    const body = functionBody(read(join(DIR, "OutingModel.swift")), "answerSentenceEnded");
+    expect(body).toContain("schedulePumpAnswer()");
+    expect(body.match(/(?<!schedule)pumpAnswer\(\)/g)).toBeNull();
+    const schedule = functionBody(read(join(DIR, "OutingModel.swift")), "schedulePumpAnswer");
+    expect(closureAfter(schedule, "Task {")).toContain("self.pumpAnswer()");
+  });
 });
