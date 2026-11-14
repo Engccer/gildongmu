@@ -49,6 +49,19 @@ const GEMINI_GCP_PROJECT = "gildongmu-prod";
 // 토큰은 전량 합산한다). drift 테스트가 동조를 강제한다.
 export const GILDONGMU_GEMINI_MODEL = "gemini-3.6-flash";
 
+// ⚠ src/lib/vergilius/claude.ts의 CLAUDE_VERGILIUS_MODELS 값과 같아야 한다(drift 테스트가 강제).
+export const VERGILIUS_CLAUDE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5"];
+
+/** Models API 목록 본문에서 빠진 베르길리우스 Claude 모델. 본문을 못 읽으면 전부 빠진 것으로 본다 */
+export function missingClaudeModels(bodyText) {
+  try {
+    const ids = new Set((JSON.parse(bodyText).data ?? []).map((m) => m.id));
+    return VERGILIUS_CLAUDE_MODELS.filter((id) => !ids.has(id));
+  } catch {
+    return [...VERGILIUS_CLAUDE_MODELS];
+  }
+}
+
 // 출력 100만 토큰당 단가. ⚠ 상수가 아니라 날짜의 함수다 — 공식 가격표가
 // 2026-12-31까지 프로모 $3.75, 2027-01-01부터 $7.50이다(3.6·3.7 flash 동일,
 // 원문 실측 2026-08-15). 한쪽 값을 박으면 경계 전후 어느 한쪽을 조용히 2배
@@ -193,6 +206,25 @@ export const MONEY_PROBES = [
       init: { headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` } },
     }),
     note: "베르길리우스 말로 묻기(E82). 모델 조회라 과금 0, 월 지출 상한은 콘솔 platform.openai.com",
+  },
+  {
+    id: "anthropic",
+    label: "Anthropic",
+    envKeys: ["ANTHROPIC_API_KEY"],
+    // Models API 목록 조회라 과금 0. 키가 살아 있어도 쓰는 모델이 목록에서 빠졌으면(은퇴) 정상이 아니다
+    build: (env) => ({
+      url: "https://api.anthropic.com/v1/models?limit=100",
+      init: {
+        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      },
+    }),
+    judge: ({ httpStatus, bodyText }) => {
+      const base = defaultJudge({ httpStatus });
+      if (base !== STATUS.OK) return base;
+      return missingClaudeModels(bodyText).length === 0 ? STATUS.OK : STATUS.ERROR;
+    },
+    describe: () => `${VERGILIUS_CLAUDE_MODELS.join(", ")} 확인`,
+    note: "베르길리우스 말로 묻기(E82)의 Claude 둘. 모델 목록 조회라 과금 0, 지출 상한은 콘솔 platform.claude.com",
   },
   {
     id: "deepgram-balance",

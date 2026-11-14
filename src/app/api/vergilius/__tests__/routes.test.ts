@@ -3,10 +3,12 @@ import type { VergiliusLoopOptions } from "@/lib/vergilius/loop";
 import { VergiliusModelError, type VergiliusStreamEvent } from "@/lib/vergilius/types";
 import { askFixture } from "@/lib/vergilius/__tests__/fixtures";
 
-const gates = vi.hoisted(() => ({ openai: true, gemini: true, ip: true, daily: true }));
+const gates = vi.hoisted(() => ({ openai: true, gemini: true, anthropic: true, ip: true, daily: true }));
 const spies = vi.hoisted(() => ({
   createOpenAiSession: vi.fn((..._args: unknown[]) => ({ round: vi.fn(), pushToolResults: vi.fn() })),
   createGoogleSession: vi.fn((..._args: unknown[]) => ({ round: vi.fn(), pushToolResults: vi.fn() })),
+  createClaudeSession: vi.fn((..._args: unknown[]) => ({ round: vi.fn(), pushToolResults: vi.fn() })),
+  createAnthropicClient: vi.fn((..._args: unknown[]) => ({ messages: {} })),
   runVergiliusLoop: vi.fn(),
   reserveDaily: vi.fn(),
 }));
@@ -15,9 +17,10 @@ vi.mock("@/lib/env", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/env")>();
   return {
     ...actual,
-    env: { ...actual.env, OPENAI_API_KEY: "sk-test" },
+    env: { ...actual.env, OPENAI_API_KEY: "sk-test", ANTHROPIC_API_KEY: "sk-ant-test" },
     hasOpenAiKey: () => gates.openai,
     hasGeminiKey: () => gates.gemini,
+    hasAnthropicKey: () => gates.anthropic,
   };
 });
 vi.mock("@/lib/gemini/client", () => ({ getGeminiClient: () => (gates.gemini ? { models: {} } : null), GEMINI_MODEL: "m" }));
@@ -35,6 +38,10 @@ vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("@/lib/chat/router", () => ({ executeFunction: vi.fn() }));
 vi.mock("@/lib/vergilius/openai", () => ({ createOpenAiSession: spies.createOpenAiSession }));
 vi.mock("@/lib/vergilius/google", () => ({ createGoogleSession: spies.createGoogleSession }));
+vi.mock("@/lib/vergilius/claude", () => ({
+  createClaudeSession: spies.createClaudeSession,
+  createAnthropicClient: spies.createAnthropicClient,
+}));
 vi.mock("@/lib/vergilius/loop", () => ({ runVergiliusLoop: spies.runVergiliusLoop }));
 
 import { POST } from "../ask/route";
@@ -60,7 +67,7 @@ async function readNdjson(res: Response): Promise<VergiliusStreamEvent[]> {
 }
 
 beforeEach(() => {
-  Object.assign(gates, { openai: true, gemini: true, ip: true, daily: true });
+  Object.assign(gates, { openai: true, gemini: true, anthropic: true, ip: true, daily: true });
   vi.clearAllMocks();
   spies.runVergiliusLoop.mockImplementation(async (opts: VergiliusLoopOptions) => {
     opts.emit({ type: "text", delta: "왼쪽 12미터에 가나카페가 있습니다.", final: true });
@@ -69,17 +76,21 @@ beforeEach(() => {
 });
 
 describe("GET /api/vergilius/providers", () => {
-  it("키 있는 회사가 목록에 선다: OpenAI 다음 Google(E86 판정 2026-11-14로 Google을 연다)", async () => {
+  it("키 있는 회사가 목록에 선다: OpenAI, Google(E86 판정 2026-11-14로 연다), Claude Opus, Claude Sonnet 순", async () => {
     const res = await GET();
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ providers: ["openai", "google"] });
+    expect(await res.json()).toEqual({ providers: ["openai", "google", "claude-opus", "claude-sonnet"] });
   });
 
-  it("키 없는 회사는 목록에 없다", async () => {
+  it("키 없는 회사는 목록에 없다: Claude 둘은 한 키로 함께 빠진다", async () => {
+    gates.anthropic = false;
+    expect(await (await GET()).json()).toEqual({ providers: ["openai", "google"] });
     gates.openai = false;
     expect(await (await GET()).json()).toEqual({ providers: ["google"] });
     gates.gemini = false;
     expect(await (await GET()).json()).toEqual({ providers: [] });
+    gates.anthropic = true;
+    expect(await (await GET()).json()).toEqual({ providers: ["claude-opus", "claude-sonnet"] });
   });
 });
 
@@ -125,6 +136,33 @@ describe("POST /api/vergilius/ask", () => {
     await (await ask(askFixture({ provider: "google" }))).text();
     expect(spies.createGoogleSession).toHaveBeenCalledTimes(1);
     expect(spies.createOpenAiSession).not.toHaveBeenCalled();
+  });
+
+  it("Claude를 고르면 그 모델의 Claude 세션을 만든다(Opus·Sonnet, 키는 서버 env)", async () => {
+    for (const provider of ["claude-opus", "claude-sonnet"] as const) {
+      vi.clearAllMocks();
+      await (await ask(askFixture({ provider }))).text();
+      expect(spies.createClaudeSession).toHaveBeenCalledTimes(1);
+      expect(spies.createClaudeSession.mock.calls[0][0]).toMatchObject({ provider });
+      expect(spies.createAnthropicClient).toHaveBeenCalledWith("sk-ant-test");
+      expect(spies.createOpenAiSession).not.toHaveBeenCalled();
+      expect(spies.createGoogleSession).not.toHaveBeenCalled();
+    }
+  });
+
+  it("키 없는 회사: Claude를 골랐는데 Anthropic 키가 없으면 502이고 세션도 하루 상한도 쓰지 않는다", async () => {
+    gates.anthropic = false;
+    const res = await ask(askFixture({ provider: "claude-sonnet" }));
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    expect(spies.createClaudeSession).not.toHaveBeenCalled();
+    expect(spies.reserveDaily).not.toHaveBeenCalled();
+  });
+
+  it("모르는 provider는 400이다(회사 이름만인 claude는 선택지가 아니다)", async () => {
+    const res = await ask({ ...askFixture(), provider: "claude" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid_request", fields: ["provider"] });
   });
 
   it("키 없는 회사: provider가 google인데 Gemini 키가 없으면 502이고 어느 세션도 만들지 않는다", async () => {

@@ -105,6 +105,7 @@ BACKLOG E82의 2026-11-12 판정 7건과 2026-11-14 설계 판정 15건이 정�
 - 변환층 테스트 항목: Gemini 생각 서명 보존, 병렬 도구 호출의 짝 맞춤(OpenAI는 호출 id, Gemini는 이름), 스키마 타입 표기 차이.
 - 지침 정본은 한 파일이고 두 회사에 같은 지침을 쓴다. 채팅 지침의 「카드로 보인다」 전제는 넣지 않는다.
 - `OPENAI_API_KEY`는 서버 전용 env, 게이트 `hasOpenAiKey`. OpenAI 쪽 월 지출 상한은 콘솔에서 건다(위원장).
+- Claude는 모델 단위 두 선택지 `claude-opus`(Opus 5.5)·`claude-sonnet`(Sonnet 5.5)이다(2026-11-14 추가, 키 `ANTHROPIC_API_KEY`·게이트 `hasAnthropicKey`, 어댑터 `claude.ts`). 둘 다 effort `low`이고 Opus는 생각 설정을 보내지 않으며 Sonnet은 `between_tools`다. `stop_reason`이 `end_turn`·`tool_use`가 아니면 실패이고, 고른 모델이 답한다는 계약이라 거절을 다른 모델로 돌리는 서버 `fallbacks`는 쓰지 않는다. 실측 `docs/evals/2026-11-14-vergilius-claude.md`.
 
 ## 5. 마일스톤과 의존
 

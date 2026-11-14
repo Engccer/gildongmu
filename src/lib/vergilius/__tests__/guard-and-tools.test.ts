@@ -19,6 +19,7 @@ import {
   VERGILIUS_CHAT_TOOL_NAMES,
   lowerSchemaTypes,
   specFromGeminiDeclaration,
+  toAnthropicTools,
   toGeminiDeclarations,
   toOpenAiTools,
   vergiliusToolSpecs,
@@ -163,6 +164,23 @@ describe("도구 선언 변환층", () => {
     expect(gemini).toEqual([
       { name: PROPOSE_GUIDE_NAME, description: PROPOSE_GUIDE_TOOL.description, parametersJsonSchema: PROPOSE_GUIDE_TOOL.parameters },
     ]);
+  });
+
+  it("Anthropic 형식은 input_schema(객체 스키마) 도구이고 strict·eager input streaming을 켜지 않는다", () => {
+    expect(toAnthropicTools([PROPOSE_GUIDE_TOOL])).toEqual([
+      { name: PROPOSE_GUIDE_NAME, description: PROPOSE_GUIDE_TOOL.description, input_schema: PROPOSE_GUIDE_TOOL.parameters },
+    ]);
+    // 실제로 여는 도구 전부: 이름·순서가 회사 중립 선언과 같고, 스키마 최상위는 object다.
+    const specs = vergiliusToolSpecs();
+    const tools = toAnthropicTools(specs);
+    expect(tools.map((t) => t.name)).toEqual(specs.map((s) => s.name));
+    for (const t of tools) {
+      expect(t.input_schema.type).toBe("object");
+      expect(t).not.toHaveProperty("strict");
+      expect(t).not.toHaveProperty("eager_input_streaming");
+    }
+    // 같은 입력이면 같은 출력이다(도구 선언이 캐시 앞부분의 첫 조각).
+    expect(JSON.stringify(toAnthropicTools(vergiliusToolSpecs()))).toBe(JSON.stringify(tools));
   });
 
   it("실제 채팅 선언을 바꾼 결과의 타입 표기는 전부 소문자다", () => {

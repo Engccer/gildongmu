@@ -99,6 +99,7 @@ iOS는 스토어 2.6이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 | 채팅 | Gemini function calling 27도구(여정 `plan_journey`, 2026-11-14 E87 버스 노선 번호 조회 `get_bus_route`, E88 입구 기준 좌우 `get_entrance_sides` 포함, `stationName`·`place`·`via`·`origin` 인자) + Perplexity 웹 검색, 장소 앵커. 한눈에 보기 답변은 장소 카드 동반(계단식 캡 2~4곳, K4 2026-08-24), 답변 뒤 follow-up 칩 3개(웹·iOS·안드로이드, `/api/chat/suggestions`, 생성 예산 서버 15초·클라이언트 20초). 답변 끝 [복사]·[듣기] 버튼(웹 2026-09-24 B12, iOS는 듣기·공유, 안드로이드는 듣기 2026-09-27). → E72(2026-10-17, 스토어 2.2부터): 산문 블록은 언급 수와 무관하게 이름 링크 + 로터, 장소 카드는 같은 넷을 로터로 |
 | 음성 받아쓰기 | 웹 Deepgram / iOS 온디바이스(26+ SpeechAnalyzer, 18~25 SFSpeechRecognizer 온디바이스 강제 — 26 미만은 ⏳ 실기기 미판정), 탭 토글·홀드 택1 |
 | 답변 듣기 | iOS 온디바이스 정본, Google TTS 폴백 |
+| 베르길리우스 말로 묻기 서버(E82) | `/api/vergilius/ask`·`/api/vergilius/providers`. 답변 모델 선택지는 키 있는 것만 OpenAI → Google → Claude Opus 5.5 → Claude Sonnet 5.5 순(`claude-opus`·`claude-sonnet`, 실측 `docs/evals/2026-11-14-vergilius-claude.md`). ⏳ Claude 둘은 prod에 `ANTHROPIC_API_KEY`를 등록해야 선다 |
 
 ### 실시간 길 안내
 | 기능 | 상태 |
@@ -163,7 +164,7 @@ iOS는 스토어 2.6이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 
 ⚠ **prod 키 검증은 `vercel env pull` 길이가 아니라 실호출로** — pull은 Encrypted 값을 복호화하지 않아 정상 키도 빈값으로 내려온다([[vercel-prod-env-pull-redacts-encrypted]]).
 
-비용·쿼터·키 만료 상태는 `node scripts/usage-report.mjs`가 정본이다(로컬 전용, 18프로브 = 돈 5 · 가용성 13 — ODsay 가용성 프로브는 경로 검색 실호출이라 Flex 전환 뒤로는 실행마다 1건 과금, 정본은 `scripts/lib/usage-probes.mjs`의 두 배열 길이).
+비용·쿼터·키 만료 상태는 `node scripts/usage-report.mjs`가 정본이다(로컬 전용, 20프로브 = 돈 7 · 가용성 13 — ODsay 가용성 프로브는 경로 검색 실호출이라 Flex 전환 뒤로는 실행마다 1건 과금, 정본은 `scripts/lib/usage-probes.mjs`의 두 배열 길이).
 
 ---
 

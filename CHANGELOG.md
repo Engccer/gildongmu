@@ -11,6 +11,10 @@
 
 ## 2026-11-14
 
+### 베르길리우스 답변 모델에 Claude 둘을 더한다 (E82, 서버)
+- 「말로 묻기」 선택지에 `claude-opus`(Opus 5.5)·`claude-sonnet`(Sonnet 5.5)이 OpenAI·Google 뒤에 선다(키 `ANTHROPIC_API_KEY`, 없으면 둘 다 빠지고 고르면 502). 둘 다 effort `low`, 거절·잘림은 실패이고 다른 모델로 돌리지 않는다. 개인정보 처리방침 여섯 언어에 Anthropic Claude를 더했고 `usage-report`에 Anthropic 모델 목록 프로브가 생겼다.
+- 실호출(질문당 2~3회)에서 재료 밖 이름·좌우 불일치 0건, 첫 글은 조회 없는 질문 Sonnet 1.0~1.6초·Opus 1.2~2.8초, 조회 낀 질문은 도구 뒤 글이 끝에 한꺼번에 와서 4.7~7.1초. 리포트 `docs/evals/2026-11-14-vergilius-claude.md`.
+
 ### Gemini 4 Hydrogen 평가와 판정 (E86, 서버)
 
 - 채팅은 기본 생각 수준에서 안전 케이스 회귀(5개 중 2개)로 전환 불가, 「낮음」 고정은 차이 없음이라 올해는 3.6 flash 유지, 12월 중순 재측정. 베르길리우스는 Google 선택지를 연다(`gemini-3.5-flash-lite`, 스위치 `VERGILIUS_GOOGLE_OPEN` 제거). 채점기 오탐 셋 수정. 리포트 `docs/evals/2026-11-14-gemini-4-hydrogen.md`.

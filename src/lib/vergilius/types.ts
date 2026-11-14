@@ -15,7 +15,13 @@ export const VERGILIUS_PLACES_MAX = 30;
 /** 최근 기록 상한(V18: 20건). */
 export const VERGILIUS_LOG_MAX = 20;
 
-export const VERGILIUS_PROVIDERS = ["openai", "google"] as const;
+/**
+ * 답변 모델 선택지의 식별자. 앱이 설정에 저장하고 화면에 이름을 붙이는 값이라 바꾸지 않는다.
+ * Claude는 회사가 아니라 모델 단위로 둘이다(Opus 5.5·Sonnet 5.5, 모델 이름은 `claude.ts` 상수).
+ */
+export const CLAUDE_VERGILIUS_PROVIDERS = ["claude-opus", "claude-sonnet"] as const;
+export type ClaudeVergiliusProvider = (typeof CLAUDE_VERGILIUS_PROVIDERS)[number];
+export const VERGILIUS_PROVIDERS = ["openai", "google", ...CLAUDE_VERGILIUS_PROVIDERS] as const;
 export type VergiliusProvider = (typeof VERGILIUS_PROVIDERS)[number];
 
 /** 줄을 가르는 문자인가: C0 제어 문자, DEL, NEL(0x85), 줄·문단 구분자(0x2028·0x2029). 소스에 날 문자를 두지 않으려고 코드 포인트로 본다. */
@@ -109,7 +115,7 @@ export class VergiliusModelError extends Error {
   }
 }
 
-/** 모델의 도구 호출 하나(두 회사 공통 모양). `id`는 OpenAI의 호출 id이고 Gemini는 없을 수 있다(이름과 순서로 짝을 맞춘다). */
+/** 모델의 도구 호출 하나(회사 공통 모양). `id`는 OpenAI의 호출 id·Claude의 `tool_use` id이고 Gemini는 없을 수 있다(이름과 순서로 짝을 맞춘다). */
 export interface VergiliusToolCall {
   id: string | null;
   name: string;

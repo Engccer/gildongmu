@@ -1,5 +1,5 @@
 /**
- * 베르길리우스가 여는 도구와 두 회사 형식으로의 변환층(E82 spec V20·V22·§4). React/Next 비의존.
+ * 베르길리우스가 여는 도구와 회사별 형식(OpenAI·Gemini·Anthropic)으로의 변환층(E82 spec V20·V22·§4). React/Next 비의존.
  *
  * 도구 선언의 정본은 채팅의 `declarations.ts`다(고치지 않는다). 여기서는 그중 이 끝점에 여는 이름만 고르고,
  * 종결 도구 `propose_guide`를 더한 뒤, 회사별 요청 형식으로 바꾼다.
@@ -7,8 +7,9 @@
  * 표기 차이(변환층 테스트 `tools.test.ts`):
  * - 스키마: Gemini 선언은 `parametersJsonSchema`(표준 JSON Schema, 소문자 타입) 또는 `parameters`(Gemini Schema, 대문자 타입
  *   `OBJECT`·`STRING`)를 쓴다. OpenAI는 표준 JSON Schema만 받으므로 대문자 타입은 소문자로 내린다.
- * - 짝 맞춤: OpenAI는 호출 id(`call_id`), Gemini는 이름(과 있으면 id)이다 — 각 어댑터가 맡는다.
+ * - 짝 맞춤: OpenAI는 호출 id(`call_id`), Anthropic은 `tool_use_id`, Gemini는 이름(과 있으면 id)이다 — 각 어댑터가 맡는다.
  */
+import type Anthropic from "@anthropic-ai/sdk";
 import type { FunctionDeclaration } from "@google/genai";
 import { availableDeclarations, ORIGIN_NOTE } from "@/lib/chat/declarations";
 
@@ -124,6 +125,18 @@ export function toOpenAiTools(specs: readonly VergiliusToolSpec[]): OpenAiFuncti
     description: s.description,
     parameters: s.parameters,
     strict: false,
+  }));
+}
+
+/**
+ * Anthropic Messages API의 사용자 정의 도구(`input_schema`는 표준 JSON Schema). strict와 eager input streaming은 켜지 않는다
+ * (사유는 `claude.ts` 머리말). 순서와 내용은 요청마다 같아야 한다 — 도구 선언이 캐시 앞부분의 첫 조각이다.
+ */
+export function toAnthropicTools(specs: readonly VergiliusToolSpec[]): Anthropic.Tool[] {
+  return specs.map((s) => ({
+    name: s.name,
+    description: s.description,
+    input_schema: { ...s.parameters, type: "object" },
   }));
 }
 
