@@ -80,7 +80,9 @@ final class OutingModel {
     /// 쥐고, 문장은 채널이 빌 때 그 순간의 위치와 방향으로 만든다(`flushAmbient`).
     private var bundle = OutingBundle()
     /// 채널에 실려 끝 신호(말했다·버림)를 기다리는 주변 문장 하나. 있는 동안은 다음 주변 문장을 내지 않는다.
-    private var ambientInFlight: (at: Double, isBundle: Bool, text: String, retried: Bool)?
+    /// `cutByGuide`: 이 문장이 실린 동안 안내가 스스로 더 높은 서열의 문장(횡단보도·갈림길·종료)을 냈다 — 그 문장이
+    /// 끊은 것이니 끊김 횟수에 세지 않는다(사용자의 화면 탐색 낭독이 끊은 것만 센다).
+    private var ambientInFlight: (at: Double, isBundle: Bool, text: String, retried: Bool, cutByGuide: Bool)?
     /// 주변 문장의 세대 — 끝난 세션이나 이미 닫은 문장의 늦은 끝 신호를 버린다.
     private var ambientEpoch = 0
     /// 끝 신호가 이 시간 안에 오지 않은 주변 문장은 말하지 않은 것으로 닫는다(초). VoiceOver 통지의 전달 장부 만료
@@ -866,7 +868,7 @@ final class OutingModel {
     private func emitAmbient(_ text: String, isBundle: Bool, retried: Bool) {
         ambientEpoch += 1
         let epoch = ambientEpoch
-        ambientInFlight = (uptimeNow, isBundle, text, retried)
+        ambientInFlight = (uptimeNow, isBundle, text, retried, false)
         // 갈림길 예고와의 간격은 주변 문장의 **끝**에서 잰다(V7): 말하는 중에는 예고가 끊고 나가고(V0b), 끝난 직후에만 미룬다.
         lastAmbientAt = nil
         say(
@@ -887,7 +889,7 @@ final class OutingModel {
                 noteSpoken(bundle.finishSpoken())
             } else {
                 // 끊길수록 길게 쉬고, 세 번 끊긴 가게는 말하기를 그만둔다 — 상한이 없으면 같은 문장이 끝없이 다시 나간다.
-                let drop = bundle.finishDropped()
+                let drop = bundle.finishDropped(counted: !flight.cutByGuide)
                 hold = drop.holdSeconds
                 if !drop.givenUp.isEmpty { notePassedBy(drop.givenUp) }
             }
@@ -1206,6 +1208,8 @@ final class OutingModel {
         _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
         onDropped: (() -> Void)? = nil, onSpoken: (() -> Void)? = nil
     ) {
+        // 주변 문장이 실려 있는 동안 내는 다른 문장은 그 문장을 끊는다(V0b) — 누가 끊었는지를 여기서 적어 둔다.
+        if speechClass != .ambient { ambientInFlight?.cutByGuide = true }
         announcer.announce(
             text, highPriority: highPriority, speechClass: speechClass, onDropped: onDropped, onSpoken: onSpoken)
     }

@@ -63,7 +63,7 @@ struct OutingBundleTests {
         bundle.observe(candidates: [passing("a", east: -12)], stopped: false)
         _ = bundle.compose(relations: ["a": rel(east: -12, north: -3)])
         bundle.observe(candidates: [passing("b", east: 14)], stopped: false)
-        bundle.finishDropped()
+        bundle.finishDropped(counted: true)
         #expect(bundle.pending == ["a", "b"])
         #expect(bundle.spoken.isEmpty)
         // 되돌아온 가게는 다음 문장에 다시 실린다.
@@ -79,7 +79,7 @@ struct OutingBundleTests {
         var holds: [Double] = []
         for round in 1...2 {
             #expect(bundle.compose(relations: near).line?.ids == ["a"], "\(round)")
-            let drop = bundle.finishDropped()
+            let drop = bundle.finishDropped(counted: true)
             holds.append(drop.holdSeconds)
             #expect(drop.givenUp.isEmpty)
             #expect(bundle.pending == ["a"])
@@ -87,7 +87,7 @@ struct OutingBundleTests {
         // 두 번 끊긴 가게와 처음 실리는 가게가 한 문장에 실려 끊겼다 — 세 번째인 가게만 넘어가고 처음인 가게는 남는다.
         bundle.observe(candidates: [passing("b", east: 14)], stopped: false)
         #expect(bundle.compose(relations: near).line?.ids.sorted() == ["a", "b"])
-        let last = bundle.finishDropped()
+        let last = bundle.finishDropped(counted: true)
         holds.append(last.holdSeconds)
         #expect(holds == [3, 6, 12])
         #expect(last.givenUp == ["a"])
@@ -101,6 +101,30 @@ struct OutingBundleTests {
         #expect(outingBundleMaxDrops == 3)
     }
 
+    @Test("안내가 스스로 낸 문장이 끊은 것은 횟수에 세지 않는다 — 몇 번을 끊겨도 가게는 되돌아온다")
+    func guideCutsAreNotCounted() {
+        var bundle = OutingBundle()
+        bundle.observe(candidates: [passing("a", east: -12)], stopped: false)
+        let near = ["a": rel(east: -12, north: -3)]
+        for round in 1...5 {
+            #expect(bundle.compose(relations: near).line?.ids == ["a"], "\(round)")
+            let drop = bundle.finishDropped(counted: false)
+            #expect(drop.givenUp.isEmpty)
+            #expect(drop.holdSeconds == 3)
+            #expect(bundle.pending == ["a"])
+        }
+        // 세지 않은 끊김은 센 끊김의 횟수를 지우지도 않는다: 두 번 센 뒤 세지 않은 끊김이 끼어도 세 번째 센 끊김에 넘어간다.
+        for _ in 1...2 {
+            _ = bundle.compose(relations: near)
+            bundle.finishDropped(counted: true)
+        }
+        _ = bundle.compose(relations: near)
+        #expect(bundle.finishDropped(counted: false).holdSeconds == 6)
+        _ = bundle.compose(relations: near)
+        #expect(bundle.finishDropped(counted: true).givenUp == ["a"])
+        #expect(bundle.passedBy == ["a"])
+    }
+
     @Test("끝까지 말한 뒤에는 끊긴 횟수를 잊는다")
     func spokenClearsDropCount() {
         #expect((1...4).map { outingBundleRetryHoldSeconds(drops: $0) } == [3, 6, 12, 12])
@@ -108,7 +132,7 @@ struct OutingBundleTests {
         bundle.observe(candidates: [passing("a", east: -12)], stopped: false)
         let near = ["a": rel(east: -12, north: -3)]
         _ = bundle.compose(relations: near)
-        #expect(bundle.finishDropped().holdSeconds == 3)
+        #expect(bundle.finishDropped(counted: true).holdSeconds == 3)
         _ = bundle.compose(relations: near)
         #expect(bundle.finishSpoken() == ["a"])
         #expect(bundle.passedBy.isEmpty)
@@ -440,8 +464,8 @@ struct OutingBundleTests {
         var busyUntil = 3.0  // 시작 문장
         var protectedUntil = 3.0
         var holdUntil = 0.0
-        func drop(at t: Double) {
-            let dropped = result.bundle.finishDropped()
+        func drop(at t: Double, counted: Bool) {
+            let dropped = result.bundle.finishDropped(counted: counted)
             result.dropped += 1
             result.givenUp += dropped.givenUp
             holdUntil = t + dropped.holdSeconds
@@ -461,12 +485,13 @@ struct OutingBundleTests {
                     placeLat: place.lat, placeLng: place.lng)
             }
             while safetyIndex < safety.count, safety[safetyIndex] <= fix.t {
-                if let now = speaking, now.until > fix.t { drop(at: fix.t) }
+                // 안전 문장이 끊은 것은 끊김 횟수에 세지 않는다.
+                if let now = speaking, now.until > fix.t { drop(at: fix.t, counted: false) }
                 busyUntil = max(busyUntil, fix.t + 2.5)
                 protectedUntil = fix.t + 3
                 safetyIndex += 1
             }
-            if let now = speaking, let cutAt = now.cutAt, cutAt <= fix.t { drop(at: fix.t) }
+            if let now = speaking, let cutAt = now.cutAt, cutAt <= fix.t { drop(at: fix.t, counted: true) }
             if let now = speaking, now.until <= fix.t {
                 // 문장이 끝나는 시각의 기하로 다시 투영한다 — 말한 좌우가 다 들은 순간에도 참이어야 한다.
                 if case .valid = heading {
@@ -554,7 +579,7 @@ struct OutingBundleTests {
         #expect(result.spokenBeforeDelivery == 0)
         #expect(result.wrongSidesVsTruth == 0)
         #expect(result.wrongSidesAtEnd == 0)
-        #expect(result.emitted.values.allSatisfy { $0 <= outingBundleMaxDrops })
+        #expect(result.givenUp.isEmpty)  // 안전 문장이 끊은 것으로는 포기하지 않는다
     }
 
     @Test("합성 길: 모든 주변 문장이 끊기는 채널에서도 한 가게는 세 번까지만 나가고 그 뒤로는 지나옴이다")

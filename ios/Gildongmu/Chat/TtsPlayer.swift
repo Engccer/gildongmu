@@ -310,6 +310,10 @@ private final class TtsPlaybackDelegate: NSObject, AVAudioPlayerDelegate, AVSpee
     func arm(source: AnyObject, onFinish: @escaping () -> Void) {
         expectedSource = ObjectIdentifier(source)
         self.onFinish = onFinish
+        // 안내 칸을 비운다 — 이 재생이 안내 발화를 끊었고, 남아 있으면 같은 주소를 받은 새 객체의 끝 신호를 안내 칸이
+        // 먼저 삼켜 채팅 듣기의 종료(버튼 라벨 원복)가 오지 않는다.
+        expectedGuidance = nil
+        onGuidanceEnd = nil
     }
 
     /// 아이덴티티는 Sendable이라 격리 경계를 안전하게 넘는다(객체 자체는 안 넘김).

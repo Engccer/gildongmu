@@ -75,7 +75,9 @@ public final class DeviceSpeechHandover {
 /// 9. 「말했다」(E82 V0a, `onSpoken`): 합성기가 그 발화를 **끝까지 말했다고 알렸을 때만** 선다(`speechEnded(token:
 ///    completed: true)` — 앱은 합성기 델리게이트의 끝 신호를 잇는다). 합성기가 스스로 취소했다고 알렸거나, 끝 신호 없이
 ///    합성기에서 사라진 채 확인(0.3초 간격)을 두 번 넘기면 말하지 못한 것이다(`undelivered` — 의심스러우면 「말하지
-///    않았다」). `onSpoken`을 준 문장만 다룬다.
+///    않았다」). 다음 문장이 들어온 순간 합성기에서 사라져 있던 문장도 곧장 버리지 않고 확인 한 번만큼 끝 신호를
+///    기다린다 — 끝 신호는 합성기가 비는 것보다 한 박자 늦게 닿을 수 있어, 곧장 버리면 끝까지 말한 문장을 다시 말한다.
+///    `onSpoken`을 준 문장만 다룬다.
 /// 버림 통지(`onDropped`)와 `onSpoken`은 문장마다 **합쳐 최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은
 /// `DeviceSpeechHandover`가).
 ///
@@ -134,6 +136,8 @@ public final class DeviceSpeechQueue {
     private var drain: Task<Void, Never>?
     /// 「말했다」 확인(계약 9) — `onSpoken`을 준 문장을 합성기에 넘겼을 때만 돈다.
     private var spokenWatch: Task<Void, Never>?
+    /// 다음 문장에 자리를 내준 순간 합성기에서 사라져 있던 추적 문장(발화 토큰 키) — 끝 신호를 확인 한 번만큼 기다린다.
+    private var unsettled: [Int: Item] = [:]
     /// 경계 세대 — `reset`·`handOver`·선점 뒤에 깨어난 옛 드레인이 새 칸을 건드리지 않게.
     private var generation = 0
 
@@ -234,6 +238,7 @@ public final class DeviceSpeechQueue {
         spokenWatch = nil
         pending = nil
         lastSpoken = nil
+        unsettled = [:]
     }
 
     /// 전경 복귀(계약 6). VoiceOver로 넘길 문장을 옛 것 → 새 것 순서로 돌려준다(게시는 호출부가 한 통지로). 합본 통지가
@@ -289,14 +294,21 @@ public final class DeviceSpeechQueue {
     /// 낸 추적 문장이면 「말했다」 또는 버림을 한 번 통지한다. 이 칸이나 칸 밖의 정지가 끊은 발화는 그보다 먼저
     /// `lastSpoken`이 비어 여기에 닿지 않는다. `onSpoken`이 없는 문장은 종전 그대로 건드리지 않는다.
     public func speechEnded(token: Int, completed: Bool) {
-        guard let current = lastSpoken, current.token == token, let onSpoken = current.item.onSpoken else { return }
-        lastSpoken = nil
-        spokenWatch?.cancel()
-        spokenWatch = nil
-        if completed {
-            onSpoken()
+        let item: Item
+        if let current = lastSpoken, current.token == token, current.item.onSpoken != nil {
+            lastSpoken = nil
+            spokenWatch?.cancel()
+            spokenWatch = nil
+            item = current.item
+        } else if let waiting = unsettled.removeValue(forKey: token) {
+            item = waiting  // 다음 문장이 먼저 들어왔지만 끝 신호가 뒤따라 닿았다
         } else {
-            current.item.onDropped?(.undelivered)
+            return
+        }
+        if completed {
+            item.onSpoken?()
+        } else {
+            item.onDropped?(.undelivered)
         }
     }
 
@@ -320,13 +332,21 @@ public final class DeviceSpeechQueue {
         if item.onSpoken != nil { startSpokenWatch(token: token) }
     }
 
-    /// 끝 신호 없이 합성기에서 사라진 추적 문장을 닫는다(계약 9) — 말했는지 알 수 없으니 버림이다. 끝 신호가 먼저 왔으면
-    /// `speechEnded`가 `lastSpoken`을 비워 여기에 닿지 않는다. `onSpoken`이 없는 문장은 건드리지 않는다.
+    /// 다음 문장이 들어오는 순간, 끝 신호 없이 합성기에서 사라져 있는 추적 문장을 자리에서 내린다(계약 9). 곧장
+    /// 버리지 않는다: 끝 신호가 합성기가 비는 것보다 한 박자 늦게 닿는 경우가 있어, 확인 한 번만큼 기다렸다가 그때도
+    /// 없으면 버림으로 닫는다. 끝 신호가 먼저 왔으면 `speechEnded`가 `lastSpoken`을 비워 여기에 닿지 않는다.
+    /// `onSpoken`이 없는 문장은 건드리지 않는다.
     private func settleSpoken() {
         guard let current = lastSpoken, current.item.onSpoken != nil, !isSpeakingToken(current.token)
         else { return }
         lastSpoken = nil
-        current.item.onDropped?(.undelivered)
+        let token = current.token
+        unsettled[token] = current.item
+        let sleeper = self.sleeper
+        Task { [weak self] in
+            await sleeper(Self.pollSeconds)
+            self?.unsettled.removeValue(forKey: token)?.onDropped?(.undelivered)
+        }
     }
 
     private func startSpokenWatch(token: Int) {
@@ -342,7 +362,9 @@ public final class DeviceSpeechQueue {
                 guard let current = self.lastSpoken, current.token == token else { return }
                 if !self.isSpeakingToken(token) {
                     if goneOnce {
-                        self.settleSpoken()
+                        // 확인 두 번 동안 끝 신호가 없었다 — 말했는지 알 수 없으니 버림이다.
+                        self.lastSpoken = nil
+                        current.item.onDropped?(.undelivered)
                         return
                     }
                     goneOnce = true

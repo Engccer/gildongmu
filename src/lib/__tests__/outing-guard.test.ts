@@ -160,7 +160,10 @@ describe("나들이 문장 창구", () => {
     // 「말했다」 표시는 끝 신호에서만(V5): 문장을 낸 자리가 아니라 `finishAmbient`가 닫는다.
     expect(flush).not.toMatch(/finishSpoken/);
     const finish = functionBody(model, "finishAmbient");
-    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\)\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(\)/);
+    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\)\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(counted: !flight\.cutByGuide\)/);
+    // 안내가 스스로 낸 문장이 끊은 것은 끊김 횟수에 세지 않는다 — 표시는 모든 문장이 지나는 `say` 한 곳에서 선다.
+    expect(functionBody(model, "say")).toContain("if speechClass != .ambient { ambientInFlight?.cutByGuide = true }");
+    expect(functionBody(model, "emitAmbient")).toContain("ambientInFlight = (uptimeNow, isBundle, text, retried, false)");
     // 끊김 상한(리뷰 MUST): 쉬는 시간과 포기는 Kit 묶음이 정하고 모델은 그 값을 그대로 쓴다 — 고정 3초로 되돌리지 않는다.
     expect(finish).toContain("hold = drop.holdSeconds");
     expect(finish).toContain("if !drop.givenUp.isEmpty { notePassedBy(drop.givenUp) }");

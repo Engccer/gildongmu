@@ -189,10 +189,46 @@ struct GuideSpeechDeliveryTests {
         submit(h, out, "옆에 가게 하나", cls: .ambient)
         h.now = 10  // 넘긴 지 오래됐어도 끝 신호가 없으면 말한 것이 아니다
         h.synth.vanish()
-        submit(h, out, "옆에 가게 둘", cls: .ambient)
+        h.submit("앞에 갈림길")
+        // 곧장 버리지 않는다 — 끝 신호가 한 박자 늦게 닿을 수 있어 확인 한 번만큼 기다린다.
+        #expect(out.dropped.isEmpty)
+        await drain()
         #expect(out.spoken.isEmpty)
         #expect(out.dropped.map(\.0) == ["옆에 가게 하나"])
         #expect(out.dropped.map(\.1) == [.undelivered])
+        await drain()
+        #expect(out.dropped.count == 1)
+    }
+
+    // 끝까지 말한 문장의 끝 신호가 다음 문장보다 한 박자 늦게 닿아도 「말했다」다 — 버림으로 닫아 다시 말하지 않는다.
+    @Test func endSignalAfterNextSubmitStillCountsAsSpoken() async {
+        let h = Harness()
+        let out = Outcomes()
+        submit(h, out, "옆에 가게 하나", cls: .ambient)
+        let token = h.synth.token
+        h.now = 2
+        h.synth.vanish()  // 합성기는 비었고 끝 신호는 아직 오는 중이다
+        h.submit("앞에 갈림길")
+        h.queue.speechEnded(token: token, completed: true)
+        #expect(out.spoken == ["옆에 가게 하나"])
+        await drain()
+        #expect(out.dropped.isEmpty)
+        #expect(out.spoken.count == 1)
+    }
+
+    // 기다리는 동안 세션이 끝나면 어느 쪽도 통지하지 않는다.
+    @Test func resetForgetsUnsettledSpeech() async {
+        let h = Harness()
+        let out = Outcomes()
+        submit(h, out, "옆에 가게 하나", cls: .ambient)
+        let token = h.synth.token
+        h.synth.vanish()
+        h.submit("앞에 갈림길")
+        h.queue.reset()
+        h.queue.speechEnded(token: token, completed: true)
+        await drain()
+        #expect(out.spoken.isEmpty)
+        #expect(out.dropped.isEmpty)
     }
 
     // 확인 루프 길: 다음 문장이 오지 않아도, 끝 신호 없이 사라진 문장은 확인 두 번 뒤 버림으로 닫힌다. 「말했다」는 서지 않는다.
@@ -402,18 +438,18 @@ struct GuideSpeechDeliveryTests {
         #expect(ledger.isEmpty)
     }
 
-    // 만료는 문장 길이에 비례한다(글자 수 × 0.15초 + 5초, 상한 30초) — 짧은 문장 하나가 30초를 붙들지 않는다.
+    // 만료는 문장 길이에 비례한다(글자 수 × 0.3초 + 5초, 상한 30초) — 짧은 문장 하나가 30초를 붙들지 않는다.
     @Test func voiceOverLedgerExpiryFollowsSentenceLength() {
-        #expect(abs(VoiceOverDeliveryLedger.expirySeconds(for: String(repeating: "가", count: 8)) - 6.2) < 1e-9)
-        #expect(abs(VoiceOverDeliveryLedger.expirySeconds(for: String(repeating: "가", count: 60)) - 14) < 1e-9)
+        #expect(abs(VoiceOverDeliveryLedger.expirySeconds(for: String(repeating: "가", count: 8)) - 7.4) < 1e-9)
+        #expect(abs(VoiceOverDeliveryLedger.expirySeconds(for: String(repeating: "가", count: 60)) - 23) < 1e-9)
         #expect(VoiceOverDeliveryLedger.expirySeconds(for: String(repeating: "가", count: 400)) == 30)
         var ledger = VoiceOverDeliveryLedger()
         let short = ledger.posted(String(repeating: "가", count: 8), at: 0)
         let long = ledger.posted(String(repeating: "나", count: 60), at: 0)
-        #expect(ledger.expire(at: 6.1).isEmpty)
-        #expect(ledger.expire(at: 6.3) == [short])
-        #expect(ledger.expire(at: 13.9).isEmpty)
-        #expect(ledger.expire(at: 14.1) == [long])
+        #expect(ledger.expire(at: 7.3).isEmpty)
+        #expect(ledger.expire(at: 7.5) == [short])
+        #expect(ledger.expire(at: 22.9).isEmpty)
+        #expect(ledger.expire(at: 23.1) == [long])
     }
 
     // 세션 경계에서 비운 통지는 만료로도 끝 신호로도 다시 나오지 않는다.

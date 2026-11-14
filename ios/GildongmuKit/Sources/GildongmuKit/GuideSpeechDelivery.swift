@@ -25,11 +25,13 @@ public struct VoiceOverDeliveryLedger {
     /// 끝 신호를 기다리는 시간의 상한(초).
     public static let maxExpirySeconds = 30.0
 
-    /// 그 문장의 끝 신호를 기다리는 시간(초): 글자 수 × 0.15초 + 5초, 상한 `maxExpirySeconds`. 문장이 말해지는 시간보다
+    /// 그 문장의 끝 신호를 기다리는 시간(초): 글자 수 × 0.3초 + 5초, 상한 `maxExpirySeconds`. 문장이 말해지는 시간보다
     /// 길어야 한다(짧으면 말하는 중인 문장을 버린 것으로 쳐서 한 번 더 말한다). 고정 30초로 두면 조용히 버려진 짧은
     /// 문장 하나가 그만큼 다음 문장을 붙든다.
+    /// ⚠ 잠정값: 느린 낭독 속도와 앞선 낭독 뒤에 줄 서는 시간을 넉넉히 잡은 어림이다. 실기기 로그(게시부터 끝 신호까지의
+    /// 시간, `announceExpired` 빈도)로 다시 맞출 항목이다.
     public static func expirySeconds(for text: String) -> Double {
-        min(maxExpirySeconds, Double(text.count) * 0.15 + 5)
+        min(maxExpirySeconds, Double(text.count) * 0.3 + 5)
     }
 
     private struct Entry {
