@@ -742,6 +742,7 @@
     "guideStartWalkBroad": "큰길 경로로 안내 시작",
     "guideStartWalkRecommended": "추천 경로로 안내 시작",
     "guideStartCar": "자동차 안내 시작",
+    "guideStartTransit": "대중교통 안내 시작",
     "guideStartTransitAlt": "{name} 안내 시작",
     "transitHeading": "대중교통 안내"
   },

@@ -742,6 +742,7 @@
     "guideStartWalkBroad": "Démarrer le guidage sur l'itinéraire par les grands axes",
     "guideStartWalkRecommended": "Démarrer le guidage sur l'itinéraire recommandé",
     "guideStartCar": "Démarrer le guidage en voiture",
+    "guideStartTransit": "Démarrer le guidage en transports en commun",
     "guideStartTransitAlt": "Démarrer le guidage : {name}",
     "transitHeading": "Guidage transports"
   },

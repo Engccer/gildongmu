@@ -742,6 +742,7 @@
     "guideStartWalkBroad": "Start main-road route guidance",
     "guideStartWalkRecommended": "Start recommended route guidance",
     "guideStartCar": "Start car guidance",
+    "guideStartTransit": "Start transit guidance",
     "guideStartTransitAlt": "Start guidance: {name}",
     "transitHeading": "Transit guidance"
   },

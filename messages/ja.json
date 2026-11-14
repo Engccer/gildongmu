@@ -742,6 +742,7 @@
     "guideStartWalkBroad": "大通りルートで案内を開始",
     "guideStartWalkRecommended": "おすすめルートで案内を開始",
     "guideStartCar": "自動車案内を開始",
+    "guideStartTransit": "公共交通案内を開始",
     "guideStartTransitAlt": "案内開始: {name}",
     "transitHeading": "公共交通案内"
   },

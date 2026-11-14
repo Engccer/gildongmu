@@ -742,6 +742,7 @@
     "guideStartWalkBroad": "Avvia la guida sul percorso su strade principali",
     "guideStartWalkRecommended": "Avvia la guida sul percorso consigliato",
     "guideStartCar": "Avvia guida in auto",
+    "guideStartTransit": "Avvia guida con i mezzi pubblici",
     "guideStartTransitAlt": "Avvia la guida: {name}",
     "transitHeading": "Guida mezzi pubblici"
   },
