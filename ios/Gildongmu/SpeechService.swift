@@ -218,6 +218,9 @@ final class SpeechService {
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .defaultToSpeaker])
+        // 녹음 중에도 진동이 나게 한다(E82 V27) — iOS는 마이크 입력이 켜진 동안 진동과 시스템 소리를 기본으로 막아,
+        // 받아쓰기 중에 온 횡단보도 경고의 진동이 나지 않는다. 실패해도 받아쓰기는 그대로 한다(진동만 없다).
+        try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
         try await engine.attach(

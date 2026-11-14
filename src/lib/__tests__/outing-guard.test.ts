@@ -136,7 +136,10 @@ describe("나들이 문장 창구", () => {
   it("횡단보도 예고는 보호 창을 세우고 주변 문장은 그 창 뒤로 미룬다(한 fix 한 문장, spec 준수 리뷰 M-2)", () => {
     const model = readFileSync(MODEL, "utf8");
     const evaluate = functionBody(model, "evaluate");
-    expect(evaluate).toMatch(/sayProtected\(\s*appLocalized\(notice\.hasAudioSignal/);
+    expect(evaluate).toContain("speakCrosswalk(notice)");
+    expect(functionBody(model, "speakCrosswalk")).toMatch(
+      /appLocalized\(notice\.hasAudioSignal[\s\S]*protectedUntil = uptimeNow \+ protectSeconds\s*protectedText = text/,
+    );
     expect(evaluate).toMatch(/if crosswalkSpoken \|\| now < protectedUntil \{/);
     // E82 V4: 가게는 문장이 아니라 id로 묶음에 쥐고, 문장은 채널이 빌 때 `flushAmbient`가 만든다 — 판정 자리(`evaluate`)는
     // 어떤 가게 문장도 직접 내지 않는다(최신이 이기는 칸에 문장을 넣으면 앞 문장이 사라진다).
@@ -226,6 +229,58 @@ describe("나들이 시트 배치(E54)", () => {
     const sheet = readFileSync(SHEET, "utf8");
     expect(sheet).not.toMatch(/Menu\(appLocalized\("ios\.outing\.narration"/);
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
+  });
+});
+
+describe("받아쓰기 중 횡단보도 경고(E82 V25~V27)", () => {
+  const model = readFileSync(MODEL, "utf8");
+  const speech = readFileSync(join(IOS, "Gildongmu/SpeechService.swift"), "utf8");
+  const session = readFileSync(join(IOS, "Gildongmu/Directions/GuideSessionCoordinator.swift"), "utf8");
+
+  it("판정은 장부 한 곳이고, 막힘 여부는 그 자리에서 읽어 넘긴다", () => {
+    const evaluate = functionBody(model, "evaluate");
+    expect(evaluate).toContain("spoken: crosswalkLedger.spoken)");
+    expect(evaluate).toContain("crosswalkLedger.notice(notice, silencing: silencing, suppressed: outputSuppressed)");
+    // 표시를 장부 밖에서 따로 넣지 않는다(쥘 때 표시가 서면 문장 없이 「말한 횡단보도」가 된다).
+    expect(model).not.toMatch(/spokenCrosswalks/);
+    // 진동은 쥔 때 한 번이다 — 말하는 갈래에는 없다.
+    expect(evaluate).toMatch(/case \.vibrate:\s*guideDiagLog\([^\n]*\)\s*ResultHaptic\.fire\(\.attention\)\s*case \.hold:\s*break/);
+  });
+
+  it("막힘이 풀리는 모든 길은 outputSuppressed의 한 자리를 지나고 거기서 쥔 경고를 낸다", () => {
+    expect(model).toMatch(
+      /var outputSuppressed = false \{\s*didSet \{\s*tones\.isSuppressed = outputSuppressed\s*if oldValue, !outputSuppressed \{ releaseHeldCrosswalk\(\) \}/,
+    );
+    const release = functionBody(model, "releaseHeldCrosswalk");
+    expect(release).toContain("outingCrosswalkSurelyBehind(fix: lastFix, heading: heading, crosswalk: crosswalks[held.id])");
+    expect(release).toMatch(/crosswalkLedger\.release\(surelyBehind: behind, silencing: silencing\)[\s\S]*speakCrosswalk\(notice\)/);
+    // 받아쓰기의 억제 해제는 나들이 모델의 그 값에 대입으로 닿는다(다른 화면의 받아쓰기도 같은 창구다).
+    expect(functionBody(session, "setDictationActive")).toContain("outing.outputSuppressed = prior.outing && outing.outputSuppressed");
+    // 받아쓰기가 끝나는 길(권한 거부·시작 실패·정지·취소·인식 실패)은 전부 억제를 푼다. 세대가 어긋난 시작은 풀지 않는다 —
+    // 그 세대를 올린 취소가 이미 풀었다.
+    expect(speech.match(/setGuideSuppressed\(false\)/g)).toHaveLength(5);
+    expect(functionBody(speech, "cancel")).toMatch(/generation \+= 1[\s\S]*setGuideSuppressed\(false\)/);
+    expect(functionBody(speech, "stop")).toContain("setGuideSuppressed(false)");
+  });
+
+  it("낸 예고가 막힘 때문에 버려지면 다시 쥔다(막힌 때만)", () => {
+    expect(functionBody(model, "speakCrosswalk")).toContain("onDropped: { [weak self] in self?.crosswalkDropped(notice) }");
+    expect(functionBody(model, "crosswalkDropped")).toMatch(
+      /guard isTracking, outputSuppressed else \{ return \}\s*let vibrate = crosswalkLedger\.droppedWhileSuppressed\(notice\)/,
+    );
+  });
+
+  it("세션이 끝나면 쥔 것을 버린 뒤에 억제를 푼다 — 끝난 세션의 경고가 나오지 않는다", () => {
+    const stop = functionBody(model, "stop");
+    expect(stop.indexOf("crosswalkLedger = OutingCrosswalkLedger()")).toBeGreaterThan(-1);
+    expect(stop.indexOf("crosswalkLedger = OutingCrosswalkLedger()")).toBeLessThan(stop.indexOf("outputSuppressed = false"));
+    expect(stop.indexOf("status = .idle")).toBeLessThan(stop.indexOf("outputSuppressed = false"));
+  });
+
+  it("녹음 세션은 녹음 중 진동을 허용한다(V27)", () => {
+    expect(functionBody(speech, "beginListening")).toMatch(
+      /session\.setCategory\(\.playAndRecord[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try\? session\.setAllowHapticsAndSystemSoundsDuringRecording\(true\)\s*try session\.setActive\(true/,
+    );
   });
 });
 
