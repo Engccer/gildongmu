@@ -308,10 +308,12 @@ describe("받아쓰기 중 횡단보도 경고(E82 V25~V27)", () => {
     expect(stop).toMatch(/crosswalkLedger = OutingCrosswalkLedger\(\)\s*heldCrosswalkTask\?\.cancel\(\)/);
   });
 
-  it("녹음 세션은 녹음 중 진동을 허용한다(V27)", () => {
+  it("녹음 세션은 나들이 세션이 살아 있을 때만 녹음 중 진동을 허용한다(V27)", () => {
+    // 공유 오디오 세션에 남는 속성이라 매번 값을 명시한다(리터럴 true면 정식판 받아쓰기의 시작음·진동도 녹음 중에 난다).
     expect(functionBody(speech, "beginListening")).toMatch(
-      /session\.setCategory\(\.playAndRecord[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try\? session\.setAllowHapticsAndSystemSoundsDuringRecording\(true\)\s*try session\.setActive\(true/,
+      /session\.setCategory\(\.playAndRecord[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try\? session\.setAllowHapticsAndSystemSoundsDuringRecording\(GuideSession\.shared\.outing\.isTracking\)\s*try session\.setActive\(true/,
     );
+    expect(speech.match(/setAllowHapticsAndSystemSoundsDuringRecording\(/g) ?? []).toHaveLength(1);
   });
 });
 
