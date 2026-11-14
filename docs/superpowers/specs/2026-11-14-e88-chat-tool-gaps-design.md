@@ -85,6 +85,7 @@ ODsay 호출 수: 수단을 한정한 조회는 URL에 `SearchPathType`이 붙�
 | 매칭 | `findBarrierFreeByName`. 먼저 장소 상세 화면과 같은 판정 `matchBarrierFreePlace`(좌표 50m 안 ∩ 이름 일치)를 보고, 없으면 관광공사 이름 검색(`searchKeyword2`)에서 이름이 같고 1km 안인 곳을 고른다. 좌표 목록이 등록 장소를 빠뜨리는 때가 있고(덕수궁 좌표 조회에 덕수궁이 없었다), 넓은 부지는 카카오 좌표와 관광공사 좌표가 수백 m 어긋난다(경복궁 약 400m, 실호출 2026-11-14). |
 | 찾음 | `matched: true` + `searchedPlace` + `detail`(편의시설 목록, 등록 이름). |
 | 찾지 못함 | `matched: false` + `searchedPlace` + 안내 문장. 「이 이름으로 등록된 무장애 정보가 없다」이고 「편의시설이 없다」가 아니다. 이름 검색에 걸린 1km 안의 다른 등록 장소가 있으면 `similar`(이름·거리, 최대 3곳)를 싣고 상세는 대신 주지 않는다(모델이 되묻는다). |
+| 한국 밖 | `outOfCoverage` + `searchedPlace` + 「말한 장소가 대한민국 밖」 안내(ⓒ도 같다). 종전 커버리지 안내의 「현재 위치」를 쓰지 않는다. |
 | 찾았는데 항목 없음 | `detail.facilities`에 그 항목이 없다. 등록된 정보가 없는 것이라고 선언 문구가 가르친다. |
 | 조회 실패 | throw. |
 

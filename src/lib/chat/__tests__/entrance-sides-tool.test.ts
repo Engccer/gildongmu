@@ -151,6 +151,20 @@ describe("get_entrance_sides (채팅 도구)", () => {
     expect(mockScene).toHaveBeenCalledWith(LOTTE.lat, LOTTE.lng);
   });
 
+  it("그 장소 자신을 뺀다 — 말한 이름·검색이 고른 이름·앵커 이름 어느 쪽으로든(리뷰 SHOULD 5a)", async () => {
+    // 검색이 고른 이름(현대백화점 천호점)과 말한 이름(현대 천호점)이 다르다 — 둘 다 넘겨야 자신이 빠진다.
+    mockSearch.mockImplementation(async () => ({ places: [LOTTE] }) as never);
+    mockScene.mockResolvedValue({
+      ...ENTRANCE,
+      groups: [{ bucket: "right", items: [item("현대백화점 천호점", 0), item("현대 천호점", 2), item("GS25 천호점", 20)] }],
+    });
+    const named = await executeFunction("get_entrance_sides", { place: "현대 천호점" }, ctx);
+    expect(named.data.sides).toEqual([{ side: "오른쪽", count: 1, places: [expect.objectContaining({ name: "GS25 천호점" })] }]);
+    mockScene.mockResolvedValue({ ...ENTRANCE, groups: [{ bucket: "left", items: [item("길동 보룡약국", 0), item("GS25 천호점", 20)] }] });
+    const anchored = await executeFunction("get_entrance_sides", { place: "길동 보룡약국" }, anchorCtx);
+    expect(anchored.data.total).toBe(1);
+  });
+
   it("못 풀면 placeNotFound이고 현재 위치로 대신하지 않는다", async () => {
     const r = await executeFunction("get_entrance_sides", { place: "없는곳" }, ctx);
     expect(r.data).toEqual({ error: "'없는곳' 위치를 찾지 못했습니다." });
@@ -160,6 +174,8 @@ describe("get_entrance_sides (채팅 도구)", () => {
   it("한국 밖이면 커버리지 안내만 돌려준다", async () => {
     const r = await executeFunction("get_entrance_sides", { place: "후쿠오카" }, ctx);
     expect(r.data.outOfCoverage).toBe(true);
+    expect(r.data.searchedPlace).toBe("후쿠오카");
+    expect(String(r.data.notice)).not.toContain("현재 위치");
     expect(mockScene).not.toHaveBeenCalled();
   });
 

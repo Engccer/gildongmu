@@ -215,7 +215,8 @@ export interface BarrierFreeNameLookup {
   /** 이름이 맞은 등록 장소의 상세. 못 찾았으면 null. */
   detail: BarrierFreeDetail | null;
   /** 못 찾았을 때만: 이름 검색에 걸린 근처의 다른 등록 장소(이름이 꼭 같지는 않다). */
-  similar: { contentId: string; name: string; distanceMeters: number }[];
+  // contentId를 싣지 않는다: 모델이 되묻지 않고 근처 다른 장소의 상세를 바로 조회해 묻지 않은 곳을 답할 수 있다(E88 리뷰).
+  similar: { name: string; distanceMeters: number }[];
 }
 
 /**
@@ -250,7 +251,7 @@ export async function findBarrierFreeByName(args: {
     near
       .filter((p) => p !== matched)
       .slice(0, SIMILAR_CAP)
-      .map((p) => ({ contentId: p.contentId, name: p.name, distanceMeters: p.distanceMeters }));
+      .map((p) => ({ name: p.name, distanceMeters: p.distanceMeters }));
   if (!matched) return { detail: null, similar: similar() };
   const detail = await getBarrierFreeDetail(matched.contentId);
   // 상세 응답에는 이름이 없다(detailWithTour2) — 검색이 준 등록 이름을 싣는다.

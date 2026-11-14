@@ -95,7 +95,7 @@ describe("get_barrier_free_detail — 이름으로 찾기(E88 spec B2)", () => {
   });
 
   it("찾지 못함 + 근처의 다른 등록 장소: similar를 싣는다", async () => {
-    const similar = [{ contentId: "1605981", name: "덕수궁 대한문", distanceMeters: 120 }];
+    const similar = [{ name: "덕수궁 대한문", distanceMeters: 120 }];
     mockByName.mockResolvedValue({ detail: null, similar });
     const r = await executeFunction("get_barrier_free_detail", { name: "덕수궁" }, ctx);
     expect(r.data).toMatchObject({ matched: false, similar });
@@ -143,6 +143,9 @@ describe("get_barrier_free_detail — 이름으로 찾기(E88 spec B2)", () => {
   it("한국 밖 장소는 커버리지 안내만 돌려준다", async () => {
     const r = await executeFunction("get_barrier_free_detail", { name: "후쿠오카" }, ctx);
     expect(r.data.outOfCoverage).toBe(true);
+    // 말한 장소가 한국 밖이다 — 「현재 위치」가 한국 밖이라는 종전 문장을 쓰지 않는다(리뷰 SHOULD 1).
+    expect(r.data.searchedPlace).toBe("후쿠오카");
+    expect(String(r.data.notice)).not.toContain("현재 위치");
     expect(mockByName).not.toHaveBeenCalled();
   });
 });

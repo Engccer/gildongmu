@@ -148,6 +148,21 @@ function originCoverageGate(named: ResolvedCoord | undefined, origin: { lat: num
   };
 }
 
+/**
+ * 이름으로 지목한 장소가 한국 밖일 때(E88 ⓑ·ⓒ, 리뷰). 종전 커버리지 안내는 「현재 위치」를 말해 사용자의 위치가 한국 밖이라고 읽힌다.
+ * 고른 장소(`searchedPlace`)를 함께 실어 키워드 검색이 엉뚱한 곳을 고른 사실을 모델이 말할 수 있게 한다.
+ */
+function namedPlaceCoverageGate(target: { lat: number; lng: number; label: string }) {
+  if (isInKorea(target.lat, target.lng)) return null;
+  return {
+    data: {
+      outOfCoverage: true,
+      searchedPlace: target.label,
+      notice: "말한 장소가 대한민국 밖의 장소로 잡혔습니다. 이 기능은 대한민국 안에서만 됩니다.",
+    },
+  };
+}
+
 /** 말한 출발지로 조회한 답에 싣는 조각 — 실제로 고른 장소(키워드 검색 첫 결과라 말한 곳과 다를 수 있다). */
 function originNote(named: ResolvedCoord | undefined): { origin?: string } {
   return named ? { origin: named.resolvedPlace } : {};
@@ -213,8 +228,9 @@ const BUS_ROUTE_SEARCHED: Record<LocalSearch, string> = {
  * 이름으로 찾은 무장애 정보가 없을 때(E88 spec B2). 「등록된 정보가 없음」이지 「편의시설이 없음」이 아니다 —
  * `detail: null`만 주면 모델이 시설이 없다고 답한다.
  */
+// 「등록된 곳을 못 찾음」이 아니라 「편의시설 정보를 못 찾음」이다: 이름은 맞았는데 상세가 빈 갈래도 이 문장을 받는다(E88 리뷰).
 const BARRIER_FREE_NOT_REGISTERED =
-  "한국관광공사 무장애 여행 정보에 이 이름으로 등록된 곳을 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.";
+  "한국관광공사 무장애 여행 정보에서 이 이름으로 등록된 편의시설 정보를 찾지 못했습니다. 편의시설이 없다는 뜻이 아니라 등록된 정보가 없다는 뜻입니다.";
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
 
@@ -628,7 +644,7 @@ export async function executeFunction(
         } else {
           return { data: { error: "contentId 또는 장소 이름(name)이 필요합니다." } };
         }
-        const gated = coverageGate(target);
+        const gated = namedPlaceCoverageGate(target);
         if (gated) return gated;
         const lookup = await findBarrierFreeByName(target);
         if (!lookup.detail) {
@@ -666,7 +682,7 @@ export async function executeFunction(
         if (!c) return { data: placeNotFound(named) };
         target = { lat: c.lat, lng: c.lng, label: c.resolvedPlace ?? named, names: [named, c.resolvedName ?? named] };
       }
-      const gated = coverageGate(target);
+      const gated = namedPlaceCoverageGate(target);
       if (gated) return gated;
       const scene = await assembleScene(target.lat, target.lng);
       return { data: entranceSidesData(scene, target.label, target.names), source: src };

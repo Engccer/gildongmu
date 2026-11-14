@@ -169,7 +169,7 @@ describe("findBarrierFreeByName — 이름으로 찾기(E88)", () => {
     const r = await findBarrierFreeByName({ ...KAKAO, names: ["덕수궁 석조전"] });
     expect(r.detail).toBeNull();
     expect(r.similar.map((x) => x.name)).toEqual(["덕수궁 대한문", "국립현대미술관 덕수궁"]);
-    expect(r.similar[0]).toMatchObject({ contentId: "1605981", distanceMeters: expect.any(Number) });
+    expect(r.similar[0]).toEqual({ name: "덕수궁 대한문", distanceMeters: expect.any(Number) });
     expect(ops).not.toContain("detailWithTour2");
   });
 
@@ -188,6 +188,11 @@ describe("findBarrierFreeByName — 이름으로 찾기(E88)", () => {
     const r = await findBarrierFreeByName({ ...KAKAO, names: ["서울시립미술관", "서울시립미술관 서소문본관"] });
     expect(calls).toEqual(["서울시립미술관"]);
     expect(r.detail).toMatchObject({ contentId: "5", name: "서울시립미술관 서소문본관" });
+  });
+
+  it("이름이 맞은 등록 장소의 상세가 비면 못 찾음과 같은 모양이다(detail:null)", async () => {
+    upstream({ locationBasedList2: [], searchKeyword2: [GYEONGBOK_TOUR], detailWithTour2: [] });
+    expect(await findBarrierFreeByName({ ...KAKAO, names: ["경복궁"] })).toEqual({ detail: null, similar: [] });
   });
 
   it("조회 실패는 던진다(못 찾음과 다른 상태)", async () => {
