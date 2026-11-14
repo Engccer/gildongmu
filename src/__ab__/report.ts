@@ -87,13 +87,21 @@ const PROMO_END = "2026-12-31T23:59:59.999Z";
  * `promo`가 없는 모델은 기간 할인이 없다(날짜와 무관하게 `list`).
  * 2026-11-14 공식 요금표 확인: 3.6-flash는 2026-12-31까지 $0.75/$3.75, 그 뒤 $1.50/$7.50. 4-hydrogen은 할인 없이 $1.50/$7.50.
  */
-/** Claude 단가는 2026-11-14 claude-api 스킬 모델 표 확인: Opus 5.5 $4/$20(캐시 읽기 $0.20), Sonnet 5.5 $2/$10(캐시 읽기 $0.10). 5분 캐시 쓰기는 입력의 1.25배. */
+/**
+ * Claude 단가는 2026-11-14 claude-api 스킬 모델 표 확인: Opus 5.5 $4/$20(캐시 읽기 $0.20), Sonnet 5.5 $2/$10(캐시 읽기 $0.10). 5분 캐시 쓰기는 입력의 1.25배.
+ * Haiku 5.5는 2026-11-15 같은 스킬 확인: 프롬프트 10만 토큰 이하 $0.10/$0.50(넘으면 $0.50/$2.50, 이 하네스의 세션은 그 아래), 캐시 읽기 0.1배.
+ * OpenAI는 2026-11-15 공식 모델 문서 확인: gpt-6.1-terra $1/$5(캐시 읽기 $0.05), gpt-6-luna $0.10/$0.50(캐시 읽기 $0.01).
+ * 캐시 쓰기는 기본 30분 보존에서 입력의 1.25배(prompt-caching 가이드).
+ */
 const PRICE_TABLE: Record<string, { promo?: [number, number]; list: [number, number]; cacheRead?: number; cacheWriteMultiplier?: number }> = {
   "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
   "gemini-3.7-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
   "gemini-4-hydrogen": { list: [1.5, 7.5] },
   "claude-opus-5-5": { list: [4, 20], cacheRead: 0.2, cacheWriteMultiplier: 1.25 },
   "claude-sonnet-5-5": { list: [2, 10], cacheRead: 0.1, cacheWriteMultiplier: 1.25 },
+  "claude-haiku-5-5": { list: [0.1, 0.5], cacheRead: 0.01, cacheWriteMultiplier: 1.25 },
+  "gpt-6.1-terra": { list: [1, 5], cacheRead: 0.05, cacheWriteMultiplier: 1.25 },
+  "gpt-6-luna": { list: [0.1, 0.5], cacheRead: 0.01, cacheWriteMultiplier: 1.25 },
 };
 const FALLBACK_MODEL = "gemini-3.6-flash";
 
