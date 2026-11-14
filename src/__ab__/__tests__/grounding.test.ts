@@ -190,6 +190,8 @@ describe("scoreGrounding — 도구 밖이지만 날조가 아닌 네 갈래(E86
     expect(scoreGrounding(num, [], "리뷰 많은 순으로 최대 10곳 찾아 드릴게요", [], INSTRUCTION).leaked).toEqual(["number:10곳"]);
     expect(scoreGrounding(num, [], "근처 대여소 5곳을 찾았어요", [], INSTRUCTION).leaked).toEqual(["number:5곳"]);
     expect(scoreGrounding(num, [], "최대 5곳까지 찾을 수 있어요. 근처에 카페 5곳이 있어요", [], INSTRUCTION).leaked).toEqual(["number:5곳"]);
+    // 앞 낱말 없는 맨 수치가 한 자리라도 있으면 잡힌다(목록 머리·문장 머리).
+    expect(scoreGrounding(num, [], "최대 5곳 찾아 드릴게요.\n5곳 모두 지금 문을 열었어요", [], INSTRUCTION).leaked).toEqual(["number:5곳"]);
     // 도구 선언 설명에만 있는 「반경 150m」는 지침이 아니다(E86 61에서 사람이 날조로 읽은 문장).
     expect(scoreGrounding(num, [], "주변 반경 150m 내에 23곳이 있습니다", [], INSTRUCTION).leaked).toEqual(["number:150m", "number:23곳"]);
   });
