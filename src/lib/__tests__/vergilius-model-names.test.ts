@@ -20,6 +20,9 @@ const slug = (name: string) => name.toLowerCase().replace(/ /g, "-");
 
 describe("베르길리우스 답변 모델 화면 이름", () => {
   it("OpenAI·Google 선택지의 이름이 서버 모델 상수와 같은 모델이다", () => {
+    // 이름을 못 찾으면(`displayName` 구조가 바뀌면) 빈 문자열 비교로 흐려지지 않게 먼저 단언한다.
+    expect(displayName("openai"), "Kit displayName openai").toBeDefined();
+    expect(displayName("google"), "Kit displayName google").toBeDefined();
     expect(slug(displayName("openai") ?? "")).toBe(OPENAI_VERGILIUS_MODEL);
     expect(slug(displayName("google") ?? "")).toBe(GOOGLE_VERGILIUS_MODEL);
   });
