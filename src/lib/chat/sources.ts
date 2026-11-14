@@ -38,6 +38,7 @@ export function sourceFor(
     case "get_congestion":
       return [SEOUL_OPEN];
     case "get_bus_arrivals":
+    case "get_bus_route":
       return [TAGO];
     case "get_air_quality":
       return [AIRKOREA];

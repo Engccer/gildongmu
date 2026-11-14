@@ -585,6 +585,7 @@
         "get_kids_places": "luoghi per bambini",
         "get_surroundings": "dintorni",
         "get_bus_arrivals": "arrivi degli autobus",
+        "get_bus_route": "linea dell'autobus",
         "get_bike_stations": "stazioni bici",
         "get_air_quality": "qualità dell'aria",
         "get_weather": "meteo",

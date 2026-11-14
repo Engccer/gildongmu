@@ -585,6 +585,7 @@
         "get_kids_places": "子どもの遊び場",
         "get_surroundings": "周辺",
         "get_bus_arrivals": "バス到着",
+        "get_bus_route": "バス路線",
         "get_bike_stations": "タルンイ",
         "get_air_quality": "大気質",
         "get_weather": "天気",

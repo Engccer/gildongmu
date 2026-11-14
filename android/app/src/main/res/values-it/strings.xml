@@ -615,6 +615,7 @@
     <string name="chat_progress_tool_get_air_quality">qualità dell\'aria</string>
     <string name="chat_progress_tool_get_bike_stations">stazioni bici</string>
     <string name="chat_progress_tool_get_bus_arrivals">arrivi degli autobus</string>
+    <string name="chat_progress_tool_get_bus_route">linea dell\'autobus</string>
     <string name="chat_progress_tool_get_car_route">percorso in auto</string>
     <string name="chat_progress_tool_get_kids_places">luoghi per bambini</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">luoghi accessibili</string>

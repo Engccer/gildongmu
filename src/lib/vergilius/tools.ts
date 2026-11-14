@@ -15,13 +15,10 @@ import { availableDeclarations } from "@/lib/chat/declarations";
 /** 종결 도구 이름(V22). */
 export const PROPOSE_GUIDE_NAME = "propose_guide";
 
-/**
- * 이 끝점에 여는 채팅 도구(V20): 주변 버스, 대중교통 경로, 도보 경로, 자동차 경로, 장소 검색.
- * 설계가 든 「버스 노선」에 해당하는 채팅 도구 선언은 없다(`/api/bus/route`는 라우트만 있다) — 주변 버스 도구가 정류소별 노선과
- * 도착을 함께 준다.
- */
+/** 이 끝점에 여는 채팅 도구(V20): 주변 버스, 버스 노선(E87), 대중교통 경로, 도보 경로, 자동차 경로, 장소 검색. */
 export const VERGILIUS_CHAT_TOOL_NAMES: readonly string[] = [
   "get_bus_arrivals",
+  "get_bus_route",
   "get_transit_route",
   "get_walk_route",
   "get_car_route",

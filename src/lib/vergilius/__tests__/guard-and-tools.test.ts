@@ -73,11 +73,11 @@ describe("렌더 필터", () => {
 });
 
 describe("도구 선언 변환층", () => {
-  it("여는 도구는 다섯 채팅 도구와 종결 도구뿐이다(여정·웹 검색 등은 열지 않는다)", () => {
+  it("여는 도구는 여섯 채팅 도구와 종결 도구뿐이다(여정·웹 검색 등은 열지 않는다)", () => {
     const names = vergiliusToolSpecs().map((s) => s.name);
     expect(names.at(-1)).toBe(PROPOSE_GUIDE_NAME);
     expect([...names].sort()).toEqual(
-      ["get_bus_arrivals", "get_car_route", "get_transit_route", "get_walk_route", "propose_guide", "search_places"],
+      ["get_bus_arrivals", "get_bus_route", "get_car_route", "get_transit_route", "get_walk_route", "propose_guide", "search_places"],
     );
     expect([...VERGILIUS_CHAT_TOOL_NAMES, PROPOSE_GUIDE_NAME].sort()).toEqual([...names].sort());
   });

@@ -775,6 +775,37 @@ export interface BusRouteStop {
   lng: number;
 }
 
+/** 노선 번호로 찾은 버스 노선 하나(E87 채팅 도구 `get_bus_route`). 시각은 0시부터의 분이고 모르면 null이다. */
+export interface BusLine {
+  source: BusSource;
+  routeId: string;
+  /** TAGO 도시코드. 서울(TOPIS)은 없다. */
+  cityCode?: string;
+  /** 제공처가 준 노선 이름 그대로(예 "272"·"30-3하남"). */
+  routeNo: string;
+  /** 노선 유형(한글). 모르면 "". */
+  routeType: string;
+  /** 기점·종점 이름. */
+  startStop: string;
+  endStop: string;
+  firstMinutes: number | null;
+  lastMinutes: number | null;
+  /** 노선에 등록된 배차 간격(분). 0·결측은 null. */
+  intervalMinutes: number | null;
+}
+
+/** 노선 경유 정류소 한 줄(E87). `BusRouteStop`에 방면과 회차 표식을 더한 것으로, `/api/bus/route` 응답에는 쓰지 않는다. */
+export interface BusLineStop {
+  name: string;
+  order: number;
+  lat: number;
+  lng: number;
+  /** 이 자리를 지나는 차가 향하는 종점 이름. 모르면 "". */
+  towards: string;
+  /** 회차 지점인가. */
+  turnaround: boolean;
+}
+
 /**
  * 도시철도역 하나 — 전국도시철도역사정보 표준데이터(A3) 정적 seed의 한 행.
  *

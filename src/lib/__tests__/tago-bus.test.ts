@@ -13,6 +13,9 @@ import {
   parseBusRouteStops,
   fetchTagoNearby,
   fetchBusRouteStops,
+  parseTagoRouteList,
+  parseTagoLineStops,
+  parseTagoRouteInterval,
 } from "../providers/tago-bus";
 import { readItems } from "../providers/datagokr-envelope";
 
@@ -163,5 +166,56 @@ describe("fetchBusRouteStops", () => {
     mockFetchSequence(fixture.routeStops);
     const stops = await fetchBusRouteStops("23", "DGB3000");
     expect(stops.map((s) => s.order)).toEqual([1, 2]);
+  });
+});
+
+// E87: 노선 번호 검색·방면 경유 정류소·배차 간격. 필드 모양은 2026-11-14 실호출(부산 1003번) 응답에서 옮겼다.
+describe("parseTagoRouteList · parseTagoLineStops · parseTagoRouteInterval (E87)", () => {
+  const body = (item: unknown, totalCount = 0) => ({
+    response: { header: { resultCode: "00" }, body: { items: { item }, totalCount } },
+  });
+
+  it("노선 목록: 숫자로 온 번호·시각도 읽는다(2220 → 22:20, \"0420\" → 04:20)", () => {
+    const raw = body([
+      { endnodenm: "부산대학병원", endvehicletime: 2220, routeid: "BSB5201003000", routeno: 1003, routetp: "일반버스", startnodenm: "기장교리", startvehicletime: "0420" },
+      { endnodenm: "부산대학병원", endvehicletime: 2345, routeid: "BSB5201003F00", routeno: "1003(심야)", routetp: "일반버스", startnodenm: "기장교리", startvehicletime: 2230 },
+    ]);
+    expect(parseTagoRouteList(raw, "21")).toEqual([
+      { source: "tago", routeId: "BSB5201003000", cityCode: "21", routeNo: "1003", routeType: "일반버스", startStop: "기장교리", endStop: "부산대학병원", firstMinutes: 260, lastMinutes: 1340, intervalMinutes: null },
+      { source: "tago", routeId: "BSB5201003F00", cityCode: "21", routeNo: "1003(심야)", routeType: "일반버스", startStop: "기장교리", endStop: "부산대학병원", firstMinutes: 1350, lastMinutes: 1425, intervalMinutes: null },
+    ]);
+  });
+
+  it("항목이 하나면 객체로 와도 읽는다", () => {
+    expect(parseTagoRouteList(body({ routeid: "X1", routeno: 7 }), "22")).toHaveLength(1);
+  });
+
+  const ends = { startStop: "기장교리", endStop: "부산대학병원" };
+  const stop = (nodeord: number, nodenm: string, updowncd: number) => ({ nodeord, nodenm, updowncd, gpslati: 35.2 + nodeord / 1000, gpslong: 129.2 });
+
+  it("경유 정류소: 첫 묶음은 종점 방면, 다음 묶음은 기점 방면이고 첫 묶음의 끝이 회차 지점이다", () => {
+    const stops = parseTagoLineStops(body([stop(3, "다", 1), stop(1, "가", 0), stop(2, "나", 0), stop(4, "라", 1)]), ends);
+    expect(stops.map((s) => [s.name, s.towards, s.turnaround])).toEqual([
+      ["가", "부산대학병원", false],
+      ["나", "부산대학병원", true],
+      ["다", "기장교리", false],
+      ["라", "기장교리", false],
+    ]);
+  });
+
+  it("방면은 코드 값이 아니라 순번상 첫 묶음인가로 정한다(코드가 1로 시작해도 같다)", () => {
+    const stops = parseTagoLineStops(body([stop(1, "가", 1), stop(2, "나", 0)]), ends);
+    expect(stops.map((s) => s.towards)).toEqual(["부산대학병원", "기장교리"]);
+  });
+
+  it("묶음이 하나뿐인 노선(편도·순환)에는 회차 지점이 없다", () => {
+    const stops = parseTagoLineStops(body([stop(1, "가", 0), stop(2, "나", 0)]), ends);
+    expect(stops.some((s) => s.turnaround)).toBe(false);
+  });
+
+  it("배차 간격: 양수만 값이고 0·결측은 null이다", () => {
+    expect(parseTagoRouteInterval(body({ intervaltime: 10 }))).toBe(10);
+    expect(parseTagoRouteInterval(body({ intervaltime: 0 }))).toBeNull();
+    expect(parseTagoRouteInterval(body({ routeid: "X" }))).toBeNull();
   });
 });
