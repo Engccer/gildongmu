@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { GoogleGenAI } from "@google/genai";
 import { createGoogleSession, GOOGLE_VERGILIUS_MODEL } from "../google";
-import { createOpenAiSession, OPENAI_VERGILIUS_MODEL, readSseJson } from "../openai";
+import { createOpenAiSession, OPENAI_VERGILIUS_MODELS, readSseJson } from "../openai";
+import type { OpenAiVergiliusProvider } from "../types";
 import { PROPOSE_GUIDE_TOOL, toGeminiDeclarations, toOpenAiTools } from "../tools";
 
 function sseResponse(events: Record<string, unknown>[], chunkSize = 37): Response {
@@ -28,7 +29,7 @@ const fnDone = (callId: string, name: string, args: Record<string, unknown>) => 
 const textDelta = (delta: string) => ({ type: "response.output_text.delta", delta });
 const completed = { type: "response.completed", response: { output: [] } };
 
-function openAiHarness(responses: Response[], signal?: AbortSignal) {
+function openAiHarness(responses: Response[], signal?: AbortSignal, provider: OpenAiVergiliusProvider = "openai") {
   const bodies: Record<string, unknown>[] = [];
   const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
     bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
@@ -38,6 +39,7 @@ function openAiHarness(responses: Response[], signal?: AbortSignal) {
   }) as unknown as typeof fetch;
   const session = createOpenAiSession({
     apiKey: "sk-test",
+    provider,
     instruction: "지침",
     material: "재료와 질문",
     tools: toOpenAiTools([PROPOSE_GUIDE_TOOL]),
@@ -62,7 +64,7 @@ describe("OpenAI 어댑터(Responses API)", () => {
     expect(result).toEqual({ text: "답.", calls: [] });
     expect(onText).toHaveBeenCalledWith("답.");
     expect(h.bodies[0]).toMatchObject({
-      model: OPENAI_VERGILIUS_MODEL,
+      model: "gpt-6.1-terra",
       instructions: "지침",
       input: [{ role: "user", content: "재료와 질문" }],
       tool_choice: "auto",
@@ -72,6 +74,17 @@ describe("OpenAI 어댑터(Responses API)", () => {
     });
     const init = vi.mocked(h.fetchImpl).mock.calls[0][1] as RequestInit;
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk-test");
+  });
+
+  it("모델은 고른 선택지가 정한다: openai는 Terra, openai-luna는 Luna이고 나머지 요청은 같다(둘 다 추론 끔)", async () => {
+    expect(OPENAI_VERGILIUS_MODELS).toEqual({ openai: "gpt-6.1-terra", "openai-luna": "gpt-6-luna" });
+    const terra = openAiHarness([sseResponse([textDelta("답."), completed])]);
+    const luna = openAiHarness([sseResponse([textDelta("답."), completed])], undefined, "openai-luna");
+    await terra.session.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+    await luna.session.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+    expect(terra.bodies[0].model).toBe("gpt-6.1-terra");
+    expect(luna.bodies[0].model).toBe("gpt-6-luna");
+    expect({ ...luna.bodies[0], model: "" }).toEqual({ ...terra.bodies[0], model: "" });
   });
 
   it("병렬 도구 호출의 짝은 호출 id다: 같은 도구를 두 번 불러도 결과가 제 호출에 붙는다", async () => {

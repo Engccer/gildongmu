@@ -18,6 +18,8 @@ import {
   summarizeGeminiTokens,
   GILDONGMU_GEMINI_MODEL,
   VERGILIUS_CLAUDE_MODELS,
+  VERGILIUS_OPENAI_MODELS,
+  missingOpenAiModels,
   missingClaudeModels,
 } from "../usage-probes.mjs";
 import { readFileSync } from "node:fs";
@@ -246,6 +248,25 @@ describe("OpenAI 전용 키 프로브", () => {
       GILDONGMU_OPENAI_API_KEY: "gildongmu-test",
     });
     expect(init.headers.Authorization).toBe("Bearer gildongmu-test");
+  });
+
+  // 모델을 바꾸고 여기를 잊으면 키가 살아 있어도 리포트가 「조회 실패」를 내거나, 은퇴한 옛 모델을 정상으로 본다.
+  it("리포트 상수가 openai.ts의 OPENAI_VERGILIUS_MODELS 값과 일치한다", () => {
+    const source = readFileSync("src/lib/vergilius/openai.ts", "utf8");
+    const block = source.match(/OPENAI_VERGILIUS_MODELS[^=]*=\s*\{([^}]*)\}/);
+    expect(block).not.toBeNull();
+    const values = [...block[1].matchAll(/:\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(VERGILIUS_OPENAI_MODELS).toEqual(values);
+  });
+
+  it("두 모델(Terra·Luna)이 모두 목록에 있어야 정상이고, 하나라도 빠지면 조회 실패, 인증 오류는 인증 실패다", () => {
+    const list = (ids) => JSON.stringify({ object: "list", data: ids.map((id) => ({ id, object: "model" })) });
+    expect(probe.build({ GILDONGMU_OPENAI_API_KEY: "k" }).url).toBe("https://api.openai.com/v1/models");
+    expect(probe.judge({ httpStatus: 200, bodyText: list(["gpt-6-sol", ...VERGILIUS_OPENAI_MODELS]) })).toBe(STATUS.OK);
+    expect(probe.judge({ httpStatus: 200, bodyText: list(["gpt-6.1-terra"]) })).toBe(STATUS.ERROR);
+    expect(probe.judge({ httpStatus: 200, bodyText: "<html>" })).toBe(STATUS.ERROR);
+    expect(probe.judge({ httpStatus: 401, bodyText: '{"error":{}}' })).toBe(STATUS.AUTH);
+    expect(missingOpenAiModels(list(["gpt-6.1-terra"]))).toEqual(["gpt-6-luna"]);
   });
 });
 

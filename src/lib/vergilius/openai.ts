@@ -8,9 +8,12 @@
  * - 도구 결과는 다음 요청의 `input`에 `{type:"function_call_output", call_id, output}`으로 넣는다. **짝은 `call_id`다** —
  *   같은 도구를 한 회차에 두 번 불러도 id가 달라 섞이지 않는다.
  * - 저장하지 않는다(`store: false`). 이력은 매 회차 전량을 다시 보낸다.
+ * - **두 모델(Terra·Luna) 모두 추론을 끈다**(`reasoning.effort: "none"`). 2026-11-15 공식 모델 문서에서 `gpt-6.1-terra`와 `gpt-6-luna`
+ *   둘 다 `none`·`low`·`medium`(기본)·`high`·`xhigh`·`max`를 받고 스트리밍과 함수 호출을 지원함을 확인했다. 그래서 요청은 모델 이름만
+ *   다르고 나머지 설정은 같다. 거절·잘림(`response.failed`·`response.incomplete`)은 실패이고 다른 모델로 돌리지 않는다(고른 모델이 답한다).
  */
 import type { OpenAiFunctionTool } from "./tools";
-import { VergiliusModelError } from "./types";
+import { VergiliusModelError, type OpenAiVergiliusProvider } from "./types";
 import type {
   VergiliusModelSession,
   VergiliusRoundOptions,
@@ -19,9 +22,15 @@ import type {
   VergiliusToolOutcome,
 } from "./types";
 
-// 2026-11-14 모델 목록 API(`GET /v1/models`)에서 확인. 지연 조사(`RESEARCH-2026-11-14-e82-voice-latency.md` §2.2)에서
-// 추론을 끈 채 첫 문장 1.2초였다. 바꿀 때는 `docs/evals/2026-11-14-e82-vergilius-ask.md`의 일곱 질문 표를 다시 낸다.
-export const OPENAI_VERGILIUS_MODEL = "gpt-6.1-terra";
+/**
+ * 모델 이름의 정본(모델 목록 API `GET /v1/models`로 확인: Terra 2026-11-14, Luna 2026-11-15). 지연 조사
+ * (`RESEARCH-2026-11-14-e82-voice-latency.md` §2.2)에서 추론을 끈 채 첫 문장이 Terra 1.2초, Luna 1.0초였다. 바꿀 때는 그 모델의 표를
+ * 다시 낸다(Terra `docs/evals/2026-11-14-e82-vergilius-ask.md`, Luna `docs/evals/2026-11-15-vergilius-gpt-6-luna.md`).
+ */
+export const OPENAI_VERGILIUS_MODELS: Record<OpenAiVergiliusProvider, string> = {
+  openai: "gpt-6.1-terra",
+  "openai-luna": "gpt-6-luna",
+};
 
 const RESPONSES_URL = "https://api.openai.com/v1/responses";
 /** 한 회차의 상한. 걷는 사람은 8초 안에 첫 문장이 없으면 실패 문장을 듣는다(V17) — 그보다 오래 붙들 이유가 없다. */
@@ -33,11 +42,11 @@ type InputItem = Record<string, unknown>;
 
 export interface OpenAiSessionOptions {
   apiKey: string;
+  provider: OpenAiVergiliusProvider;
   instruction: string;
   /** 첫 사용자 글(재료 + 질문). */
   material: string;
   tools: OpenAiFunctionTool[];
-  model?: string;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
 }
@@ -84,7 +93,7 @@ function parseArguments(raw: unknown): Record<string, unknown> {
 
 export function createOpenAiSession(opts: OpenAiSessionOptions): VergiliusModelSession {
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const model = opts.model ?? OPENAI_VERGILIUS_MODEL;
+  const model = OPENAI_VERGILIUS_MODELS[opts.provider];
   const input: InputItem[] = [{ role: "user", content: opts.material }];
 
   return {

@@ -14,8 +14,10 @@ describe("길동무 OpenAI 키 격리", () => {
     const { availableVergiliusProviders, createVergiliusSession } = await import("../vergilius/providers");
 
     expect(hasOpenAiKey()).toBe(false);
-    expect(availableVergiliusProviders()).not.toContain("openai");
-    expect(createVergiliusSession({ provider: "openai", instruction: "지침", material: "질문", tools: [] })).toBeNull();
+    for (const provider of ["openai", "openai-luna"] as const) {
+      expect(availableVergiliusProviders()).not.toContain(provider);
+      expect(createVergiliusSession({ provider, instruction: "지침", material: "질문", tools: [] })).toBeNull();
+    }
   });
 
   it("두 키가 함께 있어도 답변 요청에는 길동무 전용 키만 보낸다", async () => {
@@ -29,11 +31,14 @@ describe("길동무 OpenAI 키 격리", () => {
     const { createVergiliusSession } = await import("../vergilius/providers");
 
     expect(hasOpenAiKey()).toBe(true);
-    const session = createVergiliusSession({ provider: "openai", instruction: "지침", material: "질문", tools: [] });
-    expect(session).not.toBeNull();
-    await session!.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer gildongmu-test");
+    for (const provider of ["openai", "openai-luna"] as const) {
+      fetchMock.mockClear();
+      const session = createVergiliusSession({ provider, instruction: "지침", material: "질문", tools: [] });
+      expect(session).not.toBeNull();
+      await session!.round({ tools: true, onText: vi.fn(), onCall: vi.fn() });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect((init.headers as Record<string, string>).Authorization).toBe("Bearer gildongmu-test");
+    }
   });
 });

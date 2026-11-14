@@ -11,10 +11,16 @@ import { createOpenAiSession } from "./openai";
 import { toAnthropicTools, toGeminiDeclarations, toOpenAiTools, type VergiliusToolSpec } from "./tools";
 import {
   CLAUDE_VERGILIUS_PROVIDERS,
+  OPENAI_VERGILIUS_PROVIDERS,
   type ClaudeVergiliusProvider,
+  type OpenAiVergiliusProvider,
   type VergiliusModelSession,
   type VergiliusProvider,
 } from "./types";
+
+function isOpenAiProvider(p: VergiliusProvider): p is OpenAiVergiliusProvider {
+  return (OPENAI_VERGILIUS_PROVIDERS as readonly string[]).includes(p);
+}
 
 function isClaudeProvider(p: VergiliusProvider): p is ClaudeVergiliusProvider {
   return (CLAUDE_VERGILIUS_PROVIDERS as readonly string[]).includes(p);
@@ -33,7 +39,8 @@ export function vergiliusRequestSignal(requestSignal: AbortSignal, timeoutMs: nu
 
 export function availableVergiliusProviders(): VergiliusProvider[] {
   const out: VergiliusProvider[] = [];
-  if (hasOpenAiKey()) out.push("openai");
+  // OpenAI 둘(Terra·Luna)은 한 키로 함께 서고 함께 빠진다(Luna 2026-11-15 위원장 요청으로 추가). Terra가 처음 값이라 맨 앞이다.
+  if (hasOpenAiKey()) out.push(...OPENAI_VERGILIUS_PROVIDERS);
   if (hasGeminiKey()) out.push("google");
   // Claude 셋은 한 키로 함께 서고 함께 빠진다(Opus·Sonnet 2026-11-14, Haiku 2026-11-15 위원장 요청으로 추가).
   if (hasAnthropicKey()) out.push(...CLAUDE_VERGILIUS_PROVIDERS);
@@ -50,10 +57,11 @@ export interface VergiliusSessionInput {
 
 /** 그 회사의 세션을 만든다. 키가 없으면 null(라우트가 게이트 응답을 낸다). */
 export function createVergiliusSession(input: VergiliusSessionInput): VergiliusModelSession | null {
-  if (input.provider === "openai") {
+  if (isOpenAiProvider(input.provider)) {
     if (!hasOpenAiKey()) return null;
     return createOpenAiSession({
       apiKey: env.GILDONGMU_OPENAI_API_KEY!,
+      provider: input.provider,
       instruction: input.instruction,
       material: input.material,
       tools: toOpenAiTools(input.tools),

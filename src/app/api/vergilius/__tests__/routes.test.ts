@@ -76,15 +76,17 @@ beforeEach(() => {
 });
 
 describe("GET /api/vergilius/providers", () => {
-  it("키 있는 회사가 목록에 선다: OpenAI, Google(E86 판정 2026-11-14로 연다), Claude Opus, Claude Sonnet, Claude Haiku 순", async () => {
+  it("키 있는 회사가 목록에 선다: OpenAI Terra, OpenAI Luna, Google(E86 판정 2026-11-14로 연다), Claude Opus, Claude Sonnet, Claude Haiku 순", async () => {
     const res = await GET();
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ providers: ["openai", "google", "claude-opus", "claude-sonnet", "claude-haiku"] });
+    expect(await res.json()).toEqual({
+      providers: ["openai", "openai-luna", "google", "claude-opus", "claude-sonnet", "claude-haiku"],
+    });
   });
 
-  it("키 없는 회사는 목록에 없다: Claude 셋은 한 키로 함께 빠진다", async () => {
+  it("키 없는 회사는 목록에 없다: OpenAI 둘과 Claude 셋은 각자 한 키로 함께 빠진다", async () => {
     gates.anthropic = false;
-    expect(await (await GET()).json()).toEqual({ providers: ["openai", "google"] });
+    expect(await (await GET()).json()).toEqual({ providers: ["openai", "openai-luna", "google"] });
     gates.openai = false;
     expect(await (await GET()).json()).toEqual({ providers: ["google"] });
     gates.gemini = false;
@@ -130,6 +132,17 @@ describe("POST /api/vergilius/ask", () => {
       expect(prompt).not.toContain(String(v));
     }
     expect(prompt).toContain("k101 | 가나카페");
+  });
+
+  it("OpenAI를 고르면 그 모델의 OpenAI 세션을 만든다(Terra·Luna, 키는 서버 env)", async () => {
+    for (const provider of ["openai", "openai-luna"] as const) {
+      vi.clearAllMocks();
+      await (await ask(askFixture({ provider }))).text();
+      expect(spies.createOpenAiSession).toHaveBeenCalledTimes(1);
+      expect(spies.createOpenAiSession.mock.calls[0][0]).toMatchObject({ provider });
+      expect(spies.createGoogleSession).not.toHaveBeenCalled();
+      expect(spies.createClaudeSession).not.toHaveBeenCalled();
+    }
   });
 
   it("Google을 고르면 Google 세션을 만든다", async () => {
@@ -226,9 +239,12 @@ describe("POST /api/vergilius/ask", () => {
 
   it("키 게이트: 그 회사 키가 없으면 502, 하루 상한을 쓰지 않는다", async () => {
     gates.openai = false;
-    const res = await ask(askFixture({ provider: "openai" }));
-    expect(res.status).toBe(502);
-    expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    for (const provider of ["openai", "openai-luna"] as const) {
+      const res = await ask(askFixture({ provider }));
+      expect(res.status).toBe(502);
+      expect(await res.json()).toEqual({ error: "provider_unavailable" });
+    }
+    expect(spies.createOpenAiSession).not.toHaveBeenCalled();
     expect(spies.reserveDaily).not.toHaveBeenCalled();
   });
 

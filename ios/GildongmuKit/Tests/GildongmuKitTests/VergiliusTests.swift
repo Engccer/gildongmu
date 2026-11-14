@@ -20,12 +20,16 @@ struct VergiliusTests {
 
     // MARK: 선택지
 
-    @Test("선택지는 판정 순서(OpenAI → Sonnet → Opus → Haiku → Gemini)이고 모르는 이름은 건너뛴다")
+    @Test("선택지는 판정 순서(Terra → Luna → Sonnet → Opus → Haiku → Gemini)이고 모르는 이름은 건너뛴다")
     func providerOrder() {
-        // 서버 목록 순서(OpenAI, Google, Opus, Sonnet, Haiku)와 상관없이 화면 순서로 선다.
-        let server = ["google", "claude-opus", "mystery", "claude-sonnet", "claude-haiku", "openai"]
-        #expect(VergiliusProvider.choices(server: server) == ["openai", "claude-sonnet", "claude-opus", "claude-haiku", "google"])
+        // 서버 목록 순서(Terra, Luna, Google, Opus, Sonnet, Haiku)와 상관없이 화면 순서로 선다.
+        let server = ["google", "claude-opus", "mystery", "openai-luna", "claude-sonnet", "claude-haiku", "openai"]
+        #expect(
+            VergiliusProvider.choices(server: server)
+                == ["openai", "openai-luna", "claude-sonnet", "claude-opus", "claude-haiku", "google"]
+        )
         #expect(VergiliusProvider.displayName("claude-haiku") == "Claude Haiku")
+        #expect(VergiliusProvider.displayName("openai-luna") == "GPT-6 Luna")
         #expect(VergiliusProvider.choices(server: ["google"]) == ["google"])
         #expect(VergiliusProvider.choices(server: []) == [])
         #expect(VergiliusProvider.displayOrder.allSatisfy { VergiliusProvider.displayName($0) != nil })

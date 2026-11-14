@@ -17,11 +17,14 @@ export const VERGILIUS_LOG_MAX = 20;
 
 /**
  * 답변 모델 선택지의 식별자. 앱이 설정에 저장하고 화면에 이름을 붙이는 값이라 바꾸지 않는다.
- * Claude는 회사가 아니라 모델 단위로 셋이다(Opus 5.5·Sonnet 5.5·Haiku 5.5, 모델 이름은 `claude.ts` 상수).
+ * OpenAI는 모델 단위로 둘이다: `openai`(GPT-6.1 Terra, 처음 선택지라 저장값을 지키려고 이름을 그대로 둔다)와 `openai-luna`(GPT-6 Luna,
+ * 2026-11-15 추가). Claude도 모델 단위로 셋이다(Opus 5.5·Sonnet 5.5·Haiku 5.5). 모델 이름은 `openai.ts`·`claude.ts` 상수다.
  */
+export const OPENAI_VERGILIUS_PROVIDERS = ["openai", "openai-luna"] as const;
+export type OpenAiVergiliusProvider = (typeof OPENAI_VERGILIUS_PROVIDERS)[number];
 export const CLAUDE_VERGILIUS_PROVIDERS = ["claude-opus", "claude-sonnet", "claude-haiku"] as const;
 export type ClaudeVergiliusProvider = (typeof CLAUDE_VERGILIUS_PROVIDERS)[number];
-export const VERGILIUS_PROVIDERS = ["openai", "google", ...CLAUDE_VERGILIUS_PROVIDERS] as const;
+export const VERGILIUS_PROVIDERS = [...OPENAI_VERGILIUS_PROVIDERS, "google", ...CLAUDE_VERGILIUS_PROVIDERS] as const;
 export type VergiliusProvider = (typeof VERGILIUS_PROVIDERS)[number];
 
 /** 줄을 가르는 문자인가: C0 제어 문자, DEL, NEL(0x85), 줄·문단 구분자(0x2028·0x2029). 소스에 날 문자를 두지 않으려고 코드 포인트로 본다. */

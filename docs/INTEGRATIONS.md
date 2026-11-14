@@ -935,7 +935,7 @@ ODsay 대중교통 — **Flex(후불 종량제) 앱 `gildongmuflex` 키**(2026-0
 
 같은 OpenAI 조직의 `Gildongmu` 프로젝트 전용 키를 앱·평가·`usage-report`에 쓴다. 환경 입력은 `GILDONGMU_OPENAI_API_KEY` 하나이며, 공용 `OPENAI_API_KEY`가 셸에 있어도 읽거나 폴백하지 않는다. 전용 키가 없으면 `hasOpenAiKey`가 false라 OpenAI 선택지·세션을 닫고 사용량 리포트도 호출하지 않는다. provider는 이 키를 Responses API 인증에 명시해 전달한다.
 
-로컬 `.env.local`·Vercel·저장소 밖 평가 스크립트에도 같은 전용 변수명을 등록한다. Next.js는 같은 이름의 `process.env`를 `.env.local`보다 먼저 읽으므로 공용 변수명을 재사용하지 않는다. 공용 `Personal-General` 키는 그대로 유지한다. 모델은 코드 상수 `OPENAI_VERGILIUS_MODEL`, 지출 설정은 OpenAI 콘솔에서 관리한다. Vercel 환경을 바꾸면 재배포가 필요하다.
+로컬 `.env.local`·Vercel·저장소 밖 평가 스크립트에도 같은 전용 변수명을 등록한다. Next.js는 같은 이름의 `process.env`를 `.env.local`보다 먼저 읽으므로 공용 변수명을 재사용하지 않는다. 공용 `Personal-General` 키는 그대로 유지한다. 모델은 코드 상수 `OPENAI_VERGILIUS_MODELS`(선택지 `openai`=`gpt-6.1-terra`, `openai-luna`=`gpt-6-luna`, 한 키로 함께 서고 빠진다), 지출 설정은 OpenAI 콘솔에서 관리한다. `usage-report`는 모델 목록에 두 모델이 다 있어야 정상으로 본다. Vercel 환경을 바꾸면 재배포가 필요하다.
 
 ### GEMINI_API_KEY
 

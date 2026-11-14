@@ -58,9 +58,9 @@ const envSchema = z.object({
   // Google Gemini — 채팅 function-calling 엔진(서버 전용). 유료 API.
   GEMINI_API_KEY: z.string().min(1).optional(),
 
-  // OpenAI — 베르길리우스 「말로 묻기」 답변 모델(E82, 서버 전용). 유료 API, 월 지출 상한은 OpenAI 콘솔에서 건다.
+  // OpenAI — 베르길리우스 「말로 묻기」 답변 모델 GPT-6.1 Terra·GPT-6 Luna(E82, 서버 전용). 유료 API, 월 지출 상한은 OpenAI 콘솔에서 건다.
   // 길동무 전용 키만 읽는다. 공용 OPENAI_API_KEY로 폴백하지 않는다.
-  // 키 없으면 `/api/vergilius/providers`에 openai가 없다(앱 설정의 선택지에서 빠진다).
+  // 키 없으면 `/api/vergilius/providers`에 openai·openai-luna가 없다(앱 설정의 선택지에서 빠진다).
   GILDONGMU_OPENAI_API_KEY: z.string().min(1).optional(),
 
   // Anthropic — 베르길리우스 「말로 묻기」 답변 모델 Claude Opus 5.5·Sonnet 5.5·Haiku 5.5(서버 전용). 유료 API, 지출 상한은 Anthropic 콘솔에서 건다.
