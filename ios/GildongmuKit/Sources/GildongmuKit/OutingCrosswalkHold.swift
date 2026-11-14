@@ -9,6 +9,13 @@ import Foundation
 // 「말했다」 표시는 낸 때가 아니라 **끝까지 말해졌다는 끝 신호**(`spoke`)에서 선다(V0a). 낸 문장은 끝 신호를 받을 때까지
 // `inFlight`에 있고, 버림이 오면 막힘 여부와 무관하게 다시 쥔다 — 받아쓰기 시작은 기기 음성을 억제보다 먼저 멈추고, 받아쓰기
 // 완료는 포커스 이동과 원문 통지로 막 낸 VoiceOver 통지를 끊는다. 낸 때 표시를 세우면 두 경우 모두 경고가 사라진다.
+//
+// **한 번에 하나**: 횡단보도 경고 하나가 끝나지 않은 동안(쥐었거나, 낸 채 끝 신호를 기다린다) 장부는 새 횡단보도를 받지
+// 않는다(`busy`). 끝나지 않은 경고를 예고 판정에서만 빼면 같은 진행선의 근접 짝(넓은 길의 연석점·중심점)이나 30m 안의
+// 다음 횡단보도가 곧장 골라져 안전 문장끼리 서로 끊고(교대에 상한이 없다), 풀린 뒤 대기열 뒤로 낸 경고 다음에 기본
+// 우선순위로 나가 받아쓴 원문 통지를 끊고, 기기 음성 대기 칸에 한 번 더 들어가고, 막힌 동안 쥔 것과 진동이 횡단보도를
+// 오간다. 끝 신호(말함·버림)는 채널마다 반드시 한 번 온다 — VoiceOver는 만료로, 기기 음성은 대기 칸의 확인으로, 지연
+// 슬롯은 밀려남으로 닫힌다(`GuideSpeechDelivery.swift`). 그래서 `busy`는 오래 남지 않는다.
 
 /// 버림이 온 뒤 다시 낼 수 있는 횟수(횡단보도마다). 넘으면 포기하고 「말했다」로 적는다 — 다시 예고하지 않는다.
 /// 받아쓰기 시작과 끝이 한 번씩 끊는 경우(둘)를 덮는 값이다. 화면이 꺼지고 음성 토글이 꺼져 채널이 없는 동안은 세 번
@@ -27,7 +34,7 @@ public enum OutingCrosswalkAction: Sendable, Equatable {
     case speak
     /// 발화가 막혀 있다 — 쥐었고, 진동을 낼 차례다(횡단보도마다 한 번).
     case vibrate
-    /// 발화가 막혀 있다 — 쥐고 있고 진동은 이미 냈다.
+    /// 아무것도 하지 않는다: 발화가 막혀 쥐고 있고 진동은 이미 냈거나, 다른 횡단보도 경고가 아직 끝나지 않았다(한 번에 하나).
     case hold
 }
 
@@ -39,8 +46,7 @@ public enum OutingCrosswalkDropAction: Sendable, Equatable {
     case retry
     /// 재시도 상한을 넘었다 — 포기하고 「말했다」로 적었다.
     case giveUp
-    /// 이 횡단보도는 더 낼 차례가 아니다: 그 뒤에 다른 횡단보도를 냈거나 쥐었다(걸어서 다음 횡단보도에 닿았다), 또는 이미
-    /// 닫혔다. 「말했다」로 적지 않으므로 아직 앞에 있으면 예고 판정이 다시 고른다.
+    /// 지금 낸 채 기다리는 횡단보도가 아니다(이미 닫혔다 — 늦게 온 신호). 아무것도 하지 않는다.
     case superseded
 }
 
@@ -57,60 +63,59 @@ public enum OutingHeldCrosswalkVerdict: String, Sendable, Equatable {
 }
 
 public struct OutingCrosswalkLedger: Sendable, Equatable {
-    /// 끝까지 말한 횡단보도(와 그 근접 짝), 그리고 재시도를 포기한 횡단보도.
+    /// 끝까지 말한 횡단보도(와 그 근접 짝), 그리고 재시도를 포기한 횡단보도. 예고 판정(`outingCrosswalkNoticeStep`의
+    /// `spoken`)에 이것을 넘긴다.
     public private(set) var spoken: Set<String> = []
-    /// 쥔 횡단보도 — 하나, 최신이 이긴다(걸어서 다음 횡단보도에 닿았으면 앞의 것은 지났다). 발화가 막힌 동안 온 예고와,
-    /// 낸 뒤 버려진 예고가 여기에 든다.
+    /// 쥔 횡단보도. 발화가 막힌 동안 온 예고와, 낸 뒤 버려진 예고가 여기에 든다.
     public private(set) var held: OutingCrosswalkNotice?
     /// 진동을 낸 횡단보도. 「말했다」 표시와 따로 둔다 — 진동을 냈다고 문장을 낸 것이 아니다.
     public private(set) var vibrated: Set<String> = []
-    /// 냈지만 끝 신호를 아직 받지 못한 횡단보도 — id → 끝까지 말해지면 함께 침묵시킬 근접 짝.
-    public private(set) var inFlight: [String: [String]] = [:]
-    /// 가장 나중에 낸 횡단보도. 그보다 앞서 낸 것의 늦은 버림은 다시 내지 않는다.
-    private var lastPosted: String?
+    /// 냈지만 끝 신호를 아직 받지 못한 횡단보도와, 끝까지 말해지면 함께 침묵시킬 근접 짝.
+    public private(set) var inFlight: (id: String, silencing: [String])?
     /// 횡단보도별 버림 횟수(재시도 상한의 근거).
     private var drops: [String: Int] = [:]
 
     public init() {}
 
-    /// 예고 판정(`outingCrosswalkNoticeStep`의 `spoken`)에 넘길 집합: 말한 것, 낸 채 끝 신호를 기다리는 것, 쥔 것.
-    /// 쥔 것을 빼지 않으면 풀림 지연(`outingCrosswalkReleaseDelaySeconds`)과 재시도 지연 사이에 온 fix가 그 경고를
-    /// 기본 우선순위로 먼저 내 버린다(받아쓴 원문 통지를 끊는다).
-    public var settled: Set<String> {
-        var ids = spoken.union(inFlight.keys)
-        if let held { ids.insert(held.id) }
-        return ids
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.spoken == rhs.spoken && lhs.held == rhs.held && lhs.vibrated == rhs.vibrated
+            && lhs.inFlight?.id == rhs.inFlight?.id && lhs.inFlight?.silencing == rhs.inFlight?.silencing
+            && lhs.drops == rhs.drops
     }
+
+    /// 횡단보도 경고 하나가 아직 끝나지 않았다(쥐었거나 낸 채 끝 신호를 기다린다) — 그동안 새 횡단보도를 받지 않는다.
+    public var busy: Bool { held != nil || inFlight != nil }
 
     /// 이 fix의 예고를 받는다. `suppressed`: 지금 안내 발화가 막혀 있는가(기본값 없음 — 빠뜨리면 막힌 동안의 경고를
     /// 그대로 내서 버려진다). `silencing`: 끝까지 말해지면 함께 침묵시킬 근접 짝(`outingCrosswalkSilenced`).
+    /// 다른 경고가 끝나지 않았으면(`busy`) 받지 않는다(`.hold`) — 한 번에 하나.
     public mutating func notice(
         _ notice: OutingCrosswalkNotice, silencing: [String], suppressed: Bool
     ) -> OutingCrosswalkAction {
+        guard !busy else { return .hold }
         guard !suppressed else { return grab(notice) ? .vibrate : .hold }
-        held = nil  // 지금 내는 문장이 쥔 것을 대신한다(더 가까운 다음 횡단보도다)
-        post(notice, silencing: silencing)
+        inFlight = (notice.id, silencing)
         return .speak
     }
 
     /// 낸 문장이 끝까지 말해졌다(끝 신호) — 「말했다」 표시를 그 근접 짝과 함께 세운다.
     public mutating func spoke(_ id: String) {
-        let silencing = inFlight.removeValue(forKey: id) ?? []
+        guard let flight = inFlight, flight.id == id else { return }
+        inFlight = nil
         spoken.insert(id)
-        spoken.formUnion(silencing)
+        spoken.formUnion(flight.silencing)
     }
 
     /// 낸 문장이 버려졌다(실리지 못했거나 말하다 끊겼다). 막힘 여부와 무관하게 다시 쥐고, 막혀 있으면 풀릴 때, 아니면 잠시
     /// 뒤에 다시 낸다. 횡단보도마다 `outingCrosswalkRetryLimit`번까지다. `suppressed`: 지금 안내 발화가 막혀 있는가.
     public mutating func dropped(_ notice: OutingCrosswalkNotice, suppressed: Bool) -> OutingCrosswalkDropAction {
-        guard let silencing = inFlight.removeValue(forKey: notice.id) else { return .superseded }
-        if let held, held.id != notice.id { return .superseded }
-        guard lastPosted == notice.id else { return .superseded }
+        guard let flight = inFlight, flight.id == notice.id else { return .superseded }
+        inFlight = nil
         let count = (drops[notice.id] ?? 0) + 1
         drops[notice.id] = count
         guard count <= outingCrosswalkRetryLimit else {
             spoken.insert(notice.id)
-            spoken.formUnion(silencing)
+            spoken.formUnion(flight.silencing)
             return .giveUp
         }
         if suppressed { return .hold(vibrate: grab(notice)) }
@@ -131,13 +136,8 @@ public struct OutingCrosswalkLedger: Sendable, Equatable {
         guard let notice = held else { return nil }
         held = nil
         guard verdict == .speak else { return nil }
-        post(notice, silencing: silencing)
+        inFlight = (notice.id, silencing)
         return notice
-    }
-
-    private mutating func post(_ notice: OutingCrosswalkNotice, silencing: [String]) {
-        inFlight[notice.id] = silencing
-        lastPosted = notice.id
     }
 
     private mutating func grab(_ notice: OutingCrosswalkNotice) -> Bool {

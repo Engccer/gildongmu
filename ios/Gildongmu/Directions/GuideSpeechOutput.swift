@@ -44,7 +44,7 @@ enum GuideSpeechOutput {
     /// 풀린 순간의 나들이 횡단보도 경고만 쓴다(E82 V25): 같은 순간 화면이 받아쓴 원문을 통지하므로 그 뒤에 선다.
     ///
     /// `outcome`(E82 V0a 발화 전달 계약): 주면 이 통지가 끝까지 말해졌는지를 한 번 돌려준다 — 끝 신호가 「끝까지 말했다」를
-    /// 실어 왔을 때만 `spoken`, 끊겼거나 신호가 오지 않으면(만료 `VoiceOverDeliveryLedger.expirySeconds(for:)`) `dropped`다.
+    /// 실어 왔을 때만 `spoken`, 끊겼거나 신호가 오지 않으면(만료 `VoiceOverDeliveryLedger.expirySeconds(for:queued:)`) `dropped`다.
     /// VoiceOver가 꺼진 채 게시하면 듣는 사람이 없어 곧장 `dropped`다.
     static func postVoiceOver(
         _ text: String, highPriority: Bool, queued: Bool = false, outcome: ((GuideSpeechOutcome) -> Void)? = nil
@@ -59,7 +59,7 @@ enum GuideSpeechOutput {
         if UIAccessibility.isVoiceOverRunning {
             observeAnnouncementFinishes()
             ledger.posted(text, at: ProcessInfo.processInfo.systemUptime)
-            if let outcome { trackDelivery(text, outcome: outcome) }
+            if let outcome { trackDelivery(text, queued: queued, outcome: outcome) }
         } else {
             outcome?(.dropped)  // 들을 VoiceOver가 없다 — 끝 신호를 기다리지 않고 말하지 않은 것으로 닫는다
         }
@@ -70,12 +70,15 @@ enum GuideSpeechOutput {
     private static var deliveries = VoiceOverDeliveryLedger()
     private static var deliveryHandlers: [Int: (GuideSpeechOutcome) -> Void] = [:]
 
-    private static func trackDelivery(_ text: String, outcome: @escaping (GuideSpeechOutcome) -> Void) {
-        let id = deliveries.posted(text, at: ProcessInfo.processInfo.systemUptime)
+    private static func trackDelivery(
+        _ text: String, queued: Bool, outcome: @escaping (GuideSpeechOutcome) -> Void
+    ) {
+        let id = deliveries.posted(text, at: ProcessInfo.processInfo.systemUptime, queued: queued)
         deliveryHandlers[id] = outcome
         // 끝 신호가 오지 않는 통지를 만료로 닫는다 — 닫지 않으면 그 문장은 말했는지 버렸는지 영영 모른다.
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(VoiceOverDeliveryLedger.expirySeconds(for: text) + 0.1))
+            try? await Task.sleep(
+                for: .seconds(VoiceOverDeliveryLedger.expirySeconds(for: text, queued: queued) + 0.1))
             for expired in deliveries.expire(at: ProcessInfo.processInfo.systemUptime) {
                 guideDiagLog("announceExpired id=\(expired)")
                 deliveryHandlers.removeValue(forKey: expired)?(.dropped)
@@ -123,11 +126,12 @@ enum GuideSpeechOutput {
                     deliveryHandlers.removeValue(forKey: closed.id)?(closed.outcome)
                 }
                 guard before > 0 else { return }  // 안내 통지가 없을 때의 다른 화면 통지는 남기지 않는다
-                // 문장 앞부분: `matched=false`가 짝 실패인지 다른 화면 통지의 끝인지 가른다(spec 준수 리뷰 m6).
+                // 문장은 글자 수만 남긴다(가게·도로 이름이 디스크 로그에 남지 않게, E82 V10). `matched=false`가 짝 실패인지 다른
+                // 화면 통지의 끝인지는 글자 수로 가른다(spec 준수 리뷰 m6).
                 guideDiagLog(
                     "announceFinish type=\(valueType) matched=\(ledger.openCount(at: now) < before) "
                         + "ok=\(successful.map { $0 ? "1" : "0" } ?? "-") "
-                        + "open=\(ledger.openCount(at: now)) text=\((text ?? "").prefix(20))")
+                        + "open=\(ledger.openCount(at: now)) chars=\((text ?? "").count)")
             }
         }
     }

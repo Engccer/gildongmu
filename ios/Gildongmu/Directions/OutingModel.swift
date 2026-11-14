@@ -114,7 +114,7 @@ final class OutingModel {
     /// 쥔 횡단보도를 다시 낼 예약(풀림 지연 또는 버림 뒤 재시도) — 한 번에 하나다. 세션 경계에서 취소한다.
     @ObservationIgnored private var heldCrosswalkTask: Task<Void, Never>?
     /// VoiceOver 대기열 뒤(낮은 우선순위)로 낼 문장 — 막힘이 풀려 내는 횡단보도 경고다(`post`가 한 번 소비한다).
-    private var queuedText: String?
+    @ObservationIgnored private var queuedText: String?
     /// 교차점 후보(OSM 도로망·서울 도보 네트워크·탐침 꺾임 지점, `outingMergeJunctions`). 세션 메모리에만 — 탐침 결과를
     /// 디스크에 남기지 않는다(카카오 약관, spec §6.6).
     private var junctions: [String: OutingJunction] = [:]
@@ -815,11 +815,12 @@ final class OutingModel {
                     heading: heading, placeLat: c.lat, placeLng: c.lng))
             }
             if let notice = outingCrosswalkNoticeStep(
-                crosswalks: pairs, audioSignals: audioSignals, spoken: crosswalkLedger.settled) {
+                crosswalks: pairs, audioSignals: audioSignals, spoken: crosswalkLedger.spoken) {
                 // 같은 진행선의 근접 짝(넓은 도로의 연석점·중심점)은 함께 침묵(설계 리뷰 M4).
                 let silencing = outingCrosswalkSilenced(after: notice.id, crosswalks: pairs)
                 // 받아쓰기가 발화를 막고 있으면 문장을 버리지 않는다(E82 V25): 진동은 지금 한 번, 문장은 쥐었다가
                 // 막힘이 풀릴 때 낸다(`releaseHeldCrosswalk`). 「말했다」 표시는 끝 신호에서만 선다(`crosswalkSpokenToEnd`).
+                // 다른 횡단보도 경고가 끝나지 않았으면(쥐었거나 낸 채 끝 신호를 기다린다) 장부가 받지 않는다(한 번에 하나).
                 switch crosswalkLedger.notice(notice, silencing: silencing, suppressed: outputSuppressed) {
                 case .speak:
                     // 횡단보도 예고도 교차로 간격 시계를 돌린다 — 같은 자리에서 "앞에 횡단보도" 바로 뒤 "앞에 사거리"가
@@ -1345,7 +1346,7 @@ final class OutingModel {
             if vibrate { ResultHaptic.fire(.attention) }
         case .retry:
             guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=retry")
-            scheduleHeldCrosswalk(after: outingCrosswalkRetryDelaySeconds, queued: false)
+            scheduleHeldCrosswalk(after: outingCrosswalkRetryDelaySeconds, queued: false, mayDefer: true)
         case .giveUp:
             guideDiagLog("crosswalkDropped n=\(logSeq(notice.id)) action=giveUp")
         case .superseded:
@@ -1358,28 +1359,37 @@ final class OutingModel {
     /// 끊기지는 않지만 시작한 뒤 끊을 수 없어 원문 통지가 밀리거나 버려진다 — 사용자가 방금 말한 내용 전체를 잃는다).
     private func releaseHeldCrosswalk() {
         guard isTracking, crosswalkLedger.held != nil else { return }
-        scheduleHeldCrosswalk(after: outingCrosswalkReleaseDelaySeconds, queued: true)
+        scheduleHeldCrosswalk(after: outingCrosswalkReleaseDelaySeconds, queued: true, mayDefer: false)
     }
 
-    private func scheduleHeldCrosswalk(after seconds: Double, queued: Bool) {
+    /// `mayDefer`: 낼 순간 다른 안내 문장이 아직 끝나지 않았으면 한 번 더 미룬다 — 버림 뒤 재시도만 참이다. 재시도는 기본
+    /// 우선순위라 말하는 중인 갈림길 예고(VoiceOver)를 끊고, 지연 슬롯에 기다리던 문장을 버린다(그 갈림길은 이미 말한 것으로
+    /// 적혀 다시 나오지 않는다). 풀림은 대기열 뒤(.low)로 내므로 끊지 않는다.
+    private func scheduleHeldCrosswalk(after seconds: Double, queued: Bool, mayDefer: Bool) {
         heldCrosswalkTask?.cancel()
         heldCrosswalkTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled else { return }
-            self?.speakHeldCrosswalk(queued: queued)
+            self?.speakHeldCrosswalk(queued: queued, mayDefer: mayDefer)
         }
     }
 
     /// 쥔 경고를 지금 낸다(풀림·재시도 공통). 그 사이 다시 막혔으면 쥔 채 진동만 하고 풀릴 때를 기다린다. 사람은 물을 때
     /// 서므로 방향을 새로 판정할 수 없다: 후보에서 사라졌거나, 예고 범위 밖으로 멀어졌거나, 마지막으로 알던 위치와 방향으로
     /// 보아 뒤쪽이 확실하면 말하지 않고, 모르면 말한다(Kit `outingHeldCrosswalkVerdict`).
-    private func speakHeldCrosswalk(queued: Bool) {
+    private func speakHeldCrosswalk(queued: Bool, mayDefer: Bool) {
         heldCrosswalkTask = nil
         guard isTracking, let held = crosswalkLedger.held else { return }
         if outputSuppressed {
             let vibrate = crosswalkLedger.stillSuppressed()
             guideDiagLog("crosswalkHeld n=\(logSeq(held.id)) haptic=\(vibrate ? 1 : 0) after=retry")
             if vibrate { ResultHaptic.fire(.attention) }
+            return
+        }
+        if mayDefer, announcer.hasPending || !GuideSpeechOutput.announcementsFinished
+            || GuideSpeechOutput.speechBusy(deviceSpeech) {
+            guideDiagLog("crosswalkHeld n=\(logSeq(held.id)) deferred=1")
+            scheduleHeldCrosswalk(after: outingCrosswalkRetryDelaySeconds, queued: queued, mayDefer: false)
             return
         }
         let verdict = outingHeldCrosswalkVerdict(fix: lastFix, heading: heading, crosswalk: crosswalks[held.id])

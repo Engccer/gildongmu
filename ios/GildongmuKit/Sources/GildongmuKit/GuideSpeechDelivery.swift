@@ -34,6 +34,12 @@ public struct VoiceOverDeliveryLedger {
         min(maxExpirySeconds, Double(text.count) * 0.3 + 5)
     }
 
+    /// 대기열 뒤(`.low`)로 낸 통지는 상한을 쓴다(`queued` 기본값 없음): 앞선 낭독(받아쓴 원문 통지·진행 통지)이 끝날 때까지
+    /// 말해지지 않으므로 글자 수로 잰 만료가 먼저 오면 말하기 전에 버림으로 닫혀 한 번 더 나간다.
+    public static func expirySeconds(for text: String, queued: Bool) -> Double {
+        queued ? maxExpirySeconds : expirySeconds(for: text)
+    }
+
     private struct Entry {
         let id: Int
         let text: String
@@ -47,10 +53,10 @@ public struct VoiceOverDeliveryLedger {
 
     public var isEmpty: Bool { open.isEmpty }
 
-    /// 게시했다(`at`: 단조 시각, 초). 돌려주는 값은 이 통지의 id다.
-    public mutating func posted(_ text: String, at now: Double) -> Int {
+    /// 게시했다(`at`: 단조 시각, 초, `queued`: 대기열 뒤로 냈는가). 돌려주는 값은 이 통지의 id다.
+    public mutating func posted(_ text: String, at now: Double, queued: Bool) -> Int {
         nextID += 1
-        open.append(Entry(id: nextID, text: text, expiresAt: now + Self.expirySeconds(for: text)))
+        open.append(Entry(id: nextID, text: text, expiresAt: now + Self.expirySeconds(for: text, queued: queued)))
         return nextID
     }
 
