@@ -30,16 +30,18 @@ public let vergiliusRequestTimeoutSeconds = 30.0
 public enum VergiliusProvider {
     public static let storageKey = "vergiliusProvider"
 
-    /// 화면 순서(위원장 판정 2026-11-15): OpenAI → Claude Sonnet → Claude Opus → Google Gemini. 값은 서버 식별자다.
+    /// 화면 순서(위원장 판정 2026-11-15): OpenAI → Claude Sonnet → Claude Opus → Google. 값은 서버 식별자다.
     public static let displayOrder = ["openai", "claude-sonnet", "claude-opus", "google"]
 
-    /// 화면 이름 — 회사·모델의 고유 명칭이라 번역하지 않는다.
+    /// 화면 이름은 회사가 아니라 모델 이름이다(위원장 2026-11-15) — 고유 명칭이라 번역하지 않는다. ⚠ 서버 식별자 `openai`·
+    /// `google`이 가리키는 모델은 서버 상수(`OPENAI_VERGILIUS_MODEL`·`GOOGLE_VERGILIUS_MODEL`)가 정한다: 서버에서 모델을 바꾸면
+    /// 이 이름도 함께 고친다(가드 `vergilius-model-names.test.ts`).
     public static func displayName(_ id: String) -> String? {
         switch id {
-        case "openai": "OpenAI"
+        case "openai": "GPT-6.1 Terra"
         case "claude-sonnet": "Claude Sonnet"
         case "claude-opus": "Claude Opus"
-        case "google": "Google Gemini"
+        case "google": "Gemini 3.5 Flash-Lite"
         default: nil
         }
     }

@@ -16,6 +16,7 @@
 - 답 아래에 경로 도구가 낸 수단 버튼(도보·자동차·대중교통)과 제안 버튼(「○○까지 안내할까요?」 + 도보 안내 시작)이 서고, 누르면 나들이를 끝내고 안내로 넘긴다. 대중교통 조회가 낡았거나 수동 위치였으면 시작하지 않고 길찾기 탭에서 기기 위치로 다시 조회한다(S4 리뷰 NIT e).
 - 실험판 설정 AI 묶음에 「답변 모델」(OpenAI → Claude Sonnet → Claude Opus → Google Gemini, 서버에 키 있는 것만). 서버는 답의 마크다운 강조 별표를 걷어낸다. 판정 셋(12초·순서·별표)은 위원장 2026-11-15, spec `docs/superpowers/specs/2026-11-14-e82-vergilius-v1-design.md` V16·V17·V22·V23.
 - 미러링 확인(2026-11-15, 실험판·정식판 실기기): V14 시트 맨 앞 「말로 묻기」(동의한 기기) 통과, V23 설정 AI 묶음 「답변 모델」 OpenAI → Claude Sonnet → Claude Opus → Google Gemini 통과, V33 정식판에 메뉴·설정 행 없음 통과. 서버 `/providers`에 OpenAI 포함 확인. 받아쓰기·대기음·답 낭독·횡단보도 끊기·VoiceOver 순서(V14~V17·V29·V30)는 미확인, 위원장 실기기 확인으로 넘김.
+- 설정 「답변 모델」의 이름을 회사에서 모델 이름으로 바꿨다(GPT-6.1 Terra·Claude Sonnet·Claude Opus·Gemini 3.5 Flash-Lite, 위원장 요청). 서버 모델 상수와 이름이 어긋나면 게이트 테스트가 실패한다.
 
 ### 길동무 OpenAI 키를 공용 환경과 분리
 
