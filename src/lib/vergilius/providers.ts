@@ -27,8 +27,8 @@ function isClaudeProvider(p: VergiliusProvider): p is ClaudeVergiliusProvider {
 }
 
 /**
- * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 걷는 사람은 12초 안에 첫 문장이
- * 없으면 실패 문장을 듣는다(V17) — 그 뒤로 모델을 오래 붙들어 과금할 이유가 없다.
+ * 한 요청 전체의 시한. 회차마다의 20초 상한(어댑터)과 따로, 도구 왕복까지 합친 시간을 묶는다. 첫 문장 실패 기준(12초, V17)은
+ * 앱이 따로 재고, 이 값은 그 뒤에도 이어지는 답이 모델을 오래 붙들어 과금하지 않게 하는 상한이다.
  */
 export const VERGILIUS_REQUEST_TIMEOUT_MS = 25_000;
 
