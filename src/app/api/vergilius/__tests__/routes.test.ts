@@ -17,7 +17,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/env")>();
   return {
     ...actual,
-    env: { ...actual.env, OPENAI_API_KEY: "sk-test", ANTHROPIC_API_KEY: "sk-ant-test" },
+    env: { ...actual.env, GILDONGMU_OPENAI_API_KEY: "sk-test", ANTHROPIC_API_KEY: "sk-ant-test" },
     hasOpenAiKey: () => gates.openai,
     hasGeminiKey: () => gates.gemini,
     hasAnthropicKey: () => gates.anthropic,

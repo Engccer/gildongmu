@@ -152,6 +152,8 @@ iOS는 스토어 2.6이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 
 ## 프로덕션 env 등록 현황
 
+OpenAI 앱·평가·사용량 리포트의 키 입력은 길동무 전용 `GILDONGMU_OPENAI_API_KEY`이며 공용 `OPENAI_API_KEY`는 읽지 않는다.
+
 **실측 2026-08-30 (`vercel env ls production`) — 17개 등록**(2026-08-30 `GOOGLE_PLACES_API_KEY` 추가, 2026-09-23 `ODSAY_API_KEY` 값을 Flex 앱 `gildongmuflex` 키로 교체):
 
 `KAKAO_REST_API_KEY` · `TOUR_API_KEY`(유일하게 Preview·Development 포함) · `DATA_GO_KR_API_KEY`(TOUR_API_KEY와 동일값) · `NCP_MAPS_CLIENT_ID` · `NCP_MAPS_CLIENT_SECRET` · `SEOUL_OPEN_DATA_KEY` · `SEOUL_SUBWAY_REALTIME_KEY` · `JUSO_CONFM_KEY` · `DEEPGRAM_API_KEY` · `PERPLEXITY_API_KEY` · `ODSAY_API_KEY` · `NAVER_LOCAL_CLIENT_ID` · `NAVER_LOCAL_CLIENT_SECRET` · `TMAP_APP_KEY` · `GEMINI_API_KEY` · `GOOGLE_CLOUD_TTS_API_KEY` · `GOOGLE_PLACES_API_KEY`(E24 영업시간, 웹·iOS 정식판 소비)

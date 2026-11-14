@@ -44,7 +44,7 @@ export function createVergiliusSession(input: VergiliusSessionInput): VergiliusM
   if (input.provider === "openai") {
     if (!hasOpenAiKey()) return null;
     return createOpenAiSession({
-      apiKey: env.OPENAI_API_KEY!,
+      apiKey: env.GILDONGMU_OPENAI_API_KEY!,
       instruction: input.instruction,
       material: input.material,
       tools: toOpenAiTools(input.tools),

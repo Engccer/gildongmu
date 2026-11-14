@@ -105,7 +105,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD)는 **폴백**이다. 정본은 기기 음성이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다. → INTEGRATIONS |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`). `gildongmu-prod` API 제한 키, ⚠ dodo와 공유하지 않는다. 키 교체 시 3곳 동조. → INTEGRATIONS |
 | `GOOGLE_PLACES_API_KEY` | `hasGooglePlacesKey` | 장소 상세 영업시간(E24). 무료분을 GCP 일일 쿼터로 상한(초과는 429라 과금 0). → INTEGRATIONS |
-| `OPENAI_API_KEY` | `hasOpenAiKey` | 베르길리우스 말로 묻기의 답변 모델(E82, 모델은 코드 상수 `OPENAI_VERGILIUS_MODEL`). 유료, 월 지출 상한은 OpenAI 콘솔에서 건다. 없으면 `/api/vergilius/providers`에서 빠진다 |
+| `GILDONGMU_OPENAI_API_KEY` | `hasOpenAiKey` | 길동무 전용 OpenAI 프로젝트 키(앱·eval·usage-report). 공용 `OPENAI_API_KEY`로 폴백하지 않는다. 없으면 `/api/vergilius/providers`에서 빠진다. → INTEGRATIONS |
 | `ANTHROPIC_API_KEY` | `hasAnthropicKey` | 베르길리우스 말로 묻기의 Claude 둘(Opus 5.5·Sonnet 5.5, 모델은 코드 상수 `CLAUDE_VERGILIUS_MODELS`). 유료, 지출 상한은 Anthropic 콘솔. 없으면 둘 다 `/api/vergilius/providers`에서 빠진다 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인. → INTEGRATIONS |

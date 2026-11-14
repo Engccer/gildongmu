@@ -931,6 +931,12 @@ ODsay 대중교통 — **Flex(후불 종량제) 앱 `gildongmuflex` 키**(2026-0
 
 **실호출 게이트는 corpus 재생이 먼저다**(E47-1, 2026-09-26): `scripts/verify-odsay-*.mjs` 5종은 공용 규약 `scripts/lib/odsay-corpus.mjs`를 따른다(조사 스크립트 `probe-odsay-maas.mjs`도 저장·재생 키와 저장소 밖 강제는 같은 규약이지만, 오류 봉투도 저장하고 실호출은 `--out`과 호출 원장 `--ledger`를 함께 요구한다). 게이트를 돌리기 전에 `~/gildongmu-private/probes/<스크립트>-<YYYY-MM-DD>/`에 쓸 만한 corpus가 있는지 먼저 찾아 `--from-corpus <dir>`로 돌린다(읽기 전용, ODsay 호출 0. 없는 요청은 4종이 exit 3, `alternatives`는 종전대로 FAIL exit 1). 실호출이 필요하면 `--out <새 디렉터리>`로 돌려 응답을 전부 남긴다(저장 없는 실호출 모드는 없다). 파일 이름은 요청 URL의 엔드포인트 + 정렬한 파라미터(`apiKey` 제외, `requestKey`)이고, 실패 응답(비-2xx·JSON 아님·경로 없음 밖의 오류 봉투)은 저장하지 않는다. corpus는 저장소 안에 둘 수 없다(공개 저장소라 lib가 거절한다). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay만 corpus를 지나고, 운행시간(TAGO)·실시간 도착 같은 ODsay 밖 호출은 오프라인에서도 실호출이다. `alternatives`만 파일 이름이 `full-<쌍>`·`pt<1|2>-<쌍>`이다(2026-09-24 corpus 호환).
 
+### GILDONGMU_OPENAI_API_KEY
+
+같은 OpenAI 조직의 `Gildongmu` 프로젝트 전용 키를 앱·평가·`usage-report`에 쓴다. 환경 입력은 `GILDONGMU_OPENAI_API_KEY` 하나이며, 공용 `OPENAI_API_KEY`가 셸에 있어도 읽거나 폴백하지 않는다. 전용 키가 없으면 `hasOpenAiKey`가 false라 OpenAI 선택지·세션을 닫고 사용량 리포트도 호출하지 않는다. provider는 이 키를 Responses API 인증에 명시해 전달한다.
+
+로컬 `.env.local`·Vercel·저장소 밖 평가 스크립트에도 같은 전용 변수명을 등록한다. Next.js는 같은 이름의 `process.env`를 `.env.local`보다 먼저 읽으므로 공용 변수명을 재사용하지 않는다. 공용 `Personal-General` 키는 그대로 유지한다. 모델은 코드 상수 `OPENAI_VERGILIUS_MODEL`, 지출 설정은 OpenAI 콘솔에서 관리한다. Vercel 환경을 바꾸면 재배포가 필요하다.
+
 ### GEMINI_API_KEY
 
 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`=`gemini-3.6-flash`, `src/lib/gemini/client.ts`, 2026-07-31 교체). **길동무 전용 GCP 프로젝트 `gildongmu-prod`**(2026-07-31 신설, 결제 연결·`generativelanguage.googleapis.com`만 허용하는 API 제한 키). ⚠ **dodo와 공유하지 않는다** — 종전 공유 프로젝트는 Converters의 TTS·이미지와 dodo가 섞여 사용량·비용 귀속이 불가능했고, dodo도 같은 모델을 써서 model 라벨 분리조차 성립하지 않았다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조
