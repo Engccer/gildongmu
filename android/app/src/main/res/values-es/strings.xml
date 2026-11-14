@@ -256,6 +256,14 @@
     <string name="android_outing_endedByUser">Paseo terminado.</string>
     <string name="android_outing_heading">Paseo</string>
     <string name="android_outing_headingUnknown">Comprobando la dirección</string>
+    <string name="android_outing_historyBeside">al lado</string>
+    <string name="android_outing_historyEmpty">Aún no hay anuncios</string>
+    <string name="android_outing_historyHeading">Anuncios recientes</string>
+    <string name="android_outing_historyJustNow">ahora mismo</string>
+    <string name="android_outing_historyLeft">izquierda</string>
+    <string name="android_outing_historyMinutesAgo">hace %1$s min</string>
+    <string name="android_outing_historyPassedBy">ya pasado</string>
+    <string name="android_outing_historyRight">derecha</string>
     <string name="android_outing_itemLeft">izquierda, %1$s</string>
     <string name="android_outing_itemRight">derecha, %1$s</string>
     <string name="android_outing_junctionAhead">Bifurcación delante</string>

@@ -256,6 +256,14 @@
     <string name="android_outing_endedByUser">お散歩を終了しました。</string>
     <string name="android_outing_heading">お散歩</string>
     <string name="android_outing_headingUnknown">進行方向を確認中</string>
+    <string name="android_outing_historyBeside">そば</string>
+    <string name="android_outing_historyEmpty">まだ案内はありません</string>
+    <string name="android_outing_historyHeading">直前の案内</string>
+    <string name="android_outing_historyJustNow">たった今</string>
+    <string name="android_outing_historyLeft">左</string>
+    <string name="android_outing_historyMinutesAgo">%1$s分前</string>
+    <string name="android_outing_historyPassedBy">通過済み</string>
+    <string name="android_outing_historyRight">右</string>
     <string name="android_outing_itemLeft">左 %1$s</string>
     <string name="android_outing_itemRight">右 %1$s</string>
     <string name="android_outing_junctionAhead">前方に分かれ道</string>

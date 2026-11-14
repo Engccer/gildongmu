@@ -98,9 +98,9 @@ final class GuideSession {
     /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
     /// 자기 컨텍스트를 지우지 않게.
     private var launchingPrewalk = false
-    /// 나들이 귀환 인계(E51 §5.3)의 컨텍스트 id. 도보 세션의 `.startFailed`만 인계 실패로 소비한다.
+    /// 나들이에서 안내로 넘기는 인계(`handOverOuting`, E51 §5.3·E82 V13)의 컨텍스트 id. 도보 세션의 `.startFailed`만 인계 실패로 소비한다.
     private var outingReturnID: UUID?
-    /// `acceptOutingReturn`이 `startBeacon`을 부르는 동안 true — `cancelPrewalk()`가 인계 콜백(`onSessionEnd`)을
+    /// `handOverOuting`이 `startGuide`를 부르는 동안 true — `cancelPrewalk()`가 인계 콜백(`onSessionEnd`)을
     /// 지우지 않게(`launchingPrewalk` 동형).
     private var launchingOutingReturn = false
 
@@ -182,34 +182,58 @@ final class GuideSession {
         outing.requestStart()
     }
 
-    /// "출발점으로"(E51 §5.3) — 나들이 세션(또는 종료 화면)을 치우고 출발점까지 도보 안내로 인계한다.
-    /// 승차 전 도보(A25)와 같은 모양: 컨텍스트 id + 인계 플래그 아래 `startBeacon`, 실패(`.startFailed`)면
-    /// 길찾기 탭 도착지에 출발점을 프리필한다(§12). 인계 발화점은 이 함수 하나다.
+    /// "출발점으로"(E51 §5.3) — 종료 화면의 출발점까지 도보 안내로 넘긴다. 넘기는 길은 `handOverOuting` 하나다.
     func acceptOutingReturn() {
         guard let target = outing.returnTarget else { return }
-        outing.endForReturn()
-        // 인계 고지는 도보 안내의 시작 문장("{출발점}까지 도보 안내 시작…", E40)이 맡는다 — 따로 말하면 같은 정보가 두 번이다.
-        let id = UUID()
-        outingReturnID = id
-        beacon.onSessionEnd = { [weak self] reason in self?.endOutingReturn(id, reason: reason, target: target) }
-        launchingOutingReturn = true
-        self.startBeacon(BeaconModel.StartRequest(
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil, kind: .walk,
-            accessible: false, variant: nil, line: nil, alternate: nil,
-            waypoint: nil, carListener: nil, exitLead: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
-        launchingOutingReturn = false
-        // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
-        if !beacon.starting, !beacon.isTracking { endOutingReturn(id, reason: .startFailed, target: target) }
+        // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로).
+        handOverOuting(
+            to: GuideDestination(
+                dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil),
+            mode: .walk(accessible: false, waypoint: nil))
     }
 
-    private func endOutingReturn(_ id: UUID, reason: BeaconModel.EndReason, target: OutingModel.ReturnTarget) {
+    /// 나들이에서 안내로 넘기는 **한 길**(E82 V13): 기다리던 질문 요청을 거둔다 → 나들이를 끝낸다 → `startGuide` →
+    /// 시작이 거절되거나 실패하면 그 도착지를 길찾기 탭 도착지에 넘긴다. 「출발점으로」·기록 줄의 「도보 안내 시작」과
+    /// 답 아래 수단 버튼·제안 버튼(S6)이 전부 여기를 지난다. 나들이 세션이 도는 채로 시작하면 「이미 안내 중」으로
+    /// 거절되므로 끝내는 것이 시작보다 먼저다.
+    ///
+    /// 인계 고지는 도보 안내의 시작 문장("{도착지}까지 도보 안내 시작…", E40)이 맡는다 — 따로 말하면 같은 정보가 두 번이다.
+    /// 승차 전 도보(A25)와 같은 모양: 컨텍스트 id + 인계 플래그 아래 시작하고, 실패(`.startFailed`)를 그 id로 받는다.
+    func handOverOuting(to destination: GuideDestination, mode: GuideStartMode) {
+        outing.withdrawPendingRequest()
+        outing.endForHandover()
+        let id = UUID()
+        outingReturnID = id
+        // 도보·자동차는 비콘 세션이라 늦은 실패(경로 조회 실패)를 그 세션의 종료 콜백으로 받는다. 대중교통은 자기 연결
+        // (승차 전 도보)이 이 콜백을 쓰므로 걸지 않고 아래의 즉시 판정만 한다.
+        let hooksBeacon: Bool
+        switch mode {
+        case .walk, .car: hooksBeacon = true
+        case .transit: hooksBeacon = false
+        }
+        if hooksBeacon {
+            beacon.onSessionEnd = { [weak self] reason in
+                self?.endOutingReturn(id, reason: reason, destination: destination)
+            }
+            launchingOutingReturn = true
+        }
+        startGuide(to: destination, mode: mode)
+        launchingOutingReturn = false
+        // 동기 거부(점유·시작 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
+        if !isActive { endOutingReturn(id, reason: .startFailed, destination: destination) }
+    }
+
+    private func endOutingReturn(_ id: UUID, reason: BeaconModel.EndReason, destination: GuideDestination) {
         guard outingReturnID == id else { return }
         outingReturnID = nil
         beacon.onSessionEnd = nil
         guard reason == .startFailed else { return }
-        // 도보 안내의 실패 문장은 그 모델이 이미 냈다. 사용자가 길찾기 탭에서 출발점을 찾을 수 있게만 한다.
+        // 실패 문장은 그 모델이 이미 냈다. 사용자가 길찾기 탭에서 그 도착지를 찾을 수 있게만 한다.
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-            role: .to, endpoint: .place(label: target.label, lat: target.lat, lng: target.lng))
+            role: .to,
+            endpoint: .place(
+                label: destination.label, lat: destination.dest.lat, lng: destination.dest.lng,
+                labelRoman: destination.labelRoman))
     }
 
     func startTransit(

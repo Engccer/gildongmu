@@ -304,10 +304,13 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // `beginTransit` 안의 `beginBeacon(`으로 옮겼다(여정 중 내부 인계가 `refuseIfActive`에 막히지 않게) — `self.startBeacon(`은 셋.
     // E83(2026-11-14)이 「도착지와 수단으로 안내 시작」 `startGuide`의 도보·자동차 갈래 둘을 더해 다섯이다. 그 함수는 안내가 시작하며
     // 지금 위치에서 경로를 새로 받는 자리라 수동 위치 고지 대상이 아니고(spec R7), 호출자는 실험판 봉인 뒤 채팅 경로 카드뿐이다(아래 10).
+    // E82 S3(2026-11-14)이 나들이 귀환의 직접 호출을 지웠다(다섯 → 넷): 나들이에서 안내로 넘기는 길은 `handOverOuting` 하나이고
+    // 그 함수는 `startGuide`를 지난다(spec 2026-11-14-e82-vergilius-v1-design.md V13). 「출발점으로」도 그 길로 간다.
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(5);
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(4);
     expect(declarationBody(session, "startGuide").match(/self\.startBeacon\(/g)).toHaveLength(2);
-    expect(declarationBody(session, "acceptOutingReturn")).toContain("self.startBeacon(");
+    expect(declarationBody(session, "acceptOutingReturn")).not.toContain("self.startBeacon(");
+    expect(declarationBody(session, "acceptOutingReturn")).toContain("handOverOuting(");
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "startTransit")).toContain("beginTransit(");
@@ -367,12 +370,44 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   // E70-b(2026-11-12)가 채팅 여정 카드의 `startJourney` 호출 하나를 더했다(12 → 13). 실험판 봉인 뒤이고 아래 "7"이 잠근다.
   // E83(2026-11-14)이 「도착지와 수단으로 안내 시작」 `GuideSession.startGuide`의 `self.startBeacon(` 둘(도보·자동차)을 더했다(13 → 15).
   // 대중교통 갈래는 `startTransit(`이라 이 형태에 잡히지 않는다. 그 함수의 호출자는 실험판 봉인 뒤 채팅 경로 카드뿐이고 아래 "10"이 잠근다.
-  it("안내 세션 진입점 호출이 정확히 15곳이다", () => {
+  // E82 S3(2026-11-14)이 하나를 줄였다(15 → 14): 나들이 귀환 인계가 `self.startBeacon(`을 직접 부르지 않고 `handOverOuting` →
+  // `startGuide`를 지난다(`startGuide(` 호출은 이 형태에 잡히지 않는다). 진입점이 준 것이 아니라 한 길로 합쳐졌다 — 나들이에서
+  // 안내로 넘기는 자리(「출발점으로」·기록 줄의 「도보 안내 시작」)는 아래 "나들이에서 안내로 넘기는 길"이 잠근다.
+  it("안내 세션 진입점 호출이 정확히 14곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(15);
+    expect(sites).toHaveLength(14);
+  });
+
+  /**
+   * 나들이에서 안내로 넘기는 길은 `GuideSession.handOverOuting` 하나다(E82 V13): 요청 거두기 → 나들이 종료 → `startGuide` →
+   * 실패하면 길찾기 탭 프리필. 나들이 세션이 도는 채로 다른 시작을 부르면 「이미 안내 중」으로 거절되고, 끝내기만 하고
+   * 시작하지 않는 길이 생기면 사용자는 안내 없이 남는다 — 그래서 끝내기와 시작이 한 함수 안에 순서대로 있어야 한다.
+   * 나들이는 실험판 봉인 안이라 이 길은 정식판에서 도달하지 않는다.
+   */
+  it("나들이에서 안내로 넘기는 길은 handOverOuting 한 곳이다", () => {
+    const session = readFileSync(GUIDE_SESSION, "utf8");
+    const body = declarationBody(session, "handOverOuting");
+    // 순서가 계약이다: 거두기 → 끝내기 → 시작 → 실패 판정.
+    expect(body).toMatch(
+      /outing\.withdrawPendingRequest\(\)\s*outing\.endForHandover\(\)[\s\S]*startGuide\(to: destination, mode: mode\)[\s\S]*if !isActive \{ endOutingReturn\(id, reason: \.startFailed, destination: destination\) \}/,
+    );
+    expect(declarationBody(session, "endOutingReturn")).toContain("DirectionsPrefillStore.shared.pending = DirectionsPrefill(");
+    // 나들이를 인계용으로 끝내는 호출과 인계 함수의 호출 자리 전수.
+    const callSites = (pattern: RegExp) =>
+      swiftFiles(IOS_DIR).flatMap((file) =>
+        (readFileSync(file, "utf8").match(pattern) ?? []).map(() => file.split("/").pop()),
+      );
+    expect(callSites(/outing\.endForHandover\(/g)).toEqual(["GuideSessionCoordinator.swift"]);
+    expect(callSites(/(?<!func )handOverOuting\(/g).sort()).toEqual(["GildongmuApp.swift", "GuideSessionCoordinator.swift"]);
+    expect(callersOf(session, "handOverOuting(")).toEqual(["acceptOutingReturn"]);
+    // 나들이 모델과 시트는 세션을 직접 시작하지도, 길찾기 탭에 직접 넘기지도 않는다.
+    for (const name of ["OutingModel.swift", "OutingSheet.swift", "OutingOverviewAdapter.swift"]) {
+      const source = readFileSync(join(ROOT, "ios/Gildongmu/Directions", name), "utf8");
+      expect(source, name).not.toMatch(/start(?:Guide|Beacon|Transit|Journey)\(|DirectionsPrefillStore/);
+    }
   });
 
   /**

@@ -418,7 +418,15 @@
       },
       "started": "Passeggiata iniziata",
       "ended": "Passeggiata terminata",
-      "zoneAround": "Nei dintorni, {distance}"
+      "zoneAround": "Nei dintorni, {distance}",
+      "historyHeading": "Annunci recenti",
+      "historyEmpty": "Ancora nessun annuncio",
+      "historyLeft": "sinistra",
+      "historyRight": "destra",
+      "historyBeside": "accanto",
+      "historyPassedBy": "superato",
+      "historyJustNow": "adesso",
+      "historyMinutesAgo": "{minutes} min fa"
     },
     "reorder": {
       "toTop": "Sposta in cima",

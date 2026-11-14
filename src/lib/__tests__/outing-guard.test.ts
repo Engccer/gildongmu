@@ -136,7 +136,7 @@ describe("나들이 문장 창구", () => {
   it("횡단보도 예고는 보호 창을 세우고 주변 문장은 그 창 뒤로 미룬다(한 fix 한 문장, spec 준수 리뷰 M-2)", () => {
     const model = readFileSync(MODEL, "utf8");
     const evaluate = functionBody(model, "evaluate");
-    expect(evaluate).toMatch(/sayProtected\(appLocalized\(notice\.hasAudioSignal/);
+    expect(evaluate).toMatch(/sayProtected\(\s*appLocalized\(notice\.hasAudioSignal/);
     expect(evaluate).toMatch(/if crosswalkSpoken \|\| now < protectedUntil \{/);
     // E82 V4: 가게는 문장이 아니라 id로 묶음에 쥐고, 문장은 채널이 빌 때 `flushAmbient`가 만든다 — 판정 자리(`evaluate`)는
     // 어떤 가게 문장도 직접 내지 않는다(최신이 이기는 칸에 문장을 넣으면 앞 문장이 사라진다).
@@ -160,10 +160,10 @@ describe("나들이 문장 창구", () => {
     // 「말했다」 표시는 끝 신호에서만(V5): 문장을 낸 자리가 아니라 `finishAmbient`가 닫는다.
     expect(flush).not.toMatch(/finishSpoken/);
     const finish = functionBody(model, "finishAmbient");
-    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\)\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(counted: !flight\.cutByGuide\)/);
+    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\), line: flight\.line\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(counted: !flight\.cutByGuide\)/);
     // 안내가 스스로 낸 문장이 끊은 것은 끊김 횟수에 세지 않는다 — 표시는 모든 문장이 지나는 `say` 한 곳에서 선다.
     expect(functionBody(model, "say")).toContain("if speechClass != .ambient { ambientInFlight?.cutByGuide = true }");
-    expect(functionBody(model, "emitAmbient")).toContain("ambientInFlight = (uptimeNow, isBundle, text, retried, false)");
+    expect(functionBody(model, "emitAmbient")).toContain("ambientInFlight = (uptimeNow, isBundle, text, retried, false, record, line)");
     // 끊김 상한(리뷰 MUST): 쉬는 시간과 포기는 Kit 묶음이 정하고 모델은 그 값을 그대로 쓴다 — 고정 3초로 되돌리지 않는다.
     expect(finish).toContain("hold = drop.holdSeconds");
     expect(finish).toContain("if !drop.givenUp.isEmpty { notePassedBy(drop.givenUp) }");
@@ -234,7 +234,7 @@ describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
     const model = readFileSync(MODEL, "utf8");
     // 닫기·새 세션·귀환 인계·30분 만료가 전부 clearEnd를 지나야 표식이 다음 화면으로 새지 않는다.
     expect(model.match(/endScreen = nil/g) ?? []).toHaveLength(1);
-    for (const name of ["start", "endForReturn", "handleScenePhaseChange"]) {
+    for (const name of ["start", "endForHandover", "handleScenePhaseChange"]) {
       expect(functionBody(model, name)).toContain("clearEnd()");
     }
     expect(readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8")).toMatch(

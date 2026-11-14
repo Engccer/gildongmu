@@ -418,7 +418,15 @@
       },
       "started": "お散歩を開始しました",
       "ended": "お散歩を終了しました",
-      "zoneAround": "周辺 {distance}"
+      "zoneAround": "周辺 {distance}",
+      "historyHeading": "直前の案内",
+      "historyEmpty": "まだ案内はありません",
+      "historyLeft": "左",
+      "historyRight": "右",
+      "historyBeside": "そば",
+      "historyPassedBy": "通過済み",
+      "historyJustNow": "たった今",
+      "historyMinutesAgo": "{minutes}分前"
     },
     "reorder": {
       "toTop": "一番上へ",

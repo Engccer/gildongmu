@@ -79,10 +79,17 @@ final class OutingModel {
     /// 지나쳤지만 아직 말하지 못한 가게의 묶음과 「말했다」 표시(E82 V4·V5, Kit `OutingBundle`). 가게는 문장이 아니라 id로
     /// 쥐고, 문장은 채널이 빌 때 그 순간의 위치와 방향으로 만든다(`flushAmbient`).
     private var bundle = OutingBundle()
+    /// 「방금 말한 것」 기록(E82 V10) — 끝까지 말한 문장과 말하지 못하고 지나온 가게. 세션 메모리에만 있고 세션이
+    /// 끝나면 지운다(가게 이름·좌표가 들어 있다). 시트가 이 값으로 목록을 그린다.
+    private(set) var history = OutingHistory()
     /// 채널에 실려 끝 신호(말했다·버림)를 기다리는 주변 문장 하나. 있는 동안은 다음 주변 문장을 내지 않는다.
+    /// `record`·`line`: 끝까지 말해졌을 때 기록에 적을 재료(한 줄 문장의 재료, 묶음 문장의 좌우 배치).
     /// `cutByGuide`: 이 문장이 실린 동안 안내가 스스로 더 높은 서열의 문장(횡단보도·갈림길·종료)을 냈다 — 그 문장이
     /// 끊은 것이니 끊김 횟수에 세지 않는다(사용자의 화면 탐색 낭독이 끊은 것만 센다).
-    private var ambientInFlight: (at: Double, isBundle: Bool, text: String, retried: Bool, cutByGuide: Bool)?
+    private var ambientInFlight: (
+        at: Double, isBundle: Bool, text: String, retried: Bool, cutByGuide: Bool,
+        record: OutingHistoryContent?, line: OutingBundleLine?
+    )?
     /// 주변 문장의 세대 — 끝난 세션이나 이미 닫은 문장의 늦은 끝 신호를 버린다.
     private var ambientEpoch = 0
     /// 끝 신호가 이 시간 안에 오지 않은 주변 문장은 말하지 않은 것으로 닫는다(초). VoiceOver 통지의 전달 장부 만료
@@ -139,6 +146,8 @@ final class OutingModel {
     /// 모두 새 문장이 옛 문장을 버리는 방식이라, 같은 fix의 지나침이 횡단보도 예고를 지울 수 있다(spec 준수 리뷰 M-2).
     private var protectedUntil: Double = 0
     private var deferredLow: String?
+    /// `deferredLow`가 끝까지 말해지면 기록에 적을 재료(도로명). 출발점 상태 문장은 적지 않는다(nil).
+    private var deferredLowRecord: OutingHistoryContent?
     /// `deferredLow`가 한 번 버려져 다시 넣은 문장인가 — 도로명·출발점 문장은 한 번만 다시 낸다(끝 신호가 오지 않는
     /// 채널에서 같은 문장이 되풀이되지 않게).
     private var deferredLowRetried = false
@@ -282,9 +291,10 @@ final class OutingModel {
         let warning = soundDegraded ? appLocalized("ios.beacon.soundBackgroundUnavailable") : nil
         if soundDegraded { ResultHaptic.fire(.attention) }
         if !(isForeground && UIAccessibility.isVoiceOverRunning) {
-            sayProtected([appLocalized("ios.outing.started"), warning].compactMap { $0 }.joined(separator: ". "))
+            sayProtected(
+                [appLocalized("ios.outing.started"), warning].compactMap { $0 }.joined(separator: ". "), record: nil)
         } else if let warning {
-            sayProtected(warning)
+            sayProtected(warning, record: nil)
         }
         startAnnounced = true
     }
@@ -310,6 +320,7 @@ final class OutingModel {
         places = [:]
         relations = [:]
         resetAmbient()
+        history.clear()
         crosswalks = [:]
         audioSignals = []
         spokenCrosswalks = []
@@ -384,6 +395,8 @@ final class OutingModel {
         places = [:]
         relations = [:]
         bundle = OutingBundle()
+        // 기록도 같은 축이다(가게 이름·좌표) — 세션이 끝나면 지운다(E82 V10).
+        history.clear()
         overviewRelations = [:]
         aheadText = nil
         guard wasActive else { return }
@@ -434,12 +447,17 @@ final class OutingModel {
         endedAt = .now
     }
 
-    /// 귀환 인계 직전(`GuideSession.acceptOutingReturn`): 종료 화면을 치운다(귀환은 종료 화면에서만 시작하므로 `stop()`은 방어용, spec §5.3).
-    func endForReturn() {
-        if isTracking { guideDiagLog("outingEnd reason=return") }
+    /// 안내로 넘기기 직전(`GuideSession.handOverOuting`, E82 V13): 세션을 끝내고 종료 화면을 치운다. 「출발점으로」는
+    /// 종료 화면에서, 기록 줄의 「도보 안내 시작」은 세션 중에 온다.
+    func endForHandover() {
+        if isTracking { guideDiagLog("outingEnd reason=handover") }
         stop()
         clearEnd()
     }
+
+    /// 안내로 넘기기 전에 기다리던 질문 요청을 거둔다(E82 V13). 「말로 묻기」(S6)가 요청 상태를 이 모델에 두면 여기서
+    /// 거둔다 — 지금은 거둘 요청이 없다.
+    func withdrawPendingRequest() {}
 
     /// 종료 화면 소거 — 닫기·새 세션·귀환 인계·30분 만료가 전부 여기를 지난다.
     func clearEnd() {
@@ -637,7 +655,7 @@ final class OutingModel {
             let label = lang == "ko" ? resolved?.address : (resolved?.english ?? resolved?.address)
             self.originLabel = label
             self.originLabelDone = true
-            self.sayLow(self.statusLine)
+            self.sayLow(self.statusLine, record: nil)
         }
     }
 
@@ -742,7 +760,7 @@ final class OutingModel {
                 + "osmJn=\(walk?.osmJunctions.logLabel ?? "fail") seoul=\(walk?.seoulJunctions.logLabel ?? "fail") "
                 + "road=\(road.confirmed ?? "-")")
         if let name = roadStep.announce, narration.speaks(.landmark) {
-            sayLow(appLocalized("ios.outing.roadEntered", name))
+            sayLow(appLocalized("ios.outing.roadEntered", name), record: .road(name: name))
         }
     }
 
@@ -787,7 +805,9 @@ final class OutingModel {
                 spokenCrosswalks.formUnion(outingCrosswalkSilenced(after: notice.id, crosswalks: pairs))
                 lastJunctionNoticeAt = now
                 guideDiagLog("crosswalk n=\(logSeq(notice.id)) audio=\(notice.hasAudioSignal)")
-                sayProtected(appLocalized(notice.hasAudioSignal ? "ios.outing.crosswalkAheadAudio" : "ios.outing.crosswalkAhead"))
+                sayProtected(
+                    appLocalized(notice.hasAudioSignal ? "ios.outing.crosswalkAheadAudio" : "ios.outing.crosswalkAhead"),
+                    record: .crosswalk(audioSignal: notice.hasAudioSignal))
                 crosswalkSpoken = true
             }
         }
@@ -806,7 +826,7 @@ final class OutingModel {
                 lastJunctionNoticeAt = now
                 // 상대 거리(s·t)도 쓰지 않는다 — 같은 로그의 fix 좌표·방위와 합치면 탐침 꺾임 지점 좌표가 복원된다(spec §6.6).
                 guideDiagLog("junction n=\(logSeq(notice.id)) shape=\(Self.junctionLog(notice.shape))")
-                sayGuarded(Self.junctionLine(notice.shape))
+                sayGuarded(Self.junctionLine(notice.shape), record: .junction(notice.shape))
                 if case .valid = heading { aheadText = aheadLandmarkText(next) }
                 return
             }
@@ -837,8 +857,10 @@ final class OutingModel {
               ambientChannelOpen
         else { return }
         if let low = deferredLow {
+            let record = deferredLowRecord
             deferredLow = nil
-            emitAmbient(low, isBundle: false, retried: deferredLowRetried)
+            deferredLowRecord = nil
+            emitAmbient(low, isBundle: false, retried: deferredLowRetried, record: record, line: nil)
             return
         }
         guard narration != .off else { return }
@@ -856,7 +878,7 @@ final class OutingModel {
         emitAmbient(
             Self.bundleLine(
                 left: line.left.compactMap(name), right: line.right.compactMap(name), beside: line.beside.compactMap(name)),
-            isBundle: true, retried: false)
+            isBundle: true, retried: false, record: nil, line: line)
     }
 
     /// 지금 주변 문장이 실릴 채널이 있는가(백그라운드에서 음성 토글이 꺼졌거나 소리가 나지 않으면 없다).
@@ -865,10 +887,12 @@ final class OutingModel {
             != .drop
     }
 
-    private func emitAmbient(_ text: String, isBundle: Bool, retried: Bool) {
+    private func emitAmbient(
+        _ text: String, isBundle: Bool, retried: Bool, record: OutingHistoryContent?, line: OutingBundleLine?
+    ) {
         ambientEpoch += 1
         let epoch = ambientEpoch
-        ambientInFlight = (uptimeNow, isBundle, text, retried, false)
+        ambientInFlight = (uptimeNow, isBundle, text, retried, false, record, line)
         // 갈림길 예고와의 간격은 주변 문장의 **끝**에서 잰다(V7): 말하는 중에는 예고가 끊고 나가고(V0b), 끝난 직후에만 미룬다.
         lastAmbientAt = nil
         say(
@@ -886,15 +910,18 @@ final class OutingModel {
         var hold = protectSeconds
         if flight.isBundle {
             if spoken {
-                noteSpoken(bundle.finishSpoken())
+                noteSpoken(bundle.finishSpoken(), line: flight.line)
             } else {
                 // 끊길수록 길게 쉬고, 세 번 끊긴 가게는 말하기를 그만둔다 — 상한이 없으면 같은 문장이 끝없이 다시 나간다.
                 let drop = bundle.finishDropped(counted: !flight.cutByGuide)
                 hold = drop.holdSeconds
                 if !drop.givenUp.isEmpty { notePassedBy(drop.givenUp) }
             }
-        } else if !spoken, !flight.retried, deferredLow == nil {
+        } else if spoken {
+            if let record = flight.record { recordHistory(record) }
+        } else if !flight.retried, deferredLow == nil {
             deferredLow = flight.text
+            deferredLowRecord = flight.record
             deferredLowRetried = true
         }
         if spoken {
@@ -904,14 +931,35 @@ final class OutingModel {
         }
     }
 
-    /// 끝까지 말한 가게 — 기록(「방금 말한 것」)이 여기서 받는다.
-    private func noteSpoken(_ ids: [String]) {
+    /// 끝까지 말한 가게 — 기록(「방금 말한 것」)에 말한 좌우 그대로 적는다(`line`은 그 문장의 좌우 배치).
+    private func noteSpoken(_ ids: [String], line: OutingBundleLine?) {
         guideDiagLog("bundleSpoken n=\(ids.count)")
+        for id in ids {
+            let side: OutingSide =
+                line?.left.contains(id) == true ? .left : line?.right.contains(id) == true ? .right : .unknown
+            recordPlace(id, side: side, passedBy: false)
+        }
     }
 
     /// 말하지 않고 넘긴 가게(40m 넘게 지나왔거나 실린 문장이 세 번 끊겼다) — 기록에만 「지나옴」으로 남긴다(V6).
     private func notePassedBy(_ ids: [String]) {
         guideDiagLog("bundlePassedBy n=\(ids.count)")
+        for id in ids { recordPlace(id, side: relations[id]?.side ?? .unknown, passedBy: true) }
+    }
+
+    private func recordPlace(_ id: String, side: OutingSide, passedBy: Bool) {
+        guard let p = places[id] else { return }
+        recordHistory(.place(
+            OutingHistoryPlace(id: id, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng),
+            side: side, passedBy: passedBy))
+    }
+
+    /// 기록에 한 줄 적는다(E82 V10) — 「말했다」가 선 자리와 「지나옴」으로 넘긴 자리만 부른다. 로그에는 종류와
+    /// 건수만 쓴다(가게 이름·좌표·답의 글은 쓰지 않는다).
+    private func recordHistory(_ content: OutingHistoryContent) {
+        guard isTracking else { return }
+        history.record(content, at: Date().timeIntervalSince1970)
+        guideDiagLog("history kind=\(content.kindLabel) \(history.logSummary)")
     }
 
     private func resetAmbient() {
@@ -922,6 +970,7 @@ final class OutingModel {
         ambientEpoch += 1
         ambientHoldUntil = 0
         deferredLow = nil
+        deferredLowRecord = nil
         deferredLowRetried = false
     }
 
@@ -1225,22 +1274,29 @@ final class OutingModel {
 
     /// 길 구조 문장(교차로 예고) — 보호 창만 세운다(주변 문장을 3초 미룸). 기기 음성 칸의 보호(유효 시간 면제)는 받지
     /// 않는다: 20m 앞에서 말하는 위치 문장이라 6초 넘게 늦으면 이미 지난 골목을 말한다(접근성 감사 MINOR-1).
-    private func sayGuarded(_ text: String) {
+    /// `record`: 끝까지 말해지면 기록에 적을 재료(기본값 없음 — 적지 않을 문장은 nil을 밝힌다).
+    private func sayGuarded(_ text: String, record: OutingHistoryContent?) {
         protectedUntil = uptimeNow + protectSeconds
-        say(text, speechClass: .actionable)
+        say(text, speechClass: .actionable, onSpoken: spokenRecorder(record))
     }
 
     /// 안전 문장(시작·횡단보도) — 나간 뒤 보호 창 동안 주변 문장을 미룬다.
-    private func sayProtected(_ text: String) {
+    private func sayProtected(_ text: String, record: OutingHistoryContent?) {
         protectedUntil = uptimeNow + protectSeconds
         protectedText = text
-        say(text, speechClass: .actionable)
+        say(text, speechClass: .actionable, onSpoken: spokenRecorder(record))
+    }
+
+    /// 그 문장이 끝까지 말해졌을 때 기록에 적는 콜백(V10). 적을 재료가 없으면 끝 신호를 추적하지 않는다.
+    private func spokenRecorder(_ record: OutingHistoryContent?) -> (() -> Void)? {
+        record.map { record in { [weak self] in self?.recordHistory(record) } }
     }
 
     /// 주변 문장 중 한 줄짜리(도로명·출발점) — 한 칸에 두고(최신이 이긴다) 채널이 빌 때 낸다(`flushAmbient`). 가게는
     /// 이 칸이 아니라 묶음(`bundle`)에 id로 쥔다.
-    private func sayLow(_ text: String) {
+    private func sayLow(_ text: String, record: OutingHistoryContent?) {
         deferredLow = text
+        deferredLowRecord = record
         deferredLowRetried = false
         flushAmbient()
     }

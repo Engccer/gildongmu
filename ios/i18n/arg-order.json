@@ -764,6 +764,9 @@
   "ios.outing.bundleSide": [
     "names"
   ],
+  "ios.outing.historyMinutesAgo": [
+    "minutes"
+  ],
   "ios.outing.itemLeft": [
     "distance"
   ],
