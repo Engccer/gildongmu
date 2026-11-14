@@ -67,8 +67,8 @@ BACKLOG E82의 2026-11-12 판정 7건과 2026-11-14 설계 판정 15건이 정�
 | V20 | 주변 목록으로 답할 수 없는 질문(버스 번호, 수단 조합, 목록에 없는 곳까지의 길)은 서버가 기존 채팅 도구를 불러 답한다: 주변 버스·버스 노선·대중교통 경로·도보 경로·자동차 경로·장소 검색 | 판정 7 |
 | V21 | 경로 도구가 낸 `route-start` 렌더만 앱에 온다(다른 렌더는 버린다). 앱은 답을 읽은 뒤 E83의 수단 버튼을 답 줄 아래에 보이고, 누르면 V13을 지난다 | 판정 9 |
 | V22 | 목록이나 기록에 있는 곳으로 가자는 말에는 서버가 **제안 도구**로 그 가게의 id를 지목한다. 서버는 요청의 가게 id에 있는 값만 통과시킨다. 제안이 오면 앱은 모델의 글을 읽지 않고 **자기 틀 문장** 「○○카페까지 안내할까요?」(받침에 따라 「로·으로」가 갈리지 않게 「까지」)를 읽고 「도보 안내 시작」 버튼을 보인다. 이름이 여러 곳에 걸리면 지목하지 않고 되묻는다. 목록에 있는 곳을 경로 도구로 다시 검색하지 않는다(다른 지점으로 풀린다) | 판정 9. 모델이 좌표와 이름을 만들지 않는다 |
-| V23 | 답변 모델은 요청의 `provider`(`openai`·`google`·`claude-opus`·`claude-sonnet`·`claude-haiku`)로 고른다. 실험판 설정 AI 묶음에 「답변 모델」 선택지, 순서는 OpenAI → Claude Sonnet → Claude Opus → Claude Haiku → Google(위원장 판정 2026-11-15, Haiku는 같은 날 위원장 요청으로 Opus 뒤에 더함), 화면 이름은 회사가 아니라 모델 이름이다: 「GPT-6.1 Terra」·「Claude Sonnet」·「Claude Opus」·「Claude Haiku」·「Gemini 3.5 Flash-Lite」(같은 날, 서버 모델 상수와 짝 가드 `vergilius-model-names.test.ts`). 서버에 키가 없는 모델과 앱이 모르는 이름은 선택지에 없고, 처음 값과 저장값이 닫혔을 때의 값은 목록 맨 앞이다 | 판정 8. 게이트 패턴 |
-| V24 | 모델 이름은 서버 코드 상수다. 처음 값은 조사에서 고른 OpenAI `gpt-6.1-terra`(추론 끔)와 Google `gemini-3.5-flash-lite`이고, Claude는 `claude-opus-5-5`·`claude-sonnet-5-5`·`claude-haiku-5-5`(`CLAUDE_VERGILIUS_MODELS`)다. 구현 때 모델 목록 API로 살아 있는지 확인한다 | latency 조사 §2~3 |
+| V23 | 답변 모델은 요청의 `provider`(`openai`·`openai-luna`·`google`·`claude-opus`·`claude-sonnet`·`claude-haiku`)로 고른다. 실험판 설정 AI 묶음에 「답변 모델」 선택지, 순서는 GPT-6.1 Terra → GPT-6 Luna → Claude Sonnet → Claude Opus → Claude Haiku → Google(위원장 판정 2026-11-15, Haiku는 같은 날 위원장 요청으로 Opus 뒤에, Luna는 같은 날 위원장 요청으로 Terra 뒤에 더함), 화면 이름은 회사가 아니라 모델 이름이다: 「GPT-6.1 Terra」·「GPT-6 Luna」·「Claude Sonnet」·「Claude Opus」·「Claude Haiku」·「Gemini 3.5 Flash-Lite」(같은 날, 서버 모델 상수와 짝 가드 `vergilius-model-names.test.ts`). 서버에 키가 없는 모델과 앱이 모르는 이름은 선택지에 없고, 처음 값과 저장값이 닫혔을 때의 값은 목록 맨 앞이다 | 판정 8. 게이트 패턴 |
+| V24 | 모델 이름은 서버 코드 상수다. 처음 값은 조사에서 고른 OpenAI `gpt-6.1-terra`(추론 끔)와 Google `gemini-3.5-flash-lite`이고, OpenAI 둘째 선택지는 `gpt-6-luna`(추론 끔, `OPENAI_VERGILIUS_MODELS`), Claude는 `claude-opus-5-5`·`claude-sonnet-5-5`·`claude-haiku-5-5`(`CLAUDE_VERGILIUS_MODELS`)다. 구현 때 모델 목록 API로 살아 있는지 확인한다 | latency 조사 §2~3 |
 
 ### 3.4 소리의 순서
 
@@ -104,7 +104,8 @@ BACKLOG E82의 2026-11-12 판정 7건과 2026-11-14 설계 판정 15건이 정�
 - 제안은 종결 도구 `propose_guide({ placeId })`로 받는다. `places[].id`와 `log[].placeId`에 있는 값만 통과시키고, 통과한 제안이 있으면 `done.text`는 비운다(앱이 틀 문장을 읽는다).
 - 변환층 테스트 항목: Gemini 생각 서명 보존, 병렬 도구 호출의 짝 맞춤(OpenAI는 호출 id, Gemini는 이름), 스키마 타입 표기 차이.
 - 지침 정본은 한 파일이고 두 회사에 같은 지침을 쓴다. 채팅 지침의 「카드로 보인다」 전제는 넣지 않는다.
-- `OPENAI_API_KEY`는 서버 전용 env, 게이트 `hasOpenAiKey`. OpenAI 쪽 월 지출 상한은 콘솔에서 건다(위원장).
+- `GILDONGMU_OPENAI_API_KEY`는 서버 전용 env, 게이트 `hasOpenAiKey`. OpenAI 쪽 월 지출 상한은 콘솔에서 건다(위원장).
+- OpenAI는 모델 단위 두 선택지 `openai`(`gpt-6.1-terra`)·`openai-luna`(`gpt-6-luna`, 2026-11-15 추가)이고 한 키로 함께 서고 빠진다. 둘 다 `reasoning.effort: "none"`이라 요청은 모델 이름만 다르다. 거절·잘림은 실패이고 다른 모델로 돌리지 않는다. 실측 `docs/evals/2026-11-14-e82-vergilius-ask.md`(Terra), `docs/evals/2026-11-15-vergilius-gpt-6-luna.md`(Luna).
 - Claude는 모델 단위 세 선택지 `claude-opus`(Opus 5.5)·`claude-sonnet`(Sonnet 5.5)·`claude-haiku`(Haiku 5.5)이다(Opus·Sonnet 2026-11-14, Haiku 2026-11-15 추가, 키 `ANTHROPIC_API_KEY`·게이트 `hasAnthropicKey`, 어댑터 `claude.ts`). 셋 다 effort `low`이고 Opus·Haiku는 생각 설정을 보내지 않으며 Sonnet은 `between_tools`다(Haiku는 생각을 끄면 답이 흐트러져 적응형으로 둔다). `stop_reason`이 `end_turn`·`tool_use`가 아니면 실패이고, 고른 모델이 답한다는 계약이라 거절을 다른 모델로 돌리는 서버 `fallbacks`는 쓰지 않는다(Haiku에는 아예 없다). 실측 `docs/evals/2026-11-14-vergilius-claude.md`(Opus·Sonnet), `docs/evals/2026-11-15-vergilius-claude-haiku.md`(Haiku).
 
 ## 5. 마일스톤과 의존
