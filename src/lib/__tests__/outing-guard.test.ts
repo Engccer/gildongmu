@@ -325,6 +325,13 @@ describe("받아쓰기 중 횡단보도 경고(E82 V25~V27)", () => {
     expect(output).not.toMatch(/\.prefix\(\d+\)/);
   });
 
+  it("전경 복귀 때 넘긴 문장의 끝 신호를 합본 통지에 잇는다 — 인계된 횡단보도 경고가 장부를 묶지 않는다(한 번에 하나)", () => {
+    // 잇지 않으면 합본이 나간 뒤 인계된 경고는 말함도 버림도 받지 못해 `busy`가 산책 끝까지 남는다.
+    const scene = model.slice(model.indexOf("let handed = deviceSpeech.handOver()"), model.indexOf("// MARK: - 만보계"));
+    expect(scene).toMatch(/onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)\s*\}/);
+    expect(scene).toContain("onSpoken: handed.isEmpty ? nil : { handed.spoken() })");
+  });
+
   it("세션이 끝나면 쥔 것을 버린 뒤에 억제를 푼다 — 끝난 세션의 경고가 나오지 않는다", () => {
     const stop = functionBody(model, "stop");
     expect(stop.indexOf("crosswalkLedger = OutingCrosswalkLedger()")).toBeGreaterThan(-1);

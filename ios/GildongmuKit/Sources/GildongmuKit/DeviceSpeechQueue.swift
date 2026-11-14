@@ -39,8 +39,7 @@ public final class DeviceSpeechHandover {
     }
 
     /// 합본 통지가 끝까지 말해졌다(E82 V0a) — 인계한 문장마다 「말했다」를 통지한다. `undelivered()`와 둘 중 먼저 불린 쪽만.
-    /// 지금 부르는 자리는 없다: 인계에 실리는 안전 문장은 아직 「말했다」를 쓰지 않는다. 안전 문장의 표시를 「말했다」에
-    /// 거는 단계(spec §8 S4)가 합본 통지의 끝 신호에 이을 자리다.
+    /// 나들이 모델이 합본 통지의 끝 신호(`onSpoken`)에 잇는다 — 인계에 실린 횡단보도 경고는 끝 신호가 와야 장부가 풀린다.
     public func spoken() {
         let pending = spokens
         spokens = []

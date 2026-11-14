@@ -156,7 +156,9 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
     expect(outing).toContain("let handed = deviceSpeech.handOver()");
     expect(outing).toContain("var owed = handed.texts");
-    expect(outing).toMatch(/say\(owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/);
+    expect(outing).toMatch(
+      /say\(\s*owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable,\s*onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/,
+    );
   });
 
   it("prewalk 권한·정밀 위치 상실 종료는 도보 실패 문장에 대중교통 미시작을 붙이고, 코디네이터는 따로 내지 않는다(횡단 리뷰 F3)", () => {

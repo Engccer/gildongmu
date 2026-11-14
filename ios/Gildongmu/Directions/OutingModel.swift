@@ -533,11 +533,17 @@ final class OutingModel {
                     }
                 }
                 // 합본이 억제로 버려지면(복귀 순간 받아쓰기 시트) 실은 장부를 되돌린다 — 종료 사유와 인계받은 문장(횡단 리뷰 F6).
+                // 인계받은 문장이 있으면 합본의 끝 신호를 그 문장들에 잇는다(E82 V0a): 끝까지 말했으면 `spoken()`, 끊겼으면
+                // 버림이다. 잇지 않으면 인계받은 횡단보도 경고는 끝 신호를 영영 받지 못해 장부가 그 경고에 묶인 채 남은 산책의
+                // 경고를 모두 막는다(한 번에 하나, `OutingCrosswalkLedger.busy`).
                 if !owed.isEmpty {
-                    say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable) { [weak self] in
-                        if let repaidEnd { self?.owedEndReason = repaidEnd }
-                        handed.undelivered()
-                    }
+                    say(
+                        owed.joined(separator: " "), highPriority: true, speechClass: .actionable,
+                        onDropped: { [weak self] in
+                            if let repaidEnd { self?.owedEndReason = repaidEnd }
+                            handed.undelivered()
+                        },
+                        onSpoken: handed.isEmpty ? nil : { handed.spoken() })
                 }
             }
         default:
