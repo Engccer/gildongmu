@@ -103,6 +103,7 @@ describe("scoreGrounding — 엔티티 대조", () => {
     expect(scoreGrounding(g, outputs, "신설동역3번출구에서 타면 12정류장 뒤 안국역.서울공예박물관에 섭니다.")).toEqual({ pass: true, leaked: [] });
     // 도구에 없는 정류장 수는 수치 축이 잡는다.
     expect(scoreGrounding(g, outputs, "9정거장 뒤에 내립니다").leaked).toEqual(["number:9정거장"]);
+    expect(scoreGrounding(g, outputs, "9정류소 뒤에 내립니다").leaked).toEqual(["number:9정류소"]);
   });
   it("도로명 '인제로193번길'의 193번은 수치가 아니고, 공공 상담 창구 이름은 시설이 아니다", () => {
     expect(extractEntities("인제군 인제읍 인제로193번길 1", ["number"])).toEqual([]);
