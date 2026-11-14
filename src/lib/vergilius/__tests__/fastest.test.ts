@@ -107,6 +107,9 @@ describe("annotateFastestRoute: 경로 조회 여러 수단의 가장 빠른 수
     expect(second[0].response.fastestAmongQueried).toEqual({ modes: ["car"], minutes: 13, compared: ["walk", "car"] });
     const third = annotate([walk("서울역", 300)], seen);
     expect(third[0].response.fastestAmongQueried).toMatchObject({ modes: ["walk"], minutes: 5 });
+    // 나중 결과가 더 느려도 나중 것이다(최솟값으로 합치지 않는다).
+    const fourth = annotate([walk("서울역", 1200)], seen);
+    expect(fourth[0].response.fastestAmongQueried).toMatchObject({ modes: ["car"], minutes: 13 });
   });
 
   it("원래 응답 객체를 바꾸지 않는다", () => {
