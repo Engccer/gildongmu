@@ -228,6 +228,13 @@ describe("usage 합산과 비용", () => {
     expect(p.label).not.toContain("미등록");
   });
 
+  it("Gemini 3.8 Flash는 3.6과 같은 할인가·종료일이다(미등록이면 라벨에 미등록이 붙는다)", () => {
+    const promo = pricesAt("2026-11-15T00:00:00.000Z", "gemini-3.8-flash@low");
+    expect(promo.label).not.toContain("미등록");
+    expect(promo.inPerToken).toBeCloseTo(0.75 / 1e6, 15);
+    expect(pricesAt("2027-01-01T00:00:00.000Z", "gemini-3.8-flash@low").outPerToken).toBeCloseTo(7.5 / 1e6, 15);
+  });
+
   it("Luna·Haiku 5.5 단가가 등록돼 있다(미등록이면 3.6-flash 값으로 조용히 계산된다)", () => {
     for (const m of ["gpt-6-luna@low", "claude-haiku-5-5@low"]) {
       const p = pricesAt("2026-11-15T00:00:00.000Z", m);
