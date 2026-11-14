@@ -238,6 +238,61 @@ describe("버스 노선 도구 케이스(E87) — 2026-11-14 실호출의 도구
   });
 });
 
+describe("길찾기 출발지·수단 한정 케이스(E88 ⓐ) — 2026-11-14 실호출의 도구 반환과 답으로 채점기를 맞춘다", () => {
+  const c57 = CASES.find((c) => c.id === "57-수단한정-지하철만-없음")!;
+  // 모델은 수단 한정 조회(없음)와 한정 없는 조회를 함께 불렀다. 두 반환을 그대로 줄였다.
+  const outputs = [
+    {
+      name: "get_transit_route",
+      response: { destination: "남한산성 행궁", mode: "subway", route: null, noRouteWithMode: true, notice: "이 수단만 타고 가는 경로가 없습니다." },
+    },
+    {
+      name: "get_transit_route",
+      response: {
+        destination: "남한산성 행궁",
+        route: {
+          recommended: {
+            summary: { totalMinutes: 52, fare: 3500, transfers: 2, walkMinutes: 10, walkMeters: 631, departName: "길동", arriveName: "남한산성도립공원" },
+            legs: [
+              { mode: "walk", minutes: 2, distanceMeters: 150, toName: "길동" },
+              { mode: "subway", lineName: "수도권 5호선", fromName: "길동", toName: "천호", stationCount: 2, minutes: 4 },
+              { mode: "subway", lineName: "수도권 8호선", fromName: "천호", toName: "산성", stationCount: 11, minutes: 20 },
+              { mode: "walk", minutes: 3, distanceMeters: 207, toName: "한국폴리텍대학.성남문화예술교육센터" },
+              { mode: "bus", lineName: "53(주말운행)", fromName: "한국폴리텍대학.성남문화예술교육센터", toName: "남한산성도립공원", stationCount: 5, minutes: 17 },
+              { mode: "walk", minutes: 4, distanceMeters: 274 },
+            ],
+          },
+        },
+      },
+    },
+  ];
+
+  it("도구 값만 말한 답은 통과한다", () => {
+    const text =
+      "지하철만 타고 가는 경로는 없습니다. 지하철과 버스를 함께 타면 약 52분 걸립니다. " +
+      "5호선 길동역에서 천호역까지 간 뒤 8호선으로 갈아타 산성역에서 내리고, 53번 버스로 남한산성도립공원까지 약 17분 갑니다.";
+    expect(scoreGrounding(c57.grounding!, outputs, text, c57.turns)).toEqual({ pass: true, leaked: [] });
+  });
+
+  it("도구에 없는 버스 번호는 잡힌다. 작은 출구 번호는 채점기가 못 잡는다(실호출에서 나온 두 날조)", () => {
+    // ⚠ 채점기는 수치를 단위 없이 값으로만 맞춘다: 같은 답의 「52번」은 총 소요 52분과 값이 같아 새지 않는다(판정은 「9번」이 맡는다).
+    const buses = scoreGrounding(c57.grounding!, outputs, "산성역에서 남한산성 방면 버스(52번, 9번)를 탑니다.", c57.turns);
+    expect(buses.leaked).toEqual(["number:9번"]);
+    // 「2번 출구」의 2는 환승 2회·도보 2분과 값이 같다 — 자동 판정 밖이라 케이스의 judge(사람 판정)에 적어 둔다.
+    const exit = scoreGrounding(c57.grounding!, outputs, "산성역 2번 출구 근처 정류장으로 이동합니다.", c57.turns);
+    expect(exit.leaked).toEqual([]);
+    expect(c57.judge).toContain("출구 번호");
+  });
+
+  it("출발지 케이스는 origin 인자를, 수단 한정 케이스는 mode 인자를 본다", () => {
+    const c55 = CASES.find((c) => c.id === "55-출발지-도보")!;
+    const c56 = CASES.find((c) => c.id === "56-출발지-수단한정-지하철")!;
+    expect(c55.expectArg).toEqual({ tool: "get_walk_route", key: "origin", value: "서울역" });
+    expect(c56.expectArg).toEqual({ tool: "get_transit_route", key: "mode", value: "subway" });
+    expect(c57.expectArg).toEqual({ tool: "get_transit_route", key: "mode", value: "subway" });
+  });
+});
+
 describe("passK", () => {
   it("k 회 전부 통과해야 통과다", () => {
     expect(passK([true, true, true])).toBe(true);

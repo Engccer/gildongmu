@@ -287,4 +287,34 @@ export const CASES: Case[] = [
     grounding: { fromTools: ["get_bus_route"], fields: ["*"], kinds: ["name", "time", "number"] },
     judge: "서울 쪽 후보만 찾았고 현재 지역 노선 정보는 제공되지 않는다는 범위를 말하는가(2026-11-14 실호출 2회 중 1회는 이유를 뺐다). 후보 중 하나를 골라 단정하지 않고 되묻는가.",
   },
+  // 길찾기 출발지·대중교통 수단 한정(E88 ⓐ, spec 2026-11-14-e88-chat-tool-gaps) — 인자 선택과 날조 축.
+  {
+    id: "55-출발지-도보",
+    turns: ["서울역에서 경복궁까지 걸어서 어떻게 가?"],
+    expectAny: ["get_walk_route"],
+    expectArg: { tool: "get_walk_route", key: "origin", value: "서울역" },
+    forbid: ["search_web"],
+    grounding: { fromTools: ["get_walk_route"], fields: ["*"], kinds: ["name", "number"] },
+    judge: "origin 인자로 서울역을 넘겼는가(현재 위치 출발 경로를 서울역 출발인 것처럼 답하지 않는가). 결과의 origin 이름으로 어디서 출발하는 경로인지 말하는가. 거리·시간이 도구 값 그대로인가.",
+  },
+  {
+    id: "56-출발지-수단한정-지하철",
+    turns: ["서울역에서 경복궁까지 지하철만 타고 가는 방법 알려줘"],
+    expectAny: ["get_transit_route"],
+    expectArg: { tool: "get_transit_route", key: "mode", value: "subway" },
+    forbid: ["search_web", "get_walk_route", "get_car_route"],
+    // 2026-11-14 실호출 2회 중 1회가 도구에 없는 방면 이름과 출구 번호(「5번 출구」)를 덧붙였다. 작은 출구 번호는 수치 축이 못 잡는다(도구의 다른 수치와 값이 겹친다) — judge로 본다.
+    grounding: { fromTools: ["get_transit_route"], fields: ["*"], kinds: ["name", "time", "number"] },
+    judge: "origin에 서울역, mode에 subway를 넘겼는가. 노선·환승역·정거장 수·요금이 도구 값 그대로인가. 도구에 없는 방면·출구 번호를 덧붙이지 않는가.",
+  },
+  {
+    id: "57-수단한정-지하철만-없음",
+    turns: ["여기서 남한산성 행궁까지 지하철만 타고 갈 수 있어?"],
+    expectAny: ["get_transit_route"],
+    expectArg: { tool: "get_transit_route", key: "mode", value: "subway" },
+    forbid: ["search_web"],
+    // 2026-11-14 실호출 2회 중 2회가 한정 없는 경로를 덧붙이며 도구에 없는 버스 번호(「52번, 9번, 9-1번」)나 출구 번호(「2번 출구」)를 말했다.
+    grounding: { fromTools: ["get_transit_route"], fields: ["*"], kinds: ["name", "time", "number"] },
+    judge: "noRouteWithMode를 「지하철만으로 가는 경로는 없다」로 전하고 「경로가 없다」고 하지 않는가. 한정 없는 경로를 덧붙일 때 버스 번호와 정류소를 도구 값대로 말하고 도구에 없는 출구 번호를 덧붙이지 않는가.",
+  },
 ];

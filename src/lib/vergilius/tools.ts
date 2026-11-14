@@ -10,7 +10,7 @@
  * - 짝 맞춤: OpenAI는 호출 id(`call_id`), Gemini는 이름(과 있으면 id)이다 — 각 어댑터가 맡는다.
  */
 import type { FunctionDeclaration } from "@google/genai";
-import { availableDeclarations } from "@/lib/chat/declarations";
+import { availableDeclarations, ORIGIN_NOTE } from "@/lib/chat/declarations";
 
 /** 종결 도구 이름(V22). */
 export const PROPOSE_GUIDE_NAME = "propose_guide";
@@ -24,6 +24,30 @@ export const VERGILIUS_CHAT_TOOL_NAMES: readonly string[] = [
   "get_car_route",
   "search_places",
 ];
+
+/**
+ * 이 끝점에서 닫는 채팅 도구 인자(E88 spec A3). 길찾기의 말한 출발지 `origin`: 이 끝점의 버튼은 실제 위치에서 시작하는
+ * 안내뿐이라 다른 곳에서 출발하는 경로를 답하지 않는다. 선언에서 떼고(`closeArgs`), 실행 직전에도 뗀다(`withoutClosedArgs`).
+ */
+export const VERGILIUS_CLOSED_ARGS: readonly string[] = ["origin"];
+
+/** 모델이 스키마에 없는 닫힌 인자를 보내도 실행부에 닿지 않게 뗀다. 닫힌 인자가 없으면 같은 객체를 돌려준다. */
+export function withoutClosedArgs(args: Record<string, unknown>): Record<string, unknown> {
+  if (!VERGILIUS_CLOSED_ARGS.some((k) => k in args)) return args;
+  return Object.fromEntries(Object.entries(args).filter(([k]) => !VERGILIUS_CLOSED_ARGS.includes(k)));
+}
+
+/** 선언에서 닫힌 인자의 속성과 그 인자를 가리키는 설명 문장을 뗀다. */
+function closeArgs(spec: VergiliusToolSpec): VergiliusToolSpec {
+  const properties = spec.parameters.properties;
+  if (!properties || typeof properties !== "object") return spec;
+  if (!VERGILIUS_CLOSED_ARGS.some((k) => k in (properties as Record<string, unknown>))) return spec;
+  return {
+    ...spec,
+    description: spec.description.replace(ORIGIN_NOTE, ""),
+    parameters: { ...spec.parameters, properties: withoutClosedArgs(properties as Record<string, unknown>) },
+  };
+}
 
 /** 회사 중립 도구 선언. `parameters`는 표준 JSON Schema(소문자 타입)다. */
 export interface VergiliusToolSpec {
@@ -79,7 +103,8 @@ export function specFromGeminiDeclaration(decl: FunctionDeclaration): VergiliusT
 export function vergiliusToolSpecs(): VergiliusToolSpec[] {
   const chat = availableDeclarations(new Set())
     .filter((d) => d.name !== undefined && VERGILIUS_CHAT_TOOL_NAMES.includes(d.name))
-    .map(specFromGeminiDeclaration);
+    .map(specFromGeminiDeclaration)
+    .map(closeArgs);
   return [...chat, PROPOSE_GUIDE_TOOL];
 }
 

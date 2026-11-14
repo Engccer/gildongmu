@@ -22,7 +22,9 @@ import {
   toGeminiDeclarations,
   toOpenAiTools,
   vergiliusToolSpecs,
+  withoutClosedArgs,
 } from "../tools";
+import { availableDeclarations } from "@/lib/chat/declarations";
 import { askFixture } from "./fixtures";
 
 const routeStart: RouteStartRenderPayload = {
@@ -80,6 +82,34 @@ describe("도구 선언 변환층", () => {
       ["get_bus_arrivals", "get_bus_route", "get_car_route", "get_transit_route", "get_walk_route", "propose_guide", "search_places"],
     );
     expect([...VERGILIUS_CHAT_TOOL_NAMES, PROPOSE_GUIDE_NAME].sort()).toEqual([...names].sort());
+  });
+
+  it("길찾기의 말한 출발지 인자는 닫는다(E88): 스키마에도 설명에도 origin이 없고, 채팅 선언에는 그대로 있다", () => {
+    const routeTools = ["get_walk_route", "get_car_route", "get_transit_route"];
+    const chat = availableDeclarations(new Set()).filter((d) => routeTools.includes(d.name ?? ""));
+    expect(chat).toHaveLength(3);
+    for (const d of chat) {
+      // 전제: 채팅 선언에는 인자와 설명 문장이 있다(없으면 아래 단언이 헛돈다).
+      expect((d.parametersJsonSchema as { properties: object }).properties).toHaveProperty("origin");
+      expect(d.description).toContain("origin");
+    }
+    const specs = vergiliusToolSpecs().filter((s) => routeTools.includes(s.name));
+    expect(specs).toHaveLength(3);
+    for (const s of specs) {
+      const properties = s.parameters.properties as Record<string, unknown>;
+      expect(properties).not.toHaveProperty("origin");
+      expect(properties).toHaveProperty("destination");
+      expect(s.description).not.toContain("origin");
+    }
+    // 수단 한정은 답과 버튼이 같은 경로라 그대로 연다.
+    const transit = specs.find((s) => s.name === "get_transit_route")!;
+    expect(transit.parameters.properties).toHaveProperty("mode");
+  });
+
+  it("닫힌 인자는 실행 인자에서도 뗀다: 다른 인자는 그대로이고, 닫힌 인자가 없으면 같은 객체다", () => {
+    expect(withoutClosedArgs({ destination: "서울역", origin: "부산역", via: "시청" })).toEqual({ destination: "서울역", via: "시청" });
+    const plain = { destination: "서울역" };
+    expect(withoutClosedArgs(plain)).toBe(plain);
   });
 
   it("스키마 타입 표기: Gemini Schema의 대문자 타입은 OpenAI용 소문자 JSON Schema가 된다", () => {

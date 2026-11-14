@@ -10,12 +10,13 @@
  * - 열어 준 이름이 아닌 도구 호출은 실행하지 않는다(채팅 실행부는 26개 도구를 다 실행할 수 있다).
  * - 경로 도구의 도착지가 요청 목록의 가게 이름과 같으면 실행하지 않는다. 그 가게는 앱이 좌표를 쥐고 있어 제안 도구로 가야 한다
  *   (경로 도구는 이름을 다시 검색해 다른 지점의 같은 이름으로 갈 수 있다).
+ * - 닫힌 인자(길찾기의 말한 출발지 `origin`, E88)는 실행 직전에 뗀다. 이 끝점의 경로 조회는 늘 실제 위치에서 출발한다.
  * - 도구 실패는 모델에 `error`로 돌려준다(루프를 죽이지 않는다, 채팅 루프와 같다).
  * - 도구 결과는 좌표 키를 뗀 뒤 모델에 준다(`withoutCoordinates`). 렌더는 그대로 앱에 간다.
  */
 import type { ExecutionContext, RenderPayload, RouteStartRenderPayload, ToolResult } from "@/lib/chat/types";
 import { routeStartRendersOnly, validateProposal, withoutCoordinates } from "./guard";
-import { PROPOSE_GUIDE_NAME } from "./tools";
+import { PROPOSE_GUIDE_NAME, withoutClosedArgs } from "./tools";
 import type { VergiliusModelSession, VergiliusStreamEvent, VergiliusToolCall, VergiliusToolOutcome } from "./types";
 
 /** 한 질문의 도구 왕복 상한(spec §4). */
@@ -141,7 +142,7 @@ export async function runVergiliusLoop(opts: VergiliusLoopOptions): Promise<Verg
 
   async function runCall(call: VergiliusToolCall): Promise<VergiliusToolOutcome> {
     try {
-      const result = await execute(call.name, call.args, ctx);
+      const result = await execute(call.name, withoutClosedArgs(call.args), ctx);
       if (result.render) renders.push(result.render);
       return { call, response: withoutCoordinates(result.data) };
     } catch (e) {
