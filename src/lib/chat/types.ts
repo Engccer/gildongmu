@@ -5,7 +5,7 @@
  * 후속 태스크(라우터·render 헬퍼·useChat·MessageBubble)가 전부 이 타입을 import한다.
  */
 
-import type { Place, JusoAddress, WebSearchResult, JourneyResult } from "@/lib/types";
+import type { Place, JusoAddress, WebSearchResult, JourneyResult, TransitRouteResult } from "@/lib/types";
 
 /** 응답 하단에 표시할 데이터 제공처. label은 i18n 키(chat.<label>), url은 선택. */
 export interface SourceAttribution {
@@ -37,6 +37,14 @@ export interface ExecutionContext {
      * `asked`: 후보·동명 역을 돌려줘 되물어야 한다(이 턴엔 여정을 조회하지 않는다). `queried`: 여정을 이미 조회했다.
      */
     turn: { asked: boolean; queried: boolean };
+  };
+  /**
+   * 경로 안내 시작 카드(`route-start`, E83) 컨텍스트 — 클라이언트가 `"route-start"` 능력을 신고한 범용 채팅에만 라우트가 싣는다.
+   * **없으면 길찾기 세 도구의 렌더·`data`가 종전과 같다**(닫힌 쪽이 기본값, R2). 이 능력은 도구를 새로 열지 않는다.
+   */
+  routeStart?: {
+    /** `userLocation`이 수동 지정 위치인가 — 대중교통 카드의 `transit.manualOrigin`으로 돌려준다(R6). */
+    manualOrigin: boolean;
   };
   /** UI 로케일 (ko|en|es|fr|it) */
   locale: string;
@@ -74,10 +82,41 @@ export type RenderPayload =
   | { type: "station-facilities"; stationName: string }         // <StationFacilities/> + <SeoulMetroFacilities/>
   | { type: "car-route"; dest: { lat: number; lng: number; name: string } }      // <CarRouteBriefing dest/>
   | { type: "transit-route"; dest: { lat: number; lng: number; name: string } } // <TransitRouteBriefing dest/>
-  | JourneyRenderPayload;                                       // <JourneyChatCard/> (E70-b)
+  | JourneyRenderPayload                                        // <JourneyChatCard/> (E70-b)
+  | RouteStartRenderPayload;                                    // <RouteStartCard/> (E83, 도착지별로 묶어 그린다)
 
-/** 채팅 요청이 신고할 수 있는 클라이언트 능력(E70-b D7). 모르는 값은 서버가 버린다. */
-export type ChatCapability = "journey";
+/** 채팅 요청이 신고할 수 있는 클라이언트 능력(E70-b D7 `journey`, E83 R2 `route-start`). 모르는 값은 서버가 버린다. */
+export type ChatCapability = "journey" | "route-start";
+
+export type RouteStartMode = "walk" | "car" | "transit";
+
+/**
+ * 경로 안내 시작 카드(E83 spec `2026-11-14-e83-chat-route-start-design.md` §4) — 서버 ↔ 웹 ↔ iOS 공유 계약. 도구 호출 하나가
+ * 렌더 하나이고, 클라이언트가 한 답의 렌더를 도착지별로 묶어 카드 하나로 그린다(R1). 경로를 찾은 때에만 낸다(R3).
+ * **모든 키는 늘 있다**(없는 값은 `null`·`false`) — 키 집합은 `route-start-render.test.ts`가 잠근다.
+ */
+export interface RouteStartRenderPayload {
+  type: "route-start";
+  mode: RouteStartMode;
+  dest: { lat: number; lng: number };
+  destLabel: string;
+  /** 영문 원천이 없을 때의 서버 로마자(여정 카드와 같은 규칙). */
+  destRoman: string | null;
+  /** 도보·자동차만. 대중교통은 늘 null. */
+  via: { lat: number; lng: number; label: string } | null;
+  /** 도보의 계단 회피. 그 밖의 수단은 false. */
+  accessible: boolean;
+  /** 자동차 경로의 provider(예: `"tmap"`). 그 밖의 수단은 null. */
+  carProvider: string | null;
+  /** 대중교통만(R5 — 길찾기 화면의 대중교통 조회 결과와 같은 모양). 그 밖의 수단은 null. */
+  transit: {
+    result: TransitRouteResult;
+    origin: { lat: number; lng: number };
+    /** 조회 시각(epoch ms). */
+    queriedAt: number;
+    manualOrigin: boolean;
+  } | null;
+}
 
 /** 여정에서 갈아탈 곳 하나 — 웹 `JourneyStationPick`과 같은 모양(React 비의존이라 여기서 다시 적는다). */
 export interface JourneyChatStation {
