@@ -79,7 +79,8 @@ const ORIGIN_ARG = {
  * `origin`을 받는 도구의 설명에 붙는 한 문장 — 결과의 출발지 이름이 말한 곳과 다르면 그 사실을 전하게 한다.
  * 베르길리우스 변환층이 `origin` 인자를 닫을 때 이 문장도 함께 뗀다(`vergilius/tools.ts`).
  */
-export const ORIGIN_NOTE = " origin을 넣으면 결과의 origin이 실제로 출발지로 잡은 장소이니 그 이름으로 어디서 출발하는 경로인지 말하라.";
+export const ORIGIN_NOTE =
+  " 사용자가 현재 위치가 아닌 출발지를 말했으면 origin에 넣는다(그때는 그곳이 출발지다). 결과의 origin이 실제로 출발지로 잡은 장소이니 그 이름으로 어디서 출발하는 경로인지 말하라.";
 
 /** 여정 도구의 갈아탈 곳 한쪽 인자 묶음. 정류장(`_kind: stop`)은 정류장 이름 검색 키(data.go.kr)가 있을 때만 받는다. */
 function journeySideProperties(side: "board" | "alight", what: string): Record<string, unknown> {
@@ -448,7 +449,7 @@ const DECLARATIONS: GatedDeclaration[] = [
       description:
         "목적지까지 대중교통(버스·지하철 환승) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치). " +
         "serviceStatus가 outside인 구간이 있으면 첫차·막차와 함께 지금은 운행하지 않는다고 알린다(running·unknown은 언급하지 않는다). " +
-        "noRouteWithMode가 오면 mode로 한정한 수단만 타고 가는 경로가 없는 것이지 경로가 없는 것이 아니다." +
+        "noRouteWithMode가 오면 mode로 한정한 수단만 타고 가는 경로를 찾지 못한 것이다(다른 수단을 섞은 경로가 있는지는 한정 없이 조회해야 안다)." +
         ORIGIN_NOTE,
       parametersJsonSchema: {
         type: "object",

@@ -129,6 +129,21 @@ function originArg(args: Record<string, unknown>): string | undefined {
   return origin || undefined;
 }
 
+/**
+ * 말한 출발지가 한국 밖으로 풀렸을 때(E88 리뷰 S2). 종전 커버리지 안내는 「현재 위치」를 말해 사용자의 위치가 한국 밖이라고
+ * 읽히고, 고른 장소가 없으면 키워드 검색이 엉뚱한 곳을 고른 사실을 모델이 말할 수 없다. 출발지를 말하지 않은 조회는 종전 게이트 그대로다.
+ */
+function originCoverageGate(named: ResolvedCoord | undefined, origin: { lat: number; lng: number }) {
+  if (!named || isInKorea(named.lat, named.lng)) return coverageGate(origin);
+  return {
+    data: {
+      outOfCoverage: true,
+      origin: named.resolvedPlace,
+      notice: "말한 출발지가 대한민국 밖의 장소로 잡혔습니다. 길찾기는 대한민국 안에서만 됩니다.",
+    },
+  };
+}
+
 /** 말한 출발지로 조회한 답에 싣는 조각 — 실제로 고른 장소(키워드 검색 첫 결과라 말한 곳과 다를 수 있다). */
 function originNote(named: ResolvedCoord | undefined): { origin?: string } {
   return named ? { origin: named.resolvedPlace } : {};
@@ -137,10 +152,13 @@ function originNote(named: ResolvedCoord | undefined): { origin?: string } {
 /** 대중교통 수단 한정(E88 spec A2) — 도구 인자 `mode` → provider의 수단 축. 모르는 값은 한정 없음. */
 const TRANSIT_MODE_AXIS = { subway: "subwayOnly", bus: "busOnly" } as const;
 
-/** 그 수단만으로 가는 경로가 없을 때. `route: null`만 주면 「경로 없음」으로 낭독돼 거짓이다. */
+/**
+ * 그 수단만으로 가는 경로가 없을 때. `route: null`만 주면 「경로 없음」으로 낭독돼 거짓이다.
+ * ⚠ 다른 경로가 「있다」고 단정하지 않는다: provider의 null은 「수단 거르기 뒤 0건」과 「출발·도착이 너무 가까움(-98)」을 가르지 못한다(E88 리뷰 S1).
+ */
 const NO_ROUTE_WITH_MODE = {
   noRouteWithMode: true,
-  notice: "이 수단만 타고 가는 경로가 없습니다. 경로 자체가 없다는 뜻이 아닙니다(수단을 한정하지 않고 다시 조회하면 다른 경로를 알 수 있습니다).",
+  notice: "이 수단만 타고 가는 경로를 찾지 못했습니다. 다른 수단을 섞으면 경로가 있을 수 있습니다(수단을 한정하지 않고 조회해야 알 수 있습니다).",
 };
 
 /** 경유지 미지원 마커(대중교통 전부, 자동차 en). `null`만 주면 "경로 없음"으로 낭독돼 거짓. */
@@ -645,7 +663,7 @@ export async function executeFunction(
       if (originName && !named) return { data: placeNotFound(originName) };
       const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
       if (!origin) return { data: NO_LOCATION, render, source: src };
-      const gated = coverageGate(origin);
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
       const via = await resolveVia(args, ctx);
       if (via === null) return { data: placeNotFound(String(args.via)) };
@@ -692,7 +710,7 @@ export async function executeFunction(
       if (originName && !named) return { data: placeNotFound(originName) };
       const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
       if (!origin) return { data: NO_LOCATION, render, source: src };
-      const gated = coverageGate(origin);
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
       // ⚠ 과금: 수단을 한정한 조회는 URL에 `SearchPathType`이 붙어 한정 없는 조회와 캐시 항목이 따로다(ODsay 호출 1회).
       const route = await getTransitRoute({ origin, dest: { lat: p.lat, lng: p.lng }, ...modeAxis });
@@ -757,7 +775,7 @@ export async function executeFunction(
       if (originName && !named) return { data: placeNotFound(originName) };
       const origin = named ? { lat: named.lat, lng: named.lng } : ctx.userLocation;
       if (!origin) return { data: NO_LOCATION, source: src };
-      const gated = coverageGate(origin);
+      const gated = originCoverageGate(named, origin);
       if (gated) return gated;
       const via = await resolveVia(args, ctx);
       if (via === null) return { data: placeNotFound(String(args.via)) };

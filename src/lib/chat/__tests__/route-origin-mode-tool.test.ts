@@ -27,6 +27,7 @@ import { searchPlaces } from "@/lib/providers/places";
 import { getWalkRoute } from "@/lib/walk-route";
 import { getCarRoute } from "@/lib/car-route";
 import { getTransitRoute } from "@/lib/providers/odsay";
+import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 
 const mockSearch = vi.mocked(searchPlaces);
 const mockWalk = vi.mocked(getWalkRoute);
@@ -123,6 +124,10 @@ describe("말한 출발지(A1)", () => {
   it.each(ROUTE_TOOLS)("%s: 출발지가 한국 밖이면 커버리지 안내만 돌려주고 조회하지 않는다", async (tool) => {
     const r = await executeFunction(tool, { destination: "경복궁", origin: "후쿠오카" }, legacyCtx);
     expect(r.data.outOfCoverage).toBe(true);
+    // 리뷰 S2: 고른 장소를 싣고, 「현재 위치」가 한국 밖이라는 종전 문장을 쓰지 않는다(사용자는 서울에 있다).
+    expect(r.data.origin).toBe("후쿠오카");
+    expect(String(r.data.notice)).toContain("말한 출발지");
+    expect(String(r.data.notice)).not.toContain("현재 위치");
     expect(mockWalk).not.toHaveBeenCalled();
     expect(mockCar).not.toHaveBeenCalled();
     expect(mockTransit).not.toHaveBeenCalled();
@@ -150,6 +155,36 @@ describe("말한 출발지(A1)", () => {
     expect(passed.via).toEqual({ name: "천호역", lat: CHEONHO.lat, lng: CHEONHO.lng });
     expect(passed.accessible).toBe(true);
     expect(r.render).toBeUndefined();
+  });
+
+  it("자동차: 경유지와 함께 쓸 수 있다(리뷰 S5)", async () => {
+    await executeFunction("get_car_route", { destination: "경복궁", origin: "서울역", via: "천호역" }, legacyCtx);
+    expect(mockCar.mock.calls[0][0]).toEqual({
+      origin: { lat: SEOUL_STATION.lat, lng: SEOUL_STATION.lng },
+      dest: { lat: GYEONGBOK.lat, lng: GYEONGBOK.lng },
+      via: { name: "천호역", lat: CHEONHO.lat, lng: CHEONHO.lng },
+    });
+  });
+
+  it("자동차 en: 말한 출발지가 영어 경로 조회에도 넘어간다(리뷰 S5)", async () => {
+    const enCtx: ExecutionContext = { ...legacyCtx, locale: "en", dataLocale: "en" };
+    const r = await executeFunction("get_car_route", { destination: "경복궁", origin: "서울역" }, enCtx);
+    expect(vi.mocked(getCarRouteBriefingEn).mock.lastCall?.[0]).toEqual({
+      origin: { lat: SEOUL_STATION.lat, lng: SEOUL_STATION.lng },
+      dest: { lat: GYEONGBOK.lat, lng: GYEONGBOK.lng },
+    });
+    expect(r.data.origin).toBe(ORIGIN_LABEL);
+    expect(mockCar).not.toHaveBeenCalled();
+  });
+
+  it("경유지 미지원(대중교통, 자동차 en)은 출발지 해석보다 먼저 판정한다 — 출발지를 검색하지 않는다(리뷰 S4)", async () => {
+    const transit = await executeFunction("get_transit_route", { destination: "경복궁", origin: "없는곳", via: "천호역" }, legacyCtx);
+    expect(transit.data.unsupported).toBe("waypoint");
+    const enCtx: ExecutionContext = { ...legacyCtx, locale: "en", dataLocale: "en" };
+    const car = await executeFunction("get_car_route", { destination: "경복궁", origin: "없는곳", via: "천호역" }, enCtx);
+    expect(car.data.unsupported).toBe("waypoint");
+    expect(mockSearch.mock.calls.map(([q]) => q.query)).not.toContain("없는곳");
+    expect(mockTransit).not.toHaveBeenCalled();
   });
 
   it("도보: 경로 없음에도 출발지를 싣는다", async () => {
@@ -206,7 +241,8 @@ describe("대중교통 수단 한정(A2)", () => {
     expect(r.data.route).toBeNull();
     expect(r.data.mode).toBe("bus");
     expect(r.data.noRouteWithMode).toBe(true);
-    expect(String(r.data.notice)).toContain("경로 자체가 없다는 뜻이 아닙니다");
+    // 리뷰 S1: 다른 경로가 있다고 단정하지 않는다(provider null은 「너무 가까움」도 겹쳐 든다).
+    expect(String(r.data.notice)).toContain("경로가 있을 수 있습니다");
   });
 
   it("조회 실패는 던진다(0건과 다른 상태)", async () => {

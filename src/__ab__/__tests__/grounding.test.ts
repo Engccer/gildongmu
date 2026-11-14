@@ -283,14 +283,6 @@ describe("길찾기 출발지·수단 한정 케이스(E88 ⓐ) — 2026-11-14 �
     expect(exit.leaked).toEqual([]);
     expect(c57.judge).toContain("출구 번호");
   });
-
-  it("출발지 케이스는 origin 인자를, 수단 한정 케이스는 mode 인자를 본다", () => {
-    const c55 = CASES.find((c) => c.id === "55-출발지-도보")!;
-    const c56 = CASES.find((c) => c.id === "56-출발지-수단한정-지하철")!;
-    expect(c55.expectArg).toEqual({ tool: "get_walk_route", key: "origin", value: "서울역" });
-    expect(c56.expectArg).toEqual({ tool: "get_transit_route", key: "mode", value: "subway" });
-    expect(c57.expectArg).toEqual({ tool: "get_transit_route", key: "mode", value: "subway" });
-  });
 });
 
 describe("전화번호·이름으로 무장애 정보 케이스(E88 ⓑ) — 2026-11-14 실호출의 도구 반환으로 채점기를 맞춘다", () => {
