@@ -751,6 +751,29 @@ final class BeaconModel {
         let exitLead: ExitLead?
     }
 
+    /// 도보 줄 하나로 시작하는 요청(E42 줄 → 안내 요청 축의 투영 한 곳). 길찾기 화면의 줄별 시작 버튼과
+    /// `GuideSession.startGuide`(E83 R11)가 함께 쓴다 — 줄 종류와 `accessible`·`variant`가 따로 적혀 어긋나지 않게.
+    /// `among`은 조회 화면에 선 줄 전부(전환 대상의 근거)이고, 줄 목록 없이 시작하는 자리는 빈 배열이다(전환 진입점 없음).
+    /// ⚠ 인자에 기본값을 두지 않는다(`StartRequest`와 같은 이유).
+    static func walkLineRequest(
+        dest: BeaconDest, label: String, labelRoman: String?, line: WalkLineKind, among lines: [WalkLineKind],
+        waypoint: Waypoint?
+    ) -> StartRequest {
+        StartRequest(
+            dest: dest, label: label, labelRoman: labelRoman, kind: .walk,
+            accessible: line.accessible, variant: line.variant, line: line,
+            alternate: WalkLineKind.switchAlternate(for: line, among: lines),
+            waypoint: waypoint, carListener: nil, exitLead: nil)
+    }
+
+    /// 자동차 안내 요청 한 벌(길찾기 화면의 자동차 시작 버튼과 `GuideSession.startGuide`가 함께 쓴다). 청취자는 설정값이다.
+    static func carRequest(dest: BeaconDest, label: String, labelRoman: String?, waypoint: Waypoint?) -> StartRequest {
+        StartRequest(
+            dest: dest, label: label, labelRoman: labelRoman, kind: .car,
+            accessible: false, variant: nil, line: nil, alternate: nil,
+            waypoint: waypoint, carListener: nil, exitLead: nil)
+    }
+
     /// 출구 인계 값(E84): 출구 번호와, 다른 역에서 내렸는지 가를 하차역 좌표(없으면 그 판정을 하지 않는다).
     struct ExitLead: Equatable {
         let exit: String

@@ -43,6 +43,16 @@ enum AppConfig {
     static let experimentalTabOrderEnabled = false
     #endif
 
+    /// 채팅 경로 카드의 [안내 시작](E83, 위원장 판정 2026-11-14)의 봉인. 켜지면 채팅 탭이 능력 `"route-start"`를 신고하고
+    /// 답 아래에 수단별 안내 시작 버튼 카드를 그린다. 소비자는 그 둘뿐이다(`ChatModel.requestBody`의 신고, 대화 화면의
+    /// `showsRouteStartCard`, `guidance-gate-drift.test.ts`가 잠근다). 꺼지면 요청 본문이 종전과 같아 서버가 렌더를 보내지 않는다.
+    /// 실험판 실기기 판정을 통과하면 이 검사를 삭제한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
+    #if EXPERIMENTAL
+    static let experimentalChatGuideEnabled = true
+    #else
+    static let experimentalChatGuideEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")

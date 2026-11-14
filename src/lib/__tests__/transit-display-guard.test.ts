@@ -162,7 +162,12 @@ describe("대중교통 안내 시작 게이트 (조건으로 본다, 개수로 �
       src.indexOf("private func altTransitGuideStartable"),
       src.indexOf("/// 안내 시작의 직접 응답"),
     );
-    expect(alt).toContain("buildTransitGuideRoute(route) != nil");
+    // 판정은 파일 수준 함수 한 곳이다(E83 — 채팅 경로 카드의 대중교통 버튼과 같이 쓴다).
+    expect(alt).toContain("transitGuideStartable(route)");
+    const shared = src.slice(src.indexOf("func transitGuideStartable("), src.indexOf("/// 추천은 축 라벨을 갖지 않는다"));
+    expect(shared).toContain("buildTransitGuideRoute(route) != nil");
+    expect(shared).not.toContain("dataLocale");
+    expect(shared).not.toContain("experimental");
     expect(alt).not.toContain('AppLanguage.dataLocale == "ko"');
     expect(alt).not.toContain("experimental");
   });
@@ -174,6 +179,9 @@ describe("대중교통 안내 시작 게이트 (조건으로 본다, 개수로 �
       ios.indexOf("private var carGuideStartable"),
       ios.indexOf("private func altTransitGuideStartable"),
     );
-    expect(car).toContain('AppLanguage.dataLocale == "ko"');
+    // 판정은 Kit 한 곳이다(E83 — 채팅 경로 카드의 자동차 버튼과 같이 쓴다). 화면은 데이터 언어를 넘기고 Kit이 ko를 요구한다.
+    expect(car).toContain("canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: briefing.provider)");
+    const kit = read("ios/GildongmuKit/Sources/GildongmuKit/GuideStart.swift");
+    expect(kit).toContain('dataLocale == "ko" && provider == "tmap"');
   });
 });
