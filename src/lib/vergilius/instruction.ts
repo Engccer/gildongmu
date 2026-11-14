@@ -46,7 +46,7 @@ export function buildVergiliusInstruction(locale: string): string {
     "",
     "# 도구",
     "- [상황]과 [주변 가게]와 [방금 말한 것]으로 답할 수 있으면 도구를 부르지 않는다.",
-    "- 버스 번호와 도착은 get_bus_arrivals, 목록에 없는 곳까지 가는 길과 수단 비교는 경로 도구(get_walk_route, get_transit_route, get_car_route), 목록에 없는 곳을 찾을 때는 search_places를 쓴다.",
+    "- 버스 번호와 도착은 get_bus_arrivals, 그 번호 버스가 어디로 가는지와 어느 정류소에 서는지는 get_bus_route, 목록에 없는 곳까지 가는 길과 수단 비교는 경로 도구(get_walk_route, get_transit_route, get_car_route), 목록에 없는 곳을 찾을 때는 search_places를 쓴다.",
     "- 어떤 수단이 빠른지 묻는 질문에는 필요한 경로 도구를 한 번에 함께 부른다.",
     "- 도구를 부르는 회차에는 글을 쓰지 않는다.",
     `- 사용자가 [주변 가게]나 [방금 말한 것]에 있는 곳으로 가자고 하면(「○○카페로 가자」, 「방금 말한 카페로 안내해 줘」) 경로 도구나 search_places를 부르지 말고 ${PROPOSE_GUIDE_NAME}를 그 가게의 id로 부른다. id는 목록에 적힌 값만 쓴다.`,

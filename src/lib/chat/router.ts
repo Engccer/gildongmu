@@ -22,6 +22,15 @@ import {
 import { fetchSubwayArrivals, withArrivalsEn } from "@/lib/providers/seoul-subway-arrival";
 import { chatArrivalLines } from "./subway-arrival-lines";
 import { fetchNearbyBusStops, isUncoveredBusRegion } from "@/lib/bus";
+import {
+  busRouteDeps,
+  describeBusRoute,
+  lookupBusRoute,
+  normalizeRouteNo,
+  summarizeBusLine,
+  type BusRouteCandidate,
+  type LocalSearch,
+} from "@/lib/bus-route";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
 import { getBarrierFreeDetail, searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
@@ -136,6 +145,18 @@ const SEOUL_ONLY = {
 const NO_BUS_DATA = {
   unavailableHere: "noBusData",
   notice: "이 지역은 정류소 정보가 제공되지 않습니다. 정류소가 없다는 뜻이 아니라 데이터가 없다는 뜻입니다.",
+};
+
+/**
+ * `get_bus_route`가 번호를 찾아본 범위(E87). 서울(TOPIS)은 늘 보고, 사용자 지역(TAGO)은 볼 수 있을 때만 본다 —
+ * 못 본 지역을 「없다」로 접지 않게 범위를 문장으로 싣는다.
+ */
+const BUS_ROUTE_SEARCHED: Record<LocalSearch, string> = {
+  seoul: "서울 버스(서울을 드나드는 수도권 노선 포함)에서 찾았습니다.",
+  searched: "서울 버스와 기준 위치 지역의 버스에서 찾았습니다.",
+  uncovered: "서울 버스에서만 찾았습니다. 기준 위치 지역은 버스 노선 정보가 제공되지 않습니다(노선이 없다는 뜻이 아닙니다).",
+  unknown: "서울 버스에서만 찾았습니다. 기준 위치가 어느 지역인지 확인하지 못해 그 지역 버스는 찾아보지 못했습니다.",
+  noLocation: "서울 버스에서만 찾았습니다. 현재 위치를 몰라 다른 지역 버스는 찾아보지 못했습니다(지역 이름을 알려 주면 찾을 수 있습니다).",
 };
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
@@ -412,6 +433,47 @@ export async function executeFunction(
         ? { type: "bus" as const, mode: "place" as const, lat: coord.lat, lng: coord.lng }
         : { type: "bus" as const, mode: "current" as const };
       return { data: { ...placeNote(coord), count: stops.length, stops: stops.slice(0, 5) }, render, source: src };
+    }
+    case "get_bus_route": {
+      // 노선 번호 조회(E87). 카드 없음 — 산문이 정본. 좌표는 노선을 고르고 타는 정류소를 짐작하는 데만 쓰고 data에 싣지 않는다.
+      const routeNo = normalizeRouteNo(String(args.routeNo ?? ""));
+      if (!routeNo) return { data: { error: "노선 번호가 필요합니다." } };
+      const explicit = args.place ? String(args.place) : undefined;
+      const resolved = await resolveCoord(explicit, ctx);
+      if (explicit && !resolved) return { data: placeNotFound(explicit) };
+      // 번호로 묻는 조회라 위치가 없거나 한국 밖이어도 답한다(그때는 서울 노선만 본다).
+      const coord = resolved && isInKorea(resolved.lat, resolved.lng) ? resolved : undefined;
+      const fromStop = args.fromStop ? String(args.fromStop) : undefined;
+      const toStop = args.toStop ? String(args.toStop) : undefined;
+      const roman = ctx.dataLocale === "en";
+      const found = await lookupBusRoute({ routeNo, coord, fromStop }, busRouteDeps);
+      const note = resolved ? placeNote(resolved) : {};
+      // 지명은 지역을 가리는 데만 쓴다: 「부산」이 해운대해수욕장으로 풀린 실측이 있어(2026-11-14), 그 좌표로 타는 정류소나
+      // 「근처를 지난다」를 말하면 사용자가 말하지 않은 곳이 답에 선다.
+      const here = explicit ? undefined : coord;
+      const shown = (c: BusRouteCandidate): BusRouteCandidate => (explicit ? { ...c, nearYou: null } : c);
+      const searched = BUS_ROUTE_SEARCHED[found.local];
+      if (found.kind === "notFound") {
+        return {
+          data: { ...note, found: false, routeNo, searched, ...(found.similar.length > 0 ? { similarRouteNos: found.similar } : {}) },
+          source: src,
+        };
+      }
+      // 기준 위치 지역을 찾아보지 못했거나 한쪽 번호 검색이 실패했으면 더 맞는 노선을 놓쳤을 수 있다: 찾은 노선에도 범위를 싣는다
+      // (강릉에서 물은 202번에 서울·남양주 노선만 내놓고 강릉을 못 봤다는 말을 빼면 3-state가 무너진다, 실호출 2026-11-14).
+      // 범위는 data의 맨 앞에 둔다: 뒤에 두면 모델이 후보만 읽고 범위를 빼먹었다(같은 실호출, 2회 중 2회).
+      const scope = {
+        ...(found.local === "uncovered" ? { unavailableHere: NO_BUS_DATA.unavailableHere } : {}),
+        ...(found.local === "seoul" || found.local === "searched" ? {} : { searched }),
+        ...(found.searchFailed.length > 0 ? { searchIncomplete: true } : {}),
+      };
+      if (found.kind === "ambiguous") {
+        return {
+          data: { ...scope, ...note, routeNo, candidates: found.candidates.map((c) => summarizeBusLine(shown(c), roman)) },
+          source: src,
+        };
+      }
+      return { data: { ...scope, ...note, ...describeBusRoute(shown(found.chosen), { coord: here, fromStop, toStop, roman }) }, source: src };
     }
     case "get_bike_stations": {
       const explicit = args.place ? String(args.place) : undefined;

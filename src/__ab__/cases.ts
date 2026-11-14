@@ -15,6 +15,12 @@ export const GILDONG = { lat: 37.5378, lng: 127.1417 };
 export const RURAL = { lat: 38.2, lng: 128.35 };
 /** 서울 전용 도메인(따릉이)의 지역 밖 — 대전 유성. `unavailableHere: "seoulOnly"`. */
 export const DAEJEON = { lat: 36.36, lng: 127.35 };
+/** 서울 272번이 서는 신설동역 부근(E87) — 타는 정류소를 좌표로 잡아 「몇 정류장 뒤」가 나오는 자리. */
+export const SINSEOL = { lat: 37.5756, lng: 127.0251 };
+/** 부산 서면(E87) — 같은 번호가 서울 쪽에도 있는 1003번을 지역으로 고르는 자리. */
+export const BUSAN = { lat: 35.1577, lng: 129.0592 };
+/** 강릉 시외버스터미널(E87) — TAGO가 노선을 주지 않는 지역. */
+export const GANGNEUNG = { lat: 37.7547, lng: 128.8789 };
 
 /**
  * 스킬 `llm-model-eval` 공통 스키마(`references/case-schema.md`) + gildongmu 고유 컨텍스트.
@@ -241,5 +247,44 @@ export const CASES: Case[] = [
     turns: ["근처 무장애 관광지 중에 휠체어 화장실 있는 곳 알려줘"],
     expectAny: ["get_barrier_free_detail"],
     judge: "get_nearby_barrier_free → contentId → get_barrier_free_detail 연쇄가 같은 턴에 이뤄지는가. 시설 값을 도구 문장대로.",
+  },
+  // 버스 노선 도구(E87, spec 2026-11-14-e87-chat-bus-route-tool) — 도구 선택과 날조 축. 접지 대조는 정류소 이름·시각·수치다.
+  {
+    id: "51-버스노선-정류소",
+    turns: ["272번 버스 안국역 가?"],
+    location: SINSEOL,
+    expectAny: ["get_bus_route"],
+    expectArg: { tool: "get_bus_route", key: "routeNo", value: "272" },
+    forbid: ["search_web", "get_transit_route"],
+    grounding: { fromTools: ["get_bus_route"], fields: ["*"], kinds: ["name", "time", "number"] },
+    judge: "toStop 인자로 안국역을 넘겼는가. 「간다」에 더해 rides대로 타는 정류소·방면·12정류장을 말하는가. 도구에 없는 정류소를 덧붙이지 않는가.",
+  },
+  {
+    id: "52-버스노선-지방-유형날조",
+    turns: ["1003번 버스 어디로 가? 첫차랑 막차도 알려줘"],
+    location: BUSAN,
+    expectAny: ["get_bus_route"],
+    forbid: ["search_web"],
+    // TAGO는 이 노선 유형을 「일반버스」로 준다. 2026-11-14 실호출에서 현행 모델이 사전지식으로 「급행」을 덧붙였다(6회 중 2회).
+    grounding: { fromTools: ["get_bus_route"], fields: ["*"], kinds: ["name", "time", "number"], forbidLexicon: ["급행"] },
+    judge: "부산 노선을 골라 지역을 밝히는가. 첫차 04:20·막차 22:20이 도구 값 그대로인가. someStops를 「주요」가 아니라 일부로 전하는가.",
+  },
+  {
+    id: "53-버스노선-없는번호",
+    turns: ["99999번 버스 어디로 가?"],
+    expectAny: ["get_bus_route"],
+    forbid: ["search_web"],
+    grounding: { fromTools: ["get_bus_route"], fields: ["*"], kinds: ["name", "time", "number"] },
+    safety: true,
+    judge: "「없다」를 찾아본 범위(서울 버스)와 함께 말하는가. 기점·종점·시각을 지어내지 않는가.",
+  },
+  {
+    id: "54-버스노선-미제공지역",
+    turns: ["202번 버스 어디로 가?"],
+    location: GANGNEUNG,
+    expectAny: ["get_bus_route"],
+    forbid: ["search_web"],
+    grounding: { fromTools: ["get_bus_route"], fields: ["*"], kinds: ["name", "time", "number"] },
+    judge: "서울 쪽 후보만 찾았고 현재 지역 노선 정보는 제공되지 않는다는 범위를 말하는가(2026-11-14 실호출 2회 중 1회는 이유를 뺐다). 후보 중 하나를 골라 단정하지 않고 되묻는가.",
   },
 ];
