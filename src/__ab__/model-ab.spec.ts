@@ -55,6 +55,8 @@ interface RoundStat {
   promptTokens: number;
   outputTokens: number;
   thoughtTokens: number;
+  /** 기록만 한다(채점·실패 판정에 쓰지 않는다 — Claude 러너의 refusal·max_tokens 실패와의 비대칭을 리포트에서 읽기 위해). */
+  finishReason: string | null;
   toolCalls: string[];
   toolArgs: { name: string; args: Record<string, unknown> }[];
 }
@@ -112,6 +114,7 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOut
           promptTokens: u.promptTokenCount ?? 0,
           outputTokens: u.candidatesTokenCount ?? 0,
           thoughtTokens: u.thoughtsTokenCount ?? 0,
+          finishReason: res.candidates?.[0]?.finishReason ?? null,
           toolCalls: parts.filter((p) => p.functionCall).map((p) => p.functionCall.name),
           toolArgs: parts
             .filter((p) => p.functionCall)
@@ -271,8 +274,9 @@ it("모델 A/B 실호출", async () => {
   // 표기 오타는 돈을 쓰기 전에 잡는다.
   MODELS.filter(isClaudeModel).forEach(parseClaudeSpec);
   const real = needGemini ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! }) : (null as unknown as GoogleGenAI);
-  // 429·5xx는 SDK가 retry-after를 따라 다시 보낸다. 재시도가 다 실패하면 그 세션은 실패로 남는다.
-  const claude = needClaude ? (new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!, maxRetries: 5 }) as ClaudeClientLike) : null;
+  // 재시도는 끈다: Gemini 클라이언트(retryOptions 없음)도 재시도하지 않으므로, 일시 오류는 두 회사 모두 그 세션의 실패로 남고
+  // 재시도 대기가 지연에 숨지 않는다. 리포트에서 API 오류와 품질 실패를 갈라 읽는다.
+  const claude = needClaude ? (new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!, maxRetries: 0 }) as ClaudeClientLike) : null;
 
   const only = process.env.ONLY;
   const cases = only

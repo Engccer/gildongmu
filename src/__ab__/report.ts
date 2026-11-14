@@ -264,7 +264,10 @@ export function buildReport(file: ResultFile): string {
     const rs = results.filter((r) => r.model === m && !isDiag(r));
     const avg = rs.length ? rs.reduce((a, r) => a + r.latencyMs, 0) / rs.length : 0;
     const ttft = rs.filter((r) => r.ttftMs !== undefined);
-    const ttftAvg = ttft.length ? ` · TTFT 평균 ${secs(ttft.reduce((a, r) => a + r.ttftMs!, 0) / ttft.length)}` : "";
+    // gildongmu 운영 채팅은 답을 완료 시점에 한 번 보낸다 — 이 값은 "스트리밍했다면"의 참고값이고, 모델 간 비교는 총지연으로 한다.
+    const ttftAvg = ttft.length
+      ? ` · 첫 글자 평균 ${secs(ttft.reduce((a, r) => a + r.ttftMs!, 0) / ttft.length)}(스트리밍 전송 참고값, 운영 경로 체감은 총지연)`
+      : "";
     lines.push(`- ${m}: 총지연 평균 ${secs(avg)} (${rs.length}건)${ttftAvg}`);
   }
   lines.push("각주: 판정 근거 아님. 다른 날 2회 재현 전엔 서빙 변동으로 본다. 사용자 체감은 TTFT.");

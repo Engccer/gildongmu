@@ -174,6 +174,25 @@ describe("runClaudeAgentLoop 도구 왕복", () => {
     expect(r.text).toBe("마무리");
   });
 
+  it("첫 글자는 반환한 답 회차의 첫 text 델타다(앞 도구 회차의 글은 세지 않는다), 글이 없으면 undefined", async () => {
+    let clock = 1000;
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => (clock += 10));
+    try {
+      const { client } = fakeClient([msg([text("잠시만요"), toolUse("u", "t")], "tool_use"), msg([text("답")], "end_turn")]);
+      const trace = newTrace();
+      const r = await runClaudeAgentLoop(opts(client), trace);
+      const [first, last] = trace.rounds;
+      expect(first.firstTextMs).not.toBeNull();
+      expect(r.ttftMs).toBe(last.startedAt + last.firstTextMs!);
+      expect(r.ttftMs!).toBeGreaterThan(first.startedAt + first.firstTextMs!);
+
+      const silent = fakeClient([msg([thinking()], "end_turn")]);
+      expect((await runClaudeAgentLoop(opts(silent.client), newTrace())).ttftMs).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("마지막 답이 비면 tool_choice none으로 1회 더 부른다(I-2)", async () => {
     const { client, calls } = fakeClient([msg([thinking()], "end_turn"), msg([text("산문")], "end_turn")]);
     const r = await runClaudeAgentLoop(opts(client), newTrace());

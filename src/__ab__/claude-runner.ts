@@ -14,13 +14,18 @@
  *   출력에는 영향이 없고 비용만 바뀐다. 적중은 `cache_read_input_tokens`로 기록한다.
  * - `stop_reason`이 `refusal`·`max_tokens`·`model_context_window_exceeded`면 그 세션은 실패다(서버 `fallbacks`는 쓰지 않는다 —
  *   다른 모델이 대신 답하면 측정이 오염된다).
+ *   Gemini 러너는 `finishReason`으로 실패를 가르지 않으므로(기록만 한다) 이 축은 두 회사가 비대칭이다 — 리포트에서 따로 읽는다.
+ * - 실패한 도구 결과에 `is_error: true`를 붙인다(Anthropic 규약. Gemini `functionResponse`엔 대응 필드가 없어 작은 비대칭).
+ * - 재시도: SDK 재시도를 끈다(`maxRetries: 0`, `model-ab.spec.ts`). Gemini 러너도 재시도하지 않으므로 일시 오류는 두 회사 모두
+ *   그 세션의 실패로 남는다(대기 시간이 지연에 숨지 않는다). 리포트에서 API 오류와 품질 실패를 갈라 읽는다.
  * - 전송은 스트리밍(`messages.stream` → `finalMessage`)이다. 모델 출력은 비스트리밍과 같고, 마지막 답 회차의 첫 글자 시각을
  *   잴 수 있다. 운영 채팅은 답을 완료 시점에 한 번 보내므로 운영 경로의 체감은 총지연이다(첫 글자는 "스트리밍했다면"의 값).
  */
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FunctionDeclaration } from "@google/genai";
 import { executeFunction } from "@/lib/chat/router";
-import type { ExecutionContext } from "@/lib/chat/types";
+import { dedupeSources } from "@/lib/chat/sources";
+import type { ExecutionContext, SourceAttribution } from "@/lib/chat/types";
 import type { ToolOutput } from "./grounding";
 
 export type ClaudeEffort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -175,7 +180,7 @@ export async function runClaudeAgentLoop(opts: ClaudeLoopOptions, trace: ClaudeL
   const t0 = Date.now();
   const messages: Anthropic.MessageParam[] = opts.turns.map((t) => ({ role: "user", content: t }));
   const renders: { type: string }[] = [];
-  let sources = 0;
+  const sources: SourceAttribution[] = [];
 
   const call = async (toolChoice: Anthropic.ToolChoice) => {
     const params: Anthropic.MessageStreamParams = {
@@ -232,7 +237,7 @@ export async function runClaudeAgentLoop(opts: ClaudeLoopOptions, trace: ClaudeL
       const name = res.toolUses[i].name;
       if (s.status === "fulfilled") {
         if (s.value.render) renders.push(s.value.render);
-        if (s.value.source) sources += s.value.source.length;
+        if (s.value.source) sources.push(...s.value.source);
         trace.toolOutputs.push({ name, response: s.value.data });
         return { type: "tool_result", tool_use_id: res.toolUses[i].id, content: JSON.stringify(s.value.data ?? null) };
       }
@@ -253,5 +258,5 @@ export async function runClaudeAgentLoop(opts: ClaudeLoopOptions, trace: ClaudeL
     text = textOf(retry.msg);
     firstTextAt = retry.firstTextAt;
   }
-  return { text, renders, sources, ttftMs: firstTextAt === null || text === "" ? undefined : firstTextAt - t0 };
+  return { text, renders, sources: dedupeSources(sources).length, ttftMs: firstTextAt === null || text === "" ? undefined : firstTextAt - t0 };
 }
