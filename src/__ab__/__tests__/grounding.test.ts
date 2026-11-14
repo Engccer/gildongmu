@@ -195,6 +195,10 @@ describe("scoreGrounding — 도구 밖이지만 날조가 아닌 네 갈래(E86
     // 도구 선언 설명에만 있는 「반경 150m」는 지침이 아니다(E86 61에서 사람이 날조로 읽은 문장).
     expect(scoreGrounding(num, [], "주변 반경 150m 내에 23곳이 있습니다", [], INSTRUCTION).leaked).toEqual(["number:150m", "number:23곳"]);
   });
+  it("① 알고 두는 한계: 앞 낱말까지 같으면 문맥은 보지 않는다(지침 수치 표현이 「최대 5곳」 하나라 실해 작음)", () => {
+    // 이 단언이 깨지면(잡히게 되면) 한계가 사라진 것이니 머리 주석과 리포트 §8도 함께 고친다.
+    expect(scoreGrounding(num, [], "지금 문을 연 약국은 최대 5곳입니다", [], INSTRUCTION).pass).toBe(true);
+  });
 
   it("② 다음 발화를 권하는 따옴표 예시 속 이름은 대조하지 않는다 — 42 Sonnet rep1·43 Opus 낮음 rep2 원문", () => {
     expect(scoreGrounding(name, [], '예를 들어 "강남역 도착 정보"라고 하시면 바로 조회해 드리겠습니다.')).toEqual({ pass: true, leaked: [] });
@@ -206,6 +210,13 @@ describe("scoreGrounding — 도구 밖이지만 날조가 아닌 네 갈래(E86
     expect(scoreGrounding(name, [], '가장 가까운 역은 "강남역"입니다.').leaked).toEqual(["name:강남역"]);
     expect(scoreGrounding(name, [], '"강남역"이라고 불리는 곳이 가장 가까워요.').leaked).toEqual(["name:강남역"]);
     expect(scoreGrounding(name, [], "예를 들어 강남역 도착 정보라고 하시면 됩니다.").leaked).toEqual(["name:강남역"]);
+  });
+  it("② 반례: 따옴표 뒤 꼬리가 모델 자신의 서술(말씀드릴·말해 드릴·입력되어·비교의 처럼)이면 잡힌다(리뷰 검출)", () => {
+    expect(scoreGrounding(name, [], '가장 가까운 역은 "가평역"이라고 말씀드릴 수 있어요.').leaked).toEqual(["name:가평역"]);
+    expect(scoreGrounding(name, [], '가장 가까운 곳은 "가평역"이라고 말해 드릴게요.').leaked).toEqual(["name:가평역"]);
+    expect(scoreGrounding(name, [], '도착 정보 표시에는 "가평역"이라고 입력되어 있어요.').leaked).toEqual(["name:가평역"]);
+    expect(scoreGrounding(name, [], '"가평역"처럼 1km 안에 있는 역이 두 곳 있어요.').leaked).toEqual(["name:가평역"]);
+    expect(scoreGrounding(name, [], "근처에 '가평역, 청평역'처럼 갈 만한 역이 있어요.").leaked).toEqual(["name:가평역", "name:청평역"]);
   });
 
   /** 42의 실제 도착 메시지 모양(경춘선 하행). */
