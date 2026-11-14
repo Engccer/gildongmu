@@ -187,7 +187,7 @@ function googleHarness(rounds: unknown[][], opts: { signal?: AbortSignal; finish
 }
 
 describe("Google 어댑터(Gemini)", () => {
-  it("요청: 모델 상수, 생각 최소, 지침과 재료의 자리", async () => {
+  it("요청: 모델 상수, 생각 낮음, 지침과 재료의 자리", async () => {
     const h = googleHarness([[[{ text: "왼쪽에 " }], [{ text: "가나카페." }]]]);
     const onText = vi.fn();
     const r = await h.session.round({ tools: true, onText, onCall: vi.fn() });
@@ -198,7 +198,7 @@ describe("Google 어댑터(Gemini)", () => {
       contents: [{ role: "user", parts: [{ text: "재료와 질문" }] }],
       config: {
         systemInstruction: "지침",
-        thinkingConfig: { thinkingLevel: "MINIMAL" },
+        thinkingConfig: { thinkingLevel: "LOW" },
         toolConfig: { functionCallingConfig: { mode: "AUTO" } },
       },
     });

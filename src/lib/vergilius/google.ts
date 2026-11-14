@@ -22,9 +22,11 @@ import type {
   VergiliusToolOutcome,
 } from "./types";
 
-// 2026-11-14 모델 목록 API(`GET /v1beta/models`)에서 확인. 지연 조사 §2.3에서 thinking MINIMAL로 첫 문장 0.8초(최대 1.1초)였다.
-// 채팅의 `GEMINI_MODEL`(3.6-flash)과 따로 둔다 — 그 모델은 생각을 줄여도 가끔 10초까지 늘어졌다(같은 조사).
-export const GOOGLE_VERGILIUS_MODEL = "gemini-3.5-flash-lite";
+// 2026-11-15 모델 목록 API(`GET /v1beta/models`)에서 확인. 처음 값 `gemini-3.5-flash-lite`(생각 최소)는 카페 질문에 다른 종류를 섞고
+// 버스 번호를 한글로 풀다 없는 번호를 냈다. 3.8 Flash(생각 낮음)는 같은 22회에서 세 오류 0건, 첫 문장 가장 느린 회차 5.3초였다
+// (`docs/evals/2026-11-15-vergilius-answer-quality-remeasure.md` §8). 3.8 Flash는 생각 「최소」를 받지 않는다(400).
+// 채팅의 `GEMINI_MODEL`(3.6-flash)과 따로 둔다. 바꿀 때는 iOS Kit의 화면 이름도 고친다(`vergilius-model-names.test.ts`).
+export const GOOGLE_VERGILIUS_MODEL = "gemini-3.8-flash";
 
 const ROUND_TIMEOUT_MS = 20_000;
 const MAX_OUTPUT_TOKENS = 600;
@@ -58,7 +60,7 @@ export function createGoogleSession(opts: GoogleSessionOptions): VergiliusModelS
               mode: roundOpts.tools ? FunctionCallingConfigMode.AUTO : FunctionCallingConfigMode.NONE,
             },
           },
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           abortSignal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
         },

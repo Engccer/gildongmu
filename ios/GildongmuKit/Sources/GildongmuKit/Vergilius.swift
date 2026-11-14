@@ -44,7 +44,7 @@ public enum VergiliusProvider {
         case "claude-sonnet": "Claude Sonnet"
         case "claude-opus": "Claude Opus"
         case "claude-haiku": "Claude Haiku"
-        case "google": "Gemini 3.5 Flash-Lite"
+        case "google": "Gemini 3.8 Flash"
         default: nil
         }
     }

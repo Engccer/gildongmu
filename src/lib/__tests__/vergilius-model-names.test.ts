@@ -15,7 +15,7 @@ const KIT = readFileSync(
 
 const displayName = (id: string) => new RegExp(`case "${id}": "([^"]+)"`).exec(KIT)?.[1];
 
-/** "GPT-6.1 Terra" → "gpt-6.1-terra", "GPT-6 Luna" → "gpt-6-luna", "Gemini 3.5 Flash-Lite" → "gemini-3.5-flash-lite" */
+/** "GPT-6.1 Terra" → "gpt-6.1-terra", "GPT-6 Luna" → "gpt-6-luna", "Gemini 3.8 Flash" → "gemini-3.8-flash" */
 const slug = (name: string) => name.toLowerCase().replace(/ /g, "-");
 
 describe("베르길리우스 답변 모델 화면 이름", () => {
