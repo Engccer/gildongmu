@@ -23,7 +23,7 @@
 - 실호출(질문당 2~3회)에서 재료 밖 이름·좌우 불일치·지나온 가게를 앞이라 함 0건, 제안 2/2. 첫 글은 가장 느린 회차가 6.0초(12초 기준 안), 조회 낀 질문은 3.5~4.1초로 Opus·Sonnet보다 빠르다. 괄호를 25번 중 3번 썼다. 지출 약 $0.02. 리포트 `docs/evals/2026-11-15-vergilius-claude-haiku.md`.
 
 ### 베르길리우스 답변 모델에 GPT-6 Luna를 더한다 (E82, 서버·iOS Kit)
-- 선택지 `openai-luna`(`gpt-6-luna`)가 `openai`(Terra) 바로 뒤에 서고, 설정 화면에서는 GPT-6.1 Terra 다음 「GPT-6 Luna」다(위원장 요청). 같은 키 게이트, 추론 끔, 거절·잘림은 실패이고 다른 모델로 돌리지 않는다. `usage-report` OpenAI 프로브가 두 모델을 본다.
+- 선택지 `openai-luna`(`gpt-6-luna`)가 `openai`(Terra) 바로 뒤에 서고, 설정 화면에서는 GPT-6.1 Terra 다음 「GPT-6 Luna」다(위원장 요청). 같은 키 게이트, 추론 끔, 거절·잘림은 실패이고 다른 모델로 돌리지 않는다. `usage-report` OpenAI 프로브가 두 모델을 본다. 실기기 미러링(2026-11-15): 실험판 「답변 모델」이 GPT-6.1 Terra → GPT-6 Luna → Claude Sonnet → Claude Opus → Claude Haiku → Gemini 3.5 Flash-Lite(값 Terra 유지), 정식판에 메뉴·설정 행 없음.
 - 실호출(질문당 2~3회, Terra 나란히)에서 세 오류 0건, 제안 2/2, 첫 글 가장 느린 회차 2.4초(q6 탐침 포함 4.9초, 12초 기준 안), 중앙값은 q1을 빼고 Terra보다 빠르다. 다만 「세 곳까지」 초과·q2 횡단보도 누락, q6 8번 중 3번은 장소 검색 0건을 「없다」로 답했다(3-state). 지출 약 $0.04(Terra 포함). 리포트 `docs/evals/2026-11-15-vergilius-gpt-6-luna.md`.
 
 ### 길동무 OpenAI 키를 공용 환경과 분리
