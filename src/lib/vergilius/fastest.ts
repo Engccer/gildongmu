@@ -5,8 +5,13 @@
  *
  * - 비교 단위는 들리는 분(반올림)이다. 같은 분이면 수단을 함께 싣는다(초로 가르면 「13분이 13분보다 빠르다」가 된다).
  * - 도착지(`destination`, 실행부가 검색해 정한 이름)가 같은 결과끼리만 잰다.
- * - 시간이 없는 결과(오류, 경로 없음, 자동차 0초=미제공)는 비교에서 빠진다. 시간이 있는 수단이 둘 이상일 때만 싣는다.
- * - 대중교통은 추천과 대안 가운데 가장 짧은 경로로 잰다.
+ * - 시간이 없는 결과(오류, 경로 없음, 자동차 0초=미제공)는 비교에서 빠진다. 시간이 있는 수단이 둘 이상일 때만 싣고,
+ *   비교에 든 수단을 `compared`로 함께 싣는다(빠진 수단을 「가장 빠르다」의 범위에 넣지 않게).
+ * - 조건을 붙인 조회(경유지 `via`, 수단 한정 `mode`, 계단 회피 `accessible`)는 수단 비교가 아니라 빠진다.
+ *   같은 수단을 다시 조회하면 나중 결과를 쓴다.
+ * - 대중교통은 대표 경로(추천)의 분으로 잰다. 길찾기 화면의 수단 순서(`directions-order.ts`)와 [안내 시작]이 같은 경로다 —
+ *   대안의 최단으로 재면 「10분이 가장 빠르다」고 말하고 17분짜리를 안내하게 된다.
+ * - 1분 미만은 1분으로 친다(「0분」은 들리는 값이 아니다).
  */
 import type { VergiliusToolOutcome } from "./types";
 
@@ -27,6 +32,7 @@ export type RouteMinutesSeen = Map<string, Map<RouteMode, number>>;
 export interface FastestAmongQueried {
   modes: RouteMode[];
   minutes: number;
+  compared: RouteMode[];
 }
 
 function positive(value: unknown): number | null {
@@ -37,29 +43,30 @@ function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
+function heardMinutes(seconds: number | null): number | null {
+  return seconds === null ? null : Math.max(1, Math.round(seconds / 60));
+}
+
 /** 경로 결과 하나의 분. 시간이 없으면 null. */
 function routeMinutes(mode: RouteMode, response: Record<string, unknown>): number | null {
-  if (mode === "walk") {
-    const seconds = positive(response.durationSeconds);
-    return seconds === null ? null : Math.round(seconds / 60);
-  }
-  if (mode === "car") {
-    const seconds = positive(record(response.briefing)?.durationSeconds);
-    return seconds === null ? null : Math.round(seconds / 60);
-  }
-  const route = record(response.route);
-  if (!route) return null;
-  const candidates = [route.recommended, ...(Array.isArray(route.alternatives) ? route.alternatives : [])];
-  const minutes = candidates
-    .map((c) => positive(record(record(c)?.summary)?.totalMinutes))
-    .filter((m): m is number => m !== null);
-  return minutes.length > 0 ? Math.min(...minutes) : null;
+  if (mode === "walk") return heardMinutes(positive(response.durationSeconds));
+  if (mode === "car") return heardMinutes(positive(record(response.briefing)?.durationSeconds));
+  return positive(record(record(record(response.route)?.recommended)?.summary)?.totalMinutes);
+}
+
+/** 수단 비교가 아닌 조회(조건을 붙인 조회). */
+function isConditioned(args: Record<string, unknown>): boolean {
+  return Boolean(args.via) || Boolean(args.mode) || args.accessible === true;
 }
 
 function fastestOf(byMode: Map<RouteMode, number>): FastestAmongQueried | null {
   if (byMode.size < 2) return null;
   const minutes = Math.min(...byMode.values());
-  return { modes: [...byMode].filter(([, m]) => m === minutes).map(([mode]) => mode), minutes };
+  return {
+    modes: [...byMode].filter(([, m]) => m === minutes).map(([mode]) => mode),
+    minutes,
+    compared: [...byMode.keys()],
+  };
 }
 
 /**
@@ -73,7 +80,7 @@ export function annotateFastestRoute(
   const timed = outcomes.map((o) => {
     const mode = MODE_BY_TOOL[o.call.name];
     const destination = typeof o.response.destination === "string" ? o.response.destination : null;
-    if (mode === undefined || destination === null) return null;
+    if (mode === undefined || destination === null || isConditioned(o.call.args)) return null;
     const minutes = routeMinutes(mode, o.response);
     return minutes === null ? null : { mode, destination, minutes };
   });
@@ -81,8 +88,7 @@ export function annotateFastestRoute(
   for (const t of timed) {
     if (!t) continue;
     const byMode = seen.get(t.destination) ?? new Map<RouteMode, number>();
-    const before = byMode.get(t.mode);
-    byMode.set(t.mode, before === undefined ? t.minutes : Math.min(before, t.minutes));
+    byMode.set(t.mode, t.minutes);
     seen.set(t.destination, byMode);
   }
 

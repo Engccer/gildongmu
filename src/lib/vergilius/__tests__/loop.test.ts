@@ -300,10 +300,8 @@ describe("runVergiliusLoop", () => {
       listedPlaceNames: new Set(),
       emit: () => {},
     });
-    expect(s.pushed[0].map((o) => o.response.fastestAmongQueried)).toEqual([
-      { modes: ["car"], minutes: 13 },
-      { modes: ["car"], minutes: 13 },
-    ]);
+    const fastest = { modes: ["car"], minutes: 13, compared: ["transit", "car"] };
+    expect(s.pushed[0].map((o) => o.response.fastestAmongQueried)).toEqual([fastest, fastest]);
   });
 
   it("3-state: 모델 호출이 던지면 루프도 던진다(라우트가 error 이벤트로 바꾼다)", async () => {
