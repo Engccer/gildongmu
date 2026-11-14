@@ -17,7 +17,8 @@ import type {
   WalkLineKind,
   WalkRouteLine,
 } from "@/lib/types";
-import type { JourneyRenderPayload } from "@/lib/chat/types";
+import type { JourneyRenderPayload, RouteStartMode } from "@/lib/chat/types";
+import { carGuideStartable as carGuideStartableFor, transitGuideStartable } from "@/lib/guide-startable";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { parseDir, placeEndpoint, serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import {
@@ -43,6 +44,7 @@ import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import { walkLineAxis, walkLineNameKey, walkLinesFailedKey, walkLineStartKey } from "@/lib/walk-line";
+import type { WalkLineKind as GuideWalkLineKind } from "@/lib/types";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -79,7 +81,6 @@ import type {
 import { buildRouteRefTable } from "@/lib/webmcp/route-refs";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { TransitGuidePanel } from "./TransitGuidePanel";
-import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 import { KoTail, langFor, useBilingualName } from "./BilingualName";
 import { JourneyStationField } from "./JourneyStationField";
@@ -176,7 +177,15 @@ type QueryResults = {
     board: JourneyStationPick | null;
     alight: JourneyStationPick | null;
   };
+  /**
+   * 이 결과가 서자마자 안내를 시작할 자리(E83 — 채팅 안내 시작 카드의 수단 버튼). 그 자리의 시작 버튼이 마운트하며 한 번 읽고,
+   * 화면이 곧바로 null로 되돌린다(접었다 펴거나 다시 그려도 저절로 또 시작하지 않게). 그 밖의 모든 결과는 null이다.
+   */
+  autoStart: GuideAutoStart | null;
 };
+
+/** 자동 시작 자리: 도보는 줄(종류), 자동차는 섹션의 하나뿐인 버튼, 대중교통은 경로(`routeKey`). */
+type GuideAutoStart = { mode: "walk"; line: GuideWalkLineKind } | { mode: "car" } | { mode: "transit"; routeKey: string };
 
 /** 여정 갈아탈 곳 칸 하나: null = 칸 없음, `pick: null` = 칸은 열렸고 아직 고르지 않음. */
 type JourneySlot = { pick: JourneyStationPick | null } | null;
@@ -219,6 +228,63 @@ function resultsFromJourneyCard(p: JourneyRenderPayload, dataLang: "ko" | "en"):
     toRoman: p.destRoman,
     viaRoman: null,
     journey: { outcome: { kind: "found", result: p.result }, board: p.board, alight: p.alight },
+    autoStart: null,
+  };
+}
+
+/**
+ * 채팅 경로 안내 시작 카드에서 넘어온 진입(E83 spec `2026-11-14-e83-chat-route-start-design.md` §6). 도착지는 `initialTo`가 나르고,
+ * 이 값은 **마운트에서 할 일 하나**를 나른다. 모든 칸에 기본값이 없다(없는 값은 `null`·`false`를 적는다).
+ * - `open`([길찾기에서 열기]): 도착지·경유지를 채우고 평소 조회(전 수단)를 돌린다. 착지는 평소 규칙이다.
+ * - `start` 도보·자동차: **그 수단만** 기기 위치에서 조회하고, 결과가 서면 그 수단의 시작 버튼이 안내를 바로 시작한다.
+ *   수단 제한은 이 첫 조회에만 걸린다 — [경로 조회]를 누르면 평소대로 전 수단이다.
+ * - `start` 대중교통(카드가 신선하다): 조회 없이 카드의 결과로 대중교통 섹션만 세우고 추천 첫 경로의 안내를 바로 시작한다.
+ * - `requery` 대중교통(카드가 낡았거나 수동 지정 위치에서 조회했다): 기기 위치에서 평소 조회를 돌리고 사유를 통지한다.
+ *   안내는 저절로 시작하지 않는다.
+ */
+export type DirectionsGuideEntry = {
+  action: "open" | "start" | "requery";
+  /** `open`은 null. */
+  mode: RouteStartMode | null;
+  /** 경유지(도보·자동차만). 없으면 null. */
+  via: RouteGuideVia | null;
+  /** 도보의 계단 회피 — `start` 도보가 시작할 줄을 고른다. 그 밖은 false. */
+  accessible: boolean;
+  /** `start` 대중교통만: 카드가 든 조회 결과와 그 조회의 출발 좌표. 그 밖은 null. */
+  transit: { result: TransitData; origin: Coord } | null;
+};
+
+/**
+ * 카드의 대중교통 결과를 조회 결과 상태로 옮긴다 — `runQuery`의 전 수단 갈래가 커밋하는 것과 **같은 필드**를 채우되 수단은
+ * 대중교통 하나다. 출입구 승격은 하지 않는다(카드의 경로가 그 도착 좌표로 조회됐다).
+ */
+function resultsFromTransitCard(
+  to: Extract<DirEndpoint, { kind: "place" }>,
+  transit: NonNullable<DirectionsGuideEntry["transit"]>,
+  dataLang: "ko" | "en",
+): QueryResults {
+  const roman = to.labelRoman ?? null;
+  const recommended = transit.result.recommended;
+  return {
+    destLabel: to.label,
+    destRoman: roman,
+    destCoord: to.coord,
+    originCoord: transit.origin,
+    dataLang,
+    outcomes: { transit: { kind: "done", mode: "transit", result: transit.result } },
+    viaLabel: null,
+    via: null,
+    orderedModes: ["transit"],
+    // 신선한 카드만 여기 온다 — 수동 지정 위치에서 조회한 카드는 다시 조회로 간다(R6).
+    originSource: "gps",
+    staleAge: null,
+    planId: JOURNEY_CARD_PLAN_ID,
+    fromLabel: null,
+    toLabel: to.label,
+    fromRoman: null,
+    toRoman: roman,
+    viaRoman: null,
+    autoStart: transitGuideStartable(recommended) ? { mode: "transit", routeKey: recommended.routeKey } : null,
   };
 }
 
@@ -466,6 +532,7 @@ export function DirectionsView({
   initialTo = null,
   prefill = false,
   initialJourney,
+  initialGuide,
   onBack,
 }: {
   canShowWalk: boolean;
@@ -491,6 +558,11 @@ export function DirectionsView({
    * **마운트 시점 값만 읽는다**(1회 소비).
    */
   initialJourney?: DirectionsJourneyEntry;
+  /**
+   * 채팅 경로 안내 시작 카드에서 넘어온 진입(E83). `prefill`·`initialJourney`와 함께 쓰지 않는다.
+   * **마운트 시점 값만 읽는다**(1회 소비).
+   */
+  initialGuide?: DirectionsGuideEntry;
   onBack: () => void;
 }) {
   const t = useTranslations("directions");
@@ -511,6 +583,13 @@ export function DirectionsView({
   );
   /** 카드의 결과를 조회 없이 세우는 진입인가(`requery`는 결과를 쓰지 않는다). */
   const journeySeed = journeyEntry && journeyEntry.mode !== "requery" ? journeyEntry.payload : null;
+  // 안내 시작 카드 진입(E83)도 첫 렌더 값으로 굳힌다(1회 소비). 여정 진입이 함께 오면 여정이 이긴다(함께 쓰지 않는 두 진입이다).
+  const [guideEntry] = useState<DirectionsGuideEntry | null>(() => (journeyEntry ? null : (initialGuide ?? null)));
+  /** 카드의 대중교통 결과를 조회 없이 세우는 진입인가(신선한 카드의 「대중교통 안내 시작」). */
+  const transitSeed =
+    guideEntry?.action === "start" && guideEntry.mode === "transit" && guideEntry.transit && initialTo?.kind === "place"
+      ? { to: initialTo, transit: guideEntry.transit }
+      : null;
   const manual = useManualLocation();
   // 검증 가능/불가 판정은 표시줄과 한 훅을 공유한다(판정선이 갈리면 화면으로 확인 불가).
   const manualLabel = useManualLocationLabel();
@@ -557,6 +636,11 @@ export function DirectionsView({
   );
   // 경유지 필드(N4): null = 접힘("경유지 추가" 버튼만). ?dir= 세 번째 토막이 있으면 펼친 채 복원.
   const [viaField, setViaField] = useState<FieldState | null>(() => {
+    // 안내 시작 카드가 실어 온 경유지(E83 판정 7)가 URL보다 앞선다 — 카드 진입은 새 히스토리 항목이라 URL에 경유지가 없다.
+    if (guideEntry?.via) {
+      const { label, ...coord } = guideEntry.via;
+      return endpointToField(placeEndpoint(label, coord, null), currentLabel);
+    }
     const via = readViaFromUrl();
     return via ? endpointToField(via, currentLabel) : null;
   });
@@ -600,10 +684,25 @@ export function DirectionsView({
     return () => markModal("journeyTransfer", false);
   }, [transferQuestion]);
   // 카드 진입(E70-b `open`·`start`)은 조회 없이 결과 상태에서 시작한다 — 카드가 든 여정을 그대로 세운다(D12·D14).
-  const [phase, setPhase] = useState<Phase>(() => (journeySeed ? { kind: "settled" } : { kind: "idle" }));
+  // 신선한 카드의 「대중교통 안내 시작」(E83)도 같다 — 카드가 든 대중교통 결과를 그대로 세운다(R5).
+  const [phase, setPhase] = useState<Phase>(() => (journeySeed || transitSeed ? { kind: "settled" } : { kind: "idle" }));
   const [results, setResults] = useState<QueryResults | null>(() =>
-    journeySeed ? resultsFromJourneyCard(journeySeed, dataLocale(locale)) : null,
+    journeySeed
+      ? resultsFromJourneyCard(journeySeed, dataLocale(locale))
+      : transitSeed
+        ? resultsFromTransitCard(transitSeed.to, transitSeed.transit, dataLocale(locale))
+        : null,
   );
+  // 자동 시작 자리는 그 결과가 선 커밋에서 한 번만 읽힌다(E83) — 시작 버튼의 마운트 effect가 먼저 읽고, 이 effect가 되돌린다.
+  // 남겨 두면 줄을 접었다 펴거나 경로를 다시 펼칠 때 버튼이 다시 마운트하며 안내가 저절로 또 시작된다.
+  const autoStartPlanId = results?.autoStart ? results.planId : null;
+  useEffect(() => {
+    if (autoStartPlanId === null) return;
+    // 한 틱 미룬다(effect 안 동기 setState 회피 — 이 파일의 최근 기록 로드와 같은 패턴).
+    queueMicrotask(() =>
+      setResults((prev) => (prev && prev.planId === autoStartPlanId && prev.autoStart ? { ...prev, autoStart: null } : prev)),
+    );
+  }, [autoStartPlanId]);
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
   // 번호도 아닌 `routeKey`다. 표시 번호는 축 라벨이 붙은 대안을 건너뛰므로
   // 인덱스와 다른 좌표계이고, 인덱스는 순서가 바뀌면 다른 경로를 가리킨다(§4.2).
@@ -804,7 +903,7 @@ export function DirectionsView({
   const resultsRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   // 카드의 결과로 시작했으면 그것이 첫 세대(`JOURNEY_CARD_PLAN_ID`)다 — 다음 조회가 같은 세대 번호를 다시 내지 않게 1에서 시작한다.
-  const genRef = useRef(journeySeed ? 1 : 0);
+  const genRef = useRef(journeySeed || transitSeed ? 1 : 0);
   /**
    * WebMCP 세대 결박 대기자(spec §3.4·§8.3) — 단일 슬롯. 도구가 시작한 조회의 세대에 결박되고
    * 그 세대의 종단 phase 전이에서만 resolve된다. 다른 세대의 조회 시작은 `superseded`,
@@ -874,6 +973,10 @@ export function DirectionsView({
       return;
     }
     if (journeyEntry?.mode === "start") return;
+    // 안내 시작 카드의 신선한 대중교통 시작(E83)도 같다 — 결과가 이미 서 있고 안내 패널이 세션 시작에서 스스로 착지한다.
+    // 조회를 거치는 진입(`open`·도보·자동차 `start`·`requery`)은 제목에 착지한다: 조회가 도는 동안 커서가 설 자리가 있어야
+    // 하고(채팅이 닫히며 누른 버튼이 사라졌다), 진행 문장은 이 화면의 창구가 말한다.
+    if (transitSeed) return;
     if (prefillActionRef.current === "landOnTo") toInputRef.current?.focus();
     else titleRef.current?.focus();
     // 첫 렌더에서 굳힌 진입 값으로 도는 마운트 1회 착지다.
@@ -903,6 +1006,39 @@ export function DirectionsView({
     if (!initialTo) return;
     void runQuery({ from: { kind: "current" }, to: initialTo, via: null, journey: { board, alight }, realOrigin: true });
     // 한 틱 미룬다(effect 안 동기 setState 회피 — 이 파일의 최근 기록 로드와 같은 패턴). `runQuery`의 동기 구간은 이미 지났다.
+    queueMicrotask(() => announce(tJourney("cardStaleRequery")));
+    // 첫 렌더의 진입 값으로 도는 마운트 1회 일이다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 채팅 경로 안내 시작 카드 진입의 마운트 1회 일(E83 spec §6). 조회는 전부 화면 정본 트랜잭션 `runQuery`를 지난다.
+  const guideEntryDoneRef = useRef(false);
+  useEffect(() => {
+    if (!guideEntry || guideEntryDoneRef.current) return;
+    guideEntryDoneRef.current = true;
+    if (isUnwinding()) return;
+    if (transitSeed) {
+      // 카드의 결과를 세웠다 — 조회가 성공했을 때와 같이 최근 경로에 적는다.
+      const to = recentOf(transitSeed.to);
+      queueMicrotask(() => setRecentRoutes(recordRecentRoute({ from: null, to })));
+      return;
+    }
+    if (!initialTo) return;
+    const via = viaField?.resolved ?? null;
+    if (guideEntry.action === "open") {
+      // [길찾기에서 열기](R8): 도착지·경유지를 채운 평소 조회(전 수단, 유효 위치) — 프리필 조회와 같은 길이다.
+      void runQuery({ from: { kind: "current" }, to: initialTo, via });
+      return;
+    }
+    if (guideEntry.action === "start" && (guideEntry.mode === "walk" || guideEntry.mode === "car")) {
+      // 그 수단만, 기기 위치에서(안내를 시작하려는 것이다 — 수동 지정 위치를 건너뛰고 위치를 새로 받는다).
+      const guideStart = { mode: guideEntry.mode, accessible: guideEntry.accessible };
+      void runQuery({ from: { kind: "current" }, to: initialTo, via, realOrigin: true, guideStart });
+      return;
+    }
+    // 낡은 대중교통 카드(R6) — 결과를 세우지 못한 대중교통 시작(깨진 진입)도 여기로 온다. 기기 위치에서 평소 조회를 돌리고
+    // 사유를 말한다. `runQuery`가 시작할 때 창구를 비우므로 그 뒤에 게시한다(여정 카드의 재조회와 같은 순서).
+    void runQuery({ from: { kind: "current" }, to: initialTo, via: null, realOrigin: true });
     queueMicrotask(() => announce(tJourney("cardStaleRequery")));
     // 첫 렌더의 진입 값으로 도는 마운트 1회 일이다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1004,6 +1140,12 @@ export function DirectionsView({
      * 기본값을 두지 않는 자리다 — 싣지 않으면 종전대로 유효 위치(수동 위치 > GPS)다.
      */
     realOrigin?: true;
+    /**
+     * 채팅 안내 시작 카드의 도보·자동차 [안내 시작](E83 §6, 그 진입만 싣는다): **이 조회만** 그 수단 하나로 좁히고, 위치를 새로
+     * 받고(`force` — 카드는 대화에 오래 남고 스토어에는 TTL이 없다), 결과가 서면 그 수단의 시작 버튼이 안내를 바로 시작한다.
+     * 기본값을 두지 않는 자리다 — 싣지 않으면 종전대로 전 수단 조회이고 저절로 시작하는 것이 없다.
+     */
+    guideStart?: { mode: "walk" | "car"; accessible: boolean };
   }) {
     if (inFlight.current) return;
     const from = request ? request.from : fromField.resolved;
@@ -1064,10 +1206,11 @@ export function DirectionsView({
       let staleAgeAtQuery: StaleAgeMessage | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
-        const locate = { force: false, maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS };
+        const locate = { force: request?.guideStart !== undefined, maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS };
         let acquired: { lat: number; lng: number; source: "gps" | "manual" } | null;
         if (request?.realOrigin) {
-          // 수동 위치를 건너뛴다 — 스토어의 기기 좌표만 본다(카드가 방금 `force`로 받아 나이 상한 안이다).
+          // 수동 위치를 건너뛴다 — 스토어의 기기 좌표만 본다(여정·대중교통 카드는 방금 `force`로 받아 나이 상한 안이고,
+          // 도보·자동차 안내 시작은 여기서 `force`로 새로 받는다).
           const fix = await awaitGeolocation(locate);
           acquired = fix.status === "ready" ? { lat: fix.coords.lat, lng: fix.coords.lng, source: "gps" } : null;
         } else {
@@ -1140,6 +1283,7 @@ export function DirectionsView({
           toRoman: to.kind === "current" ? null : (to.labelRoman ?? null),
           viaRoman: null,
           journey: { outcome, board: journeyBoard, alight: journeyAlight },
+          autoStart: null,
         });
         announce("");
         setPhase({ kind: "settled" });
@@ -1176,10 +1320,13 @@ export function DirectionsView({
         }
       }
 
+      // 안내 시작 카드의 수단 버튼(E83)은 이 조회만 그 수단 하나로 좁힌다 — 게이트가 닫힌 수단이면 조회 대상이 없다.
+      const guideStart = request?.guideStart ?? null;
+      const queryModes = guideStart ? activeModes.filter((m) => m === guideStart.mode) : activeModes;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
       const settled = await Promise.allSettled(
-        activeModes.map((m) =>
+        queryModes.map((m) =>
           fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, via),
         ),
       );
@@ -1187,14 +1334,14 @@ export function DirectionsView({
       if (myGen !== genRef.current) return;
 
       const outcomes: Partial<Record<ModeKey, ModeOutcome>> = {};
-      activeModes.forEach((m, i) => {
+      queryModes.forEach((m, i) => {
         const s = settled[i];
         outcomes[m] = s.status === "fulfilled" ? s.value : { kind: "error" };
       });
       // 서버 마커 이중 방어 — "cur" 선분기를 통과했어도 place 종단점(검색 선택 또는
       // ?dir= 딥링크로 직접 조작된 좌표)이 한국 밖일 수 있다. 한 수단이라도 감지하면
       // 나머지 수단 결과를 버리고 폼 전체를 outOfCoverage로 전환한다.
-      if (activeModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
+      if (queryModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
         announce("");
         setPhase({ kind: "outOfCoverage" });
         settleAfterCommit(myGen, { kind: "outOfCoverage" });
@@ -1203,9 +1350,9 @@ export function DirectionsView({
       const walkOutcome = outcomes.walk;
       const transitOutcome = outcomes.transit;
       const orderedModes = orderDirectionsModes(
-        activeModes,
+        queryModes,
         Object.fromEntries(
-          activeModes.map((m) => [m, outcomes[m]?.kind === "done"]),
+          queryModes.map((m) => [m, outcomes[m]?.kind === "done"]),
         ),
         walkOutcome?.kind === "done" && walkOutcome.mode === "walk"
           ? walkOutcome.lines[0].route.durationSeconds
@@ -1215,6 +1362,25 @@ export function DirectionsView({
           ? transitOutcome.result.recommended.summary.totalMinutes
           : null,
       );
+      // 자동 시작 자리(E83): 그 수단의 시작 버튼이 이 결과에서 실제로 서는 때에만 정한다 — 화면의 버튼 조건과 같은 함수다.
+      // 도보는 길찾기 화면의 첫 시작 버튼(첫 줄)이고, 계단 회피로 물은 답이면 계단 회피 줄이다. 그 줄이 없으면(같은 길이라
+      // 빠졌거나 조회 실패) 다른 줄로 조용히 바꿔 시작하지 않는다 — 결과만 보여 주고 사용자가 고른다.
+      let autoStart: GuideAutoStart | null = null;
+      if (guideStart?.mode === "walk" && walkOutcome?.kind === "done" && walkOutcome.mode === "walk") {
+        const line = guideStart.accessible
+          ? walkOutcome.lines.find((l) => walkLineAxis(l.kind).accessible)
+          : walkOutcome.lines[0];
+        if (line && walkLineStartKey(line.kind)) autoStart = { mode: "walk", line: line.kind };
+      }
+      const carResult = outcomes.car;
+      if (
+        guideStart?.mode === "car" &&
+        carResult?.kind === "done" &&
+        carResult.mode === "car" &&
+        carGuideStartableFor({ provider: carResult.result.provider, english: prefersEnglish(locale), hasVia: via !== null })
+      ) {
+        autoStart = { mode: "car" };
+      }
       const planId = `p${myGen}`;
       setResults({
         destLabel,
@@ -1234,7 +1400,13 @@ export function DirectionsView({
         fromRoman: from.kind === "current" ? null : (from.labelRoman ?? null),
         toRoman: to.kind === "current" ? null : (to.labelRoman ?? null),
         viaRoman: viaEp?.kind === "place" ? (viaEp.labelRoman ?? null) : null,
+        autoStart,
       });
+      // 자동 시작할 도보 줄은 펼쳐 둔다(시작 버튼이 줄 안에 있다) — 위 `discardResults`가 되돌린 펼침 위에 적는다.
+      if (autoStart?.mode === "walk" && walkOutcome?.kind === "done" && walkOutcome.mode === "walk") {
+        if (walkOutcome.lines[0].kind === autoStart.line) setWalkExpanded(true);
+        else setWalkLaterExpanded(new Set([autoStart.line]));
+      }
       announce(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
       settleAfterCommit(myGen, { kind: "settled", planId });
@@ -1249,8 +1421,9 @@ export function DirectionsView({
       );
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
       // 성공군이 앞이므로 새 순서에서 첫 성공 = 사용자가 처음 만나는 유용한 섹션.
+      // 자동 시작(E83)이면 착지는 안내 패널 몫이다 — 시작 버튼이 마운트하며 자기 트리거로 커서를 가져간다(착지 하나).
       const first = orderedModes.find((m) => outcomes[m]?.kind === "done");
-      if (first) {
+      if (first && !autoStart) {
         requestAnimationFrame(() => headingRefs[first].current?.focus());
       }
     } finally {
@@ -1357,12 +1530,11 @@ export function DirectionsView({
         )
       : null;
   };
+  // 판정은 채팅 안내 시작 카드와 같은 함수다(E83 R10 — 조건을 두 자리에 적지 않는다).
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
-    carOutcome.result.provider === "tmap" &&
-    !prefersEnglish(locale) &&
-    !hasVia;
+    carGuideStartableFor({ provider: carOutcome.result.provider, english: prefersEnglish(locale), hasVia });
   const guideDest = results
     ? {
         lat: results.destCoord.lat,
@@ -1525,7 +1697,7 @@ export function DirectionsView({
         // E27 잔여 ①(2026-09-01): en 게이트 해제. 서버가 영문 조각을 싣고 표시 계층이
         // 줄 단위로 고르므로 비-ko에서도 시작할 수 있다. ⚠ 같은 파일의 자동차
         // (`carGuideStartable`) 게이트는 **다른 축**이라 그대로다.
-        startable: buildTransitGuideRoute(route) !== null,
+        startable: transitGuideStartable(route),
         summary: {
           totalMinutes: route.summary.totalMinutes,
           transfers: route.summary.transfers,
@@ -2273,6 +2445,9 @@ export function DirectionsView({
                     variant={null}
                     announce={announce}
                     startOnOpen
+                    // 채팅 카드의 「자동차 안내 시작」(E83): 이 결과가 선 커밋에서 바로 시작하고 트리거로 착지한다.
+                    autoStart={results.autoStart?.mode === "car"}
+                    focusTriggerOnMount={results.autoStart?.mode === "car"}
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
                   />
@@ -2306,7 +2481,7 @@ export function DirectionsView({
                         routeExpanded(route.routeKey, defaultExpanded) ||
                         activeGuideAlt === route.routeKey;
                       // E27 잔여 ①: en 게이트 해제(위 `startable`과 같은 축).
-                      const guideStartable = buildTransitGuideRoute(route) !== null;
+                      const guideStartable = transitGuideStartable(route);
                       return (
                         <div key={route.routeKey} className="mt-2">
                           <button
@@ -2332,6 +2507,10 @@ export function DirectionsView({
                                   // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(spec §8 미결 1).
                                   walkAccessible={false}
                                   announce={announce}
+                                  // 채팅 카드의 「대중교통 안내 시작」(E83): 카드에서 세운 결과의 추천 첫 경로만 바로 시작한다.
+                                  autoStart={
+                                    results.autoStart?.mode === "transit" && results.autoStart.routeKey === route.routeKey
+                                  }
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active
@@ -2438,6 +2617,11 @@ export function DirectionsView({
                                 via={results.via}
                                 announce={announce}
                                 startOnOpen
+                                // 채팅 카드의 「도보 안내 시작」(E83): 그 줄만 바로 시작하고 트리거로 착지한다.
+                                autoStart={results.autoStart?.mode === "walk" && results.autoStart.line === line.kind}
+                                focusTriggerOnMount={
+                                  results.autoStart?.mode === "walk" && results.autoStart.line === line.kind
+                                }
                                 onStart={announceGuideStart}
                                 onActiveChange={(on) =>
                                   setActiveWalkLine((prev) =>

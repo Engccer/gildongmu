@@ -334,51 +334,24 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-station")).toBe("강남");
   });
 
-  // dest 도구 2종 컴포넌트 마운트 테스트
-  it("car-route renders면 CarRouteBriefing dest prop으로 마운트", () => {
+  // 버튼 없는 요약 카드 2종은 웹 채팅이 더는 그리지 않는다(E83 판정 3) — 범용 채팅은 `route-start`를 신고해 서버가 내지 않고,
+  // 신고하지 않는 채팅(장소 상세)에 오면 답의 글만 남는다. mock은 되살아났을 때 이 단언이 잡도록 남겨 둔다.
+  it.each([
+    ["car-route", "car-route-briefing"],
+    ["transit-route", "transit-route-briefing"],
+  ] as const)("%s 렌더는 아무것도 그리지 않는다", (type, testId) => {
     render(
       <MessageBubble
         message={{
           id: "16",
           role: "assistant",
           text: "",
-          renders: [
-            {
-              type: "car-route",
-              dest: { lat: 37.5, lng: 127.1, name: "강남역" },
-            },
-          ],
+          renders: [{ type, dest: { lat: 37.5, lng: 127.1, name: "강남역" } }],
         }}
       />
     );
-    const el = screen.getByTestId("car-route-briefing");
-    expect(el).toBeTruthy();
-    expect(el.getAttribute("data-dest-name")).toBe("강남역");
-    expect(el.getAttribute("data-dest-lat")).toBe("37.5");
-    expect(el.getAttribute("data-dest-lng")).toBe("127.1");
-  });
-
-  it("transit-route renders면 TransitRouteBriefing dest prop으로 마운트", () => {
-    render(
-      <MessageBubble
-        message={{
-          id: "17",
-          role: "assistant",
-          text: "",
-          renders: [
-            {
-              type: "transit-route",
-              dest: { lat: 37.6, lng: 127.2, name: "서울역" },
-            },
-          ],
-        }}
-      />
-    );
-    const el = screen.getByTestId("transit-route-briefing");
-    expect(el).toBeTruthy();
-    expect(el.getAttribute("data-dest-name")).toBe("서울역");
-    expect(el.getAttribute("data-dest-lat")).toBe("37.6");
-    expect(el.getAttribute("data-dest-lng")).toBe("127.2");
+    expect(screen.queryByTestId(testId)).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("station-facilities renders면 StationFacilities + SeoulMetroFacilities 모두 마운트", () => {
