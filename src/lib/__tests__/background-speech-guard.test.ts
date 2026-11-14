@@ -156,7 +156,9 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
     expect(outing).toContain("let handed = deviceSpeech.handOver()");
     expect(outing).toContain("var owed = handed.texts");
-    expect(outing).toMatch(/say\(owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/);
+    expect(outing).toMatch(
+      /say\(\s*owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable,\s*onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/,
+    );
   });
 
   it("prewalk 권한·정밀 위치 상실 종료는 도보 실패 문장에 대중교통 미시작을 붙이고, 코디네이터는 따로 내지 않는다(횡단 리뷰 F3)", () => {
@@ -213,6 +215,8 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     );
     expect(tts).toMatch(/didFinish utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: true\)/);
     expect(tts).toMatch(/didCancel utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: false\)/);
+    // 채팅 듣기를 장전하면 안내 칸을 비운다 — 남아 있으면 같은 주소를 받은 새 발화의 끝 신호를 안내 칸이 삼킨다.
+    expect(functionBody(tts, "arm")).toMatch(/self\.onFinish = onFinish[\s\S]*expectedGuidance = nil\s*onGuidanceEnd = nil/);
     const output = read(join(DIR, "GuideSpeechOutput.swift"));
     expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceEnd \{ \[weak queue\] token, completed in\s*queue\?\.speechEnded\(token: token, completed: completed\)/);
   });

@@ -13,7 +13,9 @@ public let outingApproachHysteresisMeters = 8.0
 /// 묶음이 문장이 될 때 이보다 멀어진 가게는 말하지 않고 「지나옴」으로 넘긴다(m, V6).
 public let outingBundleStaleMeters = 40.0
 /// 한 가게가 실린 문장이 이만큼 끊기거나 버려지면 그 가게는 말하기를 그만두고 「지나옴」으로 넘긴다(회).
-/// 상한이 없으면 화면을 탐색하는 낭독이 통지를 끊을 때마다 같은 문장이 끝없이 다시 나간다.
+/// 상한이 없으면 화면을 탐색하는 낭독이 통지를 끊을 때마다 같은 문장이 끝없이 다시 나간다. 안내가 스스로 낸 문장
+/// (횡단보도·갈림길)이 끊은 것은 세지 않는다(`finishDropped(counted:)`) — 횡단보도가 잦은 길에서 가게가 말로
+/// 나오지 못한 채 지나옴이 되지 않게.
 public let outingBundleMaxDrops = 3
 
 /// 끊긴 뒤 다음 주변 문장까지 쉬는 시간(초): 끊긴 횟수 1·2·3회에 3·6·12초. 끊은 쪽(안전 문장, 사용자의 화면 탐색
@@ -162,14 +164,18 @@ public struct OutingBundle: Sendable, Equatable {
     /// 내보낸 문장이 끊기거나 버려졌다(V0d) — 말하지 않은 것으로 되돌아온다(먼저 지나친 가게라 묶음 앞에).
     /// 끊긴 횟수가 `outingBundleMaxDrops`에 닿은 가게는 되돌리지 않고 「지나옴」으로 넘긴다. 돌려주는 쉬는 시간은 이
     /// 문장에 실렸던 가게 중 가장 많이 끊긴 횟수로 정한다(3·6·12초).
+    ///
+    /// `counted`: 이 끊김을 횟수에 세는가. 안내가 스스로 낸 문장(횡단보도·갈림길)이 끊었으면 거짓이다 — 가게는 횟수
+    /// 그대로 되돌아오고 쉬는 시간은 지금까지의 횟수로 정한다. 누가 끊었는지 가를 수 없으면 참이다. 기본값이 없다:
+    /// 빠뜨려 늘 세지 않게 되면 상한이 사라진다.
     @discardableResult
-    public mutating func finishDropped() -> OutingBundleDrop {
+    public mutating func finishDropped(counted: Bool) -> OutingBundleDrop {
         var back: [String] = []
         var givenUp: [String] = []
         var worst = 0
         for id in inFlight {
-            let count = (drops[id] ?? 0) + 1
-            drops[id] = count
+            let count = (drops[id] ?? 0) + (counted ? 1 : 0)
+            if counted { drops[id] = count }
             worst = max(worst, count)
             if count >= outingBundleMaxDrops {
                 givenUp.append(id)

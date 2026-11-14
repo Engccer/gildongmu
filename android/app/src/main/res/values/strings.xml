@@ -341,6 +341,14 @@
     <string name="android_outing_endedByUser">나들이를 종료했습니다.</string>
     <string name="android_outing_heading">나들이</string>
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
+    <string name="android_outing_historyBeside">옆</string>
+    <string name="android_outing_historyEmpty">아직 말한 것이 없습니다</string>
+    <string name="android_outing_historyHeading">방금 말한 것</string>
+    <string name="android_outing_historyJustNow">방금</string>
+    <string name="android_outing_historyLeft">왼쪽</string>
+    <string name="android_outing_historyMinutesAgo">%1$s분 전</string>
+    <string name="android_outing_historyPassedBy">지나옴</string>
+    <string name="android_outing_historyRight">오른쪽</string>
     <string name="android_outing_itemLeft">왼쪽 %1$s</string>
     <string name="android_outing_itemRight">오른쪽 %1$s</string>
     <string name="android_outing_junctionAhead">앞에 갈림길</string>

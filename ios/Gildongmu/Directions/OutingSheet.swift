@@ -2,7 +2,7 @@ import GildongmuKit
 import SwiftUI
 
 /// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 주변 낭독 → 주변 보기 → **상태 행(착지 — 열림·띠바 복귀)** →
-/// 걸은 거리 → 방향, 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
+/// 걸은 거리 → 방향 → 「방금 말한 것」 목록(E82 V11), 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
 /// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. "출발점으로"는 종료 화면에만 있다(E54).
 ///
 /// 착지 행은 이벤트로만 바뀌는 상태 행이다(출발점 잡는 중 → 출발점 {라벨}). 걸을 때마다 바뀌는 걸은 거리를
@@ -13,6 +13,8 @@ struct OutingSheet: View {
     let model: OutingModel
     let onMinimize: () -> Void
     let onReturn: () -> Void
+    /// 기록의 가게 줄에서 그 가게까지 도보 안내로 넘긴다(`GuideSession.handOverOuting` — 이 뷰는 세션을 직접 시작하지 않는다).
+    let onStartWalk: (GuideDestination) -> Void
 
     @AppStorage(OutingNarration.storageKey) private var narrationRaw = OutingNarration.default.rawValue
     @AccessibilityFocusState private var statusFocused: Bool
@@ -23,6 +25,8 @@ struct OutingSheet: View {
     @State private var pendingPlace: Place?
     @State private var detailPlace: Place?
     @State private var showsSettings = false
+    /// 「방금 말한 것」의 지난 시간을 셀 기준 시각 — 시트가 열릴 때와 기록이 바뀔 때만 잡는다(아래 `historySection`).
+    @State private var historyNow = Date().timeIntervalSince1970
     /// 체중 입력 권유(도보 종료 화면과 같은 저장 키·같은 판정, E31).
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
@@ -35,6 +39,7 @@ struct OutingSheet: View {
                 endSection(end)
             } else {
                 trackingSection
+                historySection
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -49,7 +54,11 @@ struct OutingSheet: View {
                 .background(.bar, ignoresSafeAreaEdges: [])
             }
         }
+        .onChange(of: model.history.entries.map(\.id)) {
+            historyNow = Date().timeIntervalSince1970
+        }
         .task {
+            historyNow = Date().timeIntervalSince1970
             // 띠바에서 돌아온 시트도 새로 열림과 같은 착지다(E57 위원장 판정 Q1 — 종전 접기 버튼 착지 폐기).
             if model.endScreen != nil {
                 await land($endFocused, "end")
@@ -112,6 +121,72 @@ struct OutingSheet: View {
             } trailing: {
                 GuideMinimizeButton(action: onMinimize)
             }
+        }
+    }
+
+    /// 「방금 말한 것」(E82 V11) — 끝까지 말한 문장과 말하지 못하고 지나온 가게, 최신이 위. 제목 하나만 heading이고
+    /// 한 줄이 한 접근성 객체다. 행의 정체성은 기록 순번이라 새 줄이 들어와도 커서가 있던 줄은 그대로다. 지난 시간은
+    /// 시트가 열린 때와 기록이 바뀐 때 잡은 기준 시각(`historyNow`)으로 센다 — 그리는 순간의 시각으로 세면 위치 갱신마다
+    /// 다시 그려지면서 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
+    private var historySection: some View {
+        Section {
+            if model.history.entries.isEmpty {
+                Text(appLocalized("ios.outing.historyEmpty"))
+            } else {
+                ForEach(model.history.entries) { entry in
+                    historyRow(entry, now: historyNow)
+                }
+            }
+        } header: {
+            Text(appLocalized("ios.outing.historyHeading"))
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// 가게 줄에는 「도보 안내 시작」을 행 뿌리의 밀기 버튼으로 둔다 — VoiceOver에서는 같은 줄의 동작(로터)으로 들린다
+    /// (E72 판별선: 장소 하나인 `List` 행). 끝까지 밀기 실행은 끈다(나들이를 끝내고 안내를 시작하는 되돌릴 수 없는 동작).
+    @ViewBuilder
+    private func historyRow(_ entry: OutingHistoryEntry, now: Double) -> some View {
+        if case .place(let place, _, _) = entry.content {
+            Text(historyLine(entry, now: now))
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button(appLocalized("beacon.guideStartWalk")) {
+                        onStartWalk(GuideDestination(
+                            dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name,
+                            labelRoman: place.nameRoman))
+                    }
+                }
+        } else {
+            Text(historyLine(entry, now: now))
+        }
+    }
+
+    /// 한 줄 = 한 문장(쉼표로 이은 한 객체): 「○○카페, 왼쪽, 2분 전」. 가게가 아닌 줄은 말한 문장 그대로다.
+    private func historyLine(_ entry: OutingHistoryEntry, now: Double) -> String {
+        let minutes = outingHistoryAgeMinutes(at: entry.at, now: now)
+        let age = minutes == 0
+            ? appLocalized("ios.outing.historyJustNow") : appLocalized("ios.outing.historyMinutesAgo", "\(minutes)")
+        switch entry.content {
+        case .place(let place, let side, let passedBy):
+            // 말한 가게의 방향 모름은 「옆」으로 말했다. 지나온 가게는 방향을 알 때만 붙인다.
+            let sideWord: String? = switch side {
+            case .left: appLocalized("ios.outing.historyLeft")
+            case .right: appLocalized("ios.outing.historyRight")
+            case .unknown: passedBy ? nil : appLocalized("ios.outing.historyBeside")
+            }
+            return joinText(
+                bilingual(place.name, roman: place.nameRoman).primary, sideWord,
+                passedBy ? appLocalized("ios.outing.historyPassedBy") : nil, age)
+        case .crosswalk(let audioSignal):
+            return joinText(
+                audioSignal ? appLocalized("ios.outing.crosswalkAheadAudio") : appLocalized("ios.outing.crosswalkAhead"),
+                age)
+        case .junction(let shape):
+            return joinText(OutingModel.junctionLine(shape), age)
+        case .road(let name):
+            return joinText(appLocalized("ios.outing.roadEntered", name), age)
+        case .answer(let text):
+            return joinText(text, age)
         }
     }
 

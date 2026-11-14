@@ -418,7 +418,15 @@
       },
       "started": "Paseo iniciado",
       "ended": "Paseo terminado",
-      "zoneAround": "Cerca, {distance}"
+      "zoneAround": "Cerca, {distance}",
+      "historyHeading": "Anuncios recientes",
+      "historyEmpty": "Aún no hay anuncios",
+      "historyLeft": "izquierda",
+      "historyRight": "derecha",
+      "historyBeside": "al lado",
+      "historyPassedBy": "ya pasado",
+      "historyJustNow": "ahora mismo",
+      "historyMinutesAgo": "hace {minutes} min"
     },
     "reorder": {
       "toTop": "Mover al principio",

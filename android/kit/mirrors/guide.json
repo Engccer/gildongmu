@@ -270,6 +270,16 @@
       "note": "E82 S2 묶어 말하기(spec 2026-11-14-e82-vergilius-v1-design.md §3.1): 지나친 가게의 묶음, 방향 없는 다가옴 판정, 문장화 시점의 좌우 재계산. E82는 iOS 실험판 전용이라 이식하지 않는다. 같은 단계가 OutingPassBy.swift의 지나침 결과를 한 곳에서 전부(passed)로 바꿨다"
     },
     {
+      "swift": "OutingHistory.swift",
+      "status": "pending",
+      "note": "E82 S3 「방금 말한 것」 기록(spec 2026-11-14-e82-vergilius-v1-design.md §3.2 V10~V12): 끝까지 말한 문장과 지나온 가게의 세션 기록 50건. E82는 iOS 실험판 전용이라 이식하지 않는다"
+    },
+    {
+      "swift": "OutingCrosswalkHold.swift",
+      "status": "pending",
+      "note": "E82 S4 받아쓰기 중 횡단보도 경고(spec 2026-11-14-e82-vergilius-v1-design.md §3.4 V25~V27): 발화가 막힌 동안 쥔 횡단보도, 낸 채 끝 신호를 기다리는 것, 끝 신호에서만 서는 말했다 표시와 진동 표시의 장부, 버림 뒤 재시도(상한 2), 풀릴 때 낼지 판정(사라짐·멀어짐·뒤쪽). E82는 iOS 실험판 전용이라 이식하지 않는다"
+    },
+    {
       "swift": "OutingDistanceTone.swift",
       "status": "pending",
       "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 10m 비프·거리 양자화, 걸은 거리 표시 1m 내림(outingDisplayMeters, E54)"

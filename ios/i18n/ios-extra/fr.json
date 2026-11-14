@@ -418,7 +418,15 @@
       },
       "started": "Balade commencée",
       "ended": "Balade terminée",
-      "zoneAround": "À proximité, {distance}"
+      "zoneAround": "À proximité, {distance}",
+      "historyHeading": "Annonces récentes",
+      "historyEmpty": "Aucune annonce pour l’instant",
+      "historyLeft": "à gauche",
+      "historyRight": "à droite",
+      "historyBeside": "à côté",
+      "historyPassedBy": "dépassé",
+      "historyJustNow": "à l’instant",
+      "historyMinutesAgo": "il y a {minutes} min"
     },
     "reorder": {
       "toTop": "Déplacer en haut",

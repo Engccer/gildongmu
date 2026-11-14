@@ -418,7 +418,15 @@
       },
       "started": "나들이 시작",
       "ended": "나들이 종료",
-      "zoneAround": "주변 {distance}"
+      "zoneAround": "주변 {distance}",
+      "historyHeading": "방금 말한 것",
+      "historyEmpty": "아직 말한 것이 없습니다",
+      "historyLeft": "왼쪽",
+      "historyRight": "오른쪽",
+      "historyBeside": "옆",
+      "historyPassedBy": "지나옴",
+      "historyJustNow": "방금",
+      "historyMinutesAgo": "{minutes}분 전"
     },
     "reorder": {
       "toTop": "맨 위로",

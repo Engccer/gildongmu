@@ -256,6 +256,14 @@
     <string name="android_outing_endedByUser">Stroll ended.</string>
     <string name="android_outing_heading">Stroll</string>
     <string name="android_outing_headingUnknown">Checking direction</string>
+    <string name="android_outing_historyBeside">beside</string>
+    <string name="android_outing_historyEmpty">Nothing announced yet</string>
+    <string name="android_outing_historyHeading">Recently announced</string>
+    <string name="android_outing_historyJustNow">just now</string>
+    <string name="android_outing_historyLeft">left</string>
+    <string name="android_outing_historyMinutesAgo">%1$s min ago</string>
+    <string name="android_outing_historyPassedBy">passed</string>
+    <string name="android_outing_historyRight">right</string>
     <string name="android_outing_itemLeft">left, %1$s</string>
     <string name="android_outing_itemRight">right, %1$s</string>
     <string name="android_outing_junctionAhead">Junction ahead</string>

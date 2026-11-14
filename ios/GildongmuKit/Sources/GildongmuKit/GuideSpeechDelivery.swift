@@ -25,11 +25,19 @@ public struct VoiceOverDeliveryLedger {
     /// 끝 신호를 기다리는 시간의 상한(초).
     public static let maxExpirySeconds = 30.0
 
-    /// 그 문장의 끝 신호를 기다리는 시간(초): 글자 수 × 0.15초 + 5초, 상한 `maxExpirySeconds`. 문장이 말해지는 시간보다
+    /// 그 문장의 끝 신호를 기다리는 시간(초): 글자 수 × 0.3초 + 5초, 상한 `maxExpirySeconds`. 문장이 말해지는 시간보다
     /// 길어야 한다(짧으면 말하는 중인 문장을 버린 것으로 쳐서 한 번 더 말한다). 고정 30초로 두면 조용히 버려진 짧은
     /// 문장 하나가 그만큼 다음 문장을 붙든다.
+    /// ⚠ 잠정값: 느린 낭독 속도와 앞선 낭독 뒤에 줄 서는 시간을 넉넉히 잡은 어림이다. 실기기 로그(게시부터 끝 신호까지의
+    /// 시간, `announceExpired` 빈도)로 다시 맞출 항목이다.
     public static func expirySeconds(for text: String) -> Double {
-        min(maxExpirySeconds, Double(text.count) * 0.15 + 5)
+        min(maxExpirySeconds, Double(text.count) * 0.3 + 5)
+    }
+
+    /// 대기열 뒤(`.low`)로 낸 통지는 상한을 쓴다(`queued` 기본값 없음): 앞선 낭독(받아쓴 원문 통지·진행 통지)이 끝날 때까지
+    /// 말해지지 않으므로 글자 수로 잰 만료가 먼저 오면 말하기 전에 버림으로 닫혀 한 번 더 나간다.
+    public static func expirySeconds(for text: String, queued: Bool) -> Double {
+        queued ? maxExpirySeconds : expirySeconds(for: text)
     }
 
     private struct Entry {
@@ -45,10 +53,10 @@ public struct VoiceOverDeliveryLedger {
 
     public var isEmpty: Bool { open.isEmpty }
 
-    /// 게시했다(`at`: 단조 시각, 초). 돌려주는 값은 이 통지의 id다.
-    public mutating func posted(_ text: String, at now: Double) -> Int {
+    /// 게시했다(`at`: 단조 시각, 초, `queued`: 대기열 뒤로 냈는가). 돌려주는 값은 이 통지의 id다.
+    public mutating func posted(_ text: String, at now: Double, queued: Bool) -> Int {
         nextID += 1
-        open.append(Entry(id: nextID, text: text, expiresAt: now + Self.expirySeconds(for: text)))
+        open.append(Entry(id: nextID, text: text, expiresAt: now + Self.expirySeconds(for: text, queued: queued)))
         return nextID
     }
 

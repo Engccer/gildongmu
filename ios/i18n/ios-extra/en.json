@@ -418,7 +418,15 @@
       },
       "started": "Stroll started",
       "ended": "Stroll ended",
-      "zoneAround": "Nearby, {distance}"
+      "zoneAround": "Nearby, {distance}",
+      "historyHeading": "Recently announced",
+      "historyEmpty": "Nothing announced yet",
+      "historyLeft": "left",
+      "historyRight": "right",
+      "historyBeside": "beside",
+      "historyPassedBy": "passed",
+      "historyJustNow": "just now",
+      "historyMinutesAgo": "{minutes} min ago"
     },
     "reorder": {
       "toTop": "Move to top",

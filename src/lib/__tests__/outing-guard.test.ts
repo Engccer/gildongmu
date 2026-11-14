@@ -136,7 +136,10 @@ describe("나들이 문장 창구", () => {
   it("횡단보도 예고는 보호 창을 세우고 주변 문장은 그 창 뒤로 미룬다(한 fix 한 문장, spec 준수 리뷰 M-2)", () => {
     const model = readFileSync(MODEL, "utf8");
     const evaluate = functionBody(model, "evaluate");
-    expect(evaluate).toMatch(/sayProtected\(appLocalized\(notice\.hasAudioSignal/);
+    expect(evaluate).toContain("speakCrosswalk(notice, queued: false)");
+    expect(functionBody(model, "speakCrosswalk")).toMatch(
+      /appLocalized\(notice\.hasAudioSignal[\s\S]*protectedUntil = uptimeNow \+ protectSeconds\s*protectedText = text/,
+    );
     expect(evaluate).toMatch(/if crosswalkSpoken \|\| now < protectedUntil \{/);
     // E82 V4: 가게는 문장이 아니라 id로 묶음에 쥐고, 문장은 채널이 빌 때 `flushAmbient`가 만든다 — 판정 자리(`evaluate`)는
     // 어떤 가게 문장도 직접 내지 않는다(최신이 이기는 칸에 문장을 넣으면 앞 문장이 사라진다).
@@ -160,7 +163,10 @@ describe("나들이 문장 창구", () => {
     // 「말했다」 표시는 끝 신호에서만(V5): 문장을 낸 자리가 아니라 `finishAmbient`가 닫는다.
     expect(flush).not.toMatch(/finishSpoken/);
     const finish = functionBody(model, "finishAmbient");
-    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\)\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(\)/);
+    expect(finish).toMatch(/if spoken \{\s*noteSpoken\(bundle\.finishSpoken\(\), line: flight\.line\)\s*\} else \{[\s\S]{0,200}let drop = bundle\.finishDropped\(counted: !flight\.cutByGuide\)/);
+    // 안내가 스스로 낸 문장이 끊은 것은 끊김 횟수에 세지 않는다 — 표시는 모든 문장이 지나는 `say` 한 곳에서 선다.
+    expect(functionBody(model, "say")).toContain("if speechClass != .ambient { ambientInFlight?.cutByGuide = true }");
+    expect(functionBody(model, "emitAmbient")).toContain("ambientInFlight = (uptimeNow, isBundle, text, retried, false, record, line)");
     // 끊김 상한(리뷰 MUST): 쉬는 시간과 포기는 Kit 묶음이 정하고 모델은 그 값을 그대로 쓴다 — 고정 3초로 되돌리지 않는다.
     expect(finish).toContain("hold = drop.holdSeconds");
     expect(finish).toContain("if !drop.givenUp.isEmpty { notePassedBy(drop.givenUp) }");
@@ -224,6 +230,127 @@ describe("나들이 시트 배치(E54)", () => {
     expect(sheet).not.toMatch(/Menu\(appLocalized\("ios\.outing\.narration"/);
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
   });
+
+  it("「방금 말한 것」의 지난 시간은 시트 등장·기록 변경 때 잡은 기준 시각으로 센다(E82 V11)", () => {
+    // 그리는 순간의 시각으로 세면 위치 갱신마다 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
+    const sheet = readFileSync(SHEET, "utf8");
+    const history = sheet.slice(sheet.indexOf("private var historySection"), sheet.indexOf("private func historyRow"));
+    expect(history).not.toContain("Date()");
+    expect(history).toContain("historyRow(entry, now: historyNow)");
+    expect(sheet).toMatch(/\.onChange\(of: model\.history\.entries\.map\(\\\.id\)\) \{\s*historyNow = Date\(\)\.timeIntervalSince1970\s*\}/);
+  });
+});
+
+describe("받아쓰기 중 횡단보도 경고(E82 V25~V27)", () => {
+  const model = readFileSync(MODEL, "utf8");
+  const speech = readFileSync(join(IOS, "Gildongmu/SpeechService.swift"), "utf8");
+  const session = readFileSync(join(IOS, "Gildongmu/Directions/GuideSessionCoordinator.swift"), "utf8");
+
+  it("판정은 장부 한 곳이고, 막힘 여부는 그 자리에서 읽어 넘긴다", () => {
+    const evaluate = functionBody(model, "evaluate");
+    // 예고 판정은 끝까지 말한 것만 건너뛰고, 끝나지 않은 경고(쥔 것·낸 채 끝 신호를 기다리는 것)가 있는 동안 새 횡단보도를
+    // 받지 않는 「한 번에 하나」는 장부(`OutingCrosswalkLedger.notice`의 `busy`)가 지킨다 — 시나리오는 Kit 테스트.
+    expect(evaluate).toContain("spoken: crosswalkLedger.spoken)");
+    expect(evaluate).toContain("crosswalkLedger.notice(notice, silencing: silencing, suppressed: outputSuppressed)");
+    // 표시를 장부 밖에서 따로 넣지 않는다(쥘 때 표시가 서면 문장 없이 「말한 횡단보도」가 된다).
+    expect(model).not.toMatch(/spokenCrosswalks/);
+    // 진동은 쥔 때 한 번이다 — 말하는 갈래에는 없다.
+    expect(evaluate).toMatch(/case \.vibrate:\s*guideDiagLog\([^\n]*\)\s*ResultHaptic\.fire\(\.attention\)\s*case \.hold:\s*break/);
+  });
+
+  it("막힘이 풀리는 모든 길은 outputSuppressed의 한 자리를 지나고 거기서 쥔 경고를 낸다", () => {
+    expect(model).toMatch(
+      /var outputSuppressed = false \{\s*didSet \{\s*tones\.isSuppressed = outputSuppressed\s*if oldValue, !outputSuppressed \{ releaseHeldCrosswalk\(\) \}/,
+    );
+    // 풀림은 잠시 미뤄(받아쓴 원문 통지가 먼저 게시되게) VoiceOver 대기열 뒤로 낸다(M2 순서).
+    expect(functionBody(model, "releaseHeldCrosswalk")).toContain(
+      "scheduleHeldCrosswalk(after: outingCrosswalkReleaseDelaySeconds, queued: true, mayDefer: false)",
+    );
+    const speakHeld = functionBody(model, "speakHeldCrosswalk");
+    // 내려던 순간 다시 막혔으면 쥔 채 진동만 한다(재시도 지연 사이에 받아쓰기가 시작된 경우).
+    expect(speakHeld).toMatch(/if outputSuppressed \{\s*let vibrate = crosswalkLedger\.stillSuppressed\(\)[\s\S]*?return\s*\}/);
+    // 후보에서 사라졌거나 예고 범위 밖이거나 뒤쪽이 확실하면 말하지 않는다(판정은 Kit 한 함수).
+    expect(speakHeld).toContain("outingHeldCrosswalkVerdict(fix: lastFix, heading: heading, crosswalk: crosswalks[held.id])");
+    expect(speakHeld).toMatch(/crosswalkLedger\.release\(verdict: verdict, silencing: silencing\)[\s\S]*speakCrosswalk\(notice, queued: queued\)/);
+    // 버림 뒤 재시도는 다른 안내 문장이 끝나지 않았으면(지연 슬롯·VoiceOver 통지·기기 음성) 한 번 더 미룬다 — 기본 우선순위라
+    // 갈림길 예고를 끊거나 지연 슬롯의 문장을 버린다. 미룬 예약은 다시 미루지 않는다(무한 연기 없음).
+    expect(speakHeld).toMatch(
+      /if mayDefer, announcer\.hasPending \|\| !GuideSpeechOutput\.announcementsFinished\s*\|\| GuideSpeechOutput\.speechBusy\(deviceSpeech\) \{[\s\S]*?scheduleHeldCrosswalk\(after: outingCrosswalkRetryDelaySeconds, queued: queued, mayDefer: false\)\s*return\s*\}/,
+    );
+    expect(speakHeld.indexOf("if mayDefer")).toBeGreaterThan(speakHeld.indexOf("if outputSuppressed"));
+    expect(speakHeld.indexOf("if mayDefer")).toBeLessThan(speakHeld.indexOf("crosswalkLedger.release("));
+    // 받아쓰기의 억제 해제는 나들이 모델의 그 값에 대입으로 닿는다(다른 화면의 받아쓰기도 같은 창구다).
+    expect(functionBody(session, "setDictationActive")).toContain("outing.outputSuppressed = prior.outing && outing.outputSuppressed");
+    // 받아쓰기가 끝나는 길(권한 거부·시작 실패·정지·취소·인식 실패)은 전부 억제를 푼다. 세대가 어긋난 시작은 풀지 않는다 —
+    // 그 세대를 올린 취소가 이미 풀었다.
+    expect(speech.match(/setGuideSuppressed\(false\)/g)).toHaveLength(5);
+    expect(functionBody(speech, "cancel")).toMatch(/generation \+= 1[\s\S]*setGuideSuppressed\(false\)/);
+    expect(functionBody(speech, "stop")).toContain("setGuideSuppressed(false)");
+  });
+
+  it("「말했다」는 끝 신호에서만 서고, 버림은 막힘과 무관하게 다시 쥔다(M1·M2)", () => {
+    const speak = functionBody(model, "speakCrosswalk");
+    expect(speak).toContain("onDropped: { [weak self] in self?.crosswalkDropped(notice) }");
+    expect(speak).toContain("onSpoken: { [weak self] in self?.crosswalkSpokenToEnd(notice) }");
+    // 표시를 세우는 자리는 끝 신호 하나다(낸 때 세우면 받아쓰기 시작·완료가 끊은 경고가 「말한 것」으로 남는다).
+    expect(model.match(/crosswalkLedger\.spoke\(/g) ?? []).toHaveLength(1);
+    expect(functionBody(model, "crosswalkSpokenToEnd")).toContain("crosswalkLedger.spoke(notice.id)");
+    // 받아쓰기 시작은 기기 음성을 억제보다 먼저 멈춘다 — 막힌 때만 쥐면 그 끊김이 빠져나간다.
+    const dropped = functionBody(model, "crosswalkDropped");
+    expect(dropped).not.toMatch(/outputSuppressed else \{ return \}/);
+    expect(dropped).toContain("crosswalkLedger.dropped(notice, suppressed: outputSuppressed)");
+    expect(dropped).toMatch(/case \.retry:[^\n]*\n[^\n]*\n\s*scheduleHeldCrosswalk\(after: outingCrosswalkRetryDelaySeconds, queued: false, mayDefer: true\)/);
+    // 대기열 뒤로 내는 표식은 `post`가 한 번 소비하고 VoiceOver 게시에 실린다.
+    const post = functionBody(model, "post");
+    expect(post).toMatch(/let queued = message == queuedText\s*if queued \{ queuedText = nil \}/);
+    expect(post).toContain("highPriority: highPriority, queued: queued,");
+    // 표식은 관찰 대상이 아니다(뷰가 그리지 않는다).
+    expect(model).toContain("@ObservationIgnored private var queuedText: String?");
+    const output = readFileSync(join(IOS, "Gildongmu/Directions/GuideSpeechOutput.swift"), "utf8");
+    expect(output).toMatch(/\} else if queued \{\s*attributed\.accessibilitySpeechAnnouncementPriority = \.low\s*\}/);
+    // 대기열 뒤로 낸 통지의 끝 신호 만료는 상한을 쓴다(앞선 낭독을 기다리는 동안 버림으로 닫혀 두 번 나가지 않게, 재리뷰 S-1).
+    expect(output).toContain("if let outcome { trackDelivery(text, queued: queued, outcome: outcome) }");
+    expect(output).toContain("deliveries.posted(text, at: ProcessInfo.processInfo.systemUptime, queued: queued)");
+    expect(output).toContain("VoiceOverDeliveryLedger.expirySeconds(for: text, queued: queued) + 0.1");
+  });
+
+  it("진단 로그는 말한 글을 쓰지 않는다(종류와 글자 수만)", () => {
+    const post = functionBody(model, "post");
+    expect(post).toContain("chars=\\(message.count)");
+    expect(post).not.toMatch(/text=\\\(message\)/);
+    // 끝 신호 로그도 글자 수만 남긴다(가게 이름이 문장 앞부분에 있다).
+    const output = readFileSync(join(IOS, "Gildongmu/Directions/GuideSpeechOutput.swift"), "utf8");
+    const finish = output.slice(output.indexOf("announceFinish type="), output.indexOf("announceFinish type=") + 400);
+    expect(finish).toContain('chars=\\((text ?? "").count)');
+    expect(output).not.toMatch(/\.prefix\(\d+\)/);
+  });
+
+  it("전경 복귀 때 넘긴 문장의 끝 신호를 합본 통지에 잇는다 — 인계된 횡단보도 경고가 장부를 묶지 않는다(한 번에 하나)", () => {
+    // 잇지 않으면 합본이 나간 뒤 인계된 경고는 말함도 버림도 받지 못해 `busy`가 산책 끝까지 남는다.
+    const scene = model.slice(model.indexOf("let handed = deviceSpeech.handOver()"), model.indexOf("// MARK: - 만보계"));
+    expect(scene).toMatch(/onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)\s*\}/);
+    expect(scene).toContain("onSpoken: handed.isEmpty ? nil : { handed.spoken() })");
+  });
+
+  it("세션이 끝나면 쥔 것을 버린 뒤에 억제를 푼다 — 끝난 세션의 경고가 나오지 않는다", () => {
+    const stop = functionBody(model, "stop");
+    expect(stop.indexOf("crosswalkLedger = OutingCrosswalkLedger()")).toBeGreaterThan(-1);
+    expect(stop.indexOf("crosswalkLedger = OutingCrosswalkLedger()")).toBeLessThan(stop.indexOf("outputSuppressed = false"));
+    expect(stop.indexOf("status = .idle")).toBeLessThan(stop.indexOf("outputSuppressed = false"));
+    // 다시 낼 예약도 함께 거둔다 — 세션 시작의 초기화도 같다(전 세션의 재시도가 새 세션에서 돌지 않게).
+    expect(stop).toMatch(/crosswalkLedger = OutingCrosswalkLedger\(\)\s*heldCrosswalkTask\?\.cancel\(\)/);
+    expect(functionBody(model, "resetSessionState")).toMatch(
+      /crosswalkLedger = OutingCrosswalkLedger\(\)\s*heldCrosswalkTask\?\.cancel\(\)\s*heldCrosswalkTask = nil/,
+    );
+  });
+
+  it("녹음 세션은 나들이 세션이 살아 있을 때만 녹음 중 진동을 허용한다(V27)", () => {
+    // 공유 오디오 세션에 남는 속성이라 매번 값을 명시한다(리터럴 true면 정식판 받아쓰기의 시작음·진동도 녹음 중에 난다).
+    expect(functionBody(speech, "beginListening")).toMatch(
+      /session\.setCategory\(\.playAndRecord[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try\? session\.setAllowHapticsAndSystemSoundsDuringRecording\(GuideSession\.shared\.outing\.isTracking\)\s*try session\.setActive\(true/,
+    );
+    expect(speech.match(/setAllowHapticsAndSystemSoundsDuringRecording\(/g) ?? []).toHaveLength(1);
+  });
 });
 
 describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
@@ -231,7 +358,7 @@ describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
     const model = readFileSync(MODEL, "utf8");
     // 닫기·새 세션·귀환 인계·30분 만료가 전부 clearEnd를 지나야 표식이 다음 화면으로 새지 않는다.
     expect(model.match(/endScreen = nil/g) ?? []).toHaveLength(1);
-    for (const name of ["start", "endForReturn", "handleScenePhaseChange"]) {
+    for (const name of ["start", "endForHandover", "handleScenePhaseChange"]) {
       expect(functionBody(model, name)).toContain("clearEnd()");
     }
     expect(readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8")).toMatch(

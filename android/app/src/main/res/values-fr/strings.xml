@@ -256,6 +256,14 @@
     <string name="android_outing_endedByUser">Balade terminée.</string>
     <string name="android_outing_heading">Balade</string>
     <string name="android_outing_headingUnknown">Détection de la direction</string>
+    <string name="android_outing_historyBeside">à côté</string>
+    <string name="android_outing_historyEmpty">Aucune annonce pour l’instant</string>
+    <string name="android_outing_historyHeading">Annonces récentes</string>
+    <string name="android_outing_historyJustNow">à l’instant</string>
+    <string name="android_outing_historyLeft">à gauche</string>
+    <string name="android_outing_historyMinutesAgo">il y a %1$s min</string>
+    <string name="android_outing_historyPassedBy">dépassé</string>
+    <string name="android_outing_historyRight">à droite</string>
     <string name="android_outing_itemLeft">gauche, %1$s</string>
     <string name="android_outing_itemRight">droite, %1$s</string>
     <string name="android_outing_junctionAhead">Embranchement devant</string>

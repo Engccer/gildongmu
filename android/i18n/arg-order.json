@@ -1612,6 +1612,9 @@
   "android.outing.bundleSide": [
     "names"
   ],
+  "android.outing.historyMinutesAgo": [
+    "minutes"
+  ],
   "android.outing.itemLeft": [
     "distance"
   ],
