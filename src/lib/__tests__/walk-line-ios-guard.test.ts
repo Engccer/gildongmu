@@ -71,10 +71,15 @@ describe("iOS 도보 줄 배선(E42)", () => {
 
   it("조회 화면 줄의 안내 시작은 줄 종류의 투영 셋을 함께 싣는다(최단 버튼이 큰길을 시작하지 않게)", () => {
     const src = read(TAB);
-    expect(src).toContain("accessible: kind.accessible, variant: kind.variant,");
-    expect(src).toContain("line: kind,");
+    // 투영은 요청 조립 한 곳(`BeaconModel.walkLineRequest`, E83 — 채팅 경로 카드의 도보 시작과 같이 쓴다)이 하고,
+    // 화면은 줄 종류와 화면에 선 줄 전부를 넘긴다.
+    expect(src).toContain("session.startBeacon(BeaconModel.walkLineRequest(");
+    expect(src).toContain("line: kind, among: model.walkLines.compactMap(\\.lineKind),");
+    const model = read("ios/Gildongmu/Directions/BeaconModel.swift");
+    const request = model.slice(model.indexOf("static func walkLineRequest("), model.indexOf("static func carRequest("));
+    expect(request).toContain("accessible: line.accessible, variant: line.variant, line: line,");
     // 전환 대상은 Kit 한 함수(E52 — 계단 회피 우선). 호출부에서 "첫 다른 줄"을 다시 고르지 않는다.
-    expect(src).toContain("alternate: WalkLineKind.switchAlternate(");
+    expect(request).toContain("alternate: WalkLineKind.switchAlternate(for: line, among: lines),");
     expect(src).not.toContain(".first { $0 != kind }");
   });
 });

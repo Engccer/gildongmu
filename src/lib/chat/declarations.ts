@@ -63,6 +63,25 @@ const PLACE_ARG = {
   },
 } as const;
 
+/**
+ * 길찾기 세 도구 공통 `origin` 인자(E88) — 말한 출발지. 없으면 현재 위치에서 출발한다(장소 채팅에서도 같다).
+ * 결과의 `origin`은 실제로 고른 장소다.
+ */
+const ORIGIN_ARG = {
+  origin: {
+    type: "string",
+    description:
+      "출발지 지명 또는 주소. 사용자가 '서울역에서'처럼 현재 위치가 아닌 출발지를 말했을 때만 넣는다(현재 위치에서 출발하면 넣지 않는다).",
+  },
+} as const;
+
+/**
+ * `origin`을 받는 도구의 설명에 붙는 한 문장 — 결과의 출발지 이름이 말한 곳과 다르면 그 사실을 전하게 한다.
+ * 베르길리우스 변환층이 `origin` 인자를 닫을 때 이 문장도 함께 뗀다(`vergilius/tools.ts`).
+ */
+export const ORIGIN_NOTE =
+  " 사용자가 현재 위치가 아닌 출발지를 말했으면 origin에 넣는다(그때는 그곳이 출발지다). 결과의 origin이 실제로 출발지로 잡은 장소이니 그 이름으로 어디서 출발하는 경로인지 말하라.";
+
 /** 여정 도구의 갈아탈 곳 한쪽 인자 묶음. 정류장(`_kind: stop`)은 정류장 이름 검색 키(data.go.kr)가 있을 때만 받는다. */
 function journeySideProperties(side: "board" | "alight", what: string): Record<string, unknown> {
   return {
@@ -192,6 +211,23 @@ const DECLARATIONS: GatedDeclaration[] = [
   {
     gate: hasKakaoKey,
     declaration: {
+      name: "get_entrance_sides",
+      description:
+        "장소 하나의 입구를 마주 보고 섰을 때 왼쪽·오른쪽·맞은편·건물 너머(반경 150m)에 무엇이 있는지 알려 준다. " +
+        "사용자가 특정 장소의 옆·맞은편·왼쪽·오른쪽을 물을 때 쓴다(현재 위치 주변은 get_surroundings). " +
+        "sidesUnavailable이 오면 왼쪽·오른쪽을 말하지 말고 입구 방향을 정하지 못했다고 전한다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: { type: "string", description: "장소 이름(보고 있는 장소를 물으면 그 장소 이름)" },
+        },
+        required: ["place"],
+      },
+    },
+  },
+  {
+    gate: hasKakaoKey,
+    declaration: {
       name: "get_where_am_i",
       description:
         "현재 위치(또는 지명)가 어디인지 정위한다 — 도로명·지번 주소, 행정동, 1km 안 가장 가까운 지하철역(방위·거리), 주변 기준점. " +
@@ -225,6 +261,30 @@ const DECLARATIONS: GatedDeclaration[] = [
             description: "지명(없으면 현재 위치 기준)",
           },
         },
+      },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_bus_route",
+      description:
+        "버스 노선 번호로 그 노선의 기점·종점·회차 지점, 첫차·막차·배차 간격, 특정 정류소에 서는지와 몇 정류장 뒤인지를 알려준다(「272번 어디로 가?」「이 버스 시청 가?」). " +
+        "정류소에 버스가 언제 오는지는 get_bus_arrivals를 쓴다. 버스의 현재 위치와 요금은 제공하지 않는다. " +
+        "rides가 오면 어느 정류소(boardAt)에서 어느 방면(towards) 차를 타면 몇 정류장 뒤(stopsAway)에 alightAt에 서는지 말하라(viaTurnaround가 true면 회차 지점을 지나 돌아가는 길이다). " +
+        "toStop.onRoute가 true인데 rides가 없으면 타는 정류소를 몰라 세지 못한 것이고(toStop.behindBoarding이 true면 타는 곳에서는 이미 지난 정류소다), false면 그 이름의 정류소가 이 노선에 없는 것이다. " +
+        "nextStops는 타는 곳 다음 정류소 몇 개이고, someStops는 경유 정류소에서 고르게 뽑은 몇 곳이니 「지나는 정류소 일부」라고 부른다. firstBus·lastBus는 기점 출발 시각이고 null이면 알 수 없는 것이다. " +
+        "candidates가 오면 같은 번호 노선이 여럿이라 고르지 못한 것이니 기점·종점이나 지역으로 어느 노선인지 되물어라(moreCandidates가 true면 후보가 더 있다). " +
+        "found가 false면 그 번호가 없는 것이다. searched가 오면 거기 적힌 범위만 찾아본 것이니 노선을 찾았든 못 찾았든 그 범위를 먼저 말하라. route.passesNearYou가 false면 현재 위치 근처를 지나지 않는 노선이니 지역(route.region)을 함께 말하라.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          routeNo: { type: "string", description: "노선 번호(예: 272, N62, 강동01)" },
+          toStop: { type: "string", description: "그 버스가 가는지 묻는 정류소·역 이름" },
+          fromStop: { type: "string", description: "타는 정류소 이름(사용자가 말했을 때만)" },
+          place: { type: "string", description: "노선이 다니는 지역·지명(사용자가 말했을 때만. 없으면 현재 위치 또는 보고 있는 장소 기준)" },
+        },
+        required: ["routeNo"],
       },
     },
   },
@@ -353,7 +413,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_car_route",
       description:
-        "목적지까지 자동차 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치).",
+        "목적지까지 자동차 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치)." + ORIGIN_NOTE,
       parametersJsonSchema: {
         type: "object",
         properties: {
@@ -361,6 +421,7 @@ const DECLARATIONS: GatedDeclaration[] = [
             type: "string",
             description: "목적지 지명 또는 주소",
           },
+          ...ORIGIN_ARG,
           via: {
             type: "string",
             description: "경유지 지명(한 곳). '~를 거쳐서', '~에 들렀다가' 같은 요청일 때만 넣는다.",
@@ -385,13 +446,16 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_barrier_free_detail",
       description:
         "무장애 관광지 한 곳의 장애인 편의시설 상세(주차·출입구·화장실·휠체어 대여·점자·음성안내 등)를 보여준다. " +
-        "contentId는 get_nearby_barrier_free 결과의 contentId를 넣는다. detail이 null이면 항목이 없는 것이고, facilities가 비어 있으면 등록된 편의시설 정보가 없는 것이다.",
+        "contentId는 get_nearby_barrier_free 결과의 contentId를 넣는다. detail이 null이면 항목이 없는 것이고, facilities가 비어 있으면 등록된 편의시설 정보가 없는 것이다. " +
+        "특정 장소를 이름으로 물으면(「경복궁에 휠체어 대여 돼?」) name에 장소 이름을 넣는다(보고 있는 장소를 물으면 둘 다 비워도 된다). " +
+        "matched가 false면 그 이름으로 등록된 무장애 정보가 없는 것이지 편의시설이 없는 것이 아니다(similar가 오면 근처의 다른 등록 장소이니 그 이름을 알려 주고 맞는지 되물어라). " +
+        "matched가 true인데 facilities에 묻는 항목이 없으면 그 항목은 등록된 정보가 없는 것이다(없다고 단정하지 않는다).",
       parametersJsonSchema: {
         type: "object",
         properties: {
           contentId: { type: "string", description: "get_nearby_barrier_free가 준 contentId" },
+          name: { type: "string", description: "장소 이름(contentId를 모를 때. 예: 경복궁)" },
         },
-        required: ["contentId"],
       },
     },
   },
@@ -401,13 +465,21 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_transit_route",
       description:
         "목적지까지 대중교통(버스·지하철 환승) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치). " +
-        "serviceStatus가 outside인 구간이 있으면 첫차·막차와 함께 지금은 운행하지 않는다고 알린다(running·unknown은 언급하지 않는다).",
+        "serviceStatus가 outside인 구간이 있으면 첫차·막차와 함께 지금은 운행하지 않는다고 알린다(running·unknown은 언급하지 않는다). " +
+        "noRouteWithMode가 오면 mode로 한정한 수단만 타고 가는 경로를 찾지 못한 것이다(다른 수단을 섞은 경로가 있는지는 한정 없이 조회해야 안다)." +
+        ORIGIN_NOTE,
       parametersJsonSchema: {
         type: "object",
         properties: {
           destination: {
             type: "string",
             description: "목적지 지명 또는 주소",
+          },
+          ...ORIGIN_ARG,
+          mode: {
+            type: "string",
+            enum: ["subway", "bus"],
+            description: "수단 한정. 사용자가 '지하철만', '버스만'이라고 했을 때만 넣는다(subway는 지하철만, bus는 버스만 타는 경로).",
           },
           via: {
             type: "string",
@@ -434,7 +506,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_walk_route",
       description:
-        "목적지까지 도보(걷기) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치).",
+        "목적지까지 도보(걷기) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치)." + ORIGIN_NOTE,
       parametersJsonSchema: {
         type: "object",
         properties: {
@@ -442,6 +514,7 @@ const DECLARATIONS: GatedDeclaration[] = [
             type: "string",
             description: "목적지 지명 또는 주소",
           },
+          ...ORIGIN_ARG,
           via: {
             type: "string",
             description: "경유지 지명(한 곳). '~를 거쳐서', '~에 들렀다가' 같은 요청일 때만 넣는다.",

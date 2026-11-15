@@ -45,11 +45,14 @@ fun toolLabelId(category: String): Int? = when (category) {
     "get_kids_places" -> R.string.chat_progress_tool_get_kids_places
     "get_surroundings" -> R.string.chat_progress_tool_get_surroundings
     "get_bus_arrivals" -> R.string.chat_progress_tool_get_bus_arrivals
+    "get_bus_route" -> R.string.chat_progress_tool_get_bus_route
+    "get_entrance_sides" -> R.string.chat_progress_tool_get_entrance_sides
     "get_bike_stations" -> R.string.chat_progress_tool_get_bike_stations
     "get_air_quality" -> R.string.chat_progress_tool_get_air_quality
     "get_weather" -> R.string.chat_progress_tool_get_weather
     "get_station_meta" -> R.string.chat_progress_tool_get_station_meta
     "get_station_facilities" -> R.string.chat_progress_tool_get_station_facilities
+    "plan_journey" -> R.string.chat_progress_tool_plan_journey
     "get_car_route" -> R.string.chat_progress_tool_get_car_route
     "get_transit_route" -> R.string.chat_progress_tool_get_transit_route
     "get_walk_route" -> R.string.chat_progress_tool_get_walk_route

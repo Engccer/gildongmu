@@ -1751,6 +1751,42 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
     });
     expect(screen.queryByText(/quickExit/)).toBeNull();
   });
+
+  // 하차 준비 줄(E84): 타려는 순간·타고 가는 동안 내릴 문과 나갈 출구를 한 줄로. 문장은 길찾기 결과 하차 줄과 같은 함수다.
+  const withExit: TransitRoute = {
+    ...ROUTE,
+    legs: [{ ...withQuickExit.legs[0], exit: { alight: "5" } } as TransitRoute["legs"][number]],
+  };
+
+  it("하차 준비 줄: 대기 국면엔 없고, 승차 뒤 국면 버튼 다음에 문 위치와 출구가 한 줄로 선다(통지 없음)", async () => {
+    stubWaiting();
+    render(<TransitGuidePanelHost route={withExit} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
+    });
+    // 대기 국면: 빠른 하차 줄만(출구 없음).
+    expect(screen.queryByText(/exitBound/)).toBeNull();
+
+    await boardTrain();
+    const line = await screen.findByText(/quickExitBoth.*transitGuide\.exitBound:5/);
+    expect(line.tagName).toBe("P");
+    expect(line.closest("[aria-live]")).toBeNull();
+    expect(screen.getByRole("status").textContent).not.toContain("exitBound");
+    const change = screen.getByRole("button", { name: "transitGuide.changeBoarding" });
+    expect(change.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const progress = screen.getByRole("button", { name: "guide.progressButton" });
+    expect(line.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("하차 준비 줄: 문 위치도 출구도 없으면 줄이 없다(부재 문구를 만들지 않는다)", async () => {
+    stubWaiting();
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await boardTrain();
+    await screen.findByRole("button", { name: "transitGuide.changeBoarding" });
+    expect(screen.queryByText(/exitBound|alightAt|quickExit/)).toBeNull();
+  });
 });
 
 describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {

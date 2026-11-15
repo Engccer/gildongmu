@@ -75,6 +75,10 @@ struct SettingsView: View {
     // 진행 상태 진동(E30 실험판) — 켜면 가까워짐·정지·신뢰 불가 3종에 진동을 더한다. 꺼짐 = 종전 동작.
     // 소비는 `BeaconTonePlayer.haptic(for:)`, 대상 집합은 Kit `BeaconTone.hapticIsOptIn`.
     @AppStorage(TrendHaptics.storageKey) private var trendHapticsEnabled = false
+    // 나들이 「말로 묻기」의 답변 모델(E82 V23) — 선택지는 서버에 키가 있는 것뿐이다(`/api/vergilius/providers`, 게이트 패턴).
+    // 조회 전·실패면 행이 없다. 저장값이 닫혔으면 목록 맨 앞이 실효값이다(Kit `VergiliusProvider.effective`).
+    @AppStorage(VergiliusProvider.storageKey) private var vergiliusProviderRaw = ""
+    @State private var vergiliusChoices: [String] = []
     #endif
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
@@ -105,6 +109,23 @@ struct SettingsView: View {
     private static func formatWeight(_ w: Double) -> String {
         w == w.rounded() ? String(Int(w)) : String(w)
     }
+
+    /// 답변 모델 선택지를 서버에서 받는다(실험판만). 실패하면 행을 그리지 않는다 — 고를 수 없는 이름을 보이지 않는다.
+    private func loadVergiliusChoices() async {
+        #if DEBUG || EXPERIMENTAL
+        guard AppConfig.experimentalOutingEnabled,
+              let server = try? await VergiliusService(baseURL: AppConfig.apiBaseURL).providers() else { return }
+        vergiliusChoices = VergiliusProvider.choices(server: server)
+        #endif
+    }
+
+    #if DEBUG || EXPERIMENTAL
+    private var vergiliusSelection: Binding<String> {
+        Binding(
+            get: { VergiliusProvider.effective(stored: vergiliusProviderRaw, choices: vergiliusChoices) ?? "" },
+            set: { vergiliusProviderRaw = $0 })
+    }
+    #endif
 
     /// 편집 종료 시점의 커밋(A39, spec `docs/superpowers/specs/2026-09-11-settings-weight-commit-design.md`).
     /// 종전엔 타자 한 글자마다 돌며 범위 밖을 **0으로 덮어** "저장됨"과 "무시됨"을 뭉갰다(헌장 §1).
@@ -250,6 +271,17 @@ struct SettingsView: View {
                     // 해제하면 채팅이 다시 동의 화면으로 — 5.1.2(i)의 동의 재검토·철회 요건.
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
                            isOn: $aiConsentGranted)
+                    #if DEBUG || EXPERIMENTAL
+                    if AppConfig.experimentalOutingEnabled, !vergiliusChoices.isEmpty {
+                        Picker(appLocalized("ios.settings.vergiliusProvider"), selection: vergiliusSelection) {
+                            ForEach(vergiliusChoices, id: \.self) { id in
+                                Text(VergiliusProvider.displayName(id) ?? id).tag(id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .id("vergiliusProvider-\(AppLanguage.current)")
+                    }
+                    #endif
                     Link(appLocalized("ios.common.privacyPolicy"),
                          destination: AppConfig.privacyPolicyURL)
                     // AI 생성 콘텐츠 신고 경로의 최소 대응(스펙 §1).
@@ -272,6 +304,7 @@ struct SettingsView: View {
             .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
             // 스와이프·VO escape로 닫힐 때의 폴백(멱등이라 [닫기] 경로와 겹쳐도 통지는 최대 1회).
             .onDisappear { commitWeight() }
+            .task { await loadVergiliusChoices() }
             .task {
                 guard focusWeightOnAppear else { return }
                 proxy.scrollTo(Self.weightRowID)

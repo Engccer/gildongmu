@@ -54,6 +54,7 @@ export function DistanceBeacon({
   onActiveChange,
   via,
   arrivalText,
+  exitLead,
   onUserStop,
   onFailure,
 }: {
@@ -117,6 +118,8 @@ export function DistanceBeacon({
   via?: RouteGuideVia | null;
   /** 확정 도착 문장 대체(E70-f 여정 단계) — `useRouteGuide` 동명 옵션 그대로. 미지정 = 기본 문장. */
   arrivalText?: string;
+  /** 출구 인계(E84): 지하철 말미 도보 인계가 실어 온 하차 출구 번호. 첫 시작류 통지 앞에 실린다. 미지정 = 종전 동작. */
+  exitLead?: string | null;
   /**
    * 사용자가 이 패널의 중지(트리거·토글)를 누른 직후·세션 중지 직전 1회(E70-f spec §7.3). 웹 `onSessionEnd`는 사용자 중지와
    * 그 밖의 종료를 같은 `"ended"`로 내므로, 여정이 「안내 종료 = 여정 전체 종료」(D11)를 가르려면 이 신호가 필요하다.
@@ -138,7 +141,12 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via, arrivalText, onFailure });
+  const guide = useRouteGuide(
+    dest,
+    kind,
+    { accessible, variant },
+    { onSessionEnd, via, arrivalText, onFailure, exitLead },
+  );
 
   /** 남은 거리 행의 거리 조각 — 목표(N4 2026-09-24 §5.2)에 따라 라벨이 값과 함께 바뀐다. */
   function remainingDistanceText(progress: GuideProgress): string {

@@ -334,8 +334,9 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-station")).toBe("강남");
   });
 
-  // dest 도구 2종 컴포넌트 마운트 테스트
-  it("car-route renders면 CarRouteBriefing dest prop으로 마운트", () => {
+  // dest 도구 2종 컴포넌트 마운트 테스트 — `route-start`를 신고하지 않는 채팅(장소 상세: 안내 시작 카드 통로 없음)에는
+  // 서버가 여전히 이 둘을 보낸다. 웹은 종전대로 요약 카드를 그린다(E83).
+  it("car-route renders면 CarRouteBriefing dest prop으로 마운트(통로 없는 채팅)", () => {
     render(
       <MessageBubble
         message={{
@@ -358,7 +359,7 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-dest-lng")).toBe("127.1");
   });
 
-  it("transit-route renders면 TransitRouteBriefing dest prop으로 마운트", () => {
+  it("transit-route renders면 TransitRouteBriefing dest prop으로 마운트(통로 없는 채팅)", () => {
     render(
       <MessageBubble
         message={{

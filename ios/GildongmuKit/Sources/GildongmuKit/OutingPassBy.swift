@@ -25,17 +25,17 @@ public struct OutingPassByCandidate: Sendable, Equatable {
 }
 
 public struct OutingPassByResult: Sendable, Equatable {
-    /// 이 fix에서 말할 장소(가장 가까운 하나). 없으면 nil.
-    public let spoken: String?
-    /// 말할 자격은 있었지만 말하지 않은 장소 — `spoken` 집합에 함께 넣어 다음 fix에 다시 후보가 되지 않게 한다.
-    public let silenced: [String]
+    /// 이 fix에서 지나친 장소 **전부**, 가까운 순(E82 V1). 「가장 가까운 한 곳만 말하고 나머지는 영구 침묵」이 길가 가게의
+    /// 가장 큰 누락 원인이었다(조사 2026-11-12) — 여럿이면 호출부가 묶음(`OutingBundle`)에 쥐었다가 한 문장으로 말한다.
+    public let passed: [String]
 }
 
 private func turnDegrees(_ a: Double, _ b: Double) -> Double {
     abs((a - b + 540).truncatingRemainder(dividingBy: 360) - 180)
 }
 
-/// 이 fix의 지나침. 후보는 호출부가 낭독 단계(§7.2)로 이미 거른 목록이다.
+/// 이 fix의 지나침. 후보는 호출부가 낭독 단계(§7.2)로 이미 거른 목록이다. `spoken`은 다시 후보가 되지 않는 장소
+/// (말했거나 묶음에 쥔 것) 전부다.
 public func outingPassByStep(
     candidates: [OutingPassByCandidate], spoken: Set<String>
 ) -> OutingPassByResult {
@@ -49,11 +49,8 @@ public func outingPassByStep(
         return prev.zone == .ahead && c.current.zone != .ahead
             && abs(c.current.t) <= outingPassByLateralMeters
     }
-    guard let nearest = eligible.min(by: { $0.current.d < $1.current.d }) else {
-        return OutingPassByResult(spoken: nil, silenced: [])
-    }
     return OutingPassByResult(
-        spoken: nearest.id, silenced: eligible.map(\.id).filter { $0 != nearest.id })
+        passed: eligible.sorted { ($0.current.d, $0.id) < ($1.current.d, $1.id) }.map(\.id))
 }
 
 // MARK: - 도로명 변경

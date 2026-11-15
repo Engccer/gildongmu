@@ -13,6 +13,8 @@ import {
   parseSeoulRouteStops,
   fetchSeoulNearby,
   fetchSeoulRouteStops,
+  parseSeoulRouteList,
+  parseSeoulLineStops,
 } from "../providers/seoul-bus";
 
 const parseSeoulItemsCount = (raw: unknown) => parseSeoulItems(raw).length;
@@ -170,5 +172,70 @@ describe("fetchSeoulRouteStops", () => {
     const stops = await fetchSeoulRouteStops("100100508");
     expect(stops.length).toBeGreaterThan(0);
     expect(stops[0].order).toBeLessThanOrEqual(stops[stops.length - 1].order);
+  });
+});
+
+// E87: 노선 번호 검색과 방면을 살린 경유 정류소. 필드 모양은 2026-11-14 실호출(272번) 응답에서 옮겼다.
+describe("parseSeoulRouteList · parseSeoulLineStops (E87)", () => {
+  const list = {
+    msgHeader: { headerCd: "0" },
+    msgBody: {
+      itemList: [
+        {
+          busRouteId: "100100048",
+          busRouteNm: "272",
+          routeType: "3",
+          stStationNm: "면목동",
+          edStationNm: "남가좌동",
+          term: "6",
+          lastBusTm: "20261114223000",
+          firstBusTm: "20261114041500",
+          firstLowTm: "20151125000000",
+        },
+        { busRouteId: "", busRouteNm: "빈ID" },
+        { busRouteId: "1", busRouteNm: "9", routeType: "99", term: "0", firstBusTm: " ", lastBusTm: "" },
+      ],
+    },
+  };
+
+  it("노선 목록: 유형 코드·기점·종점·첫차·막차(분)·배차 간격을 읽고 ID 없는 항목은 버린다", () => {
+    expect(parseSeoulRouteList(list)).toEqual([
+      {
+        source: "seoul",
+        routeId: "100100048",
+        routeNo: "272",
+        routeType: "간선버스",
+        startStop: "면목동",
+        endStop: "남가좌동",
+        firstMinutes: 255,
+        lastMinutes: 1350,
+        intervalMinutes: 6,
+      },
+      { source: "seoul", routeId: "1", routeNo: "9", routeType: "", startStop: "", endStop: "", firstMinutes: null, lastMinutes: null, intervalMinutes: null },
+    ]);
+  });
+
+  it("서울 밖 노선의 000000 첫차·막차는 자정이 아니라 값 없음이다", () => {
+    const raw = { msgBody: { itemList: [{ busRouteId: "2", busRouteNm: "1003남양주", term: "30", firstBusTm: "20261114000000", lastBusTm: "20261114000000" }] } };
+    expect(parseSeoulRouteList(raw)[0]).toMatchObject({ firstMinutes: null, lastMinutes: null, intervalMinutes: 30 });
+  });
+
+  it("빈 결과 봉투는 빈 배열", () => {
+    expect(parseSeoulRouteList({ msgHeader: { headerCd: "4" }, msgBody: { itemList: null } })).toEqual([]);
+  });
+
+  it("경유 정류소: 순번 오름차순에 방면과 회차 표식을 싣는다", () => {
+    const raw = {
+      msgBody: {
+        itemList: [
+          { seq: "48", stationNm: "명지대사거리.백련시장", gpsX: "126.92", gpsY: "37.58", direction: "면목동", transYn: "Y" },
+          { seq: "1", stationNm: "방약국앞", gpsX: "127.0858", gpsY: "37.5757", direction: "남가좌동", transYn: "N" },
+        ],
+      },
+    };
+    expect(parseSeoulLineStops(raw)).toEqual([
+      { name: "방약국앞", order: 1, lat: 37.5757, lng: 127.0858, towards: "남가좌동", turnaround: false },
+      { name: "명지대사거리.백련시장", order: 48, lat: 37.58, lng: 126.92, towards: "면목동", turnaround: true },
+    ]);
   });
 });

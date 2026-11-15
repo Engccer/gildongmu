@@ -29,13 +29,17 @@ const IOS_DIR = join(ROOT, "ios");
 const CHAT_CARD = join(ROOT, "ios/Gildongmu/Chat/JourneyChatCardView.swift");
 const CHAT_CONVERSATION = join(ROOT, "ios/Gildongmu/Chat/ChatConversationView.swift");
 const CHAT_MODEL = join(ROOT, "ios/Gildongmu/Chat/ChatModel.swift");
+const ROUTE_START_CARD = join(ROOT, "ios/Gildongmu/Chat/RouteStartChatCardView.swift");
+const APP_CONFIG = join(ROOT, "ios/Gildongmu/AppConfig.swift");
+/** 채팅 경로 카드의 [안내 시작](E83)의 실험판 봉인. 능력 신고와 카드 그리기가 이 값 뒤에 있다. */
+const CHAT_GUIDE_FLAG = "AppConfig.experimentalChatGuideEnabled";
 
 /** 2.0에서 삭제된 수단 봉인 플래그 — 식별자가 iOS 어디에도 남지 않아야 한다(항상 참 상수 금지). */
 const RETIRED_FLAG = "experimentalGuidanceEnabled";
 /** 나들이(E51) 봉인 — 2026-09-27 위원장 재판정으로 1차는 실험판 전용. */
 const OUTING_FLAG = "AppConfig.experimentalOutingEnabled";
-/** 택시로 갈아타는 여정(E70) 봉인 — 첫 판은 실험판 전용(BACKLOG E70 판정 5). */
-const JOURNEY_FLAG = "AppConfig.experimentalJourneyEnabled";
+/** 여정(E70·E70-e·E71·E70-b) 봉인 — 2026-11-14 정식판으로 졸업했다. 식별자가 iOS 어디에도 남지 않아야 한다. */
+const RETIRED_JOURNEY_FLAG = "experimentalJourneyEnabled";
 /** 안내 시트 제목 행 밀기 동작(E74) 봉인 — E75(2026-10-27)에서 졸업했다. 식별자가 iOS 어디에도 남지 않아야 한다. */
 const RETIRED_TITLE_ACTIONS_FLAG = "experimentalGuideTitleActionsEnabled";
 
@@ -298,9 +302,19 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 나들이 귀환(E51, 2026-09-26 — `acceptOutingReturn`. 나들이 세션은 이미 실좌표 위에 있었고, 그 세션이
     // 실험판 봉인 안이라 정식판에서 도달 불가)까지 넷. E70(2026-10-17)에서 승차 전 도보는 거부 가드 없는 본문
     // `beginTransit` 안의 `beginBeacon(`으로 옮겼다(여정 중 내부 인계가 `refuseIfActive`에 막히지 않게) — `self.startBeacon(`은 셋.
+    // E83(2026-11-14)이 「도착지와 수단으로 안내 시작」 `startGuide`의 도보·자동차 갈래 둘을 더해 다섯이다. 그 함수는 안내가 시작하며
+    // 지금 위치에서 경로를 새로 받는 자리라 수동 위치 고지 대상이 아니고(spec R7), 호출자는 실험판 봉인 뒤 채팅 경로 카드뿐이다(아래 10).
+    // E82 S3(2026-11-14)이 나들이 귀환의 직접 호출을 지웠다(다섯 → 넷): 나들이에서 안내로 넘기는 길은 `handOverOuting` 하나이고
+    // 그 함수는 `startGuide`를 지난다(spec 2026-11-14-e82-vergilius-v1-design.md V13). 「출발점으로」도 그 길로 간다.
+    // S3 리뷰 반영(2026-11-14)이 「출발점으로」의 시작 요청을 종전(줄 지정 없음)으로 되돌렸다: 인계 함수가 호출자가 조립한 요청을
+    // 받아 `self.startBeacon(`으로 시작하는 갈래 하나를 더해 다시 다섯이다(진입점이 는 것이 아니라 종전 귀환 호출이 인계 함수
+    // 안으로 옮겨졌다).
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(3);
-    expect(declarationBody(session, "acceptOutingReturn")).toContain("self.startBeacon(");
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(5);
+    expect(declarationBody(session, "startGuide").match(/self\.startBeacon\(/g)).toHaveLength(2);
+    expect(declarationBody(session, "acceptOutingReturn")).not.toContain("self.startBeacon(");
+    expect(declarationBody(session, "acceptOutingReturn")).toContain("handOverOuting(");
+    expect(declarationBody(session, "handOverOuting")).toContain("case .request(let request): self.startBeacon(request)");
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "startTransit")).toContain("beginTransit(");
@@ -358,12 +372,62 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   // E78(2026-11-07)은 진입점을 더하지 않는다: 잘못 내림 복구는 같은 세션의 경로 교체(`changeRoute`)이고, 새 경로가 걸어가야
   // 하는 곳에서 시작하면 같은 `transitTransferWalk`를 지난다(호출 자리가 늘 뿐 진입점 수는 그대로다, spec §5-4).
   // E70-b(2026-11-12)가 채팅 여정 카드의 `startJourney` 호출 하나를 더했다(12 → 13). 실험판 봉인 뒤이고 아래 "7"이 잠근다.
-  it("안내 세션 진입점 호출이 정확히 13곳이다", () => {
+  // E83(2026-11-14)이 「도착지와 수단으로 안내 시작」 `GuideSession.startGuide`의 `self.startBeacon(` 둘(도보·자동차)을 더했다(13 → 15).
+  // 대중교통 갈래는 `startTransit(`이라 이 형태에 잡히지 않는다. 그 함수의 호출자는 실험판 봉인 뒤 채팅 경로 카드뿐이고 아래 "10"이 잠근다.
+  // E82 S3(2026-11-14)이 하나를 줄였다(15 → 14): 나들이 귀환 인계가 `self.startBeacon(`을 직접 부르지 않고 `handOverOuting` →
+  // `startGuide`를 지난다(`startGuide(` 호출은 이 형태에 잡히지 않는다). 진입점이 준 것이 아니라 한 길로 합쳐졌다 — 나들이에서
+  // 안내로 넘기는 자리(「출발점으로」·기록 줄의 「도보 안내 시작」)는 아래 "나들이에서 안내로 넘기는 길"이 잠근다.
+  // S3 리뷰 반영(2026-11-14)이 다시 하나를 더했다(14 → 15): 「출발점으로」가 종전 도보 요청(줄 지정 없음)을 넘기고 인계 함수가
+  // 그 요청을 `self.startBeacon(`으로 시작한다. 진입점은 그대로 「출발점으로」 하나다.
+  it("안내 세션 진입점 호출이 정확히 15곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(13);
+    expect(sites).toHaveLength(15);
+  });
+
+  /**
+   * 나들이에서 안내로 넘기는 길은 `GuideSession.handOverOuting` 하나다(E82 V13): 요청 거두기 → 나들이 종료 → `startGuide` →
+   * 실패하면 길찾기 탭 프리필. 나들이 세션이 도는 채로 다른 시작을 부르면 「이미 안내 중」으로 거절되고, 끝내기만 하고
+   * 시작하지 않는 길이 생기면 사용자는 안내 없이 남는다 — 그래서 끝내기와 시작이 한 함수 안에 순서대로 있어야 한다.
+   * 나들이는 실험판 봉인 안이라 이 길은 정식판에서 도달하지 않는다.
+   */
+  it("나들이에서 안내로 넘기는 길은 handOverOuting 한 곳이다", () => {
+    const session = readFileSync(GUIDE_SESSION, "utf8");
+    const body = declarationBody(session, "handOverOuting");
+    // 순서가 계약이다: 거두기 → 끝내기 → 시작 → 실패 판정.
+    expect(body).toMatch(
+      /outing\.withdrawPendingRequest\(\)\s*outing\.endForHandover\(\)[\s\S]*case \.guide\(let mode\): startGuide\(to: destination, mode: mode\)\s*case \.request\(let request\): self\.startBeacon\(request\)[\s\S]*if !isActive \{ endOutingReturn\(id, reason: \.startFailed, destination: destination\) \}/,
+    );
+    // 「출발점으로」는 종전 요청(줄 지정 없음)이고, 기록 줄의 도보 시작은 길찾기 화면의 첫 도보 시작과 같은 요청(`startGuide`)이다.
+    expect(declarationBody(session, "acceptOutingReturn")).toMatch(
+      /start: \.request\(BeaconModel\.StartRequest\([\s\S]*kind: \.walk,\s*accessible: false, variant: nil, line: nil, alternate: nil,/,
+    );
+    // 시트의 버튼(기록 줄·답 아래·제안, E82 V13·V21·V22)은 앱의 한 클로저로 이 함수에 넘긴다. 기록 줄의 도보 시작은 길찾기
+    // 화면의 첫 도보 시작과 같은 요청이다.
+    expect(readFileSync(join(ROOT, "ios/Gildongmu/GildongmuApp.swift"), "utf8")).toContain(
+      "onHandOver: { guideSession.handOverOuting(to: $0, start: $1) }",
+    );
+    expect(readFileSync(join(ROOT, "ios/Gildongmu/Directions/OutingSheet.swift"), "utf8")).toContain(
+      "onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))",
+    );
+    // 낡은 대중교통 조회(S4 리뷰 NIT e)는 시작하지 않고 길찾기 탭으로 — 그 길도 나들이를 먼저 끝낸다(끝내기 뒤에 있다).
+    expect(body).toMatch(/outing\.endForHandover\(\)\s*if case \.directions\(let notice\) = start \{\s*DirectionsPrefillStore\.shared\.pending = DirectionsPrefill\(/);
+    expect(declarationBody(session, "endOutingReturn")).toContain("DirectionsPrefillStore.shared.pending = DirectionsPrefill(");
+    // 나들이를 인계용으로 끝내는 호출과 인계 함수의 호출 자리 전수.
+    const callSites = (pattern: RegExp) =>
+      swiftFiles(IOS_DIR).flatMap((file) =>
+        (readFileSync(file, "utf8").match(pattern) ?? []).map(() => file.split("/").pop()),
+      );
+    expect(callSites(/outing\.endForHandover\(/g)).toEqual(["GuideSessionCoordinator.swift"]);
+    expect(callSites(/(?<!func )handOverOuting\(/g).sort()).toEqual(["GildongmuApp.swift", "GuideSessionCoordinator.swift"]);
+    expect(callersOf(session, "handOverOuting(")).toEqual(["acceptOutingReturn"]);
+    // 나들이 모델과 시트는 세션을 직접 시작하지도, 길찾기 탭에 직접 넘기지도 않는다.
+    for (const name of ["OutingModel.swift", "OutingSheet.swift", "OutingOverviewAdapter.swift"]) {
+      const source = readFileSync(join(ROOT, "ios/Gildongmu/Directions", name), "utf8");
+      expect(source, name).not.toMatch(/start(?:Guide|Beacon|Transit|Journey)\(|DirectionsPrefillStore/);
+    }
   });
 
   /**
@@ -407,7 +471,7 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   });
 });
 
-describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
+describe("7. 여정(E70) — 졸업 확인과 내부 인계", () => {
   const session = () => readFileSync(GUIDE_SESSION, "utf8");
   /** 그 식별자를 부르는 선언(func) 이름들 — 호출 자리의 주인. */
   function callersOf(source: string, call: string): string[] {
@@ -415,21 +479,26 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     return names.filter((name) => declarationBody(source, name).includes(call)).sort();
   }
 
-  it("여정 시작은 길찾기 탭과 채팅 여정 카드(E70-b) 두 곳뿐이고 둘 다 실험판 봉인 조건 안에 있다", () => {
+  it("experimentalJourneyEnabled 식별자가 iOS 소스에 남아 있지 않다(졸업, 되살리지 않는다)", () => {
+    const offenders = swiftFiles(IOS_DIR).filter((file) =>
+      readFileSync(file, "utf8").includes(RETIRED_JOURNEY_FLAG),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("여정 시작은 길찾기 탭과 채팅 여정 카드(E70-b) 두 곳뿐이다", () => {
     const calls = swiftFiles(IOS_DIR).flatMap((file) =>
       (readFileSync(file, "utf8").match(/GuideSession\.shared\.startJourney\(/g) ?? []).map(() => file.split("/").pop()),
     );
     expect([...calls].sort()).toEqual(["DirectionsTabView.swift", "JourneyChatCardView.swift"]);
     const sites = enclosingHeaders(directions(), "GuideSession.shared.startJourney(");
     expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain(JOURNEY_FLAG);
     const cardSites = enclosingHeaders(readFileSync(CHAT_CARD, "utf8"), "GuideSession.shared.startJourney(");
     expect(cardSites).toHaveLength(1);
-    expect(cardSites[0].join("\n")).toContain(JOURNEY_FLAG);
   });
 
-  it("채팅 여정 카드(E70-b)의 그리기·능력 신고·길찾기 프리필은 실험판 봉인 뒤에만 있고 장소 채팅에는 닿지 않는다", () => {
-    // 카드를 만드는 자리는 대화 화면 한 곳이고 봉인 머리말 안이며 범용 채팅(`showsJourneyCard`)에서만이다.
+  it("채팅 여정 카드(E70-b)의 그리기·능력 신고는 범용 채팅에서만이고 장소 채팅에는 닿지 않는다", () => {
+    // 카드를 만드는 자리는 대화 화면 한 곳이고 범용 채팅(`showsJourneyCard`)에서만이다.
     const cardUses = swiftFiles(IOS_DIR).flatMap((file) =>
       (readFileSync(file, "utf8").match(/JourneyChatCardView\(/g) ?? []).map(() => file.split("/").pop()),
     );
@@ -437,19 +506,18 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     const conversation = readFileSync(CHAT_CONVERSATION, "utf8");
     const drawSites = enclosingHeaders(conversation, "JourneyChatCardView(payload");
     expect(drawSites).toHaveLength(1);
-    expect(drawSites[0].join("\n")).toContain(JOURNEY_FLAG);
     expect(drawSites[0].join("\n")).toContain("showsJourneyCard");
     expect(conversation).toContain("showsJourneyCard: model.place == nil");
-    // 능력 신고: 요청 본문에 `capabilities`를 싣는 자리는 한 곳이고, 그 값은 봉인과 범용 채팅 조건 변수만 지난다.
+    // 능력 신고: 요청 본문에 `capabilities`를 싣는 자리는 한 곳이고, 그 값은 범용 채팅 조건 변수만 지난다.
     const model = readFileSync(CHAT_MODEL, "utf8");
     expect(model.match(/capabilities:/g)).toHaveLength(1);
-    expect(model).toContain("let reportsJourney = AppConfig.experimentalJourneyEnabled && place == nil");
-    expect(model).toContain('capabilities: reportsJourney ? ["journey"] : nil');
+    expect(model).toContain("let reportsJourney = place == nil");
+    // E83: 경로 카드 신고는 그 뒤에 덧붙는다(실험판 봉인, 아래 10). 여정 신고는 봉인과 무관하게 종전 그대로다.
+    expect(model).toContain('capabilities: reportsJourney ? ["journey"] + (reportsRouteStart ? ["route-start"] : []) : nil');
     expect(model).toContain("userLocationManual: reportsJourney ?");
-    // 길찾기 모델이 프리필의 여정 재료를 읽는 자리도 봉인 머리말 안이다(역 칸이 없는 구성에서 닿지 않는다).
+    // 길찾기 모델이 프리필의 여정 재료를 읽는 자리는 한 곳이다.
     const prefillSites = enclosingHeaders(directions(), "let journey = prefill?.journey");
     expect(prefillSites).toHaveLength(1);
-    expect(prefillSites[0].join("\n")).toContain(JOURNEY_FLAG);
   });
 
   it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {
@@ -504,6 +572,97 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     expect(clean.match(/==\s*\.done\b/g)).toHaveLength(1);
     expect(declarationBody(transit, "completeOrAdvance")).toContain("== .done");
     expect(declarationBody(transit, "completeOrAdvance")).toContain("onJourneyRideCompleted");
+  });
+});
+
+describe("10. 채팅 경로 카드의 [안내 시작](E83) — 실험판 봉인", () => {
+  const session = () => readFileSync(GUIDE_SESSION, "utf8");
+  const filesCalling = (pattern: RegExp) =>
+    swiftFiles(IOS_DIR).flatMap((file) =>
+      (blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).match(pattern) ?? []).map(() => file.split("/").pop()),
+    );
+
+  it("플래그는 빌드 구성이 가른다(#if EXPERIMENTAL)", () => {
+    const config = readFileSync(APP_CONFIG, "utf8");
+    expect(config).toMatch(
+      /#if EXPERIMENTAL\s+static let experimentalChatGuideEnabled = true\s+#else\s+static let experimentalChatGuideEnabled = false\s+#endif/,
+    );
+  });
+
+  it("능력 신고는 범용 채팅 ∧ 플래그 뒤에만 덧붙는다(정식판 요청 본문은 종전 그대로)", () => {
+    const model = readFileSync(CHAT_MODEL, "utf8");
+    expect(model).toContain(`let reportsRouteStart = reportsJourney && ${CHAT_GUIDE_FLAG}`);
+    // `"route-start"` 문자열이 요청에 실리는 자리는 그 변수를 지나는 한 곳이다.
+    expect(model.match(/"route-start"/g)).toHaveLength(1);
+    expect(model).toContain('(reportsRouteStart ? ["route-start"] : [])');
+  });
+
+  it("카드를 그리는 자리는 대화 화면 한 곳이고 범용 채팅 ∧ 플래그 뒤다", () => {
+    expect(filesCalling(/RouteStartChatCardView\(/g)).toEqual(["ChatConversationView.swift"]);
+    const conversation = readFileSync(CHAT_CONVERSATION, "utf8");
+    const drawSites = enclosingHeaders(conversation, "RouteStartChatCardView(group");
+    expect(drawSites).toHaveLength(1);
+    expect(drawSites[0].join("\n")).toContain("if showsRouteStartCard");
+    // 그 조건 변수에 값을 넣는 자리는 하나이고 플래그를 지난다.
+    expect(conversation.match(/showsRouteStartCard:/g)).toHaveLength(2); // 인자 전달 하나 + 선언 하나
+    expect(conversation).toContain(`showsRouteStartCard: model.place == nil && ${CHAT_GUIDE_FLAG}`);
+  });
+
+  it("플래그 소비자는 신고와 카드 그리기 둘뿐이다", () => {
+    const users = swiftFiles(IOS_DIR)
+      .filter((file) => blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).includes("experimentalChatGuideEnabled"))
+      .map((file) => file.split("/").pop())
+      .sort();
+    expect(users).toEqual(["AppConfig.swift", "ChatConversationView.swift", "ChatModel.swift"]);
+  });
+
+  it("「도착지와 수단으로 안내 시작」의 호출자는 채팅 경로 카드뿐이고, 카드는 그 함수로만 안내를 시작한다", () => {
+    expect(filesCalling(/\.startGuide\(/g)).toEqual(["RouteStartChatCardView.swift", "RouteStartChatCardView.swift"]);
+    const card = blankSwiftCommentsAndStrings(readFileSync(ROUTE_START_CARD, "utf8"));
+    expect(card).not.toMatch(/\.(startBeacon|startTransit|startJourney|startOuting)\(/);
+    expect(card).not.toContain("StartRequest(");
+  });
+
+  it("시작 함수는 수단별 인자를 기존 시작 진입점으로만 보낸다(거부 게이트를 건너뛰지 않는다)", () => {
+    const body = declarationBody(session(), "startGuide");
+    expect(body).toContain("self.startBeacon(BeaconModel.walkLineRequest(");
+    expect(body).toContain("self.startBeacon(BeaconModel.carRequest(");
+    expect(body).toContain("startTransit(");
+    expect(body).not.toMatch(/beginBeacon\(|beginTransit\(|requestStart\(/);
+    // 도보의 줄은 Kit 한 판정(길찾기 화면의 첫 도보 시작 버튼과 같다)이고 계단 회피를 호출자 값으로 넘긴다.
+    expect(body).toContain("WalkLineKind.startLine(accessible: accessible, dataLocale: AppLanguage.dataLocale)");
+  });
+
+  it("카드의 수단 버튼 조건은 길찾기 화면과 같은 판정을 쓴다(R10)", () => {
+    const card = readFileSync(ROUTE_START_CARD, "utf8");
+    expect(card).toContain("canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: car.carProvider)");
+    expect(card).toContain("transitRouteEntries(result).first?.route, transitGuideStartable(route)");
+    expect(directions()).toContain("canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: briefing.provider)");
+    expect(declarationBody(directions(), "altTransitGuideStartable")).toContain("transitGuideStartable(route)");
+  });
+
+  it("대중교통 버튼은 점유 확인 → 실측위 → 신선도 순이고, 낡았거나 수동 위치면 그 결과로 시작하지 않는다(R6)", () => {
+    const card = readFileSync(ROUTE_START_CARD, "utf8");
+    const start = card.slice(card.indexOf("private func startTransit("), card.indexOf("private func openInDirections("));
+    const order = [
+      "refuseStartIfOccupied()",
+      "LocationService.shared.currentCoordinate(force: true)",
+      "journeyCardFreshness(",
+      "guard freshness == .fresh, !transit.manualOrigin else {",
+      "requeryInDirections()",
+      "GuideSession.shared.startGuide(",
+    ].map((needle) => start.indexOf(needle));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(start).not.toContain("ManualLocationJudge");
+  });
+
+  it("카드에 heading·이모지·disabled가 없고 버튼은 44pt다", () => {
+    const card = blankSwiftCommentsAndStrings(readFileSync(ROUTE_START_CARD, "utf8"));
+    expect(card).not.toContain(".isHeader");
+    expect(card).not.toContain(".disabled(");
+    expect(card).toContain(".frame(minHeight: 44)");
+    expect(card).not.toContain("AccessibilityNotification"); // 새 통지 창구를 만들지 않는다
   });
 });
 

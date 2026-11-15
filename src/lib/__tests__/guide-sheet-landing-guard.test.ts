@@ -63,7 +63,9 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     const exists = body(BEACON, "private func rowExists(");
     expect(exists).toContain("case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil");
     expect(exists).toContain("case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil");
-    expect(exists).toContain("case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty");
+    expect(exists).toContain("case .status: return tracking && model.mode == .brief && statusRowText != nil");
+    // 행 렌더와 존재 판정은 같은 유도 값을 읽는다(출구 대기 E84 동안은 출구 줄).
+    expect(BEACON).toContain("if let text = statusRowText {");
     expect(exists).not.toMatch(/\bdefault:/);
     // 렌더 쪽 조건이 바뀌면 위 사본도 함께 바뀌어야 한다 — 렌더 조건 문자열을 함께 잠근다.
     expect(BEACON).toContain("if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {");
@@ -97,7 +99,11 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(OUTPUT).toContain("UIAccessibility.announcementStringValueUserInfoKey");
     // 끝 신호의 문장 형은 실측이 없다 — 두 형을 다 받는다(설계 리뷰 MAJOR 2: 어긋나면 모든 착지가 상한까지 기다린다).
     expect(OUTPUT).toContain("let text = (value as? String) ?? (value as? NSAttributedString)?.string");
-    expect(OUTPUT).not.toContain("announcementWasSuccessfulUserInfoKey");
+    // 착지 장부는 끝까지 말했는지를 보지 않는다(끊겨도 끝이다). 성공 여부 키는 E82 발화 전달 계약(V0a)의 전달 장부만
+    // 읽는다 — 그쪽은 「끝까지 말했는가」가 판정이라 따로 둔 장부다(Kit `VoiceOverDeliveryLedger`).
+    expect(OUTPUT).toContain("if let text { ledger.finished(text, at: now) }");
+    expect(OUTPUT.split("announcementWasSuccessfulUserInfoKey").length - 1).toBe(1);
+    expect(OUTPUT).toContain("deliveries.finished(text, successful: successful)");
     // 장부 만료는 착지 대기 상한보다 길어야 짝 실패가 `cap open=1`로 드러난다(접근성 감사 M1 — 같으면 거짓 `settled`).
     const ledger = readFileSync(join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/GuideAnnouncementLedger.swift"), "utf8");
     const expiry = Number(ledger.match(/public static let expirySeconds = ([\d.]+)/)?.[1]);
@@ -146,9 +152,11 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
 
   it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행·새로고침 버튼에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1, E75)", () => {
     // 새로고침 버튼은 최종 접근 진입·간략 강등에 사라진다 — 집합에 들고, 행 존재 사본이 렌더 조건(`canRequestDifferentRoute`)과 짝이다.
-    expect(BEACON).toContain("Set([SheetFocus.remaining, .liveTop, .status, .refresh].filter(rowExists))");
+    expect(BEACON).toContain("Set([SheetFocus.remaining, .liveTop, .status, .refresh, .exitRelease].filter(rowExists))");
     expect(BEACON).toContain("case .refresh: return tracking && model.canRequestDifferentRoute");
-    expect(BEACON).toContain("case .refresh, .arrived, .healthSummary: false");
+    expect(BEACON).toContain("case .refresh, .exitRelease, .arrived, .healthSummary: false");
+    // 「출구로 나왔어요」(E84)도 같다: 창이 저절로 닫혀 버튼이 사라질 때 커서가 그 위였으면 첫 정보 행으로 옮긴다.
+    expect(BEACON).toContain("case .exitRelease: return tracking && model.mode == .brief && model.exitHoldActive");
     expect(BEACON).toMatch(
       /\.onChange\(of: presentInfoRows\) \{ old, new in\s*guard let focused = focusedRow, old\.contains\(focused\), !new\.contains\(focused\),\s*model\.isTracking, model\.arrivalDest == nil else \{ return \}\s*requestInfoLanding\(note: "lost=\\\(focused\)"\)/,
     );

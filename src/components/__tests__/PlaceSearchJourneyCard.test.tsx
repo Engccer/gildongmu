@@ -262,8 +262,14 @@ describe("채팅 여정 카드 → PlaceSearch(E70-b)", () => {
       });
       expect(screen.queryByRole("dialog")).toBeNull();
       // 길찾기에서 돌아온다(뒤로가기) — 홈의 [AI에게 질문]이 다시 보인다.
+      // jsdom의 `history.back()`은 비동기라, 그 popstate가 뒤늦게 와서 다시 연 채팅을 닫지 않게 여기서 기다려 소진한다.
       await act(async () => {
+        const popped = new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 500);
+          window.addEventListener("popstate", () => { clearTimeout(timer); resolve(); }, { once: true });
+        });
         window.history.back();
+        await popped;
         window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
       });
     }

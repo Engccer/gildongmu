@@ -262,7 +262,8 @@
       "carListenerDriver": "Conductor (altavoz, órdenes breves)",
       "tabOrder": "Orden de las pestañas",
       "tabOrderReset": "Restablecer el orden predeterminado",
-      "tabOrderResetDone": "Orden predeterminado restablecido"
+      "tabOrderResetDone": "Orden predeterminado restablecido",
+      "vergiliusProvider": "Modelo de respuesta"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "Nuevo destino: {name}.",
       "destChangedNoName": "Destino cambiado.",
       "destChangedFetching": "Buscando una nueva ruta.",
+      "exitHoldAction": "Salir por la salida {exit}",
+      "exitHoldRelease": "Ya salí de la estación",
       "titleWaypointChange": "{label}, cambiar punto intermedio",
       "differentRoute": "Actualizar ruta",
       "differentRouteFailed": "No se pudo encontrar una ruta nueva.",
@@ -382,6 +385,11 @@
       "passLeft": "{name} a la izquierda",
       "passRight": "{name} a la derecha",
       "passSide": "Pasando junto a {name}",
+      "bundleLeft": "A la izquierda: {names}",
+      "bundleRight": "A la derecha: {names}",
+      "bundleSide": "Al lado: {names}",
+      "bundleNameSeparator": ", ",
+      "bundleSideSeparator": ". ",
       "crosswalkAhead": "Paso de peatones delante",
       "crosswalkAheadAudio": "Paso de peatones delante, con señal sonora",
       "junctionLeftAlley": "Callejón a la izquierda",
@@ -411,7 +419,22 @@
       },
       "started": "Paseo iniciado",
       "ended": "Paseo terminado",
-      "zoneAround": "Cerca, {distance}"
+      "zoneAround": "Cerca, {distance}",
+      "historyHeading": "Anuncios recientes",
+      "historyEmpty": "Aún no hay anuncios",
+      "historyLeft": "izquierda",
+      "historyRight": "derecha",
+      "historyBeside": "al lado",
+      "historyPassedBy": "ya pasado",
+      "historyJustNow": "ahora mismo",
+      "historyMinutesAgo": "hace {minutes} min",
+      "askButton": "Preguntar por voz",
+      "askHint": "Mantén pulsado y habla. Levanta el dedo para preguntar.",
+      "askNoAnswer": "No se recibió respuesta.",
+      "askCutOff": "La respuesta se cortó.",
+      "askNoSpeech": "No se oyó ninguna pregunta.",
+      "askNoLocation": "Aún no puedes preguntar: no se conoce tu ubicación.",
+      "askProposal": "¿Te guío hasta {name}?"
     },
     "reorder": {
       "toTop": "Mover al principio",

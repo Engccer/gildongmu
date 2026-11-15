@@ -3,7 +3,7 @@
  * ②safety pass^k ③regression/capability 분리 ④measuredAt 기준 단가 ⑤"총지연" 라벨+각주 ⑥unstubbed.
  */
 import { describe, expect, it } from "vitest";
-import { buildReport, caseVerdict, pricesAt, type ResultFile, type RunResult } from "../report";
+import { buildReport, caseVerdict, parseModelSpec, pricesAt, type ResultFile, type RunResult } from "../report";
 
 const A = "gemini-3.6-flash";
 const B = "gemini-3.7-flash";
@@ -66,6 +66,25 @@ describe("pricesAt — 단가는 날짜의 함수", () => {
   it("단가는 모델별이고 미등록 모델은 라벨에 가정을 밝힌다(침묵 금지)", () => {
     expect(pricesAt("2026-08-25T00:00:00Z", "gemini-3.7-flash").label).not.toContain("미등록");
     expect(pricesAt("2026-08-25T00:00:00Z", "gemini-4.0-pro").label).toContain("gemini-4.0-pro 단가 미등록");
+  });
+  it("기간 할인이 없는 모델은 프로모 기간 안에도 정가다(4-hydrogen)", () => {
+    const p = pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen");
+    expect(p).toMatchObject({ inPerToken: 1.5 / 1e6, outPerToken: 7.5 / 1e6 });
+    expect(p.label).toContain("기간 할인 없음");
+    expect(p.label).not.toContain("미등록");
+  });
+  it("생각 수준 접미사는 단가를 바꾸지 않는다", () => {
+    expect(pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen@low")).toEqual(pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen"));
+    expect(pricesAt("2026-11-14T00:00:00Z", "gemini-3.6-flash@low").label).toContain("2026-12-31");
+  });
+});
+
+describe("parseModelSpec — 모델 표기와 생각 수준", () => {
+  it("접미사가 없으면 생각 설정을 넣지 않는다", () => {
+    expect(parseModelSpec("gemini-3.6-flash")).toEqual({ model: "gemini-3.6-flash", thinkingLevel: null });
+  });
+  it("@ 뒤가 생각 수준이고 대문자로 맞춘다", () => {
+    expect(parseModelSpec("gemini-4-hydrogen@low")).toEqual({ model: "gemini-4-hydrogen", thinkingLevel: "LOW" });
   });
 });
 

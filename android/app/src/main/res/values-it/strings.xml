@@ -139,6 +139,8 @@
     <string name="android_guide_destMenuDetail">Vedi dettagli del luogo</string>
     <string name="android_guide_differentRoute">Aggiorna percorso</string>
     <string name="android_guide_differentRouteFailed">Impossibile trovare un nuovo percorso.</string>
+    <string name="android_guide_exitHoldAction">Prendere l\'uscita %1$s</string>
+    <string name="android_guide_exitHoldRelease">Ho lasciato la stazione</string>
     <string name="android_guide_focusDenied">Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora</string>
     <string name="android_guide_mediaVolumeZero">Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti</string>
     <string name="android_guide_notificationChannel">Guida a piedi</string>
@@ -234,7 +236,19 @@
     <string name="android_nearby_whereAmIChat">Chiedi informazioni sulla mia posizione attuale</string>
     <string name="android_outing_aheadLandmark">Davanti: %1$s, %2$s</string>
     <string name="android_outing_aheadNone">Nessun punto di riferimento davanti</string>
+    <string name="android_outing_askButton">Chiedi a voce</string>
+    <string name="android_outing_askCutOff">La risposta si è interrotta.</string>
+    <string name="android_outing_askHint">Tieni premuto e parla. Solleva il dito per chiedere.</string>
+    <string name="android_outing_askNoAnswer">Nessuna risposta ricevuta.</string>
+    <string name="android_outing_askNoLocation">Non puoi ancora chiedere: posizione sconosciuta.</string>
+    <string name="android_outing_askNoSpeech">Nessuna domanda sentita.</string>
+    <string name="android_outing_askProposal">Ti guido fino a %1$s?</string>
     <string name="android_outing_band">Passeggiata, %1$s</string>
+    <string name="android_outing_bundleLeft">A sinistra: %1$s</string>
+    <string name="android_outing_bundleNameSeparator">", "</string>
+    <string name="android_outing_bundleRight">A destra: %1$s</string>
+    <string name="android_outing_bundleSide">Accanto: %1$s</string>
+    <string name="android_outing_bundleSideSeparator">". "</string>
     <string name="android_outing_crosswalkAhead">Attraversamento pedonale davanti</string>
     <string name="android_outing_crosswalkAheadAudio">Attraversamento pedonale davanti, con segnale acustico</string>
     <string name="android_outing_dir_e">est</string>
@@ -249,6 +263,14 @@
     <string name="android_outing_endedByUser">Passeggiata terminata.</string>
     <string name="android_outing_heading">Passeggiata</string>
     <string name="android_outing_headingUnknown">Verifica della direzione</string>
+    <string name="android_outing_historyBeside">accanto</string>
+    <string name="android_outing_historyEmpty">Ancora nessun annuncio</string>
+    <string name="android_outing_historyHeading">Annunci recenti</string>
+    <string name="android_outing_historyJustNow">adesso</string>
+    <string name="android_outing_historyLeft">sinistra</string>
+    <string name="android_outing_historyMinutesAgo">%1$s min fa</string>
+    <string name="android_outing_historyPassedBy">superato</string>
+    <string name="android_outing_historyRight">destra</string>
     <string name="android_outing_itemLeft">sinistra, %1$s</string>
     <string name="android_outing_itemRight">destra, %1$s</string>
     <string name="android_outing_junctionAhead">Bivio davanti</string>
@@ -374,6 +396,7 @@
     <string name="android_settings_title">Impostazioni</string>
     <string name="android_settings_trendHaptics">Avvisi a vibrazione estesi (sperimentale)</string>
     <string name="android_settings_trendHapticsFooter">Vibra anche quando ti avvicini o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati della ricerca, dei dintorni e degli itinerari, e i cambi di stato durante la guida. Vibra solo con lo schermo acceso.</string>
+    <string name="android_settings_vergiliusProvider">Modello di risposta</string>
     <string name="android_settings_weightFooter">Inserisci un peso tra %1$s e %2$s kg. I dati inseriti non vengono salvati su un server.</string>
     <string name="android_settings_weightKg">Peso per la stima delle calorie (kg)</string>
     <string name="android_settings_weightRejected">Il peso deve essere tra %1$s e %2$s kg. Mantengo il valore precedente, %3$s kg.</string>
@@ -518,6 +541,7 @@
     <string name="beacon_farther">%1$s, ti stai allontanando</string>
     <string name="beacon_first">Circa %1$s alla destinazione</string>
     <string name="beacon_guideStartCar">Avvia guida in auto</string>
+    <string name="beacon_guideStartTransit">Avvia guida con i mezzi pubblici</string>
     <string name="beacon_guideStartTransitAlt">Avvia la guida: %1$s</string>
     <string name="beacon_guideStartWalk">Avvia guida a piedi</string>
     <string name="beacon_guideStartWalkAccessible">Avvia la guida sul percorso senza scale</string>
@@ -599,7 +623,9 @@
     <string name="chat_progress_tool_get_air_quality">qualità dell\'aria</string>
     <string name="chat_progress_tool_get_bike_stations">stazioni bici</string>
     <string name="chat_progress_tool_get_bus_arrivals">arrivi degli autobus</string>
+    <string name="chat_progress_tool_get_bus_route">linea dell\'autobus</string>
     <string name="chat_progress_tool_get_car_route">percorso in auto</string>
+    <string name="chat_progress_tool_get_entrance_sides">intorno all\'ingresso</string>
     <string name="chat_progress_tool_get_kids_places">luoghi per bambini</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">luoghi accessibili</string>
     <string name="chat_progress_tool_get_night_clinics">cliniche notturne</string>
@@ -810,6 +836,7 @@
     <string name="guide_dirRightTo">a destra</string>
     <string name="guide_endedIdle">La guida è terminata perché per un po\' non ci sono stati segnale di posizione né movimento</string>
     <string name="guide_etaStale">Tempo stimato di %1$s min fa</string>
+    <string name="guide_exitLeadStart">Prenda l\'uscita %1$s.</string>
     <string name="guide_farNotice">Prossima indicazione tra circa %1$s. %2$s</string>
     <string name="guide_finalApproachNear">Sei vicino alla destinazione.</string>
     <string name="guide_finalApproachNearDir">Sei vicino alla destinazione. È %1$s.</string>
@@ -1024,7 +1051,7 @@
     <string name="privacy_activity">Nell\'app iOS, i passi mostrati all\'arrivo con la guida pedonale e il peso inserito nelle Impostazioni sono usati solo sul dispositivo: non vengono trasmessi né conservati.</string>
     <string name="privacy_agent">Se usi gli strumenti di Gildongmu tramite un browser con agente IA compatibile con WebMCP, l\'output degli strumenti viene inviato al fornitore di quell\'agente. Vengono inviati: la tua ricerca e i risultati (nomi dei luoghi, indirizzi, numeri di telefono), le informazioni sul luogo (primo e ultimo treno di una stazione, servizi, arrivi in tempo reale, servizi senza barriere) e, per i percorsi, i nomi di partenza, destinazione e tappa intermedia, il riepilogo del percorso e le frasi di guida. Le coordinate non vengono mai inviate, ma queste informazioni possono rivelare la tua posizione e i tuoi spostamenti. Funziona solo quando Gildongmu è aperto in un browser con agente IA compatibile con WebMCP. In un browser normale non fa nulla e non esiste un\'impostazione separata dentro Gildongmu.</string>
     <string name="privacy_analytics">Il traffico web è misurato in forma anonima con Vercel Analytics. Non utilizza cookie e non memorizza informazioni che permettano di identificarti.</string>
-    <string name="privacy_chat">Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Le risposte sono generate dall\'IA e possono essere imprecise.</string>
+    <string name="privacy_chat">Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Quando si pone una domanda a voce mentre si cammina, il testo della domanda, la posizione attuale, l\'elenco dei luoghi vicini e quanto appena annunciato vengono inviati a OpenAI, a Google Gemini o ad Anthropic Claude per generare le risposte, e l\'audio della voce non lascia il dispositivo. Le risposte sono generate dall\'IA e possono essere imprecise.</string>
     <string name="privacy_contact">Per domande sul servizio o su questa informativa, scrivere a engccer@gmail.com.</string>
     <string name="privacy_contactHeading">Contatto</string>
     <string name="privacy_dictation">La dettatura nell\'app iOS viene elaborata sul dispositivo: l\'audio non lo lascia mai. La dettatura sul web invia l\'audio a Deepgram per la trascrizione e non lo conserva.</string>

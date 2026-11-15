@@ -328,7 +328,8 @@ final class BeaconModel {
         foregroundDeviceSpeech: false,
         isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false }
+        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
+        askWindowActive: { false }  // 묻고 답하는 구간은 나들이에만 있다(E82 V0c)
     )
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
@@ -745,6 +746,70 @@ final class BeaconModel {
         /// 자동차 청취자 고정(E70 D10 — 여정의 택시는 늘 승객). nil = 설정값을 읽는다(종전 동작). ⚠ 기본값 없음 —
         /// 여정 택시 시작이 빠뜨리면 운전자 모드 설정이 택시 뒷자리에 운전자 단문을 낸다.
         let carListener: CarListener?
+        /// 출구 인계(E84). 지하철 말미 도보 인계가 출구 번호를 실어 왔을 때만 값이 있고, 그러면 시작 경로 조회 대기 창이
+        /// 「출구 대기」로 열린다. ⚠ 기본값 없음: 값을 적는 곳은 `GuideSession.acceptWalkHandoff` 하나다(가드
+        /// `exit-carryover-guard.test.ts`). 창이 한 번 풀리면 저장된 요청에서 내린다(재시작이 출구 대기를 다시 열지 않게).
+        let exitLead: ExitLead?
+    }
+
+    /// 도보 줄 하나로 시작하는 요청(E42 줄 → 안내 요청 축의 투영 한 곳). 길찾기 화면의 줄별 시작 버튼과
+    /// `GuideSession.startGuide`(E83 R11)가 함께 쓴다 — 줄 종류와 `accessible`·`variant`가 따로 적혀 어긋나지 않게.
+    /// `among`은 조회 화면에 선 줄 전부(전환 대상의 근거)이고, 줄 목록 없이 시작하는 자리는 빈 배열이다(전환 진입점 없음).
+    /// ⚠ 인자에 기본값을 두지 않는다(`StartRequest`와 같은 이유).
+    static func walkLineRequest(
+        dest: BeaconDest, label: String, labelRoman: String?, line: WalkLineKind, among lines: [WalkLineKind],
+        waypoint: Waypoint?
+    ) -> StartRequest {
+        StartRequest(
+            dest: dest, label: label, labelRoman: labelRoman, kind: .walk,
+            accessible: line.accessible, variant: line.variant, line: line,
+            alternate: WalkLineKind.switchAlternate(for: line, among: lines),
+            waypoint: waypoint, carListener: nil, exitLead: nil)
+    }
+
+    /// 자동차 안내 요청 한 벌(길찾기 화면의 자동차 시작 버튼과 `GuideSession.startGuide`가 함께 쓴다). 청취자는 설정값이다.
+    static func carRequest(dest: BeaconDest, label: String, labelRoman: String?, waypoint: Waypoint?) -> StartRequest {
+        StartRequest(
+            dest: dest, label: label, labelRoman: labelRoman, kind: .car,
+            accessible: false, variant: nil, line: nil, alternate: nil,
+            waypoint: waypoint, carListener: nil, exitLead: nil)
+    }
+
+    /// 출구 인계 값(E84): 출구 번호와, 다른 역에서 내렸는지 가를 하차역 좌표(없으면 그 판정을 하지 않는다).
+    struct ExitLead: Equatable {
+        let exit: String
+        let stationLat: Double?
+        let stationLng: Double?
+    }
+
+    /// 열린 출구 대기 창(E84). 값이 있는 동안 시작 경로 조회는 Kit `exitHoldStep`만 지난다(시계 없음).
+    private struct ExitHoldState {
+        let lead: ExitLead
+        let openedAt: Double
+    }
+    private var exitHold: ExitHoldState?
+    /// 창 안에서 받은 보관 가능 fix(최근 창만 남긴다)와 첫 보관 가능 fix를 봤는지. fix마다 바뀌므로 관찰에서 뺀다.
+    @ObservationIgnored private var exitHoldSamples: [ExitHoldSample] = []
+    @ObservationIgnored private var exitHoldSawStorable = false
+    /// 보관 가능 fix 연속 구간의 시작·마지막 표본 시각(상한 판정 재료, Kit `exitHoldStorableRunStart`).
+    @ObservationIgnored private var exitHoldStorableSince: Double?
+    @ObservationIgnored private var exitHoldLastStorableAt: Double?
+    /// 잊힌 세션 안전망 시계의 하한(Kit `ExitHoldIdleFloors`). 관측 공백 뒤 첫 fix와 창이 닫히는 순간이 세운다.
+    /// 출구 인계가 없는 세션은 끝까지 비어 있다. `start()`·`stop()`이 지운다.
+    @ObservationIgnored private var exitHoldIdleFloors = ExitHoldIdleFloors()
+    /// 단독 출구 통지의 게시 기록. 첫 시작류 통지(시작 요약·간략 강등)가 소비해 접두 여부를 정한다(Kit `exitLeadPrefixNeeded`).
+    private struct ExitLeadNotice {
+        let text: String
+        let postedAt: Double
+        var dropped = false
+    }
+    @ObservationIgnored private var exitLeadNotice: ExitLeadNotice?
+
+    /// 출구 대기 중인가. 시트가 읽는다: 직선거리 주석을 숨기고, 조회를 기다리지 않고 착지한다.
+    var exitHoldActive: Bool { exitHold != nil }
+    /// 출구 대기 동안 지금 할 행동 줄(「N번 출구로 나가기」). 창이 없으면 nil.
+    var exitHoldLine: String? {
+        exitHold.map { appLocalized("ios.guide.exitHoldAction", $0.lead.exit) }
     }
 
     /// 직전에 시작한 세션의 인자. 시작 실패(정밀 위치 꺼짐 등) 뒤에도 남아 있어야
@@ -766,7 +831,7 @@ final class BeaconModel {
         } else {
             requestStart(StartRequest(
                 dest: dest, label: label, labelRoman: labelRoman, kind: kind, accessible: accessible,
-                variant: nil, line: nil, alternate: nil, waypoint: waypoint, carListener: nil))
+                variant: nil, line: nil, alternate: nil, waypoint: waypoint, carListener: nil, exitLead: nil))
         }
     }
 
@@ -818,7 +883,7 @@ final class BeaconModel {
         startTask = Task { [weak self] in
             await self?.start(
                 dest: request.dest, label: request.label, labelRoman: request.labelRoman, kind: request.kind,
-                carListener: request.carListener)
+                carListener: request.carListener, exitLead: request.exitLead)
             guard let self, self.startGeneration == generation else { return }
             self.starting = false
             // 시작 실패 한 판정(권한 거부·정밀 위치·서비스 꺼짐·claim 거부·취소 전부): 세션이
@@ -834,7 +899,8 @@ final class BeaconModel {
     }
 
     private func start(
-        dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind = .walk, carListener: CarListener?
+        dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind = .walk, carListener: CarListener?,
+        exitLead: ExitLead?
     ) async {
         guard !isTracking else { return }
         // 채널은 권한 가드보다 **앞**에서 정한다 — 가드 실패 통지(`fail`)가 이전 세션 채널로 나가지
@@ -928,6 +994,7 @@ final class BeaconModel {
         toneState = .initial
         motionState = .initial
         lastFixAt = nil
+        exitHoldIdleFloors = ExitHoldIdleFloors()
         lastStaleNoticeAt = nil
         suppressNextNotice = false
         startedAt = ProcessInfo.processInfo.systemUptime
@@ -941,10 +1008,20 @@ final class BeaconModel {
         // (`.ambient`로도 start 톤이 난다) 시작 시점에 알려야 잠그기 전에 안다.
         tones.beginSession()
         playTone(.start)
+        // 출구 인계(E84)면 시작 직후 출구 문장을 단독으로 말한다. 소리 강등 고지와는 한 통지로 합친다(지연 슬롯은
+        // 하나이고 최신이 이긴다: 따로 내면 앞 문장을 잃는다).
+        let exitSentence = kind == .walk ? exitLead.map { appLocalized("guide.exitLeadStart", $0.exit) } : nil
+        exitLeadNotice = exitSentence.map { ExitLeadNotice(text: $0, postedAt: uptimeNow) }
+        let onExitDropped: (() -> Void)? = exitSentence == nil ? nil : { [weak self] in self?.exitLeadNotice?.dropped = true }
         if soundDegraded {
             // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다. 진동은 상태 변화(E30 확장).
             resultHaptic(.attention)
-            announce(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable)
+            let degraded = appLocalized("ios.beacon.soundBackgroundUnavailable")
+            announce(
+                exitSentence.map { "\($0) \(degraded)" } ?? degraded, speechClass: .actionable,
+                onDropped: onExitDropped)
+        } else if let exitSentence {
+            announce(exitSentence, speechClass: .actionable, onDropped: onExitDropped)
         }
 
         LocationService.shared.startBeaconUpdates(
@@ -963,13 +1040,122 @@ final class BeaconModel {
         // 세션이 조용히 직선거리로 도는 상태가 된다(리뷰 검출).
         awaitingRoute = true
         routeFetchToken += 1
+        if kind == .walk, let exitLead {
+            // 출구 대기(E84): 종전 15초 시계를 걸지 않는다. 창은 fix 증거(`exitHoldStep`)와 사용자 선언
+            // (`declareExitedStation`)이 닫고, fix가 아예 없으면 잊힌 세션 안전망이 끝낸다.
+            openExitHold(exitLead)
+        } else {
+            startFixWaitWatch(token: routeFetchToken)
+        }
+    }
+
+    // MARK: - 출구 대기(E84)
+
+    private func openExitHold(_ lead: ExitLead) {
+        fixWaitTask?.cancel()
+        fixWaitTask = nil
+        routeOriginBest = nil
+        routeOriginBestAt = nil
+        resetExitHoldSamples()
+        exitHoldIdleFloors = ExitHoldIdleFloors()
+        exitHold = ExitHoldState(lead: lead, openedAt: uptimeNow)
+        guideDiagLog("exitHold start exit=\(lead.exit) station=\(lead.stationLat != nil && lead.stationLng != nil ? 1 : 0)")
+    }
+
+    private func resetExitHoldSamples() {
+        exitHoldSamples = []
+        exitHoldSawStorable = false
+        exitHoldStorableSince = nil
+        exitHoldLastStorableAt = nil
+    }
+
+    /// 창을 닫는 한 자리. `keepLead` = 뒤따르는 시작류 통지가 출구 문장을 접두로 실을 수 있는가(fix로 풀린 경우만).
+    /// 저장된 시작 요청에서도 출구를 내린다 — 한 번 풀린 세션의 재시작이 출구 대기를 다시 열지 않게.
+    private func closeExitHold(reason: String, keepLead: Bool, accuracy: Double? = nil) {
+        guard let hold = exitHold else { return }
+        guideDiagLog(
+            "exitHoldRelease reason=\(reason) elapsed=\(String(format: "%.0f", uptimeNow - hold.openedAt))"
+                + " acc=\(accuracy.map { String(format: "%.1f", $0) } ?? "-")")
+        exitHold = nil
+        resetExitHoldSamples()
+        // 안전망 시계는 창이 닫힌 지금부터 새로 흐른다: 창 안에서 흐른 두절·무이동 시간이 닫힌 직후의 종료 사유가 되지 않게.
+        exitHoldIdleFloors = exitHoldIdleFloorsAfterClose(now: uptimeNow)
+        if !keepLead { exitLeadNotice = nil }
+        syncStartRequestWithSession()
+    }
+
+    /// 창 안 fix 한 건. true = 여기서 처리가 끝났다(대기·조회 착수), false = 창을 버렸으니 종전 판정으로 이어 간다.
+    private func handleExitHoldFix(
+        _ candidate: RouteOriginFix, raw: LocationService.BeaconFixPayload, hold: ExitHoldState,
+        dest: BeaconDest, now: Double
+    ) -> Bool {
+        let storable = exitHoldStorable(candidate)
+        let first = storable && !exitHoldSawStorable
+        if storable {
+            exitHoldSawStorable = true
+            exitHoldStorableSince = exitHoldStorableRunStart(
+                previousStart: exitHoldStorableSince, previousSampleAt: exitHoldLastStorableAt, now: now)
+            exitHoldLastStorableAt = now
+            exitHoldSamples.append(ExitHoldSample(fix: candidate, at: now))
+            exitHoldSamples.removeAll { now - $0.at > exitHoldRecentWindowSeconds }
+        }
+        let stationDistance: Double? = if let lat = hold.lead.stationLat, let lng = hold.lead.stationLng {
+            haversineMeters(lat1: candidate.lat, lng1: candidate.lng, lat2: lat, lng2: lng)
+        } else {
+            nil
+        }
+        let elapsed = now - hold.openedAt
+        // 창 안 fix마다 한 줄(좌표 없음): 지하 fix의 정확도·속도 분포와 풀린 시각이 잠정 상수의 판정 재료다.
+        guideDiagLog(
+            "routeOriginWait acc=\(String(format: "%.1f", candidate.accuracy)) "
+                + "age=\(String(format: "%.1f", candidate.ageSeconds)) "
+                + "speed=\(String(format: "%.1f", raw.speed)) speedAcc=\(String(format: "%.1f", raw.speedAccuracy)) "
+                + "holdT=\(String(format: "%.0f", elapsed)) "
+                + "station=\(stationDistance.map { String(format: "%.0f", $0) } ?? "-")")
+        switch exitHoldStep(
+            elapsed: elapsed, fix: candidate, isFirstStorable: first, stationDistance: stationDistance,
+            recent: exitHoldSamples, storableSince: storable ? exitHoldStorableSince : nil, now: now)
+        {
+        case .wait:
+            return true
+        case let .fetch(origin, reason):
+            closeExitHold(reason: reason.rawValue, keepLead: true, accuracy: origin.accuracy)
+            startRouteFetch(origin: origin, reason: "exitHold-\(reason.rawValue)", dest: dest, token: routeFetchToken)
+            return true
+        case .abandon:
+            // 하차역 근처가 아니다(다른 역에서 내렸다): 출구 문장·줄을 거두고 종전 시작 대기로 간다.
+            closeExitHold(reason: "otherStation", keepLead: false, accuracy: candidate.accuracy)
+            startFixWaitWatch(token: routeFetchToken)
+            return false
+        }
+    }
+
+    /// 「출구로 나왔어요」(E84): 사용자가 창을 닫는다. 종전 시작 대기(수용 fix 즉시, 15초 안 최선값, 없으면
+    /// `guide.detailNoLocation` 강등)를 지금부터 새로 건다 — 창 안에서 모은 역 안 좌표는 쓰지 않는다.
+    func declareExitedStation() {
+        guard isTracking, awaitingRoute, exitHold != nil, routeFetchTask == nil else { return }
+        closeExitHold(reason: "declared", keepLead: false)
         startFixWaitWatch(token: routeFetchToken)
+        // 버튼이 사라지며 커서가 옮겨 간다: 활성화 응답은 착지 라벨로 대체될 수 없다.
+        announceNow(appLocalized("ios.guide.destChangedFetching"), highPriority: true, bypassSuppression: true)
+    }
+
+    /// 첫 시작류 통지 앞에 출구 문장을 다시 실을지 정하고 기록을 소비한다. 출구 인계가 없으면 문장을 그대로 돌려준다.
+    private func withExitLead(_ text: String) -> String {
+        guard let notice = exitLeadNotice else { return text }
+        exitLeadNotice = nil
+        guard exitLeadPrefixNeeded(
+            hasExit: true, dropped: notice.dropped, secondsSincePosted: uptimeNow - notice.postedAt)
+        else { return text }
+        return "\(notice.text) \(text)"
     }
 
     /// 수용 fix가 상한(noFixTimeout) 내에 오지 않으면 그때까지의 최선 fix로 조회하고,
     /// 최선값조차 없으면 상세를 포기하고 간략 폴백(A18 — 단발 취득의 최선값 정책과
     /// 같은 모양). 없으면 awaitingRoute가 발화를 무한 보류해 세션이 침묵에 갇힌다.
     private func startFixWaitWatch(token: Int) {
+        // 종전 대기 시계를 건다 = 출구 대기가 아니다(E84): 목적지 전환·경유지·재획득이 이 한 자리로 창을 닫는다.
+        closeExitHold(reason: "superseded", keepLead: false)
         fixWaitTask?.cancel()
         routeOriginBest = nil
         routeOriginBestAt = nil
@@ -1204,7 +1390,8 @@ final class BeaconModel {
             // ⚠ .high 필수(스펙 2026-08-12 §3.1, 마일스톤 리뷰 MAJOR): 목적지 전환
             // 경로에서는 이 요약이 검색 시트 닫힘의 커서 복원 낭독과 겹칠 수 있다 —
             // 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
-            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
+            // 출구 인계(E84): 단독 출구 통지가 버려졌거나 방금 나갔으면(이 `.high` 통지가 끊는다) 앞에 다시 싣는다.
+            announce(withExitLead(text), highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
         } catch {
@@ -1392,7 +1579,7 @@ final class BeaconModel {
                 : text + " " + appLocalized("ios.guide.waypointSkipped", dropped.label)
         }
         statusText = text
-        announce(text, highPriority: droppedWaypoint, speechClass: .actionable)
+        announce(withExitLead(text), highPriority: droppedWaypoint, speechClass: .actionable)
     }
 
     /// 재시작 요청을 **세션의 현재 목적지·라벨·경유지**로 다시 맞춘다. 세션 중 목적지
@@ -1406,7 +1593,7 @@ final class BeaconModel {
         lastStartRequest = StartRequest(
             dest: dest, label: destinationLabel, labelRoman: destinationRoman, kind: request.kind,
             accessible: accessible, variant: sessionVariant,
-            line: sessionLine, alternate: alternateLine, waypoint: waypoint, carListener: request.carListener)
+            line: sessionLine, alternate: alternateLine, waypoint: waypoint, carListener: request.carListener, exitLead: exitHold?.lead)
     }
 
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
@@ -1571,6 +1758,11 @@ final class BeaconModel {
         fixWaitTask = nil
         routeOriginBest = nil
         routeOriginBestAt = nil
+        // 출구 대기(E84)도 세션과 함께 끝난다. 저장된 시작 요청은 건드리지 않는다(풀리기 전에 끝난 세션의 재시작은 창을 다시 연다).
+        exitHold = nil
+        resetExitHoldSamples()
+        exitHoldIdleFloors = ExitHoldIdleFloors()
+        exitLeadNotice = nil
         awaitingRoute = false
         mode = .brief
         sessionKind = .walk
@@ -2030,6 +2222,17 @@ final class BeaconModel {
         // 세션에서 가장 나쁜 fix라 그대로 쓰면 경로가 다른 곳에서 출발한다(A18,
         // 2026-08-16 실보행 115m). 미달 fix는 최선값으로 보관하고 대기 상한에 쓴다.
         if awaitingRoute {
+            // 출구 대기(E84): 관측 공백 뒤 앵커에서 벗어난 fix(세션 첫 fix 포함)는 무이동 시계와 진행 앵커를 다시 세운다
+            // (직전 fix 시각을 덮기 전에 본다). 같은 자리 fix로는 세우지 않는다(Kit 주석).
+            if exitHold != nil, let startedAt {
+                let step = exitHoldIdleFloorsAfterFix(
+                    exitHoldIdleFloors, now: now, previousFixAt: lastFixAt, startedAt: startedAt,
+                    distanceFromAnchor: sessionProgressAnchor.map {
+                        haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: fix.lat, lng2: fix.lng)
+                    })
+                exitHoldIdleFloors = step.floors
+                if step.resumed { sessionProgressAnchor = RoutePoint(lat: fix.lat, lng: fix.lng) }
+            }
             lastFixAt = now
             // 세션 안전망의 진행 관측은 조회 대기 중에도 센다 — 대기가 길어지는 동안 걷고
             // 있는 사용자를 "정지"로 읽지 않게(리뷰 INFO 2026-08-26).
@@ -2038,6 +2241,10 @@ final class BeaconModel {
                 let candidate = RouteOriginFix(
                     lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age
                 )
+                // 출구 대기(E84) 창이면 그 판정이 먼저다. 창을 버린 fix만 아래 종전 판정으로 이어 간다.
+                if let hold = exitHold, handleExitHoldFix(candidate, raw: fix, hold: hold, dest: dest, now: now) {
+                    return
+                }
                 switch routeOriginStep(best: routeOriginBest, fix: candidate) {
                 case .fetch(let origin):
                     fixWaitTask?.cancel()
@@ -2666,8 +2873,6 @@ final class BeaconModel {
         // 승차 전 도보(prewalk)는 제외 — fix 두절 5분은 대개 지하 역사 진입이고, 그때 끝내면 바로
         // 그 경우를 위한 "승차역 도착" 선언 버튼까지 사라진다(A25 spec §2).
         guard isTracking, !endsWithoutScreen, let startedAt else { return false }
-        let fixRef = max(startedAt, lastFixAt ?? startedAt)
-        let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
         // 무이동 축은 **도착 추정이 발동할 수 있는 동안 늦게 켠다**(Kit `sessionIdleStationaryElapsed`, 나들이 spec §9,
         // 2026-09-26). 무이동 300초가 도착 추정 제자리 300초와 같아서 그대로면 25m 앵커 시계가 10m 앵커 시계보다
         // 먼저 차 목적지 앞에 선 사용자가 추정 도착 대신 안전망 종료를 듣고, 아예 끄면 실내 wifi 지터가 10m 앵커를
@@ -2675,14 +2880,13 @@ final class BeaconModel {
         // 두절 축은 그대로(도착 추정 두절이 안전망 두절보다 짧아 도착 추정이 먼저 판정한다).
         let presumedArrivalCanFire = inArrivalWindow
             && (tuning.presumedArrival.map { (lastUsableDistanceToDest ?? .infinity) <= $0.maxDistanceMeters } ?? false)
-        guard let reason = sessionIdleStep(
-            secondsSinceUsableFix: now - fixRef,
-            secondsSinceProgress: tuning.sessionIdleStationaryAxis
-                ? sessionIdleStationaryElapsed(
-                    secondsSinceProgress: now - progressRef, presumedArrivalCanFire: presumedArrivalCanFire)
-                : nil,
-            // 두절 임계는 수단별 데이터(walk 300 · car 900, 2026-10-03 위원장 판정).
-            noFixSeconds: tuning.sessionIdleNoFixSeconds
+        // 판정은 Kit 한 자리(`exitHoldAwareSessionIdleStep`): 두절 임계는 수단별 데이터(walk 300 · car 900, 2026-10-03
+        // 위원장 판정)이고, 출구 대기(E84) 창과 그 하한이 없으면 종전 식과 값이 같다. 창 동안은 두절 임계가 길고
+        // 관측이 끊긴 동안 무이동을 세지 않으며, 창이 닫히면 두 시계가 그 시각부터 새로 흐른다.
+        guard let reason = exitHoldAwareSessionIdleStep(
+            now: now, startedAt: startedAt, lastFixAt: lastFixAt, lastProgressAt: sessionLastProgressAt,
+            floors: exitHoldIdleFloors, holdActive: exitHold != nil, tuning: tuning,
+            presumedArrivalCanFire: presumedArrivalCanFire
         ) else { return false }
         guideDiagLog("sessionIdleEnd reason=\(reason.rawValue)")
         let text = appLocalized("guide.endedIdle")
@@ -3902,7 +4106,8 @@ final class BeaconModel {
         // `statusText`·`lastGuidance`는 호출부가 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
         // 정식판은 토글 실효값이 거짓이라 종전 그대로다(전경이면 VoiceOver 게시, 백그라운드면 버림).
         let channel = GuideSpeechOutput.channel(
-            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible)
+            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible,
+            askWindowActive: false)
         // 계측(E53 실사용 판정 — 백그라운드 문장 빈도): 전경 VoiceOver 게시는 종전처럼 남기지 않고 백그라운드 판정만.
         if !GuideSpeechOutput.isForeground {
             guideDiagLog("bgSpeech channel=\(channel.rawValue) class=\(speechClass.rawValue) text=\(message)")

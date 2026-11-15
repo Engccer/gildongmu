@@ -58,6 +58,15 @@ const envSchema = z.object({
   // Google Gemini — 채팅 function-calling 엔진(서버 전용). 유료 API.
   GEMINI_API_KEY: z.string().min(1).optional(),
 
+  // OpenAI — 베르길리우스 「말로 묻기」 답변 모델 GPT-6.1 Terra·GPT-6 Luna(E82, 서버 전용). 유료 API, 월 지출 상한은 OpenAI 콘솔에서 건다.
+  // 길동무 전용 키만 읽는다. 공용 OPENAI_API_KEY로 폴백하지 않는다.
+  // 키 없으면 `/api/vergilius/providers`에 openai·openai-luna가 없다(앱 설정의 선택지에서 빠진다).
+  GILDONGMU_OPENAI_API_KEY: z.string().min(1).optional(),
+
+  // Anthropic — 베르길리우스 「말로 묻기」 답변 모델 Claude Opus 5.5·Sonnet 5.5·Haiku 5.5(서버 전용). 유료 API, 지출 상한은 Anthropic 콘솔에서 건다.
+  // 키 없으면 `/api/vergilius/providers`에 claude-opus·claude-sonnet·claude-haiku가 없다.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+
   // Perplexity Search — 채팅 실시간 웹 검색 도구(서버 전용). 유료 API.
   // dodo-planet과 공유 키. 키 없으면 search_web 도구 미노출(회귀 0).
   PERPLEXITY_API_KEY: z.string().min(1).optional(),
@@ -89,6 +98,8 @@ export const env = envSchema.parse({
   JUSO_CONFM_KEY: process.env.JUSO_CONFM_KEY,
   TMAP_APP_KEY: process.env.TMAP_APP_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GILDONGMU_OPENAI_API_KEY: process.env.GILDONGMU_OPENAI_API_KEY,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   GOOGLE_CLOUD_TTS_API_KEY: process.env.GOOGLE_CLOUD_TTS_API_KEY,
   GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
@@ -172,6 +183,16 @@ export function hasCarRouteKey(): boolean {
 /** Google Gemini 채팅 API 사용 가능 여부 */
 export function hasGeminiKey(): boolean {
   return !!env.GEMINI_API_KEY;
+}
+
+/** OpenAI(베르길리우스 「말로 묻기」 답변 모델, E82) 사용 가능 여부 */
+export function hasOpenAiKey(): boolean {
+  return Boolean(env.GILDONGMU_OPENAI_API_KEY);
+}
+
+/** Anthropic(베르길리우스 「말로 묻기」 답변 모델 Claude, E82) 사용 가능 여부 */
+export function hasAnthropicKey(): boolean {
+  return Boolean(env.ANTHROPIC_API_KEY);
 }
 
 /** Perplexity 웹 검색 API 사용 가능 여부 */

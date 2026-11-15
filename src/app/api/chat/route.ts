@@ -17,19 +17,22 @@ interface ChatRequest {
   locale?: string;
   /** 장소 상세에서 연 채팅일 때 — 좌표 도구의 장소 앵커(I-1) + LLM 지시(I-3). */
   placeContext?: { name: string; lat: number; lng: number; category?: string; isStation?: boolean };
-  /** 클라이언트가 그릴 수 있는 것의 신고(E70-b D7). 알려진 값 `"journey"`, 모르는 값은 버린다. 없으면 종전과 동일. */
+  /** 클라이언트가 그릴 수 있는 것의 신고(E70-b D7·E83 R2). 알려진 값 `"journey"`·`"route-start"`, 모르는 값은 버린다. 없으면 종전과 동일. */
   capabilities?: string[];
-  /** `userLocation`이 수동 지정 위치인가(E70-b D2) — 여정 카드가 [안내 시작]을 내지 않는다. */
+  /** `userLocation`이 수동 지정 위치인가(E70-b D2·E83 R6) — 카드의 `manualOrigin`으로 돌려준다(그 카드는 실제 위치로 다시 조회한다). */
   userLocationManual?: boolean;
 }
 
 /**
  * 요청의 능력 신고를 서버가 아는 값으로 거른다(E70-b D7). 여정은 ko 전용이라(택시 안내 기하가 Tmap ko 경로에만 있다)
  * 다른 로케일의 신고는 버린다. 키 게이트는 선언 쪽(`availableDeclarations`)이 건다.
+ * 경로 안내 시작 카드(`route-start`, E83 R2)는 전 로케일이다 — 수단별로 시작할 수 있는지는 카드를 그리는 클라이언트가 가른다(R10).
  */
 function chatCapabilities(raw: unknown, locale: string): Set<ChatCapability> {
   const out = new Set<ChatCapability>();
-  if (Array.isArray(raw) && raw.includes("journey") && locale === "ko") out.add("journey");
+  if (!Array.isArray(raw)) return out;
+  if (raw.includes("journey") && locale === "ko") out.add("journey");
+  if (raw.includes("route-start")) out.add("route-start");
   return out;
 }
 
@@ -84,7 +87,9 @@ export async function POST(request: Request) {
   const pc = body.placeContext;
   // 선언 목록이 정본이다: `plan_journey`가 실제로 선언됐을 때만(능력 신고 ∧ ko ∧ 키 셋) 실행 컨텍스트와 지침을 연다.
   // 장소 상세에서 연 채팅(`placeContext`)에는 여정을 열지 않는다(첫 판 비목표) — 클라이언트가 신고해도 서버가 닫는다.
-  const declarations = availableDeclarations(pc ? new Set() : chatCapabilities(body.capabilities, locale));
+  // 경로 안내 시작 카드(E83)도 같은 자리에서 닫는다 — 장소 채팅은 빈 집합이다.
+  const capabilities: Set<ChatCapability> = pc ? new Set() : chatCapabilities(body.capabilities, locale);
+  const declarations = availableDeclarations(capabilities);
   const journeyOpen = declarations.some((d) => d.name === "plan_journey");
   const ctx: ExecutionContext = {
     userLocation: body.userLocation,
@@ -92,6 +97,8 @@ export async function POST(request: Request) {
     ...(journeyOpen
       ? { journey: { clientIp, manualOrigin: body.userLocationManual === true, turn: { asked: false, queried: false } } }
       : {}),
+    // 신고가 없으면 키 자체가 없다(실행 컨텍스트가 종전과 같다).
+    ...(capabilities.has("route-start") ? { routeStart: { manualOrigin: body.userLocationManual === true } } : {}),
     locale,
     dataLocale: dataLocale(locale),
   };

@@ -38,6 +38,7 @@ export function sourceFor(
     case "get_congestion":
       return [SEOUL_OPEN];
     case "get_bus_arrivals":
+    case "get_bus_route":
       return [TAGO];
     case "get_air_quality":
       return [AIRKOREA];
@@ -52,6 +53,7 @@ export function sourceFor(
       return [TAGO];
     case "get_kids_places":
     case "get_surroundings":
+    case "get_entrance_sides":
       return [KAKAO];
     case "get_station_meta":
       return [KRIC];

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { validExitNo } from "@/lib/transit-guide";
 import {
   buildTransitGuideRoute,
   classifyBoardingCandidates,
@@ -266,7 +267,7 @@ export function useTransitGuide(
    * 완료(done) 후 도보 핸드오프 제안(A안, §14.2) — 세션 자원은 회수하되 말미
    * 도보가 있으면 패널이 "남은 도보 안내 시작"을 노출한다. 다음 시작에서 소거.
    */
-  const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number } | null>(null);
+  const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number; exitAlight: string | null } | null>(null);
   /**
    * 세션이 실제로 도는 경로(A25). 승차 전 도보를 걸어서 온 세션은 첫 leg의 도보 문맥을 지운
    * 경로로 돌므로 props 파생 `guideRoute`와 다를 수 있다 — 상시 표시·패널 leg는 이쪽을 읽는다.
@@ -1510,6 +1511,9 @@ export function useTransitGuide(
       // 패널은 트리거로 복귀한다(done 상태를 화면에 유지하지 않는다).
       // 말미 도보가 있으면 핸드오프 제안을 남긴다(§14.2 — stopSession 전에 건짐).
       const walkMinutes = routeRef.current?.walkAfterMinutes ?? null;
+      // 하차 출구(E84)도 경로를 놓기 전에 마지막 구간에서 읽는다(확정 도착 통지와 같은 원천).
+      const finalLeg = routeRef.current?.legs.at(-1);
+      const exitAlight = finalLeg ? validExitNo(transitDisplayLeg(finalLeg, null).exitAlight) : null;
       releaseGuideSession(stopSession);
       clearTimer();
       stopSession();
@@ -1519,7 +1523,7 @@ export function useTransitGuide(
         rideCompleted();
         return false;
       }
-      if (walkMinutes != null) setDoneHandoff({ walkMinutes });
+      if (walkMinutes != null) setDoneHandoff({ walkMinutes, exitAlight });
       return walkMinutes != null;
     }
     retainedRef.current.clear();

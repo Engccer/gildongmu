@@ -262,7 +262,8 @@
       "carListenerDriver": "운전자 (스피커, 짧은 명령)",
       "tabOrder": "탭 순서",
       "tabOrderReset": "기본 순서로 되돌리기",
-      "tabOrderResetDone": "기본 순서로 되돌렸습니다"
+      "tabOrderResetDone": "기본 순서로 되돌렸습니다",
+      "vergiliusProvider": "답변 모델"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "새 목적지 {name}.",
       "destChangedNoName": "목적지를 바꿨습니다.",
       "destChangedFetching": "경로를 조회하고 있습니다.",
+      "exitHoldAction": "{exit}번 출구로 나가기",
+      "exitHoldRelease": "출구로 나왔어요",
       "titleWaypointChange": "{label}, 경유지 바꾸기",
       "differentRoute": "경로 새로고침",
       "differentRouteFailed": "새 경로를 찾지 못했습니다.",
@@ -382,6 +385,11 @@
       "passLeft": "왼쪽에 {name}",
       "passRight": "오른쪽에 {name}",
       "passSide": "옆에 {name}",
+      "bundleLeft": "왼쪽에 {names}",
+      "bundleRight": "오른쪽에 {names}",
+      "bundleSide": "옆에 {names}",
+      "bundleNameSeparator": ", ",
+      "bundleSideSeparator": ". ",
       "crosswalkAhead": "앞에 횡단보도",
       "crosswalkAheadAudio": "앞에 횡단보도, 음향신호기 있음",
       "junctionLeftAlley": "왼쪽에 골목",
@@ -411,7 +419,22 @@
       },
       "started": "나들이 시작",
       "ended": "나들이 종료",
-      "zoneAround": "주변 {distance}"
+      "zoneAround": "주변 {distance}",
+      "historyHeading": "방금 말한 것",
+      "historyEmpty": "아직 말한 것이 없습니다",
+      "historyLeft": "왼쪽",
+      "historyRight": "오른쪽",
+      "historyBeside": "옆",
+      "historyPassedBy": "지나옴",
+      "historyJustNow": "방금",
+      "historyMinutesAgo": "{minutes}분 전",
+      "askButton": "말로 묻기",
+      "askHint": "누른 채로 말하세요. 손가락을 떼면 묻습니다.",
+      "askNoAnswer": "답을 받지 못했습니다.",
+      "askCutOff": "답이 끊겼습니다.",
+      "askNoSpeech": "질문을 듣지 못했습니다.",
+      "askNoLocation": "위치를 아직 잡지 못해 물을 수 없습니다.",
+      "askProposal": "{name}까지 안내할까요?"
     },
     "reorder": {
       "toTop": "맨 위로",

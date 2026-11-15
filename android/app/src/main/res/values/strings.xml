@@ -139,6 +139,8 @@
     <string name="android_guide_destMenuDetail">장소 상세 보기</string>
     <string name="android_guide_differentRoute">경로 새로고침</string>
     <string name="android_guide_differentRouteFailed">새 경로를 찾지 못했습니다.</string>
+    <string name="android_guide_exitHoldAction">%1$s번 출구로 나가기</string>
+    <string name="android_guide_exitHoldRelease">출구로 나왔어요</string>
     <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>
     <string name="android_guide_mediaVolumeZero">미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다</string>
     <string name="android_guide_notificationChannel">도보 안내</string>
@@ -319,7 +321,19 @@
     <string name="android_nearby_whereAmIChat">내 현재 위치에 관해 물어보기</string>
     <string name="android_outing_aheadLandmark">앞에 %1$s, %2$s</string>
     <string name="android_outing_aheadNone">앞에 이정표 없음</string>
+    <string name="android_outing_askButton">말로 묻기</string>
+    <string name="android_outing_askCutOff">답이 끊겼습니다.</string>
+    <string name="android_outing_askHint">누른 채로 말하세요. 손가락을 떼면 묻습니다.</string>
+    <string name="android_outing_askNoAnswer">답을 받지 못했습니다.</string>
+    <string name="android_outing_askNoLocation">위치를 아직 잡지 못해 물을 수 없습니다.</string>
+    <string name="android_outing_askNoSpeech">질문을 듣지 못했습니다.</string>
+    <string name="android_outing_askProposal">%1$s까지 안내할까요?</string>
     <string name="android_outing_band">나들이, %1$s</string>
+    <string name="android_outing_bundleLeft">왼쪽에 %1$s</string>
+    <string name="android_outing_bundleNameSeparator">", "</string>
+    <string name="android_outing_bundleRight">오른쪽에 %1$s</string>
+    <string name="android_outing_bundleSide">옆에 %1$s</string>
+    <string name="android_outing_bundleSideSeparator">". "</string>
     <string name="android_outing_crosswalkAhead">앞에 횡단보도</string>
     <string name="android_outing_crosswalkAheadAudio">앞에 횡단보도, 음향신호기 있음</string>
     <string name="android_outing_dir_e">동쪽</string>
@@ -334,6 +348,14 @@
     <string name="android_outing_endedByUser">나들이를 종료했습니다.</string>
     <string name="android_outing_heading">나들이</string>
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
+    <string name="android_outing_historyBeside">옆</string>
+    <string name="android_outing_historyEmpty">아직 말한 것이 없습니다</string>
+    <string name="android_outing_historyHeading">방금 말한 것</string>
+    <string name="android_outing_historyJustNow">방금</string>
+    <string name="android_outing_historyLeft">왼쪽</string>
+    <string name="android_outing_historyMinutesAgo">%1$s분 전</string>
+    <string name="android_outing_historyPassedBy">지나옴</string>
+    <string name="android_outing_historyRight">오른쪽</string>
     <string name="android_outing_itemLeft">왼쪽 %1$s</string>
     <string name="android_outing_itemRight">오른쪽 %1$s</string>
     <string name="android_outing_junctionAhead">앞에 갈림길</string>
@@ -459,6 +481,7 @@
     <string name="android_settings_title">설정</string>
     <string name="android_settings_trendHaptics">진동 알림 확장 (실험)</string>
     <string name="android_settings_trendHapticsFooter">걷는 동안 가까워짐과 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다.</string>
+    <string name="android_settings_vergiliusProvider">답변 모델</string>
     <string name="android_settings_weightFooter">체중은 %1$s~%2$skg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요.</string>
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>
@@ -603,6 +626,7 @@
     <string name="beacon_farther">%1$s, 멀어지는 중</string>
     <string name="beacon_first">목적지까지 약 %1$s</string>
     <string name="beacon_guideStartCar">자동차 안내 시작</string>
+    <string name="beacon_guideStartTransit">대중교통 안내 시작</string>
     <string name="beacon_guideStartTransitAlt">%1$s 안내 시작</string>
     <string name="beacon_guideStartWalk">도보 안내 시작</string>
     <string name="beacon_guideStartWalkAccessible">계단 회피 경로로 안내 시작</string>
@@ -684,7 +708,9 @@
     <string name="chat_progress_tool_get_air_quality">공기질</string>
     <string name="chat_progress_tool_get_bike_stations">따릉이</string>
     <string name="chat_progress_tool_get_bus_arrivals">버스 도착</string>
+    <string name="chat_progress_tool_get_bus_route">버스 노선</string>
     <string name="chat_progress_tool_get_car_route">자동차 경로</string>
+    <string name="chat_progress_tool_get_entrance_sides">입구 주변</string>
     <string name="chat_progress_tool_get_kids_places">아이 놀 곳</string>
     <string name="chat_progress_tool_get_nearby_barrier_free">무장애 관광지</string>
     <string name="chat_progress_tool_get_night_clinics">야간 진료</string>
@@ -895,6 +921,7 @@
     <string name="guide_dirRightTo">오른쪽으로</string>
     <string name="guide_endedIdle">한동안 위치 신호나 이동이 없어 안내를 종료했습니다</string>
     <string name="guide_etaStale">예상 시간은 %1$s분 전 기준</string>
+    <string name="guide_exitLeadStart">%1$s번 출구로 나가세요.</string>
     <string name="guide_farNotice">약 %1$s 앞에 다음 안내가 있습니다. %2$s</string>
     <string name="guide_finalApproachNear">목적지 근처입니다.</string>
     <string name="guide_finalApproachNearDir">목적지 근처입니다. %1$s입니다.</string>
@@ -1109,7 +1136,7 @@
     <string name="privacy_activity">iOS 앱의 도보 안내 도착 화면에 표시하는 걸음 수와 설정에 입력한 체중은 기기 안에서만 사용하며 전송하거나 저장하지 않습니다.</string>
     <string name="privacy_agent">WebMCP를 지원하는 AI 에이전트 브라우저로 길동무의 도구를 쓰면, 도구 출력이 그 에이전트 제공자에게 전달됩니다. 전달되는 것은 검색어와 검색 결과(장소 이름, 주소, 전화번호), 장소 정보(역의 첫차와 막차, 편의시설, 실시간 도착, 무장애 시설), 길찾기의 출발지, 도착지, 경유지 이름, 경로 요약과 안내 문장입니다. 좌표는 전달하지 않지만 위치와 이동을 유추할 수 있는 정보입니다. 이 기능은 WebMCP를 지원하는 AI 에이전트 브라우저로 길동무를 열었을 때만 동작합니다. 일반 브라우저에서는 동작하지 않으며, 길동무 안에 따로 켜는 설정은 없습니다.</string>
     <string name="privacy_analytics">웹 방문 통계는 Vercel Analytics로 익명 집계합니다. 쿠키를 사용하지 않고, 개인을 식별하는 정보를 저장하지 않습니다.</string>
-    <string name="privacy_chat">AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송되며, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 답변은 AI가 생성하며 부정확할 수 있습니다.</string>
+    <string name="privacy_chat">AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송되며, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 길 위에서 말로 묻기 기능에서는 질문 글, 현재 위치, 주변 장소 목록, 방금 안내한 내용이 답변 생성을 위해 OpenAI, Google Gemini 또는 Anthropic Claude에 전송되며, 음성은 기기 밖으로 나가지 않습니다. 답변은 AI가 생성하며 부정확할 수 있습니다.</string>
     <string name="privacy_contact">서비스와 개인정보 처리에 관한 문의는 engccer@gmail.com 으로 보내 주세요.</string>
     <string name="privacy_contactHeading">문의</string>
     <string name="privacy_dictation">iOS 앱의 받아쓰기는 기기 안에서 처리되어 음성이 기기를 떠나지 않습니다. 웹의 받아쓰기는 음성을 Deepgram에 전송해 텍스트로 변환하며, 변환 후 저장하지 않습니다.</string>

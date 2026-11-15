@@ -1,7 +1,7 @@
 import SwiftUI
 import GildongmuKit
 
-/// 채팅 여정 카드(E70-b 실험판, spec `2026-11-12-e70b-chat-journey-design.md` P1·D10·D11·D13·D14·D15·D16).
+/// 채팅 여정 카드(E70-b, spec `2026-11-12-e70b-chat-journey-design.md` P1·D10·D11·D13·D14·D15·D16).
 ///
 /// 읽기 순서: 제목 → (지정한 역으로 못 찾았으면) 그 사실 줄 → 합계 → [안내 시작] → [길찾기에서 열기]. 줄마다 한 접근성 객체다.
 /// - 제목·못 찾음 줄·합계는 길찾기 결과 화면(`JourneyResultRows`)과 같은 함수·같은 문자열이다. 싣는 계획은 추천 순서 첫 변형
@@ -9,7 +9,6 @@ import GildongmuKit
 /// - 제목은 heading이 아니다(D15) — 턴 점프는 질문 heading이 맡고, 답 안의 heading은 회전자를 오염시킨다.
 /// - 수동 지정 위치에서 조회한 여정(`manualOrigin`)에도 [안내 시작]을 둔다(E70-b2 ③, D2 대체): 실제 위치를 받아 카드의 결과로
 ///   시작하지 않고 길찾기 탭에서 현재 위치 기준으로 다시 조회한다(길찾기 화면의 「막지 않고 알린다」와 같은 쪽).
-/// - 이 뷰는 `AppConfig.experimentalJourneyEnabled` 뒤에서만 그려지고(`ChatConversationView`), 두 동작도 같은 봉인을 한 번 더 확인한다.
 /// - 측위를 기다리는 동안 버튼을 `disabled`로 만들지 않는다 — 포커스가 버튼에 남아야 한다(재진입은 `busy` 가드로 막는다).
 struct JourneyChatCardView: View {
     let payload: JourneyChatPayload
@@ -60,7 +59,7 @@ struct JourneyChatCardView: View {
     /// 아니면(낡음·이동·측위 실패·수동 지정 위치에서 조회한 카드) 시작하지 않고 길찾기 탭에서 같은 여정을 실제 위치로 다시 조회한다.
     /// 전송이 아니라 AI 동의와 무관하다.
     private func start(_ variant: JourneyVariant) {
-        guard AppConfig.experimentalJourneyEnabled, !busy else { return }
+        guard !busy else { return }
         // 다른 안내가 진행 중이면 측위·재조회 전에 거부한다(S3) — 시작할 수 없는 상황에서 탭 전환·유료 조회가 일어나지 않게.
         guard !GuideSession.shared.refuseStartIfOccupied() else { return }
         busy = true
@@ -78,24 +77,21 @@ struct JourneyChatCardView: View {
                 openInDirections(requery: true)
                 return
             }
-            // 봉인 조건을 호출 자리의 머리말에 둔다(위 가드와 같은 술어 — `guidance-gate-drift.test.ts`가 이 자리를 잠근다).
-            if AppConfig.experimentalJourneyEnabled {
-                recordJourneyRecentRoute(
-                    dest: RecentEndpoint(
-                        label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),
-                    board: payload.board, alight: payload.alight)
-                GuideSession.shared.startJourney(plan: JourneyPlan(
-                    variant: variant, egress: variant.egress?.options.first, destLabel: payload.destLabel,
-                    destRoman: payload.destRoman, dest: BeaconDest(lat: payload.dest.lat, lng: payload.dest.lng),
-                    aboard: nil))
-            }
+            recordJourneyRecentRoute(
+                dest: RecentEndpoint(
+                    label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),
+                board: payload.board, alight: payload.alight)
+            GuideSession.shared.startJourney(plan: JourneyPlan(
+                variant: variant, egress: variant.egress?.options.first, destLabel: payload.destLabel,
+                destRoman: payload.destRoman, dest: BeaconDest(lat: payload.dest.lat, lng: payload.dest.lng),
+                aboard: nil))
         }
     }
 
     /// [길찾기에서 열기](D14): 길찾기 탭에 도착지·갈아탈 곳을 채운다. `requery`가 거짓이면 카드의 결과를 재조회 없이 그대로 보여 주고,
     /// 참이면(낡은 카드·수동 위치 카드의 [안내 시작]) 같은 여정을 **실제 위치**로 다시 조회하며 사유를 조회 시작 때 한 번 말한다.
     private func openInDirections(requery: Bool) {
-        guard AppConfig.experimentalJourneyEnabled, !busy || requery else { return }
+        guard !busy || requery else { return }
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
             role: .to,
             endpoint: .place(label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),

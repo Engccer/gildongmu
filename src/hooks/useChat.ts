@@ -34,6 +34,12 @@ export function useChat(opts?: {
    */
   journeyCapable?: boolean;
   /**
+   * 경로 안내 시작 카드 능력 신고(E83 spec R2) — 그 카드를 그리고 버튼을 길찾기 화면으로 이을 수 있는 채팅만 참을 준다(웹 옴니박스
+   * 범용 채팅, 전 로케일). 여정 신고와 서로 독립이다. 참이면 요청의 `capabilities`에 `"route-start"`가 실리고 `userLocationManual`도
+   * 함께 간다. **둘 다 거짓·생략이면 요청 본문은 종전과 같다.**
+   */
+  routeStartCapable?: boolean;
+  /**
    * 이어 갈 대화(E70-b2 판정 ①) — 여정 카드 버튼으로 닫혔던 채팅을 다시 열 때 그 대화와 카드를 첫 상태로 세운다. 마운트 때 한 번만
    * 읽는다. 답을 받지 못한 마지막 질문(닫히며 끊긴 전송)은 싣지 않는다 — 질문만 둘이 이어진 히스토리를 서버에 보내지 않는다.
    */
@@ -43,6 +49,7 @@ export function useChat(opts?: {
 }) {
   const placeContext = opts?.placeContext;
   const journeyCapable = opts?.journeyCapable === true;
+  const routeStartCapable = opts?.routeStartCapable === true;
   const locale = useLocale();
   const geo = useGeolocation();
   const manual = useManualLocation();
@@ -129,7 +136,13 @@ export function useChat(opts?: {
             placeContext,
             // 여정 능력(E70-b): 신고할 때만 두 필드가 생긴다. `userLocationManual`은 위 `userLocation`이 수동 지정 위치인가 —
             // 서버가 카드에 `manualOrigin`으로 돌려준다(그 카드의 [안내 시작]은 실제 위치로 다시 조회한다, E70-b2 ③).
-            ...(journeyCapable ? { capabilities: ["journey"], userLocationManual: manual !== null } : {}),
+            // 경로 안내 시작 카드(E83)도 같은 두 필드를 쓴다 — 신고한 능력만 순서대로(여정, 경로 안내 시작) 싣는다.
+            ...(journeyCapable || routeStartCapable
+              ? {
+                  capabilities: [...(journeyCapable ? ["journey"] : []), ...(routeStartCapable ? ["route-start"] : [])],
+                  userLocationManual: manual !== null,
+                }
+              : {}),
           }),
           signal: controller.signal,
         });
@@ -193,7 +206,7 @@ export function useChat(opts?: {
         inFlight.current = false;
       }
     },
-    [userLocation, locale, placeContext, journeyCapable, manual, notify],
+    [userLocation, locale, placeContext, journeyCapable, routeStartCapable, manual, notify],
   );
 
   const dismissError = useCallback(() => setError(null), []);

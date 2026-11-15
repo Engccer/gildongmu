@@ -149,7 +149,7 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 
 ### 여정 조립과 출구 수집 (`/api/route/journey`, E70)
 
-`src/lib/journey/assemble.ts` `getJourney`가 조회 셋(택시 앞 · 잘린 대중교통 · 택시 뒤)을 한 트랜잭션으로 묶는다. ko 전용, 부르는 곳은 iOS 실험판과 웹 길찾기(ko 공개, E70-f 2026-11-02)다(웹엔 봉인이 없어 레이트 리밋과 쿼터가 유일한 방어).
+`src/lib/journey/assemble.ts` `getJourney`가 조회 셋(택시 앞 · 잘린 대중교통 · 택시 뒤)을 한 트랜잭션으로 묶는다. ko 전용, 부르는 곳은 iOS와 웹 길찾기, 채팅 도구 `plan_journey`다(봉인이 없어 레이트 리밋과 쿼터가 유일한 방어).
 
 - **순서가 계약이다**: 후보 전체 → 지정 역(없으면 지하철만 재조회) → 추천(`selectTransitRoutes(ranked)[0]`) → 자르기 → 카카오 출구 → Tmap 비용 계산·예약 → Tmap 팬아웃 → 조립. 예약을 팬아웃 뒤로 옮기면 거절된 요청이 Tmap을 이미 썼다.
 - **같은 역 = 이름 키 ∧ 정류 좌표 500m ∧ (양쪽에 노선이 있으면 같은 노선)**, 좌표 조건은 늘 건다. 정류 좌표는 `stops[0]`/`stops[끝]`이라 `includeStops`가 필수다. 500m의 근거는 `journey-station-pairs.json`(같은 이름·다른 노선 정류 45쌍, 복합체 최대 427m 잠실 < 500 ≤ 동명 이역 신촌 705m)을 테스트가 잠근다 — 새 표본이 그 부등식을 깨면 spec §4.3으로 돌아간다.
@@ -263,6 +263,8 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 지방=TAGO·서울=TOPIS, `mergeBusStops` allSettled, envelope 다름(위 참조). ⚠ **TAGO 근접 조회는 ~700m 고정 반경이라 0건 대부분이 미커버가 아니라 정상적인 반경 밖**이다. 미커버 판정 정본은 `isUncoveredBusRegion`(라우트·채팅 공용, provider 직접 호출 금지)이고 **이 마커만 upstream 뒤에 온다**. ⚠ **도착 완성 문장(`arrmsg1`)은 서버가 변형하지 않는다**(E39, 2026-09-12 — 종전 승차 국면 재작성 폐지): 상태 문장은 클라이언트가 `parseBusArrmsg` 구조에서 조립하고, **대기 후보 목록은 원문이 잔여 정보의 유일한 채널**이라 그대로 둔다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립). 같은 원문이 국면에 따라 뜻이 달라(대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*) 국면 인자에 **기본값이 없다**. 꼬리 정규식 `ARRMSG_REMAINING_TAIL`은 잔여를 읽는 쪽(`remainingFromArrmsg`)과 모양을 읽는 쪽(`parseBusArrmsg`)이 공유한다.
 
 지방=TAGO·서울=TOPIS, `mergeBusStops`가 `allSettled`로 병합한다(envelope는 서로 다르다 — `CLAUDE.md` 횡단 함정 참조). spec `2026-08-02-bus-uncovered-region-design.md`.
+
+**노선 번호 조회(`src/lib/bus-route.ts`, 채팅 `get_bus_route`, E87)**: TOPIS `getBusRouteList`는 서울 밖 노선을 이름 꼬리(「1003남양주」)로 주고 그 첫차·막차는 `000000`이다(「00:00」이 아니라 정보 없음). TAGO `getRouteNoList`는 부분 일치라 「1003(심야)」가 함께 오고 시각이 숫자와 문자열로 섞여 온다. TAGO 경유 정류소의 방면은 `updowncd` 값이 아니라 순번상 첫 묶음인지로 가른다. TOPIS `buspos`는 활용신청이 없어 빈 응답이다. spec `2026-11-14-e87-chat-bus-route-tool-design.md`.
 
 - ⚠ **TAGO `getCrdntPrxmtSttnList`는 ~700m 고정 반경**이다(반경 파라미터 없음. 해남 서림승강장 기준 600m 2건 → 800m 0건 실측). 그래서 **0건은 대개 "이 지역 미커버"가 아니라 정상적인 반경 밖**이고, 둘을 뭉개면 전국 시골이 미제공으로 낙인찍힌다.
 - 미커버 판정 정본은 `isUncoveredBusRegion`(`src/lib/bus.ts`, 라우트·채팅 공용 — **provider 직접 호출 금지**). seed는 `getCtyCodeList` 138개(`scripts/build-tago-cities.mjs` → `tago-cities.json`).
@@ -809,6 +811,20 @@ A52·A53·A55에서 정한 것: CLI 포매터의 도보 줄은 한국어 고정 
 
 한 번 탄 뒤 거두는 실패 줄은 승차 전 도보가 남긴 셋 전부(정확한 위치·위치 권한·약한 신호)다(A68).
 
+### 하차 출구 인계(E84)의 「출구 대기」는 도보 시작 조회 대기 창의 연장이고, 창을 닫는 축은 시계가 아니라 fix 증거(Kit `exitHoldStep`)와 사용자 선언이다
+
+지하철 말미 도보 인계가 출구 번호를 실어 오면(`TransitWalkHandoff.exitAlight` → `acceptWalkHandoff` → `StartRequest.exitLead`) 도보 세션은 시작 경로 조회 대기 창(`awaitingRoute`)을 「출구 대기」로 연다. 창 안에서는 `handle(fix:)`가 조기 반환하므로 리듀서·톤·주기 통지가 fix를 보지 못한다. 막을 통지 목록을 따로 관리하지 않는 것이 이 구조의 값이다. 설계 정본은 spec `2026-11-14-transit-exit-carryover-design.md`.
+
+- **출구의 입구는 하나다.** `acceptWalkHandoff`가 `transit.stop()` 앞에서 인계 값(`pendingWalkHandoff`)만 읽는다. 경로에서 직접 읽으면 잘못 내림 복구(E78)의 「걸어가기」(인계 값 없이 같은 함수에 들어온다)가 계획한 역의 출구를 다른 역에서 말한다. 환승 도보·승차 전 도보·여정·자동차 인계는 `exitLead: nil`이다.
+- **창 안 fix는 Kit `exitHoldStep` 하나만 지난다**(`ExitHold.swift`, 공유 fixture `exit-hold-cases.json`). 순서가 계약이다: 보관 불가 → 대기 / 첫 보관 가능 fix가 하차역에서 600m + 정확도 밖 → 버림(다른 역에서 내렸다) / 수용(30m·10초, `routeOriginStep`) → 조회 / 240초를 넘겼고 보관 가능 fix가 15초 이상 이어졌다(`exitHoldStorableRunStart`) → 최근 15초의 최선값으로 조회 / 그 밖 → 대기. ⚠ 연속 구간 조건을 빼지 말 것: 오래 걸어 나온 사람의 첫 보관 가능 fix(대개 가장 나쁜 fix)로 조회한다. ⚠ 상한의 후보를 창 전체 최선값으로 넓히지 말 것: 몇 분 전 승강장 좌표가 뽑힌다. ⚠ fix가 한 건도 없으면 상한은 걸리지 않는다(아직 지하다).
+- **창이 열리면 종전 15초 시계(`startFixWaitWatch`)를 걸지 않는다.** 그 함수는 반대로 `closeExitHold`를 먼저 부른다: 종전 대기 시계를 거는 모든 자리(목적지 전환·경유지·재획득·「출구로 나왔어요」·다른 역 판정)가 호출 전수로 창을 닫는다. 창 상태를 직접 지우는 자리는 `closeExitHold`와 `stop()` 둘뿐이다.
+- **창이 닫히는 첫 순간 저장된 시작 요청에서도 출구를 내린다**(`syncStartRequestWithSession`이 열려 있는 창의 값만 승계). 역 밖에서 안내를 받은 세션을 다시 시작했을 때 출구 문장이 다시 나오면 거짓이다. 창이 풀리기 전에 끝난 세션(권한·정밀 위치 실패)의 재시작만 창을 다시 연다.
+- **잊힌 세션 안전망**: 창 동안 fix 두절 임계는 `GuideTuning.sessionIdleNoFixExitHoldSeconds`(900초)이고, 무이동 축은 관측이 끊긴 동안(마지막 fix 뒤 30초 초과) 세지 않는다. 판정 조립은 Kit `exitHoldAwareSessionIdleStep` 한 자리다(출구 인계가 없는 세션은 종전 식과 값이 같다). ⚠ 둘은 한 쌍이다: fix가 0건이면 진행 기록도 없어, 두절 임계만 늘리면 무이동 축이 300초에 세션을 끝낸다. ⚠ **시계의 하한(`ExitHoldIdleFloors`)을 지우지 말 것**: 세션 첫 fix는 진행으로 치지 않으므로(앵커만 세운다) 긴 두절 뒤 첫 fix 직후 무이동 300초가 성립하고, 창이 닫히면 두절 임계가 300초로 돌아와 창 안에서 흐른 시간이 곧바로 넘는다. 그래서 관측 공백(30초 초과) 뒤 앵커에서 벗어난 fix(세션 첫 fix이거나 25m 이상)가 무이동 시계와 진행 앵커를(`exitHoldIdleFloorsAfterFix`. ⚠ 같은 자리 fix로는 세우지 않는다: 31초 간격의 제자리 fix가 세션을 영영 붙잡는다. 호출은 `lastFixAt = now`보다 앞), `closeExitHold`가 두 시계를(`exitHoldIdleFloorsAfterClose`) 그 시각으로 다시 세운다. 「뺄셈」으로 되돌리지 말 것: fix 한 건이 두절 시간 전부를 무이동으로 계상한다. 순서 있는 시나리오 fixture `idleScenarios`가 잠근다.
+- **출구 문장**: 시작 직후 단독 통지(`guide.exitLeadStart`, 소리 강등 고지가 있으면 한 통지로 합친다). fix로 창이 풀려 나가는 첫 시작류 통지는 `exitLeadPrefixNeeded`(단독 통지가 버려졌거나 게시 4초 미만)가 참이면 `withExitLead`로 접두를 다시 싣는다. 판정을 `announcementsSettled`에 걸지 말 것. 버튼·다른 역·목적지 전환으로 닫힌 창은 접두가 없다.
+- **시트**: 출구 줄은 시트가 `statusRowText`(`model.exitHoldLine ?? statusText`)로 유도한다. 모델의 `statusText`에 쓰지 않는다. 행 렌더와 `rowExists(.status)`가 같은 값을 읽고, 창 동안 `requestInfoLanding`은 조회를 기다리지 않는다.
+- **계측**(숫자만, 좌표 금지): `exitHold start`, `exitHoldRelease reason= elapsed= acc=`, 창 안 fix마다 `routeOriginWait acc= age= speed= speedAcc= holdT= station=`. 상수 240초·15초·600m·4초·900초·30초는 실승차 전까지 잠정이다(BACKLOG §2 E84).
+- **웹은 출구 대기가 없다**(BACKLOG §4 B19): `useRouteGuide`의 `exitLead` 옵션이 그 마운트의 첫 시작류 통지 앞에 출구 문장을 한 번 싣는 것이 전부다.
+
 ### 잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다
 
 (2026-11-07 E78, iOS 정식판, spec `2026-11-07-e78-wrong-stop-recovery-design.md` §8이 §3·§5보다 우선.) 버튼은 Kit `transitRecoveryOffered`(승차 중·도착, 추적 불가 구간은 대기 국면에서도 — 리듀서가 대기에 고정되므로, 여정 단계 밖)가 세우고, 출발점은 `transitRecoveryOrigin`이 수단으로 가른다(버스 = `currentCoordinate(force: true)`, 지하철 = 이번 구간 역 + 「목록에 없는 역 찾기」 검색, 앱은 출발점을 추정하지 않는다). 조회는 누름당 `fetchTransitCandidates` 한 번이고 바꿀 경로는 `transitRecoveryRoute`(추천 → 대안 순으로 **모든 탑승 구간이 `trackMode != nil`인** 첫 경로)다 — 조회 0건(`noRoute`)과 안내 가능 0(`noGuidable`)은 다른 문장이고 둘 다 「목적지까지 걸어가기」(`acceptWalkHandoff`)를 둔다.
@@ -914,6 +930,12 @@ Google Places API (New) — 장소 상세 영업시간 한 줄(E24, 웹·iOS 장
 ODsay 대중교통 — **Flex(후불 종량제) 앱 `gildongmuflex` 키**(2026-09-23 전환, 건당 25원+VAT·일 10만 건, 매월 5일 카드 자동 결제). URI 전용 키라 Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ 우리 라우트에 호출 상한이 없어 **호출 수가 곧 비용**이다 — 새 ODsay 호출 경로는 캐시 뒤에 두고 실호출 게이트는 최소로. 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(같은 서비스 복수 키는 약관 4.5.3). 키에 `+`/`/`가 들어가면 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), dodo 이식 시 해당 도메인 URI 앱 등록
 
 **실호출 게이트는 corpus 재생이 먼저다**(E47-1, 2026-09-26): `scripts/verify-odsay-*.mjs` 5종은 공용 규약 `scripts/lib/odsay-corpus.mjs`를 따른다(조사 스크립트 `probe-odsay-maas.mjs`도 저장·재생 키와 저장소 밖 강제는 같은 규약이지만, 오류 봉투도 저장하고 실호출은 `--out`과 호출 원장 `--ledger`를 함께 요구한다). 게이트를 돌리기 전에 `~/gildongmu-private/probes/<스크립트>-<YYYY-MM-DD>/`에 쓸 만한 corpus가 있는지 먼저 찾아 `--from-corpus <dir>`로 돌린다(읽기 전용, ODsay 호출 0. 없는 요청은 4종이 exit 3, `alternatives`는 종전대로 FAIL exit 1). 실호출이 필요하면 `--out <새 디렉터리>`로 돌려 응답을 전부 남긴다(저장 없는 실호출 모드는 없다). 파일 이름은 요청 URL의 엔드포인트 + 정렬한 파라미터(`apiKey` 제외, `requestKey`)이고, 실패 응답(비-2xx·JSON 아님·경로 없음 밖의 오류 봉투)은 저장하지 않는다. corpus는 저장소 안에 둘 수 없다(공개 저장소라 lib가 거절한다). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay만 corpus를 지나고, 운행시간(TAGO)·실시간 도착 같은 ODsay 밖 호출은 오프라인에서도 실호출이다. `alternatives`만 파일 이름이 `full-<쌍>`·`pt<1|2>-<쌍>`이다(2026-09-24 corpus 호환).
+
+### GILDONGMU_OPENAI_API_KEY
+
+같은 OpenAI 조직의 `Gildongmu` 프로젝트 전용 키를 앱·평가·`usage-report`에 쓴다. 환경 입력은 `GILDONGMU_OPENAI_API_KEY` 하나이며, 공용 `OPENAI_API_KEY`가 셸에 있어도 읽거나 폴백하지 않는다. 전용 키가 없으면 `hasOpenAiKey`가 false라 OpenAI 선택지·세션을 닫고 사용량 리포트도 호출하지 않는다. provider는 이 키를 Responses API 인증에 명시해 전달한다.
+
+로컬 `.env.local`·Vercel·저장소 밖 평가 스크립트에도 같은 전용 변수명을 등록한다. Next.js는 같은 이름의 `process.env`를 `.env.local`보다 먼저 읽으므로 공용 변수명을 재사용하지 않는다. 공용 `Personal-General` 키는 그대로 유지한다. 모델은 코드 상수 `OPENAI_VERGILIUS_MODELS`(선택지 `openai`=`gpt-6.1-terra`, `openai-luna`=`gpt-6-luna`, 한 키로 함께 서고 빠진다), 지출 설정은 OpenAI 콘솔에서 관리한다. `usage-report`는 모델 목록에 두 모델이 다 있어야 정상으로 본다. Vercel 환경을 바꾸면 재배포가 필요하다.
 
 ### GEMINI_API_KEY
 

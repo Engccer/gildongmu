@@ -262,7 +262,8 @@
       "carListenerDriver": "Conducente (altoparlante, comandi brevi)",
       "tabOrder": "Ordine delle schede",
       "tabOrderReset": "Ripristina l’ordine predefinito",
-      "tabOrderResetDone": "Ordine predefinito ripristinato"
+      "tabOrderResetDone": "Ordine predefinito ripristinato",
+      "vergiliusProvider": "Modello di risposta"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "Nuova destinazione: {name}.",
       "destChangedNoName": "Destinazione cambiata.",
       "destChangedFetching": "Ricerca di un nuovo percorso.",
+      "exitHoldAction": "Prendere l'uscita {exit}",
+      "exitHoldRelease": "Ho lasciato la stazione",
       "titleWaypointChange": "{label}, cambia tappa",
       "differentRoute": "Aggiorna percorso",
       "differentRouteFailed": "Impossibile trovare un nuovo percorso.",
@@ -382,6 +385,11 @@
       "passLeft": "{name} a sinistra",
       "passRight": "{name} a destra",
       "passSide": "Accanto: {name}",
+      "bundleLeft": "A sinistra: {names}",
+      "bundleRight": "A destra: {names}",
+      "bundleSide": "Accanto: {names}",
+      "bundleNameSeparator": ", ",
+      "bundleSideSeparator": ". ",
       "crosswalkAhead": "Attraversamento pedonale davanti",
       "crosswalkAheadAudio": "Attraversamento pedonale davanti, con segnale acustico",
       "junctionLeftAlley": "Vicolo a sinistra",
@@ -411,7 +419,22 @@
       },
       "started": "Passeggiata iniziata",
       "ended": "Passeggiata terminata",
-      "zoneAround": "Nei dintorni, {distance}"
+      "zoneAround": "Nei dintorni, {distance}",
+      "historyHeading": "Annunci recenti",
+      "historyEmpty": "Ancora nessun annuncio",
+      "historyLeft": "sinistra",
+      "historyRight": "destra",
+      "historyBeside": "accanto",
+      "historyPassedBy": "superato",
+      "historyJustNow": "adesso",
+      "historyMinutesAgo": "{minutes} min fa",
+      "askButton": "Chiedi a voce",
+      "askHint": "Tieni premuto e parla. Solleva il dito per chiedere.",
+      "askNoAnswer": "Nessuna risposta ricevuta.",
+      "askCutOff": "La risposta si è interrotta.",
+      "askNoSpeech": "Nessuna domanda sentita.",
+      "askNoLocation": "Non puoi ancora chiedere: posizione sconosciuta.",
+      "askProposal": "Ti guido fino a {name}?"
     },
     "reorder": {
       "toTop": "Sposta in cima",

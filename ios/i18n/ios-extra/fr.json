@@ -262,7 +262,8 @@
       "carListenerDriver": "Conducteur (haut-parleur, ordres brefs)",
       "tabOrder": "Ordre des onglets",
       "tabOrderReset": "Rétablir l’ordre par défaut",
-      "tabOrderResetDone": "Ordre par défaut rétabli"
+      "tabOrderResetDone": "Ordre par défaut rétabli",
+      "vergiliusProvider": "Modèle de réponse"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "Nouvelle destination : {name}.",
       "destChangedNoName": "Destination modifiée.",
       "destChangedFetching": "Recherche d'un nouvel itinéraire.",
+      "exitHoldAction": "Prendre la sortie {exit}",
+      "exitHoldRelease": "J'ai quitté la station",
       "titleWaypointChange": "{label}, changer l’étape",
       "differentRoute": "Actualiser l'itinéraire",
       "differentRouteFailed": "Impossible de trouver un nouvel itinéraire.",
@@ -382,6 +385,11 @@
       "passLeft": "{name} à gauche",
       "passRight": "{name} à droite",
       "passSide": "À côté : {name}",
+      "bundleLeft": "À gauche : {names}",
+      "bundleRight": "À droite : {names}",
+      "bundleSide": "À côté : {names}",
+      "bundleNameSeparator": ", ",
+      "bundleSideSeparator": ". ",
       "crosswalkAhead": "Passage piéton devant",
       "crosswalkAheadAudio": "Passage piéton devant, avec signal sonore",
       "junctionLeftAlley": "Ruelle à gauche",
@@ -411,7 +419,22 @@
       },
       "started": "Balade commencée",
       "ended": "Balade terminée",
-      "zoneAround": "À proximité, {distance}"
+      "zoneAround": "À proximité, {distance}",
+      "historyHeading": "Annonces récentes",
+      "historyEmpty": "Aucune annonce pour l’instant",
+      "historyLeft": "à gauche",
+      "historyRight": "à droite",
+      "historyBeside": "à côté",
+      "historyPassedBy": "dépassé",
+      "historyJustNow": "à l’instant",
+      "historyMinutesAgo": "il y a {minutes} min",
+      "askButton": "Demander à voix haute",
+      "askHint": "Maintenez appuyé et parlez. Levez le doigt pour demander.",
+      "askNoAnswer": "Aucune réponse reçue.",
+      "askCutOff": "La réponse a été interrompue.",
+      "askNoSpeech": "Aucune question entendue.",
+      "askNoLocation": "Impossible de demander pour l’instant : position inconnue.",
+      "askProposal": "Vous guider jusqu’à {name} ?"
     },
     "reorder": {
       "toTop": "Déplacer en haut",

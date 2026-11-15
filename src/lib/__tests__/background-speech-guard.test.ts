@@ -111,9 +111,10 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
   it.each(MODELS)("%s의 post는 채널 술어를 지나고 VoiceOver 게시는 공유 출력으로만 한다", (name) => {
     const source = read(join(DIR, name));
     const post = functionBody(source, "post");
-    // 가청 여부는 그 모델 재생기의 값(설계 리뷰 B1 — 들리지 않는 문장을 "전달"로 치지 않는다).
+    // 가청 여부는 그 모델 재생기의 값(설계 리뷰 B1 — 들리지 않는 문장을 "전달"로 치지 않는다). 묻고 답하는 구간(E82 V0c)은
+    // 나들이만 자기 상태를 넘기고 도보·대중교통은 리터럴 거짓이다.
     expect(post).toMatch(
-      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible\)/,
+      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible,\s*askWindowActive: (false|askPhase != \.idle)\)/,
     );
     expect(post).toContain("case .drop:");
     expect(post).toContain("deviceSpeech.submit(");
@@ -156,7 +157,9 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
     expect(outing).toContain("let handed = deviceSpeech.handOver()");
     expect(outing).toContain("var owed = handed.texts");
-    expect(outing).toMatch(/say\(owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/);
+    expect(outing).toMatch(
+      /say\(\s*owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable,\s*onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/,
+    );
   });
 
   it("prewalk 권한·정밀 위치 상실 종료는 도보 실패 문장에 대중교통 미시작을 붙이고, 코디네이터는 따로 내지 않는다(횡단 리뷰 F3)", () => {
@@ -205,6 +208,28 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceInterruption \{ \[weak queue\] token, reason in\s*queue\?\.speechInterrupted\(token: token, reason: reason\)/);
   });
 
+  it("기기 음성의 「말했다」는 합성기의 끝 신호로만 선다 — 끝까지 말했을 때와 취소를 가른다(E82 V0a)", () => {
+    const tts = read(join(ROOT, "ios/Gildongmu/Chat/TtsPlayer.swift"));
+    // 세대가 그대로일 때만 알린다 — `halt()`가 끊은 발화의 늦은 취소 신호가 「말하지 못했다」를 한 번 더 내지 않게.
+    expect(functionBody(tts, "speakGuidance")).toMatch(
+      /playbackDelegate\.armGuidance\(source: utterance\) \{ \[weak self\] completed in\s*guard let self, self\.generation == token else \{ return \}\s*self\.guidanceEndObservers\.forEach \{ \$0\(token, completed\) \}/,
+    );
+    expect(tts).toMatch(/didFinish utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: true\)/);
+    expect(tts).toMatch(/didCancel utterance: AVSpeechUtterance\) \{\s*finished\(from: utterance, completed: false\)/);
+    // 채팅 듣기를 장전하면 안내 칸을 비운다 — 남아 있으면 같은 주소를 받은 새 발화의 끝 신호를 안내 칸이 삼킨다.
+    expect(functionBody(tts, "arm")).toMatch(/self\.onFinish = onFinish[\s\S]*expectedGuidance = nil\s*onGuidanceEnd = nil/);
+    const output = read(join(DIR, "GuideSpeechOutput.swift"));
+    expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceEnd \{ \[weak queue\] token, completed in\s*queue\?\.speechEnded\(token: token, completed: completed\)/);
+  });
+
+  it("도보·대중교통 모델은 답·주변 분류를 쓰지 않는다 — 서열 선점과 인계 제외는 나들이에만 닿는다(E82 V0b)", () => {
+    for (const name of ["BeaconModel.swift", "TransitGuideModel.swift"]) {
+      const source = read(join(DIR, name));
+      // 오디오 세션 범주 `.ambient`를 말하는 주석은 대상이 아니다 — 발화 분류 인자만 본다.
+      expect(source, name).not.toMatch(/speechClass: \.(ambient|answer)\b/);
+    }
+  });
+
   it("도보 post: 버림은 복귀 표식을 세우고, 기기 음성은 내리고, 대기 칸의 미전달만 다시 세운다(spec §4.3)", () => {
     const post = functionBody(read(join(DIR, "BeaconModel.swift")), "post");
     const device = post.slice(post.indexOf("case .device:"), post.indexOf("case .drop:"));
@@ -235,5 +260,15 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
         expect(window, `${name}:${i + 1}`).toContain("deviceSpeech.reset()");
       }
     }
+  });
+
+  it("나들이 답 문장의 끝 신호는 다음 문장을 같은 호출 스택에서 내지 않는다(E82 S6 리뷰 M1)", () => {
+    // 버림 신호는 새 안내 문장의 announce가 슬롯을 비우는 도중에 동기로 온다. 거기서 바로 다시 announce하면 바깥 호출이
+    // 슬롯을 덮어써 답 문장이 끝 신호 없이 사라지고, 묻고 답하는 구간이 열린 채 남는다.
+    const body = functionBody(read(join(DIR, "OutingModel.swift")), "answerSentenceEnded");
+    expect(body).toContain("schedulePumpAnswer()");
+    expect(body.match(/(?<![A-Za-z])pumpAnswer\(\)/g)).toBeNull();
+    const schedule = functionBody(read(join(DIR, "OutingModel.swift")), "schedulePumpAnswer");
+    expect(closureAfter(schedule, "Task {")).toContain("self.pumpAnswer()");
   });
 });

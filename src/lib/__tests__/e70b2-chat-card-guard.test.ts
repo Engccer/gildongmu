@@ -50,10 +50,16 @@ describe("E70-b2 ③ 수동 위치 카드", () => {
 });
 
 describe("E70-b2 ③ 웹 길찾기 화면", () => {
-  it("기기 위치로 푸는 조회는 카드 진입의 재조회 하나뿐이다(최근 경로·조회 버튼·도구는 유효 위치 그대로)", () => {
+  it("기기 위치로 푸는 조회는 채팅 카드 진입 셋뿐이다(최근 경로·조회 버튼·도구는 유효 위치 그대로)", () => {
+    // 여정 카드의 재조회(E70-b2 ③) + 경로 안내 시작 카드의 도보·자동차 시작과 낡은 대중교통 카드의 재조회(E83 §6).
+    // 셋 다 마운트 1회 effect의 `initialTo` 조회다 — [길찾기에서 열기]를 포함한 그 밖의 조회는 유효 위치(수동 지정 포함)에서 출발한다.
     const sites = webDirections.split("\n").filter((line) => line.includes("realOrigin: true"));
-    expect(sites).toHaveLength(1);
-    expect(sites[0]).toContain('from: { kind: "current" }, to: initialTo');
+    expect(sites).toHaveLength(3);
+    for (const site of sites) expect(site).toContain('from: { kind: "current" }, to: initialTo');
+    expect(sites.filter((site) => site.includes("guideStart"))).toHaveLength(1);
+    // 안내 시작 카드의 [길찾기에서 열기]는 기기 위치로 풀지 않는다.
+    const open = webDirections.slice(webDirections.indexOf('if (guideEntry.action === "open") {'));
+    expect(open.slice(0, open.indexOf("return;"))).not.toContain("realOrigin");
   });
 });
 

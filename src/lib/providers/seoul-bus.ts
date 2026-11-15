@@ -1,4 +1,5 @@
-import type { BusArrival, BusRouteStop, BusStop, JourneyStopHit } from "../types";
+import type { BusArrival, BusLine, BusLineStop, BusRouteStop, BusStop, JourneyStopHit } from "../types";
+import { parseServiceTime } from "../service-hours";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 
@@ -354,4 +355,60 @@ export async function searchSeoulStopsByName(q: string): Promise<JourneyStopHit[
   if (!env.DATA_GO_KR_API_KEY) return [];
   const raw = await fetchSeoul("stationinfo/getStationByName", { stSrch: q }, { next: { revalidate: 86_400 } });
   return parseSeoulStopsByName(raw);
+}
+
+/**
+ * 노선 번호 검색 응답(`getBusRouteList`) → 노선 목록(E87). 부분 일치로 오므로 번호 대조는 호출부(`bus-route.ts`)가 한다.
+ * 첫차·막차는 14자리 일시, 배차 간격 `term`은 분이다(실측 2026-11-14, 272번). 저상 첫차·막차(`firstLowTm`)는 2015년 값이 와서 읽지 않는다.
+ * ⚠ 서울 밖 노선(「1003남양주」)은 첫차·막차가 둘 다 `000000`으로 온다(실측) — 자정 운행이 아니라 값이 없는 것이라 null로 둔다.
+ */
+export function parseSeoulRouteList(raw: unknown): BusLine[] {
+  return parseSeoulItems(raw)
+    .map((it): BusLine => {
+      const term = numF(it.term);
+      const first = parseServiceTime(str(it.firstBusTm));
+      const last = parseServiceTime(str(it.lastBusTm));
+      const noHours = first === 0 && last === 0;
+      return {
+        source: "seoul",
+        routeId: str(it.busRouteId).trim(),
+        routeNo: str(it.busRouteNm).trim(),
+        routeType: SEOUL_ROUTE_TYPE[str(it.routeType)] ?? "",
+        startStop: str(it.stStationNm).trim(),
+        endStop: str(it.edStationNm).trim(),
+        firstMinutes: noHours ? null : first,
+        lastMinutes: noHours ? null : last,
+        intervalMinutes: Number.isFinite(term) && term > 0 ? Math.round(term) : null,
+      };
+    })
+    .filter((l) => l.routeId !== "" && l.routeNo !== "");
+}
+
+/** 노선 번호 검색(E87). 노선 목록은 거의 불변이라 하루 캐시. */
+export async function searchSeoulRoutesByNo(q: string): Promise<BusLine[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchSeoul("busRouteInfo/getBusRouteList", { strSrch: q }, { next: { revalidate: 86_400 } });
+  return parseSeoulRouteList(raw);
+}
+
+/** 경유 정류소 응답 → 방면(`direction`)·회차(`transYn`)를 살린 줄(E87). 좌표가 없는 정류소도 순번을 지키려고 남긴다. */
+export function parseSeoulLineStops(raw: unknown): BusLineStop[] {
+  return parseSeoulItems(raw)
+    .map((it): BusLineStop => ({
+      name: str(it.stationNm).trim(),
+      order: nonNegInt(it.seq),
+      lat: numF(it.gpsY),
+      lng: numF(it.gpsX),
+      towards: str(it.direction).trim(),
+      turnaround: str(it.transYn) === "Y",
+    }))
+    .filter((s) => s.name !== "")
+    .sort((a, b) => a.order - b.order);
+}
+
+/** 노선 경유 정류소(E87). `fetchSeoulRouteStops`와 같은 요청이라 같은 하루 캐시를 탄다. */
+export async function fetchSeoulLineStops(routeId: string): Promise<BusLineStop[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchSeoul("busRouteInfo/getStaionByRoute", { busRouteId: routeId }, { next: { revalidate: 86_400 } });
+  return parseSeoulLineStops(raw);
 }

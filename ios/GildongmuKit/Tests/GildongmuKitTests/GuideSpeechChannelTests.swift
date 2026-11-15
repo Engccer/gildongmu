@@ -14,14 +14,17 @@ struct GuideSpeechChannelTests {
         foreground && voiceOver ? .voiceOver : .device
     }
 
-    /// 술어 입력 전 조합(전경·VoiceOver·토글·가청 2^4 × 분류 3).
+    /// 술어 입력 전 조합(전경·VoiceOver·토글·가청 2^4 × 종전 분류 3). E82가 더한 답·주변 분류는 나들이만 쓰고
+    /// `GuideSpeechDeliveryTests`가 잠근다 — 여기는 종전 분류의 결과가 E53 그대로인지를 본다.
+    private static let legacyClasses: [GuideSpeechClass] = [.actionable, .urgent, .deferrable]
+
     private struct Inputs {
         let foreground: Bool, voiceOver: Bool, cls: GuideSpeechClass, enabled: Bool, audible: Bool
     }
 
     private var allInputs: [Inputs] {
         let flags = [true, false]
-        return flags.flatMap { fg in flags.flatMap { vo in GuideSpeechClass.allCases.flatMap { cls in
+        return flags.flatMap { fg in flags.flatMap { vo in Self.legacyClasses.flatMap { cls in
             flags.flatMap { on in flags.map { au in
                 Inputs(foreground: fg, voiceOver: vo, cls: cls, enabled: on, audible: au)
             } }
@@ -34,7 +37,8 @@ struct GuideSpeechChannelTests {
     private func channel(_ i: Inputs, outing: Bool) -> GuideSpeechChannel {
         guideSpeechChannel(
             foreground: i.foreground, voiceOverRunning: i.voiceOver, speechClass: i.cls,
-            backgroundSpeechEnabled: i.enabled, backgroundAudible: i.audible, foregroundDeviceSpeech: outing)
+            backgroundSpeechEnabled: i.enabled, backgroundAudible: i.audible, foregroundDeviceSpeech: outing,
+            askWindowActive: false)
     }
 
     // spec §1: 토글을 끄면(2.0 전 정식판의 상수 거짓과 같은 값) 도보·자동차·대중교통의 결과가 종전과 입력 전

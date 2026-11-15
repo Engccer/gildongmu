@@ -211,7 +211,7 @@ struct DirectionsEndpointSearchView: View {
     /// 자동차로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
     /// 역 칸 대상에서만 쓰인다. `DirectionsEndpoint`(Kit 공유·최근 기록 저장 포맷)는 넓히지 않는다.
     let onSelectStation: ((RecentStation) -> Void)?
-    /// 출발지 칸의 「지금 탄 열차에서 출발」(E71)의 결과 — 역을 장소 그대로 돌려준다(노선 힌트가 필요하다). 실험판 여정 입력이 설 때만
+    /// 출발지 칸의 「지금 탄 열차에서 출발」(E71)의 결과 — 역을 장소 그대로 돌려준다(노선 힌트가 필요하다). 여정 입력이 설 때만(ko 데이터 로케일)
     /// 값이 있고, 없으면 출발지 시트에 그 행이 없다.
     let onSelectAboardStation: ((RecentStation) -> Void)?
     /// 입구 검색(E77 `.transfer`)의 결과 — 역 장소 줄이나 정류장 줄을 골랐을 때 수단 낱말과 함께 넘긴다(질문은 시트가 닫힌 뒤 길찾기

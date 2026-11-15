@@ -262,7 +262,8 @@
       "carListenerDriver": "運転者（スピーカー、短い指示）",
       "tabOrder": "タブの順序",
       "tabOrderReset": "標準の順序に戻す",
-      "tabOrderResetDone": "標準の順序に戻しました"
+      "tabOrderResetDone": "標準の順序に戻しました",
+      "vergiliusProvider": "回答モデル"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "新しい目的地 {name}。",
       "destChangedNoName": "目的地を変更しました。",
       "destChangedFetching": "新しいルートを検索しています。",
+      "exitHoldAction": "{exit}番出口から出る",
+      "exitHoldRelease": "出口を出ました",
       "titleWaypointChange": "{label}、経由地を変更",
       "differentRoute": "経路を更新",
       "differentRouteFailed": "新しい経路を見つけられませんでした。",
@@ -382,6 +385,11 @@
       "passLeft": "左に{name}",
       "passRight": "右に{name}",
       "passSide": "そばに{name}",
+      "bundleLeft": "左に{names}",
+      "bundleRight": "右に{names}",
+      "bundleSide": "そばに{names}",
+      "bundleNameSeparator": "、",
+      "bundleSideSeparator": "。",
       "crosswalkAhead": "前方に横断歩道",
       "crosswalkAheadAudio": "前方に横断歩道、音響信号機あり",
       "junctionLeftAlley": "左に路地",
@@ -411,7 +419,22 @@
       },
       "started": "お散歩を開始しました",
       "ended": "お散歩を終了しました",
-      "zoneAround": "周辺 {distance}"
+      "zoneAround": "周辺 {distance}",
+      "historyHeading": "直前の案内",
+      "historyEmpty": "まだ案内はありません",
+      "historyLeft": "左",
+      "historyRight": "右",
+      "historyBeside": "そば",
+      "historyPassedBy": "通過済み",
+      "historyJustNow": "たった今",
+      "historyMinutesAgo": "{minutes}分前",
+      "askButton": "声で質問",
+      "askHint": "押したまま話してください。指を離すと質問します。",
+      "askNoAnswer": "回答を受け取れませんでした。",
+      "askCutOff": "回答が途中で切れました。",
+      "askNoSpeech": "質問を聞き取れませんでした。",
+      "askNoLocation": "まだ位置がわからないため質問できません。",
+      "askProposal": "{name}まで案内しますか？"
     },
     "reorder": {
       "toTop": "一番上へ",

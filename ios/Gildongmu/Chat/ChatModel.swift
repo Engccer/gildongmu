@@ -175,9 +175,11 @@ final class ChatModel {
     private func requestBody() -> ChatRequestBody {
         let effective = ManualLocationStore.shared.current.map { (lat: $0.lat, lng: $0.lng) }
             ?? LocationService.shared.lastCoordinate
-        // 여정 능력 신고(E70-b D7): 실험판의 채팅 탭(범용 채팅)만이다. 장소 채팅은 카드를 못 그려 신고하지 않는다.
+        // 여정 능력 신고(E70-b D7): 채팅 탭(범용 채팅)만이다. 장소 채팅은 카드를 못 그려 신고하지 않는다.
         // 신고하지 않으면 두 필드 모두 키가 생략돼 요청 본문은 종전과 같다. `userLocationManual`은 위 유효 위치가 수동 지정인가(D2).
-        let reportsJourney = AppConfig.experimentalJourneyEnabled && place == nil
+        let reportsJourney = place == nil
+        // 경로 카드의 [안내 시작] 신고(E83 R2)는 실험판 봉인 뒤다. 정식판은 `["journey"]` 그대로라 요청 본문이 종전과 같다.
+        let reportsRouteStart = reportsJourney && AppConfig.experimentalChatGuideEnabled
         return ChatRequestBody(
             messages: messages.map { .init(role: $0.role == .user ? "user" : "assistant", text: $0.text) },
             userLocation: effective.map { .init(lat: $0.lat, lng: $0.lng) },
@@ -191,7 +193,7 @@ final class ChatModel {
                     isStation: isStation(place)
                 )
             },
-            capabilities: reportsJourney ? ["journey"] : nil,
+            capabilities: reportsJourney ? ["journey"] + (reportsRouteStart ? ["route-start"] : []) : nil,
             userLocationManual: reportsJourney ? ManualLocationStore.shared.current != nil : nil
         )
     }
@@ -206,6 +208,8 @@ final class ChatModel {
         case "get_kids_places": appLocalized("chat.progress.tool.get_kids_places")
         case "get_surroundings": appLocalized("chat.progress.tool.get_surroundings")
         case "get_bus_arrivals": appLocalized("chat.progress.tool.get_bus_arrivals")
+        case "get_bus_route": appLocalized("chat.progress.tool.get_bus_route")
+        case "get_entrance_sides": appLocalized("chat.progress.tool.get_entrance_sides")
         case "get_bike_stations": appLocalized("chat.progress.tool.get_bike_stations")
         case "get_air_quality": appLocalized("chat.progress.tool.get_air_quality")
         case "get_weather": appLocalized("chat.progress.tool.get_weather")

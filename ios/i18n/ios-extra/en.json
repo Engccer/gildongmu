@@ -262,7 +262,8 @@
       "carListenerDriver": "Driver (speaker, short commands)",
       "tabOrder": "Tab order",
       "tabOrderReset": "Restore default order",
-      "tabOrderResetDone": "Default order restored"
+      "tabOrderResetDone": "Default order restored",
+      "vergiliusProvider": "Answer model"
     },
     "shortcut": {
       "voiceSearch": {
@@ -316,6 +317,8 @@
       "destChanged": "New destination: {name}.",
       "destChangedNoName": "Destination changed.",
       "destChangedFetching": "Finding a new route.",
+      "exitHoldAction": "Take Exit {exit}",
+      "exitHoldRelease": "I've left the station",
       "titleWaypointChange": "{label}, change waypoint",
       "differentRoute": "Refresh route",
       "differentRouteFailed": "Couldn't find a new route.",
@@ -382,6 +385,11 @@
       "passLeft": "{name} on your left",
       "passRight": "{name} on your right",
       "passSide": "Passing {name}",
+      "bundleLeft": "On your left: {names}",
+      "bundleRight": "On your right: {names}",
+      "bundleSide": "Passing: {names}",
+      "bundleNameSeparator": ", ",
+      "bundleSideSeparator": ". ",
       "crosswalkAhead": "Crosswalk ahead",
       "crosswalkAheadAudio": "Crosswalk ahead, with audible signal",
       "junctionLeftAlley": "Alley on your left",
@@ -411,7 +419,22 @@
       },
       "started": "Stroll started",
       "ended": "Stroll ended",
-      "zoneAround": "Nearby, {distance}"
+      "zoneAround": "Nearby, {distance}",
+      "historyHeading": "Recently announced",
+      "historyEmpty": "Nothing announced yet",
+      "historyLeft": "left",
+      "historyRight": "right",
+      "historyBeside": "beside",
+      "historyPassedBy": "passed",
+      "historyJustNow": "just now",
+      "historyMinutesAgo": "{minutes} min ago",
+      "askButton": "Ask by voice",
+      "askHint": "Hold and speak. Lift your finger to ask.",
+      "askNoAnswer": "No answer received.",
+      "askCutOff": "The answer was cut off.",
+      "askNoSpeech": "No question was heard.",
+      "askNoLocation": "Can’t ask yet: your location isn’t known.",
+      "askProposal": "Guide you to {name}?"
     },
     "reorder": {
       "toTop": "Move to top",

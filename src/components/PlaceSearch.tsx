@@ -63,10 +63,12 @@ import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
-import { DirectionsView, type DirectionsJourneyEntry } from "./DirectionsView";
+import { DirectionsView, type DirectionsGuideEntry, type DirectionsJourneyEntry } from "./DirectionsView";
 import { NearbyHub } from "./NearbyHub";
 import { ChatOverlay } from "./chat/ChatOverlay";
 import type { JourneyActionHandler } from "./chat/JourneyChatCard";
+import type { RouteStartActionHandler } from "./chat/RouteStartCard";
+import { routeStartOpenVia } from "@/lib/chat/route-start-groups";
 import type { ChatMessage } from "@/lib/chat/types";
 import { journeyCardFreshness } from "./chat/journey-card-freshness";
 import { LocationBar } from "./LocationBar";
@@ -194,6 +196,8 @@ export function PlaceSearch({
     prefill?: boolean;
     /** 채팅 여정 카드에서 넘어온 진입(E70-b) — 갈아탈 곳·결과와 마운트에서 할 일. 도착지는 `to`가 나른다. */
     journey?: DirectionsJourneyEntry;
+    /** 채팅 경로 안내 시작 카드에서 넘어온 진입(E83) — 마운트에서 할 일 하나. 도착지는 `to`가 나른다. */
+    guide?: DirectionsGuideEntry;
   } | null>(null);
   // "내 주변" 허브 뷰(스펙 2026-07-30). 열림/닫힘은 URL(?panel=nearby)이 정본,
   // History 스택은 directions와 동형 규율(직접 진입 시 스택 합성 없음 — 닫기가
@@ -549,6 +553,48 @@ export function PlaceSearch({
       to: placeEndpoint(payload.destLabel, payload.dest, payload.destRoman),
       journey: { payload, mode },
     });
+  };
+  /**
+   * 채팅 경로 안내 시작 카드의 버튼(E83 spec `2026-11-14-e83-chat-route-start-design.md` §6). 여정 카드와 같은 통로다 — 채팅을
+   * 닫고(대화는 남긴다, E70-b2 ①) 길찾기 화면을 새 히스토리 항목으로 연다.
+   * - [길찾기에서 열기]·도보·자동차 [안내 시작]은 여기서 기다리지 않는다(위치는 길찾기 화면이 조회하며 받는다).
+   * - 대중교통 [안내 시작]만 위치를 새로 받아 카드가 아직 쓸 만한지 본다(R6, 여정 카드와 같은 10분·100m). 신선하면 카드의
+   *   결과로 시작하고, 낡았거나 수동 지정 위치에서 조회한 카드면 길찾기 화면이 기기 위치에서 다시 조회한다.
+   */
+  const routeStartInFlight = useRef(false);
+  const handleRouteStartAction: RouteStartActionHandler = async (group, action) => {
+    if (routeStartInFlight.current) return;
+    const chat = generalChatRef.current;
+    let guide: DirectionsGuideEntry;
+    if (action.kind === "open") {
+      guide = { action: "open", mode: null, via: routeStartOpenVia(group), accessible: false, transit: null };
+    } else if (action.mode === "transit") {
+      const card = group.transit?.transit;
+      if (!card) return;
+      routeStartInFlight.current = true;
+      let fresh = false;
+      try {
+        const fix = await awaitGeolocation({ force: true });
+        fresh =
+          !card.manualOrigin &&
+          journeyCardFreshness(card, fix.status === "ready" ? fix.coords : null, Date.now()) === "fresh";
+      } finally {
+        routeStartInFlight.current = false;
+      }
+      // 기다리는 사이 사용자가 채팅을 닫았거나 다른 화면으로 갔으면 그 선택이 이긴다.
+      if (generalChatRef.current !== chat || generalChatRef.current === null || directionsOpenRef.current) return;
+      guide = fresh
+        ? { action: "start", mode: "transit", via: null, accessible: false, transit: { result: card.result, origin: card.origin } }
+        : { action: "requery", mode: "transit", via: null, accessible: false, transit: null };
+    } else {
+      const render = group[action.mode];
+      if (!render) return;
+      guide = { action: "start", mode: action.mode, via: render.via, accessible: render.accessible, transit: null };
+    }
+    preservedChatRef.current = chatTranscriptRef.current;
+    setGeneralChat(null);
+    window.history.pushState({ ...(window.history.state ?? {}), directions: true }, "");
+    setDirections({ to: placeEndpoint(group.destLabel, group.dest, group.destRoman), guide });
   };
   function backFromDirections() {
     if (window.history.state?.directions) {
@@ -1231,6 +1277,7 @@ export function PlaceSearch({
         initialTo={directions.to}
         prefill={directions.prefill ?? false}
         initialJourney={directions.journey}
+        initialGuide={directions.guide}
         onBack={backFromDirections}
       />
     );
@@ -1426,6 +1473,8 @@ export function PlaceSearch({
           // 여정 능력(E70-b D7): 서버 키 게이트와 ko일 때만 통로를 준다 — 통로가 곧 능력 신고의 스위치다. 길찾기 화면의
           // 여정 게이트(`journeyEnabled`)와 같은 식이어야 카드가 연 화면에 갈아탈 곳 칸이 있다.
           onJourneyAction={canPlanJourney && !prefersEnglish(locale) ? handleJourneyAction : undefined}
+          // 경로 안내 시작 카드(E83 R2): 범용 채팅은 늘 신고한다(전 로케일) — 수단별 버튼은 카드가 로케일·결과로 가른다.
+          onRouteStartAction={handleRouteStartAction}
           initialMessages={generalChat.restore}
           onMessages={handleChatMessages}
           onClose={() => {

@@ -79,13 +79,14 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | `getWalkRoute`만 호출, 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), 옵트인 `wording=2`는 `rewriteWalkBriefingV2`(미지정 응답 불변), `action`은 `attachStepActions`. 비-ko는 Tmap 단독 en(`lang` 필수 인자), 조회 화면은 `lines=2` 줄 목록(`lines` 값은 판본 번호). 기하 응답은 카카오 첫 점 30m 밖이면 Tmap 재시도(A70). → INTEGRATIONS |
 | 횡단보도 차로 수·도로 폭 | crosswalks(정적 seed 15028201) → `walk-route.ts` `annotateCrosswalkInfo` / 별도 라우트 없음 | 단일 횡단보도 스텝 끝에 `, N차로, 도로 폭 Mm` — 있는 곳만, 3중 게이트 전부 통과일 때만, Tmap·병합 스텝·분해된 연속 횡단 조각은 침묵. → INTEGRATIONS |
 | 대중교통 | odsay + odsay-select + bus-service-hours + subway-service-hours + odsay-express-stops(급행 정차역, ODsay 추가 호출·7일 캐시) / `/api/route/transit` | **파이프라인 순서가 계약: 정규화 → 강등 → 선정 → 축 라벨.** 재조회 제안(`requeryAxes`)은 강등 뒤 전체 후보로 판정. iOS `routeKey` 필수 디코딩이라 **웹 배포가 앱보다 먼저**. → INTEGRATIONS |
-| 여정(E70, 웹 ko 공개·iOS 실험판) | `journey/*` / `/api/route/journey` | 조회 셋 조립(ko 전용). ⚠ 카카오 출구 질의는 괄호 뗀 `exitQueryStationName`(표시 이름 함수와 분리 — 섞으면 「출구 없음」 위장), `lookupFailed`는 카카오 출구 실패만, Tmap은 호출 수 팬아웃 전 예약(IP 16·인스턴스 일 200). 정류장 지정(E70-e)은 옵트인 `stops=1`, 이름은 TOPIS·TAGO 검색(`/api/route/journey/stops`). → INTEGRATIONS |
+| 여정(E70, 웹·iOS ko) | `journey/*` / `/api/route/journey` | 조회 셋 조립(ko 전용). ⚠ 카카오 출구 질의는 괄호 뗀 `exitQueryStationName`(표시 이름 함수와 분리 — 섞으면 「출구 없음」 위장), `lookupFailed`는 카카오 출구 실패만, Tmap은 호출 수 팬아웃 전 예약(IP 16·인스턴스 일 200). 정류장 지정(E70-e)은 옵트인 `stops=1`, 이름은 TOPIS·TAGO 검색(`/api/route/journey/stops`). → INTEGRATIONS |
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
 | 장소 영업시간(E24, 웹·iOS 장소 상세) | google-places → `place-hours.ts`(순수) / `/api/places/hours` | 어떤 실패도 `{hours:null}`. `place_id`만 캐시, 영업시간은 캐시 금지. ⚠ 약관 TTS 금지(`place-hours-tts-drift.test.ts`), 좌표만으로 매칭하지 않는다. attribution "Google Maps"는 번역·변형 금지. → INTEGRATIONS |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
-| 대중교통 추적 | `transit-track.ts`(TOPIS·TAGO·서울 지하철) / `/api/transit/track` | 판별 union으로 봉투 차이 흡수, 3-state, `no-store`(라우트 `use cache` 없음), IP 60초 20회 |
+| 대중교통 추적 | `transit-track.ts`(TOPIS·TAGO·서울 지하철) / `/api/transit/track` | 판별 union으로 봉투 차이 흡수, 3-state, `no-store`(라우트 `use cache` 없음), IP 60초 20회. ⚠ 지하철 `arvlCd`는 문장과 맞춘 뒤에만 싣는다(`reconcileArvlCd` — 8호선은 「[N]번째 전역」에 코드 1을 싣는다, A73) |
 | 한눈에 보기 | `nearby-overview.ts` / `/api/nearby/overview` | 주변 6종을 반경 1km로 집계, 키 게이트는 불릿 단위, 조각 실패는 불릿 `failed`로 200(3-state), 옵트인 `places=1`(E65) |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 + `/api/search/web`(검색창 웹섹션, 1시간 캐시) | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
+| 베르길리우스 말로 묻기(E82, iOS 실험판) | `vergilius/*` → OpenAI Responses API·Gemini·Anthropic Messages API / `/api/vergilius/ask`(NDJSON)·`/api/vergilius/providers` | 모델에게 주는 글에 좌표를 넣지 않는다(`materials.ts`). 제안은 요청에 있던 가게 id만 통과, 렌더는 `route-start`만, 도구는 채팅 실행부의 다섯 개를 왕복 2회·회차당 3건까지(도착지가 목록의 가게 이름이면 실행하지 않는다), 도구 결과의 좌표는 떼고 준다. 요청 전체 25초. 회사는 키 있는 쪽이 선택지로 선다(OpenAI 둘 `gpt-6.1-terra`·`gpt-6-luna`, Google `gemini-3.8-flash` 생각 낮음(「최소」는 400). E86 판정 2026-11-14로 Google도 연다, Claude는 모델 단위 셋 `claude-opus`·`claude-sonnet`·`claude-haiku`). Claude는 `stop_reason`이 `end_turn`·`tool_use`가 아니면 실패(거절을 다른 모델로 돌리는 서버 `fallbacks` 금지), 도구 부른 회차의 응답 내용은 생각 블록째 그대로 이력에. IP 60초 10회·인스턴스 일 300. 질문 글·재료는 로그 금지. → spec `2026-11-14-e82-vergilius-v1-design.md` §4 |
 
 ## API 키 현황
 
@@ -104,6 +105,8 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD)는 **폴백**이다. 정본은 기기 음성이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다. → INTEGRATIONS |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`). `gildongmu-prod` API 제한 키, ⚠ dodo와 공유하지 않는다. 키 교체 시 3곳 동조. → INTEGRATIONS |
 | `GOOGLE_PLACES_API_KEY` | `hasGooglePlacesKey` | 장소 상세 영업시간(E24). 무료분을 GCP 일일 쿼터로 상한(초과는 429라 과금 0). → INTEGRATIONS |
+| `GILDONGMU_OPENAI_API_KEY` | `hasOpenAiKey` | 길동무 전용 OpenAI 프로젝트 키(앱·eval·usage-report). 공용 `OPENAI_API_KEY`로 폴백하지 않는다. 없으면 `/api/vergilius/providers`에서 빠진다. → INTEGRATIONS |
+| `ANTHROPIC_API_KEY` | `hasAnthropicKey` | 베르길리우스 말로 묻기의 Claude 셋(Opus 5.5·Sonnet 5.5·Haiku 5.5, 모델은 코드 상수 `CLAUDE_VERGILIUS_MODELS`). 유료, 지출 상한은 Anthropic 콘솔. 없으면 셋 다 `/api/vergilius/providers`에서 빠진다 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인. → INTEGRATIONS |
 | `TMAP_APP_KEY` | `hasTmapKey`(도보 노출 게이트는 `hasWalkRouteKeyFor(lang)`: ko=`hasWalkRouteKey`, 비-ko=`hasTmapKey` / 자동차 노출 게이트는 `hasCarRouteKey`) | 보행자 ko 폴백·비-ko 단독 + 자동차 ko 기본. 일 1,000건 무료를 둘이 공유(길동무 단독), IPS "Any IP allowed" 유지(IP 제한 금지). → INTEGRATIONS |

@@ -1,8 +1,9 @@
 import GildongmuKit
 import SwiftUI
 
-/// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 주변 낭독 → 주변 보기 → **상태 행(착지 — 열림·띠바 복귀)** →
-/// 걸은 거리 → 방향, 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
+/// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 말로 묻기(E82 V14) → 주변 낭독 → 주변 보기 →
+/// **상태 행(착지 — 열림·띠바 복귀)** → 걸은 거리 → 방향 → 「방금 말한 것」 목록(E82 V11, 마지막 답 줄 아래에 그 답의 버튼),
+/// 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
 /// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. "출발점으로"는 종료 화면에만 있다(E54).
 ///
 /// 착지 행은 이벤트로만 바뀌는 상태 행이다(출발점 잡는 중 → 출발점 {라벨}). 걸을 때마다 바뀌는 걸은 거리를
@@ -13,6 +14,9 @@ struct OutingSheet: View {
     let model: OutingModel
     let onMinimize: () -> Void
     let onReturn: () -> Void
+    /// 안내로 넘긴다(`GuideSession.handOverOuting` — 이 뷰는 세션을 직접 시작하지 않는다, E82 V13): 기록의 가게 줄,
+    /// 답 아래 수단 버튼(V21), 제안 버튼(V22).
+    let onHandOver: (GuideDestination, GuideSession.OutingHandoverStart) -> Void
 
     @AppStorage(OutingNarration.storageKey) private var narrationRaw = OutingNarration.default.rawValue
     @AccessibilityFocusState private var statusFocused: Bool
@@ -23,9 +27,14 @@ struct OutingSheet: View {
     @State private var pendingPlace: Place?
     @State private var detailPlace: Place?
     @State private var showsSettings = false
+    /// 「방금 말한 것」의 지난 시간을 셀 기준 시각 — 시트가 열릴 때와 기록이 바뀔 때만 잡는다(아래 `historySection`).
+    @State private var historyNow = Date().timeIntervalSince1970
     /// 체중 입력 권유(도보 종료 화면과 같은 저장 키·같은 판정, E31).
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
+    /// 채팅과 같은 AI 동의(V14) — 동의 전이면 「말로 묻기」가 동의 화면을 연다.
+    @AppStorage(AIChatConsent.key) private var aiConsentGranted = false
+    @State private var showsConsent = false
 
     private var narration: OutingNarration { OutingNarration(rawValue: narrationRaw) ?? .default }
 
@@ -35,6 +44,7 @@ struct OutingSheet: View {
                 endSection(end)
             } else {
                 trackingSection
+                historySection
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -49,7 +59,11 @@ struct OutingSheet: View {
                 .background(.bar, ignoresSafeAreaEdges: [])
             }
         }
+        .onChange(of: model.history.entries.map(\.id)) {
+            historyNow = Date().timeIntervalSince1970
+        }
         .task {
+            historyNow = Date().timeIntervalSince1970
             // 띠바에서 돌아온 시트도 새로 열림과 같은 착지다(E57 위원장 판정 Q1 — 종전 접기 버튼 착지 폐기).
             if model.endScreen != nil {
                 await land($endFocused, "end")
@@ -77,6 +91,22 @@ struct OutingSheet: View {
         }) { place in
             PlaceDetailSheet(place: place, showsDirectionsEntry: false)
         }
+        .sheet(isPresented: $showsConsent) {
+            ChatConsentView {
+                aiConsentGranted = true
+                showsConsent = false
+            }
+        }
+        // 받아쓰기 권한 거부·실패 안내(검색 화면과 같은 판정 `speechAlertText`, 확인하면 다시 시도할 수 있게 된다).
+        .alert(speechAlertText(model.speech) ?? "", isPresented: Binding(
+            get: { speechAlertText(model.speech) != nil },
+            set: { if !$0 { model.speech.reset() } }
+        )) {
+            if case .denied = model.speech.phase {
+                Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+            }
+            Button(appLocalized("ios.common.ok")) {}
+        }
         .sheet(isPresented: $showsSettings, onDismiss: {
             model.recomputeHealth()
             if model.endScreen?.health?.usedDefaultWeight == false { Task { await land($healthSummaryFocused, "healthSummary") } }
@@ -87,6 +117,7 @@ struct OutingSheet: View {
 
     private var trackingSection: some View {
         Section {
+            askControl
             // 누를 때마다 다음 단계로(E54). 라벨 변화가 곧 상태 신호라 별도 통지는 없다(헌장 §5).
             Button(appLocalized("ios.outing.narration", narrationLabel(narration))) {
                 narrationRaw = narration.next.rawValue
@@ -113,6 +144,134 @@ struct OutingSheet: View {
                 GuideMinimizeButton(action: onMinimize)
             }
         }
+    }
+
+    /// 「말로 묻기」(E82 V14) — 받아쓰기 설정(탭 토글·홀드)을 따르고, 끝나면 모델이 질문을 보낸다(전송 버튼이 없는 자동 전송).
+    /// 받아쓰기·요청·답의 상태는 모델이 쥔다(V15 — 시트를 내려도 이어진다).
+    @ViewBuilder
+    private var askControl: some View {
+        if aiConsentGranted {
+            HoldDictationButton(
+                speech: model.speech,
+                hint: appLocalized("ios.outing.askHint"),
+                showsTitle: true,
+                onTranscript: { model.ask($0) },
+                onPause: nil,
+                startTitle: appLocalized("ios.outing.askButton"),
+                onNoSpeech: { model.askHeardNothing() })
+        } else {
+            Button(appLocalized("ios.outing.askButton")) { showsConsent = true }
+        }
+    }
+
+    /// 「방금 말한 것」(E82 V11) — 끝까지 말한 문장과 말하지 못하고 지나온 가게, 최신이 위. 제목 하나만 heading이고
+    /// 한 줄이 한 접근성 객체다. 행의 정체성은 기록 순번이라 새 줄이 들어와도 커서가 있던 줄은 그대로다. 지난 시간은
+    /// 시트가 열린 때와 기록이 바뀐 때 잡은 기준 시각(`historyNow`)으로 센다 — 그리는 순간의 시각으로 세면 위치 갱신마다
+    /// 다시 그려지면서 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
+    private var historySection: some View {
+        Section {
+            if model.history.entries.isEmpty {
+                Text(appLocalized("ios.outing.historyEmpty"))
+            } else {
+                ForEach(model.history.entries) { entry in
+                    historyRow(entry, now: historyNow)
+                    if let followUp = model.askFollowUp, followUp.entryID == entry.id {
+                        answerButtons(followUp)
+                    }
+                }
+            }
+        } header: {
+            Text(appLocalized("ios.outing.historyHeading"))
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// 가게 줄에는 「도보 안내 시작」을 행 뿌리의 밀기 버튼으로 둔다 — VoiceOver에서는 같은 줄의 동작(로터)으로 들린다
+    /// (E72 판별선: 장소 하나인 `List` 행). 끝까지 밀기 실행은 끈다(나들이를 끝내고 안내를 시작하는 되돌릴 수 없는 동작).
+    @ViewBuilder
+    private func historyRow(_ entry: OutingHistoryEntry, now: Double) -> some View {
+        if case .place(let place, _, _) = entry.content {
+            Text(historyLine(entry, now: now))
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button(appLocalized("beacon.guideStartWalk")) {
+                        onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))
+                    }
+                }
+        } else {
+            Text(historyLine(entry, now: now))
+        }
+    }
+
+    /// 한 줄 = 한 문장(쉼표로 이은 한 객체): 「○○카페, 왼쪽, 2분 전」. 가게가 아닌 줄은 말한 문장 그대로다. 문장은 질문 재료와
+    /// 같은 조립기(`OutingModel.historyText`)이고 여기서 지난 시간만 붙인다.
+    private func historyLine(_ entry: OutingHistoryEntry, now: Double) -> String {
+        let minutes = outingHistoryAgeMinutes(at: entry.at, now: now)
+        let age = minutes == 0
+            ? appLocalized("ios.outing.historyJustNow") : appLocalized("ios.outing.historyMinutesAgo", "\(minutes)")
+        return joinText(OutingModel.historyText(entry.content), age)
+    }
+
+    private func destination(_ place: OutingHistoryPlace) -> GuideDestination {
+        GuideDestination(dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name, labelRoman: place.nameRoman)
+    }
+
+    /// 답 줄 아래의 버튼(V21·V22) — 줄마다 한 버튼이고 제목·heading은 없다(답 줄이 곧 맥락이다). 누르면 나들이를 끝내고 그
+    /// 안내로 넘긴다(`onHandOver`, V13). 수단 버튼의 시작 조건은 채팅 경로 카드와 같은 판정이다(E83 R10).
+    @ViewBuilder
+    private func answerButtons(_ followUp: OutingModel.AskFollowUp) -> some View {
+        if let place = followUp.proposal {
+            Button(appLocalized("beacon.guideStartWalk")) {
+                onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))
+            }
+        }
+        ForEach(followUp.routeGroups, id: \.self) { group in
+            routeGroupButtons(group, showsName: followUp.routeGroups.count > 1)
+        }
+    }
+
+    /// 도착지가 둘 이상이면 버튼 라벨에 도착지 이름을 합친다(「도보 안내 시작, ○○역」) — 버튼만 훑어도(로터·제스처 목록)
+    /// 어느 도착지인지 들리게. 따로 둔 이름 줄은 버튼과 떨어져 읽힌다.
+    @ViewBuilder
+    private func routeGroupButtons(_ group: RouteStartCardGroup, showsName: Bool) -> some View {
+        let dest = GuideDestination(
+            dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman)
+        let name = showsName
+            ? bilingualName(lang: AppLanguage.current, ko: group.destLabel, en: nil, roman: group.destRoman).primary : nil
+        if let walk = group.walk {
+            Button(joinText(appLocalized("beacon.guideStartWalk"), name)) {
+                onHandOver(dest, .guide(.walk(accessible: walk.accessible, waypoint: waypoint(walk))))
+            }
+        }
+        if let car = group.car, canStartCarGuide(dataLocale: AppLanguage.dataLocale, provider: car.carProvider) {
+            Button(joinText(appLocalized("beacon.guideStartCar"), name)) {
+                onHandOver(dest, .guide(.car(waypoint: waypoint(car))))
+            }
+        }
+        if let payload = group.transit, let transit = payload.transit,
+           let route = transitRouteEntries(transit.result).first?.route, transitGuideStartable(route) {
+            Button(joinText(appLocalized("beacon.guideStartTransit"), name)) {
+                onHandOver(dest, transitStart(route: route, transit: transit, accessible: payload.accessible))
+            }
+        }
+    }
+
+    /// 대중교통 버튼(S4 리뷰 NIT e): 나들이가 쥔 최신 fix로 조회 결과의 신선도를 본다(채팅 카드 R6과 같은 판정 — 나들이는 위치를
+    /// 계속 받고 있어 따로 측위를 기다리지 않는다). 신선하고 수동 위치 조회가 아니면 그 경로로 시작하고, 아니면 시작하지 않고
+    /// 길찾기 탭에서 기기 위치로 다시 조회한다(사유는 조회 시작 때 한 번).
+    private func transitStart(
+        route: TransitRoute, transit: RouteStartChatPayload.Transit, accessible: Bool
+    ) -> GuideSession.OutingHandoverStart {
+        let freshness = journeyCardFreshness(
+            origin: transit.origin, queriedAtMs: transit.queriedAt,
+            fix: model.lastFix.map { RoutePoint(lat: $0.lat, lng: $0.lng) }, nowMs: Date().timeIntervalSince1970 * 1000)
+        guard freshness == .fresh, !transit.manualOrigin else {
+            return .directions(notice: appLocalized("journey.cardStaleRequery"))
+        }
+        return .guide(.transit(route: route, accessible: accessible))
+    }
+
+    private func waypoint(_ payload: RouteStartChatPayload) -> BeaconModel.Waypoint? {
+        payload.via.map { BeaconModel.Waypoint(dest: BeaconDest(lat: $0.lat, lng: $0.lng), label: $0.label) }
     }
 
     // 키는 리터럴로만(check-xcstrings-keys 린터 계약).

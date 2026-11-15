@@ -97,6 +97,12 @@ final class TtsPlayer {
         let utterance = AVSpeechUtterance(string: trimmed)
         utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
         utterance.rate = ListenSpeed.speechRate(forMultiplier: listenSpeed)
+        // 이 발화의 끝 신호(E82 V0a) — 세대가 그대로일 때만 알린다. `halt()`가 끊은 발화의 늦은 취소 신호는 세대가 달라
+        // 버려진다(그 끊김은 끊은 쪽이 따로 알린다).
+        playbackDelegate.armGuidance(source: utterance) { [weak self] completed in
+            guard let self, self.generation == token else { return }
+            self.guidanceEndObservers.forEach { $0(token, completed) }
+        }
         synthesizer.speak(utterance)
         return token
     }
@@ -127,6 +133,14 @@ final class TtsPlayer {
 
     func observeGuidanceInterruption(_ observer: @escaping (Int, DeviceSpeechDrop) -> Void) {
         guidanceInterruptionObservers.append(observer)
+    }
+
+    /// 안내 발화가 합성기에서 끝났을 때 부르는 관찰자 — 인자는 발화 토큰과 「끝까지 말했는가」(합성기 델리게이트의
+    /// `didFinish`면 참, 합성기가 스스로 낸 `didCancel`이면 거짓). 안내 기기 음성 대기 칸의 「말했다」 신호다(E82 V0a).
+    @ObservationIgnored private var guidanceEndObservers: [(Int, Bool) -> Void] = []
+
+    func observeGuidanceEnd(_ observer: @escaping (Int, Bool) -> Void) {
+        guidanceEndObservers.append(observer)
     }
 
     /// 모든 재생 정지. 안내 발화를 끊었으면 관찰자에게 알린다(인계의 정지는 알리지 않는 `stopGuidance`를 쓴다).
@@ -282,30 +296,51 @@ private final class TtsPlaybackDelegate: NSObject, AVAudioPlayerDelegate, AVSpee
     private var expectedSource: ObjectIdentifier?
     private var onFinish: (() -> Void)?
 
+    /// 안내 발화의 끝 신호 칸(E82 V0a) — 채팅 듣기의 칸과 따로 둔다(안내는 버튼 라벨 상태를 쓰지 않는다).
+    private var expectedGuidance: ObjectIdentifier?
+    private var onGuidanceEnd: ((Bool) -> Void)?
+
+    /// 안내 발화마다 `speakGuidance`가 호출한다. 콜백 인자 = 끝까지 말했는가.
+    func armGuidance(source: AnyObject, onEnd: @escaping (Bool) -> Void) {
+        expectedGuidance = ObjectIdentifier(source)
+        onGuidanceEnd = onEnd
+    }
+
     /// 재생 세대마다 `armFinishCallback`이 호출한다.
     func arm(source: AnyObject, onFinish: @escaping () -> Void) {
         expectedSource = ObjectIdentifier(source)
         self.onFinish = onFinish
+        // 안내 칸을 비운다 — 이 재생이 안내 발화를 끊었고, 남아 있으면 같은 주소를 받은 새 객체의 끝 신호를 안내 칸이
+        // 먼저 삼켜 채팅 듣기의 종료(버튼 라벨 원복)가 오지 않는다.
+        expectedGuidance = nil
+        onGuidanceEnd = nil
     }
 
     /// 아이덴티티는 Sendable이라 격리 경계를 안전하게 넘는다(객체 자체는 안 넘김).
-    private nonisolated func finished(from source: AnyObject) {
+    private nonisolated func finished(from source: AnyObject, completed: Bool) {
         let sourceID = ObjectIdentifier(source)
         Task { @MainActor in
+            if sourceID == self.expectedGuidance {
+                let onEnd = self.onGuidanceEnd
+                self.expectedGuidance = nil
+                self.onGuidanceEnd = nil
+                onEnd?(completed)
+                return
+            }
             guard sourceID == self.expectedSource else { return }
             self.onFinish?()
         }
     }
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        finished(from: player)
+        finished(from: player, completed: flag)
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        finished(from: utterance)
+        finished(from: utterance, completed: true)
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        finished(from: utterance)
+        finished(from: utterance, completed: false)
     }
 }

@@ -426,6 +426,20 @@ export function remainingFromArvlCd(code: string | null | undefined): number | n
   return null;
 }
 
+/**
+ * 완성 문장과 어긋나는 도착 코드를 운행중(99)으로 읽는다. `arvlCd`는 조회 역 기준이어야 하는데
+ * 8호선은 `[N]번째 전역` 행에 열차가 지금 선 역 기준 코드(1 도착 등)를 싣는다(실승차 2026-11-13:
+ * 하차역까지 7역 남은 열차의 코드 1이 확정 도착으로 오발). 문장이 1차 정본이라(§6.2) 둘이 서로 다른
+ * 잔여를 말하면 코드를 버린다. 한쪽이 잔여를 말하지 않으면 모순이 아니다.
+ */
+export function reconcileArvlCd(message: string, code: string | null | undefined): string | null {
+  if (code == null) return null;
+  const fromMsg = remainingFromArvlMsg(message);
+  const fromCode = remainingFromArvlCd(code);
+  if (fromMsg != null && fromCode != null && fromMsg !== fromCode) return "99";
+  return code;
+}
+
 /** 종착 상태 코드(당역 1 도착·2 출발, 전역 5 도착) — 동결 레코드 판정 축(§12.1 ⓑ). */
 const TERMINAL_ARVL_CODES = new Set(["1", "2", "5"]);
 /** 이 lag를 넘긴 종착 상태 레코드는 동결로 판정한다(실측 2026-08-06). */
@@ -485,6 +499,8 @@ export async function trackSubway(params: {
   const now = Date.now();
   const items = result.arrivals
     .filter((a) => a.line === expectedLine)
+    // 코드는 문장과 맞춘 뒤에만 싣는다(`reconcileArvlCd`) — 상태 기계의 승차·도착 판정이 이 코드를 읽는다.
+    .map((a) => ({ ...a, arrivalCode: reconcileArvlCd(a.message, a.arrivalCode) ?? undefined }))
     .map(
       (a): TrackItem => ({
         vehicleId: a.trainNo ?? null,

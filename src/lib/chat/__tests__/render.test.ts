@@ -21,6 +21,14 @@ describe("render 헬퍼", () => {
     expect(dig(d, "count")).toBe(1);
     expect(dig(d, "places", "0")).toEqual({ name: "길동 카페", category: "카페", address: "강동대로 1" });
   });
+  it("placesToData는 전화번호가 있는 곳에만 phone을 싣는다(E88) — 없는 곳은 키가 없고 화면 카드는 그대로다", () => {
+    const withPhone = { ...place, id: "2", name: "길동 약국", phone: "02-123-4567" };
+    const d = placesToData([place, withPhone, { ...place, id: "3", phone: "" }]);
+    expect(dig(d, "places", "0")).toEqual({ name: "길동 카페", category: "카페", address: "강동대로 1" });
+    expect(dig(d, "places", "1")).toEqual({ name: "길동 약국", category: "카페", address: "강동대로 1", phone: "02-123-4567" });
+    expect(Object.keys(dig(d, "places", "2") as object)).not.toContain("phone");
+    expect(placesToRender([withPhone])).toEqual({ type: "places", places: [withPhone] });
+  });
   it("placesToRender는 review일 때만 sort를 싣는다(그 외 페이로드 불변)", () => {
     expect(placesToRender([place], "review")).toEqual({ type: "places", places: [place], sort: "review" });
     expect(placesToRender([place], "accuracy")).toEqual({ type: "places", places: [place] });

@@ -17,6 +17,10 @@ import {
   summarizeUsage,
   summarizeGeminiTokens,
   GILDONGMU_GEMINI_MODEL,
+  VERGILIUS_CLAUDE_MODELS,
+  VERGILIUS_OPENAI_MODELS,
+  missingOpenAiModels,
+  missingClaudeModels,
 } from "../usage-probes.mjs";
 import { readFileSync } from "node:fs";
 
@@ -221,6 +225,48 @@ describe("renderReport", () => {
     const out = renderReport({ ...sample, deadlines: [] });
     expect(out).toContain("[시한]");
     expect(out).toContain("해당 없음");
+  });
+});
+
+describe("OpenAI 전용 키 프로브", () => {
+  const probe = MONEY_PROBES.find((p) => p.id === "openai");
+
+  it("공용 키만 있으면 호출하지 않는다", async () => {
+    let calls = 0;
+    const result = await runProbe(probe, { OPENAI_API_KEY: "general-test" }, async () => {
+      calls++;
+      return new Response("{}", { status: 200 });
+    });
+    expect(calls).toBe(0);
+    expect(result.status).toBe(STATUS.MISSING);
+    expect(result.detail).toContain("GILDONGMU_OPENAI_API_KEY");
+  });
+
+  it("두 키가 있어도 길동무 전용 키로 인증한다", () => {
+    const { init } = probe.build({
+      OPENAI_API_KEY: "general-test",
+      GILDONGMU_OPENAI_API_KEY: "gildongmu-test",
+    });
+    expect(init.headers.Authorization).toBe("Bearer gildongmu-test");
+  });
+
+  // 모델을 바꾸고 여기를 잊으면 키가 살아 있어도 리포트가 「조회 실패」를 내거나, 은퇴한 옛 모델을 정상으로 본다.
+  it("리포트 상수가 openai.ts의 OPENAI_VERGILIUS_MODELS 값과 일치한다", () => {
+    const source = readFileSync("src/lib/vergilius/openai.ts", "utf8");
+    const block = source.match(/OPENAI_VERGILIUS_MODELS[^=]*=\s*\{([^}]*)\}/);
+    expect(block).not.toBeNull();
+    const values = [...block[1].matchAll(/:\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(VERGILIUS_OPENAI_MODELS).toEqual(values);
+  });
+
+  it("두 모델(Terra·Luna)이 모두 목록에 있어야 정상이고, 하나라도 빠지면 조회 실패, 인증 오류는 인증 실패다", () => {
+    const list = (ids) => JSON.stringify({ object: "list", data: ids.map((id) => ({ id, object: "model" })) });
+    expect(probe.build({ GILDONGMU_OPENAI_API_KEY: "k" }).url).toBe("https://api.openai.com/v1/models");
+    expect(probe.judge({ httpStatus: 200, bodyText: list(["gpt-6-sol", ...VERGILIUS_OPENAI_MODELS]) })).toBe(STATUS.OK);
+    expect(probe.judge({ httpStatus: 200, bodyText: list(["gpt-6.1-terra"]) })).toBe(STATUS.ERROR);
+    expect(probe.judge({ httpStatus: 200, bodyText: "<html>" })).toBe(STATUS.ERROR);
+    expect(probe.judge({ httpStatus: 401, bodyText: '{"error":{}}' })).toBe(STATUS.AUTH);
+    expect(missingOpenAiModels(list(["gpt-6.1-terra"]))).toEqual(["gpt-6-luna"]);
   });
 });
 
@@ -431,6 +477,37 @@ describe("Gemini 모델명 drift", () => {
     const match = source.match(/GEMINI_MODEL\s*=\s*"([^"]+)"/);
     expect(match).not.toBeNull();
     expect(GILDONGMU_GEMINI_MODEL).toBe(match[1]);
+  });
+});
+
+// 모델을 바꾸고 여기를 잊으면 키가 살아 있어도 리포트가 「조회 실패」를 내거나, 은퇴한 옛 모델을 정상으로 본다.
+describe("Anthropic 프로브", () => {
+  const probe = () => MONEY_PROBES.find((p) => p.id === "anthropic");
+
+  it("리포트 상수가 claude.ts의 CLAUDE_VERGILIUS_MODELS 값과 일치한다", () => {
+    const source = readFileSync("src/lib/vergilius/claude.ts", "utf8");
+    const block = source.match(/CLAUDE_VERGILIUS_MODELS[^=]*=\s*\{([^}]*)\}/);
+    expect(block).not.toBeNull();
+    const values = [...block[1].matchAll(/:\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(VERGILIUS_CLAUDE_MODELS).toEqual(values);
+  });
+
+  it("세 모델이 모두 목록에 있어야 정상이고, 하나라도 빠지면 조회 실패, 인증 오류는 인증 실패다", () => {
+    const list = (ids) => JSON.stringify({ data: ids.map((id) => ({ id, type: "model" })), has_more: false });
+    const { judge } = probe();
+    expect(judge({ httpStatus: 200, bodyText: list(["claude-fable-5-2", ...VERGILIUS_CLAUDE_MODELS]) })).toBe(STATUS.OK);
+    expect(judge({ httpStatus: 200, bodyText: list(["claude-opus-5-5"]) })).toBe(STATUS.ERROR);
+    expect(judge({ httpStatus: 200, bodyText: "<html>" })).toBe(STATUS.ERROR);
+    expect(judge({ httpStatus: 401, bodyText: '{"type":"error"}' })).toBe(STATUS.AUTH);
+    expect(missingClaudeModels(list(["claude-opus-5-5"]))).toEqual(["claude-sonnet-5-5", "claude-haiku-5-5"]);
+    expect(judge({ httpStatus: 200, bodyText: list(["claude-opus-5-5", "claude-sonnet-5-5"]) })).toBe(STATUS.ERROR);
+  });
+
+  it("요청은 키 헤더와 API 버전 헤더를 싣는 목록 조회다(과금 없는 GET)", () => {
+    const { url, init } = probe().build({ ANTHROPIC_API_KEY: "sk-ant-x" });
+    expect(url).toBe("https://api.anthropic.com/v1/models?limit=100");
+    expect(init.method).toBeUndefined();
+    expect(init.headers).toEqual({ "x-api-key": "sk-ant-x", "anthropic-version": "2023-06-01" });
   });
 });
 
