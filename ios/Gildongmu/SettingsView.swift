@@ -64,6 +64,10 @@ struct SettingsView: View {
     // 백그라운드 음성 안내(E53) — 화면이 꺼진 동안 행동 문장을 기기 음성으로. 키·기본값·실효값 정본은 Kit
     // `BackgroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다).
     @AppStorage(BackgroundSpeech.storageKey) private var backgroundSpeechEnabled = BackgroundSpeech.defaultEnabled
+    // 나들이 전경 기기 음성(E82 판정 7) — 화면이 켜진 VoiceOver 사용 중에도 나들이 자동 안내를 기기 음성으로. 키·기본값·실효값
+    // 정본은 Kit `OutingForegroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다). 줄은 실험판에만 선다.
+    @AppStorage(OutingForegroundSpeech.storageKey) private var outingForegroundSpeechEnabled =
+        OutingForegroundSpeech.defaultEnabled
     #if DEBUG || EXPERIMENTAL
     // 왼쪽·오른쪽 안내음 구분 방식 후보 2종(실기기 선택 대기, spec 2026-08-22 §3).
     // 판정 뒤 이 피커와 Kit `LeftRightToneScheme`을 함께 지운다.
@@ -223,6 +227,16 @@ struct SettingsView: View {
                     // 나들이가 있는 판(실험판)에서만 말한다(A59 — 정식판에 없는 기능을 약속하지 않는다).
                     Text(AppConfig.experimentalOutingEnabled
                         ? appLocalized("ios.settings.backgroundSpeechFooterOuting") : appLocalized("ios.settings.backgroundSpeechFooter"))
+                }
+
+                // 나들이 전경 기기 음성(E82 판정 7): 나들이가 있는 판(실험판)에만 줄이 선다. 이름만으로는 VoiceOver를 켠 채
+                // 화면을 켜 둔 동안의 일이라는 범위가 드러나지 않아 설명을 둔다.
+                if AppConfig.experimentalOutingEnabled {
+                    Section {
+                        Toggle(appLocalized("ios.settings.outingForegroundSpeech"), isOn: $outingForegroundSpeechEnabled)
+                    } footer: {
+                        Text(appLocalized("ios.settings.outingForegroundSpeechFooter"))
+                    }
                 }
 
                 Section {

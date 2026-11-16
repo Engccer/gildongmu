@@ -53,6 +53,11 @@ public enum GuideSpeechChannel: String, Sendable, CaseIterable {
 /// - `askWindowActive`: 묻고 답하는 구간(E82 V0c — 받아쓰기가 끝난 때부터 답이나 실패 문장이 끝날 때까지)인가. 참이면
 ///   전경에서 VoiceOver가 켜져 있어도 기기 음성 한 채널이다(채널이 둘이면 답과 경고가 겹쳐 들린다). 백그라운드 판정은
 ///   바꾸지 않는다. 켜는 쪽은 말로 묻기(E82 S6)가 만든다 — 그 전에는 모든 호출부가 거짓을 넘긴다.
+/// - `deviceOverVoiceOver`: 전경 ∧ VoiceOver에서도 이 문장을 기기 음성으로 낼 것인가(E82 판정 7 나들이 전경 기기 음성 —
+///   값은 `outingDeviceOverVoiceOver`가 정한다). 도보·자동차·대중교통은 리터럴 거짓이다. 참이어도 재생기가 들리는 상태
+///   (`backgroundAudible`)일 때만 기기 음성이고, 아니면 VoiceOver다: 세션 승격이 실패한 `.ambient`는 무음 스위치가 소리를
+///   죽이는데(Apple `AVAudioSession.Category.ambient`) 합성기는 끝까지 말했다고 알려, 들리지 않은 문장이 「말했다」로 기록되고
+///   횡단보도 경고 latch가 거기서 소비된다(설계 리뷰 B1과 같은 구멍). VoiceOver가 꺼진 전경과 백그라운드 판정은 바꾸지 않는다.
 ///
 /// ⚠ 자동차 운전자 채널은 이 술어 위에 있다 — `BeaconModel.post`가 먼저 기기 음성으로 낸다(spec §2).
 public func guideSpeechChannel(
@@ -62,11 +67,12 @@ public func guideSpeechChannel(
     backgroundSpeechEnabled: Bool,
     backgroundAudible: Bool,
     foregroundDeviceSpeech: Bool,
-    askWindowActive: Bool
+    askWindowActive: Bool,
+    deviceOverVoiceOver: Bool
 ) -> GuideSpeechChannel {
     if foreground {
         if askWindowActive { return .device }
-        if voiceOverRunning { return .voiceOver }
+        if voiceOverRunning { return deviceOverVoiceOver && backgroundAudible ? .device : .voiceOver }
         return foregroundDeviceSpeech ? .device : .voiceOver
     }
     // 들리지 않으면 어느 분류든 버림이다 — "전달"로 치면 1회성 경고 latch와 복귀 상환이 들리지 않은 문장에 소비된다.
@@ -86,6 +92,38 @@ public enum BackgroundSpeech {
     public static let defaultEnabled = true
 
     /// 실효값 = 저장값(없으면 기본값). 2.0(2026-10-01)부터 정식판에도 토글이 있다.
+    public static func isEnabled(stored: Bool?) -> Bool {
+        stored ?? defaultEnabled
+    }
+}
+
+/// 나들이 문장이 어느 자리에서 나왔는가(E82 판정 7). 전경 기기 음성 스위치가 다루는 문장인지를 가른다 — 문장 내용이 아니라
+/// 호출 자리가 기본값 없이 밝힌다(안전 인자). 망라 switch로 읽으므로 갈래가 늘면 컴파일 단계에서 판정된다.
+public enum OutingSpeechOrigin: String, Sendable, CaseIterable {
+    /// 걷는 동안 앱이 스스로 내는 안내(주변 묶음·도로명·출발점 상태·갈림길·횡단보도 예고·소리 경고·신호 약함).
+    case automatic
+    /// 화면이 바뀌며 커서가 옮겨 가는 전이에 딸린 문장(시작·종료·복귀 상환). VoiceOver가 착지 낭독과 한 줄로 잇는다.
+    case transition
+    /// 사용자 조작의 직접 응답(시작 거절·받아쓴 말 없음). 조작한 자리의 낭독과 한 채널에 둔다.
+    case response
+}
+
+/// 이 나들이 문장을 전경 ∧ VoiceOver에서도 기기 음성으로 낼 것인가(E82 판정 7: 대상은 자동 안내이고, 시작·종료 문장은
+/// VoiceOver에 남긴다). `switchEnabled`는 `OutingForegroundSpeech.isEnabled`의 값.
+public func outingDeviceOverVoiceOver(switchEnabled: Bool, origin: OutingSpeechOrigin) -> Bool {
+    switch origin {
+    case .automatic: switchEnabled
+    case .transition, .response: false
+    }
+}
+
+/// 설정 스위치 「나들이 전경 기기 음성」(E82 판정 7, 실험판). 키·기본값·실효값의 정본.
+public enum OutingForegroundSpeech {
+    public static let storageKey = "outingForegroundSpeechEnabled"
+    /// 기본값 켬(위원장 판정 2026-11-16).
+    public static let defaultEnabled = true
+
+    /// 실효값 = 저장값(없으면 기본값).
     public static func isEnabled(stored: Bool?) -> Bool {
         stored ?? defaultEnabled
     }

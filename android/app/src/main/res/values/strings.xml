@@ -462,6 +462,8 @@
     <string name="android_settings_listenSpeed15x">1.5배</string>
     <string name="android_settings_listenSpeed1x">1배</string>
     <string name="android_settings_listenSpeed2x">2배</string>
+    <string name="android_settings_outingForegroundSpeech">나들이 안내를 기기 음성으로</string>
+    <string name="android_settings_outingForegroundSpeechFooter">나들이 중 화면을 켜 두어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.</string>
     <string name="android_settings_releaseNotes">업데이트 이력</string>
     <string name="android_settings_releaseNotesError">업데이트 이력을 불러올 수 없습니다</string>
     <string name="android_settings_releaseNotesVersion">버전 %1$s</string>

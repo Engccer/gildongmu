@@ -247,7 +247,13 @@ final class OutingModel {
         isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
         backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
-        askWindowActive: { [weak self] in (self?.askPhase ?? .idle) != .idle }
+        askWindowActive: { [weak self] in (self?.askPhase ?? .idle) != .idle },
+        // 칸에 든 문장은 자동 안내로 본다(E82 판정 7): 전이 문장(종료·복귀 상환)은 `.high`라 칸에 서지 않고 선점하며, 전경
+        // VoiceOver에서는 시작·응답 문장이 VoiceOver로 나가 칸에 들지 않는다.
+        deviceOverVoiceOver: {
+            outingDeviceOverVoiceOver(
+                switchEnabled: GuideSpeechOutput.outingForegroundSpeechEnabled, origin: .automatic)
+        }
     )
     /// 전하지 못한 종료 사유 문장(E53 spec §3.4, 설계 리뷰 M6) — 백그라운드에서 버려진(안전망 종료는 미룸 문장, 토글 끔이면
     /// 전부) 종료 문장을 복귀 때 한 번 갚는다. 종료 화면이 없는 종료(출발점 미확정 ∧ 의미 없는 걸음)도 갚아야 해서 화면이
@@ -351,9 +357,10 @@ final class OutingModel {
         if soundDegraded { ResultHaptic.fire(.attention) }
         if !(isForeground && UIAccessibility.isVoiceOverRunning) {
             sayProtected(
-                [appLocalized("ios.outing.started"), warning].compactMap { $0 }.joined(separator: ". "), record: nil)
+                [appLocalized("ios.outing.started"), warning].compactMap { $0 }.joined(separator: ". "), record: nil,
+                origin: .transition)
         } else if let warning {
-            sayProtected(warning, record: nil)
+            sayProtected(warning, record: nil, origin: .transition)
         }
         startAnnounced = true
     }
@@ -483,7 +490,7 @@ final class OutingModel {
         guideDiagLog("outingEnd reason=user")
         let text = appLocalized("ios.outing.endedByUser")
         endLeavingScreen(reason: text, playStopTone: true)
-        say(text, highPriority: true, speechClass: .actionable)
+        say(text, highPriority: true, speechClass: .actionable, origin: .transition)
     }
 
     /// 안전망 종료(두절·무이동 5분). 정지 톤은 화면이 꺼져 있어도 낸다(E53 위원장 판정 — 도보와 다르다, 아래 본문).
@@ -591,7 +598,7 @@ final class OutingModel {
                 // 경고를 모두 막는다(한 번에 하나, `OutingCrosswalkLedger.busy`).
                 if !owed.isEmpty {
                     say(
-                        owed.joined(separator: " "), highPriority: true, speechClass: .actionable,
+                        owed.joined(separator: " "), highPriority: true, speechClass: .actionable, origin: .transition,
                         onDropped: { [weak self] in
                             if let repaidEnd { self?.owedEndReason = repaidEnd }
                             handed.undelivered()
@@ -976,7 +983,7 @@ final class OutingModel {
     private var ambientChannelOpen: Bool {
         GuideSpeechOutput.channel(
             .ambient, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible,
-            askWindowActive: askPhase != .idle) != .drop
+            askWindowActive: askPhase != .idle, deviceOverVoiceOver: deviceOverVoiceOver(.automatic)) != .drop
     }
 
     private func emitAmbient(
@@ -988,7 +995,7 @@ final class OutingModel {
         // 갈림길 예고와의 간격은 주변 문장의 **끝**에서 잰다(V7): 말하는 중에는 예고가 끊고 나가고(V0b), 끝난 직후에만 미룬다.
         lastAmbientAt = nil
         say(
-            text, speechClass: .ambient,
+            text, speechClass: .ambient, origin: .automatic,
             onDropped: { [weak self] in self?.finishAmbient(epoch: epoch, spoken: false) },
             onSpoken: { [weak self] in self?.finishAmbient(epoch: epoch, spoken: true) })
     }
@@ -1184,7 +1191,7 @@ final class OutingModel {
     func askHeardNothing() {
         guard isTracking else { return }
         guideDiagLog("askNoSpeech")
-        say(appLocalized("ios.outing.askNoSpeech"), speechClass: .answer)
+        say(appLocalized("ios.outing.askNoSpeech"), speechClass: .answer, origin: .response)
     }
 
     private func runAsk(_ question: String, epoch: Int) async {
@@ -1365,7 +1372,7 @@ final class OutingModel {
             self.answerSentenceEnded(seq, sentence: sentence, spoken: false)
         }
         say(
-            sentence, speechClass: .answer,
+            sentence, speechClass: .answer, origin: .response,
             onDropped: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: false) },
             onSpoken: { [weak self] in self?.answerSentenceEnded(seq, sentence: sentence, spoken: true) })
     }
@@ -1602,7 +1609,8 @@ final class OutingModel {
         if now - fixRef >= noFixTimeout, isForeground, UIAccessibility.isVoiceOverRunning {
             if let last = lastStaleNoticeAt, now - last < staleRenotifyInterval { return }
             lastStaleNoticeAt = now
-            announcer.announce(appLocalized("beacon.weak"), speechClass: .deferrable)
+            announcer.announce(
+                appLocalized("beacon.weak"), speechClass: .deferrable, deviceOverVoiceOver: deviceOverVoiceOver(.automatic))
         }
     }
 
@@ -1649,7 +1657,7 @@ final class OutingModel {
             soundDegraded = degraded
             if degraded, startAnnounced {
                 ResultHaptic.fire(.attention)
-                say(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable)
+                say(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable, origin: .automatic)
             }
         }
         // 재생 수단이 죽었으면 침묵의 원인을 알린다(도보 안내와 같은 문장·같은 진입 1회 진동).
@@ -1657,7 +1665,7 @@ final class OutingModel {
             guard !silencedNoticed else { return }
             silencedNoticed = true
             ResultHaptic.fire(.failure)
-            say(appLocalized("ios.beacon.soundUnavailable"), speechClass: .actionable)
+            say(appLocalized("ios.beacon.soundUnavailable"), speechClass: .actionable, origin: .automatic)
         } else {
             silencedNoticed = false
         }
@@ -1670,21 +1678,30 @@ final class OutingModel {
     /// 발화 전달 계약(E82 V0a): `onSpoken`은 그 문장이 **끝까지 말해졌을 때**, `onDropped`는 채널에 실리지 못했거나
     /// 말해지기 전에 밀려났거나 말하다 끊겼을 때 불린다 — 한 문장에 둘 중 많아야 하나, 한 번이다. 세션 경계(`stop()`)가
     /// 버린 문장은 어느 쪽도 불리지 않는다. 「말했다」 표시와 기록은 `onSpoken`에서 넣는다(V5).
+    ///
+    /// `origin`(E82 판정 7)은 기본값 없는 필수 인자다: 자동 안내(`.automatic`)만 전경 기기 음성 스위치를 따르고, 화면 전이에 딸린
+    /// 시작·종료 문장(`.transition`)과 조작의 직접 응답(`.response`)은 전경 VoiceOver에 남는다.
     private func say(
-        _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
+        _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass, origin: OutingSpeechOrigin,
         onDropped: (() -> Void)? = nil, onSpoken: (() -> Void)? = nil
     ) {
         // 주변 문장이 실려 있는 동안 내는 다른 문장은 그 문장을 끊는다(V0b) — 누가 끊었는지를 여기서 적어 둔다.
         if speechClass != .ambient { ambientInFlight?.cutByGuide = true }
         announcer.announce(
-            text, highPriority: highPriority, speechClass: speechClass, onDropped: onDropped, onSpoken: onSpoken)
+            text, highPriority: highPriority, speechClass: speechClass,
+            deviceOverVoiceOver: deviceOverVoiceOver(origin), onDropped: onDropped, onSpoken: onSpoken)
+    }
+
+    /// 이 자리의 문장을 전경 ∧ VoiceOver에서도 기기 음성으로 낼 것인가(E82 판정 7) — 스위치 실효값과 문장의 자리(Kit 판정).
+    private func deviceOverVoiceOver(_ origin: OutingSpeechOrigin) -> Bool {
+        outingDeviceOverVoiceOver(switchEnabled: GuideSpeechOutput.outingForegroundSpeechEnabled, origin: origin)
     }
 
     /// 종료 문장 — 전하지 못하면(백그라운드 버림·대기 칸에서 사라짐) 장부에 남겨 복귀 때 갚는다(설계 리뷰 M6).
     private func sayEnd(_ text: String, speechClass: GuideSpeechClass) {
         // 장부 시각은 종료 시각이다 — 되돌릴 때의 시각이면 30분 만료(맥락 밖 낭독 가드)가 되돌림마다 미뤄진다(코드 품질 리뷰 n1).
         let endedAt = ContinuousClock.now
-        say(text, highPriority: true, speechClass: speechClass) { [weak self] in
+        say(text, highPriority: true, speechClass: speechClass, origin: .transition) { [weak self] in
             self?.owedEndReason = (text, endedAt)
         }
     }
@@ -1694,14 +1711,14 @@ final class OutingModel {
     /// `record`: 끝까지 말해지면 기록에 적을 재료(기본값 없음 — 적지 않을 문장은 nil을 밝힌다).
     private func sayGuarded(_ text: String, record: OutingHistoryContent?) {
         protectedUntil = uptimeNow + protectSeconds
-        say(text, speechClass: .actionable, onSpoken: spokenRecorder(record))
+        say(text, speechClass: .actionable, origin: .automatic, onSpoken: spokenRecorder(record))
     }
 
     /// 안전 문장(시작·횡단보도) — 나간 뒤 보호 창 동안 주변 문장을 미룬다.
-    private func sayProtected(_ text: String, record: OutingHistoryContent?) {
+    private func sayProtected(_ text: String, record: OutingHistoryContent?, origin: OutingSpeechOrigin) {
         protectedUntil = uptimeNow + protectSeconds
         protectedText = text
-        say(text, speechClass: .actionable, onSpoken: spokenRecorder(record))
+        say(text, speechClass: .actionable, origin: origin, onSpoken: spokenRecorder(record))
     }
 
     /// 횡단보도 예고 한 문장(안전 문장). 끝까지 말해지면 「말했다」를 세우고(`crosswalkSpokenToEnd`), 실리지 못했거나 끊기면
@@ -1714,7 +1731,7 @@ final class OutingModel {
         protectedText = text
         queuedText = queued ? text : nil
         say(
-            text, speechClass: .actionable,
+            text, speechClass: .actionable, origin: .automatic,
             onDropped: { [weak self] in self?.crosswalkDropped(notice) },
             onSpoken: { [weak self] in self?.crosswalkSpokenToEnd(notice) })
     }
@@ -1820,7 +1837,8 @@ final class OutingModel {
         flushAmbient()
     }
 
-    /// 실제 게시. 채널은 게시 시점에 하나만(spec §7.3, E53 spec §2): 전경 ∧ VoiceOver면 VoiceOver 통지, 전경 ∧
+    /// 실제 게시. 채널은 게시 시점에 하나만(spec §7.3, E53 spec §2): 전경 ∧ VoiceOver면 VoiceOver 통지(전경 기기 음성 스위치가
+    /// 켜졌고 자동 안내이며 소리가 들리는 상태면 기기 음성, E82 판정 7 — 지연 슬롯이 나른 `deviceOverVoiceOver`), 전경 ∧
     /// VoiceOver 꺼짐은 기기 음성, 백그라운드는 토글 켬 ∧ 행동·주변 문장이면 기기 음성이고 그 밖은 버린다(판정 ② — 끄면
     /// 화면이 꺼진 동안은 효과음만).
     ///
@@ -1832,19 +1850,20 @@ final class OutingModel {
         speechClass: GuideSpeechClass, onLateDrop: (() -> Void)?
     ) -> Bool {
         let onSpoken = announcer.claimSpokenHandler()
+        let deviceOverVoiceOver = announcer.claimDeviceOverVoiceOver()
         let queued = message == queuedText
         if queued { queuedText = nil }
         guard bypassSuppression || !outputSuppressed else { return false }
         let channel = GuideSpeechOutput.channel(
             speechClass, foregroundDeviceSpeech: true, backgroundAudible: tones.isBackgroundAudible,
-            askWindowActive: askPhase != .idle)
+            askWindowActive: askPhase != .idle, deviceOverVoiceOver: deviceOverVoiceOver)
         // `channel=`의 값은 종전 로그와 같은 소문자(voiceover·device) + E53의 drop. `fg=`·`class=`는 E53 판독용 —
         // 종전 로그는 기기 음성이 잠금 때문인지 VoiceOver가 꺼져서인지 가르지 못했다(로그 색인 09-30 행).
         // 말한 글은 쓰지 않는다 — 종류(`class=`)와 글자 수만(가게·도로 이름이 디스크 로그에 남지 않게, E82 V10).
         guideDiagLog(
             "outingSpeak channel=\(channel == .voiceOver ? "voiceover" : channel.rawValue) "
                 + "fg=\(GuideSpeechOutput.isForeground ? 1 : 0) class=\(speechClass.rawValue) "
-                + "chars=\(message.count) queued=\(queued ? 1 : 0)")
+                + "chars=\(message.count) queued=\(queued ? 1 : 0) dov=\(deviceOverVoiceOver ? 1 : 0)")
         switch channel {
         case .voiceOver:
             // 전달을 묻는 문장만 끝 신호를 추적한다 — 끝까지 말했으면 `onSpoken`, 끊겼거나 신호가 없으면 버림이다.

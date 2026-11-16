@@ -377,6 +377,8 @@
     <string name="android_settings_listenSpeed15x">1.5倍</string>
     <string name="android_settings_listenSpeed1x">1倍</string>
     <string name="android_settings_listenSpeed2x">2倍</string>
+    <string name="android_settings_outingForegroundSpeech">お散歩の案内を端末の音声で</string>
+    <string name="android_settings_outingForegroundSpeechFooter">お散歩中は画面がついていても、周辺、分かれ道、横断歩道の案内をVoiceOverの代わりに端末の音声で伝えます。</string>
     <string name="android_settings_releaseNotes">アップデート履歴</string>
     <string name="android_settings_releaseNotesError">アップデート履歴を読み込めませんでした</string>
     <string name="android_settings_releaseNotesVersion">バージョン %1$s</string>

@@ -247,6 +247,8 @@
       "backgroundSpeech": "Guida vocale in background",
       "backgroundSpeechFooter": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un'altra app.",
       "backgroundSpeechFooterOuting": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e la narrazione della passeggiata, anche a schermo spento o mentre usi un'altra app.",
+      "outingForegroundSpeech": "Guida della passeggiata con la voce del dispositivo",
+      "outingForegroundSpeechFooter": "Durante la passeggiata, annuncia i luoghi vicini, gli incroci e gli attraversamenti pedonali con la voce del dispositivo invece di VoiceOver, anche a schermo acceso.",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
       "reportProblem": "Segnala un problema",

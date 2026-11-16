@@ -113,9 +113,11 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const post = functionBody(source, "post");
     // 가청 여부는 그 모델 재생기의 값(설계 리뷰 B1 — 들리지 않는 문장을 "전달"로 치지 않는다). 묻고 답하는 구간(E82 V0c)은
     // 나들이만 자기 상태를 넘기고 도보·대중교통은 리터럴 거짓이다.
+    // 전경 기기 음성(E82 판정 7)은 나들이만 지연 슬롯에서 가져온 값을 넘기고 도보·대중교통은 리터럴 거짓이다.
     expect(post).toMatch(
-      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible,\s*askWindowActive: (false|askPhase != \.idle)\)/,
+      /GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: (true|false), backgroundAudible: tones\.isBackgroundAudible,\s*askWindowActive: (false|askPhase != \.idle), deviceOverVoiceOver: (false|deviceOverVoiceOver)\)/,
     );
+    expect(post.includes("deviceOverVoiceOver: false)")).toBe(name !== "OutingModel.swift");
     expect(post).toContain("case .drop:");
     expect(post).toContain("deviceSpeech.submit(");
     // 모델이 직접 VoiceOver 통지를 조립하지 않는다(채널을 우회하는 게시 경로 금지).
@@ -158,7 +160,7 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(outing).toContain("let handed = deviceSpeech.handOver()");
     expect(outing).toContain("var owed = handed.texts");
     expect(outing).toMatch(
-      /say\(\s*owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable,\s*onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/,
+      /say\(\s*owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable, origin: \.transition,\s*onDropped: \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/,
     );
   });
 
@@ -270,5 +272,54 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(body.match(/(?<![A-Za-z])pumpAnswer\(\)/g)).toBeNull();
     const schedule = functionBody(read(join(DIR, "OutingModel.swift")), "schedulePumpAnswer");
     expect(closureAfter(schedule, "Task {")).toContain("self.pumpAnswer()");
+  });
+});
+
+describe("나들이 전경 기기 음성 배선 (E82 판정 7)", () => {
+  const outing = read(join(DIR, "OutingModel.swift"));
+
+  it("문장 창구 say의 자리 인자(origin)에는 기본값이 없고, 지연 슬롯에 그 판정을 실어 보낸다", () => {
+    expect(outing).toMatch(/private func say\(\s*_ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass, origin: OutingSpeechOrigin,/);
+    expect(outing).not.toMatch(/origin: OutingSpeechOrigin\s*=/);
+    expect(functionBody(outing, "say")).toContain("deviceOverVoiceOver: deviceOverVoiceOver(origin)");
+    // 판정은 Kit 한 함수이고 스위치 실효값은 공유 출력 한 자리다(저장값을 직접 읽는 우회 금지).
+    expect(functionBody(outing, "deviceOverVoiceOver")).toContain(
+      "outingDeviceOverVoiceOver(switchEnabled: GuideSpeechOutput.outingForegroundSpeechEnabled, origin: origin)",
+    );
+    const users = swiftFiles(APP).filter((f) => read(f).includes("OutingForegroundSpeech.isEnabled("));
+    expect(users.map((f) => relative(ROOT, f))).toEqual(["ios/Gildongmu/Directions/GuideSpeechOutput.swift"]);
+    // post는 그 판정을 지연 슬롯에서 가져온다(게시 시점 값).
+    expect(functionBody(outing, "post")).toContain("let deviceOverVoiceOver = announcer.claimDeviceOverVoiceOver()");
+  });
+
+  it("지연 슬롯 직접 호출은 신호 약함 한 자리이고 판정을 밝혀 넘긴다(그 밖은 say를 지난다)", () => {
+    const direct = outing.match(/announcer\.announce\(/g) ?? [];
+    expect(direct).toHaveLength(2); // say 안 1 + 신호 약함 1
+    expect(outing).toMatch(
+      /announcer\.announce\(\s*appLocalized\("beacon\.weak"\), speechClass: \.deferrable, deviceOverVoiceOver: deviceOverVoiceOver\(\.automatic\)\)/,
+    );
+  });
+
+  it("시작·종료·복귀 상환 문장은 전이(.transition)로 VoiceOver에 남는다", () => {
+    expect(functionBody(outing, "sayEnd")).toContain("origin: .transition");
+    expect(functionBody(outing, "stopByUser")).toContain("origin: .transition");
+    expect(functionBody(outing, "start").match(/origin: \.transition/g) ?? []).toHaveLength(2);
+  });
+
+  it("도보·대중교통의 대기 칸은 전경 기기 음성을 넘기지 않는다", () => {
+    for (const name of ["BeaconModel.swift", "TransitGuideModel.swift"]) {
+      expect(read(join(DIR, name)), name).toContain("deviceOverVoiceOver: { false }");
+    }
+  });
+
+  it("설정 행은 나들이 봉인 조건 안에 한 자리다(정식판에는 줄이 없다)", () => {
+    const settings = read(join(APP, "SettingsView.swift"));
+    expect(settings.split('"ios.settings.outingForegroundSpeech"').length - 1).toBe(1);
+    const row = settings.indexOf('appLocalized("ios.settings.outingForegroundSpeech")');
+    const guard = settings.lastIndexOf("if AppConfig.experimentalOutingEnabled {", row);
+    expect(guard).toBeGreaterThan(-1);
+    // 조건 블록이 행 앞에서 닫히지 않았다.
+    const between = settings.slice(guard, row);
+    expect((between.match(/\{/g) ?? []).length).toBeGreaterThan((between.match(/\}/g) ?? []).length);
   });
 });

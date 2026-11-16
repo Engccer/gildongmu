@@ -247,6 +247,8 @@
       "backgroundSpeech": "Background voice guidance",
       "backgroundSpeechFooter": "Speaks guidance such as turns, going off route, and arrival in the device voice even while the screen is off or you are using another app.",
       "backgroundSpeechFooterOuting": "Speaks guidance such as turns, going off route, and arrival, plus Stroll narration, in the device voice even while the screen is off or you are using another app.",
+      "outingForegroundSpeech": "Stroll guidance in device voice",
+      "outingForegroundSpeechFooter": "During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on.",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
       "reportProblem": "Report a problem",

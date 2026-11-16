@@ -519,7 +519,7 @@ struct GuideSpeechDeliveryTests {
         guideSpeechChannel(
             foreground: foreground, voiceOverRunning: voiceOver, speechClass: cls,
             backgroundSpeechEnabled: enabled, backgroundAudible: audible, foregroundDeviceSpeech: true,
-            askWindowActive: ask)
+            askWindowActive: ask, deviceOverVoiceOver: false)
     }
 
     // 백그라운드: 주변 문장은 행동 문장(종전 가게 문장의 분류)과 모든 조합에서 같고, 답은 토글과 무관하게 들릴 때 말한다.

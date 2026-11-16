@@ -35,6 +35,9 @@ public final class DeferredAnnouncer {
     /// 가져가 채널의 끝 신호에 잇는다. `post` 클로저의 형을 바꾸지 않으려고 호출 동안만 여기에 둔다(도보·대중교통 모델과
     /// 안드로이드 미러의 `post`는 그대로다).
     private var postingOnSpoken: (() -> Void)?
+    /// 지금 `post`에 넘기고 있는 문장이 전경 ∧ VoiceOver에서도 기기 음성 대상인가(E82 판정 7 — 나들이만 쓴다). `postingOnSpoken`과
+    /// 같은 이유로 호출 동안만 둔다: `post` 클로저의 형을 바꾸면 도보·대중교통 모델과 시험의 생성자가 모두 바뀐다.
+    private var postingDeviceOverVoiceOver = false
 
     public init(
         clock: @escaping () -> Double,
@@ -101,14 +104,19 @@ public final class DeferredAnnouncer {
     /// `onSpoken`(E82 V0a 발화 전달 계약): 그 문장이 끝까지 말해졌을 때 한 번 불린다 — `post` 구현이
     /// `claimSpokenHandler()`로 가져가 채널의 끝 신호에 이었을 때만이다. 한 문장에 `onSpoken`과 `onDropped`는 **많아야
     /// 하나만** 불린다(세션 경계 폐기는 둘 다 부르지 않는다). 지연 슬롯에서 밀려난 문장은 `onDropped`다.
+    ///
+    /// `deviceOverVoiceOver`(E82 판정 7): 이 문장을 전경 ∧ VoiceOver에서도 기기 음성으로 낼 것인가 — `post` 구현이
+    /// `claimDeviceOverVoiceOver()`로 가져가 채널 술어에 넘긴다. 거짓이 종전 채널이다(도보·대중교통은 넘기지 않는다). 나들이는
+    /// 문장 창구(`say`)에서 기본값 없는 `OutingSpeechOrigin`으로 이 값을 정해 넘긴다.
     public func announce(
         _ text: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
+        deviceOverVoiceOver: Bool = false,
         onDropped: (() -> Void)? = nil, onSpoken: (() -> Void)? = nil
     ) {
         invalidatePending()  // §4-1: 새 통지가 옛 보류 문장을 버린다(latest-wins)
         let wait = speechDeferStep(now: clock(), toneEndsAt: toneEndsAt())
         guard wait > 0 else {
-            attempt(text, highPriority, speechClass, onSpoken, onDropped)
+            attempt(text, highPriority, speechClass, deviceOverVoiceOver, onSpoken, onDropped)
             return
         }
         nextToken += 1
@@ -136,7 +144,7 @@ public final class DeferredAnnouncer {
                 // §4-3 ABA: 슬롯 해제는 **자기 토큰일 때만**. 무조건 지우면 옛 Task의
                 // 종료 코드가 새 슬롯 참조를 지워 teardown이 아무것도 취소하지 못한다.
                 if self.slot?.token == token { self.slot = nil }
-                self.attempt(text, highPriority, speechClass, onSpoken, onDropped)
+                self.attempt(text, highPriority, speechClass, deviceOverVoiceOver, onSpoken, onDropped)
                 return
             }
         }
@@ -150,14 +158,23 @@ public final class DeferredAnnouncer {
         return postingOnSpoken
     }
 
+    /// 지금 `post`에 넘기고 있는 문장의 전경 기기 음성 대상 여부를 가져간다(한 번, E82 판정 7). `post` 구현만 부른다.
+    /// `announceNow`(사용자 활성화의 직접 응답)와 가져가지 않은 구현은 거짓이다 — 종전 채널.
+    public func claimDeviceOverVoiceOver() -> Bool {
+        defer { postingDeviceOverVoiceOver = false }
+        return postingDeviceOverVoiceOver
+    }
+
     /// 게시 시도 한 번. `post`가 거짓이면 그 자리에서 `onDropped`다(§4-4).
     private func attempt(
-        _ text: String, _ highPriority: Bool, _ speechClass: GuideSpeechClass,
+        _ text: String, _ highPriority: Bool, _ speechClass: GuideSpeechClass, _ deviceOverVoiceOver: Bool,
         _ onSpoken: (() -> Void)?, _ onDropped: (() -> Void)?
     ) {
         postingOnSpoken = onSpoken
+        postingDeviceOverVoiceOver = deviceOverVoiceOver
         let posted = post(text, highPriority, false, speechClass, onDropped)
         postingOnSpoken = nil
+        postingDeviceOverVoiceOver = false
         if !posted { onDropped?() }
     }
 }

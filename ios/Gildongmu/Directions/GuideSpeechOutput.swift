@@ -18,14 +18,23 @@ enum GuideSpeechOutput {
             stored: UserDefaults.standard.object(forKey: BackgroundSpeech.storageKey) as? Bool)
     }
 
+    /// 나들이 전경 기기 음성 스위치의 실효값(E82 판정 7, 실험판 설정). 게시 시점마다 읽는다(세션 중에 바꾸면 다음 문장부터).
+    /// 정식판에는 스위치 행이 없고 나들이에 닿는 길도 없다(봉인 `experimentalOutingEnabled`).
+    static var outingForegroundSpeechEnabled: Bool {
+        OutingForegroundSpeech.isEnabled(
+            stored: UserDefaults.standard.object(forKey: OutingForegroundSpeech.storageKey) as? Bool)
+    }
+
     /// 게시 시점 전경 판정 — `.inactive`(제어 센터·알림 센터)는 화면을 보고 있는 중이라 전경이다(종전 `isForeground`).
     static var isForeground: Bool { UIApplication.shared.applicationState != .background }
 
     /// 채널 선택(spec §2). `foregroundDeviceSpeech`는 나들이만 참이다. `backgroundAudible`은 그 모델 재생기의
     /// `isBackgroundAudible`(승격 실패면 기기 음성도 들리지 않는다 — 설계 리뷰 B1). `askWindowActive`는 나들이의 묻고 답하는
-    /// 구간(E82 V0c — 질문이 끝난 때부터 답이나 실패 문장이 끝날 때까지)이고 다른 모델은 늘 거짓이다. 기본값이 없다(안전 인자).
+    /// 구간(E82 V0c — 질문이 끝난 때부터 답이나 실패 문장이 끝날 때까지)이고 다른 모델은 늘 거짓이다. `deviceOverVoiceOver`는
+    /// 나들이 전경 기기 음성(E82 판정 7, Kit `outingDeviceOverVoiceOver`)이고 다른 모델은 늘 거짓이다. 기본값이 없다(안전 인자).
     static func channel(
-        _ speechClass: GuideSpeechClass, foregroundDeviceSpeech: Bool, backgroundAudible: Bool, askWindowActive: Bool
+        _ speechClass: GuideSpeechClass, foregroundDeviceSpeech: Bool, backgroundAudible: Bool, askWindowActive: Bool,
+        deviceOverVoiceOver: Bool
     ) -> GuideSpeechChannel {
         guideSpeechChannel(
             foreground: isForeground,
@@ -34,7 +43,8 @@ enum GuideSpeechOutput {
             backgroundSpeechEnabled: backgroundSpeechEnabled,
             backgroundAudible: backgroundAudible,
             foregroundDeviceSpeech: foregroundDeviceSpeech,
-            askWindowActive: askWindowActive)
+            askWindowActive: askWindowActive,
+            deviceOverVoiceOver: deviceOverVoiceOver)
     }
 
     /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5). 안내 VoiceOver 게시의 **유일한
@@ -136,13 +146,15 @@ enum GuideSpeechOutput {
         }
     }
 
-    /// 모델마다 하나씩 두는 기기 음성 대기 칸. 클로저는 그 모델의 받아쓰기 억제·재생기 톤 종료 시각·가청 여부·묻고 답하는 구간.
+    /// 모델마다 하나씩 두는 기기 음성 대기 칸. 클로저는 그 모델의 받아쓰기 억제·재생기 톤 종료 시각·가청 여부·묻고 답하는 구간·
+    /// 칸에 든 문장의 전경 기기 음성 여부(E82 판정 7 — 꺼내는 순간과 복귀 인계에서 채널을 다시 고를 때 쓴다).
     static func makeDeviceQueue(
         foregroundDeviceSpeech: Bool,
         isSuppressed: @escaping () -> Bool,
         toneEndsAt: @escaping () -> Double?,
         backgroundAudible: @escaping () -> Bool,
-        askWindowActive: @escaping () -> Bool
+        askWindowActive: @escaping () -> Bool,
+        deviceOverVoiceOver: @escaping () -> Bool
     ) -> DeviceSpeechQueue {
         let queue = DeviceSpeechQueue(
             clock: { ProcessInfo.processInfo.systemUptime },
@@ -154,7 +166,7 @@ enum GuideSpeechOutput {
             route: {
                 channel(
                     $0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible(),
-                    askWindowActive: askWindowActive())
+                    askWindowActive: askWindowActive(), deviceOverVoiceOver: deviceOverVoiceOver())
             },
             speak: { TtsPlayer.shared.speakGuidance($0) },
             stopSpeaking: { TtsPlayer.shared.stopGuidance() },
