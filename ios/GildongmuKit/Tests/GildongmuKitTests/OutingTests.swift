@@ -404,11 +404,12 @@ struct OutingMiscTests {
 
     @Test("이정표 표는 카테고리 키로만")
     func tiers() {
-        for k in ["subway", "public", "hospital", "attraction", "school"] { #expect(outingLandmarkTier(category: k) == .landmark) }
+        for k in ["subway", "public", "attraction", "school"] { #expect(outingLandmarkTier(category: k, categoryRaw: "") == .landmark) }
+        #expect(outingLandmarkTier(category: "hospital", categoryRaw: "의료,건강 > 병원 > 종합병원") == .landmark)
         // 18종 중 나머지(E58 ②로 새로 오는 일곱 포함)와 미지 키는 가게.
         for k in ["convenience", "restaurant", "cafe", "bank", "pharmacy", "mart",
                   "kindergarten", "academy", "parking", "gasStation", "culture", "realEstate", "lodging", "unknown"] {
-            #expect(outingLandmarkTier(category: k) == .shop)
+            #expect(outingLandmarkTier(category: k, categoryRaw: "") == .shop)
         }
         #expect(!OutingNarration.off.speaks(.landmark))
         #expect(OutingNarration.landmarks.speaks(.landmark) && !OutingNarration.landmarks.speaks(.shop))

@@ -1627,6 +1627,19 @@
   "android.outing.narration": [
     "level"
   ],
+  "android.outing.nearAhead": [
+    "distance",
+    "items"
+  ],
+  "android.outing.nearAheadEmpty": [
+    "distance"
+  ],
+  "android.outing.nearLeft": [
+    "name"
+  ],
+  "android.outing.nearRight": [
+    "name"
+  ],
   "android.outing.originLabel": [
     "label"
   ],

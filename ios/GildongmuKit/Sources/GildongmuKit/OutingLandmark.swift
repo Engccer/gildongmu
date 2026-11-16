@@ -17,8 +17,18 @@ public enum OutingLandmarkTier: String, Sendable, Equatable {
 /// 이정표 등급 카테고리 키(카카오 18종 중). 나머지 키와 미지 키는 전부 가게다.
 public let outingLandmarkCategories: Set<String> = ["subway", "public", "hospital", "attraction", "school"]
 
-public func outingLandmarkTier(category: String) -> OutingLandmarkTier {
-    outingLandmarkCategories.contains(category) ? .landmark : .shop
+/// 병원 분류(`hospital`) 중 이정표인 세부 분류 — 카카오 `category_name`(`categoryRaw`)의 한 마디와 **정확히** 같아야 한다
+/// (E82 위원장 판정 2026-11-16 3번). 실호출로 확인한 경로: 「의료,건강 > 병원 > 종합병원」·「의료,건강 > 병원 > 대학병원」.
+/// 진료과 의원(「… > 병원 > 내과」 등)·치과·한방병원·「노인,요양병원」·동물병원(「가정,생활 > 반려동물 > 동물병원」)은 가게다.
+public let outingLandmarkHospitalKinds: Set<String> = ["종합병원", "대학병원"]
+
+/// 이정표 등급. `categoryRaw`는 기본값 없는 인자다 — 병원은 세부 분류로만 이정표가 된다. 세부 분류가 비었거나 표에 없는 병원은
+/// 가게로 둔다(이정표는 「앞에 ○○」·「이정표만」 낭독에 오르는 강한 주장이라 모를 때 올리지 않는다. 가게도 「전부」 낭독에서는 말한다).
+public func outingLandmarkTier(category: String, categoryRaw: String) -> OutingLandmarkTier {
+    guard outingLandmarkCategories.contains(category) else { return .shop }
+    guard category == "hospital" else { return .landmark }
+    let segments = categoryRaw.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
+    return segments.contains(where: outingLandmarkHospitalKinds.contains) ? .landmark : .shop
 }
 
 /// 주변 낭독 세 단계(§7.2). 저장 값은 rawValue(`@AppStorage`).

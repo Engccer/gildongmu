@@ -779,6 +779,19 @@
   "ios.outing.narration": [
     "level"
   ],
+  "ios.outing.nearAhead": [
+    "distance",
+    "items"
+  ],
+  "ios.outing.nearAheadEmpty": [
+    "distance"
+  ],
+  "ios.outing.nearLeft": [
+    "name"
+  ],
+  "ios.outing.nearRight": [
+    "name"
+  ],
   "ios.outing.originLabel": [
     "label"
   ],

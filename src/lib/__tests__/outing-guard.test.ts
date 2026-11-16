@@ -100,6 +100,67 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
   });
 });
 
+describe("나들이 앞 상황 두 줄(E82 판정 4)", () => {
+  // 아랫줄의 좌우 낱말도 같은 규칙이다: 키는 OutingSide를 switch하는 조립 함수 안에만 있다.
+  const NEAR_SIDE: Record<string, string[]> = {
+    nearPlaceLine: ["ios.outing.nearLeft", "ios.outing.nearRight"],
+    nearJunctionLine: [
+      "ios.outing.nearJunctionLeftAlley",
+      "ios.outing.nearJunctionRightAlley",
+      "ios.outing.nearJunctionLeftPath",
+      "ios.outing.nearJunctionRightPath",
+    ],
+  };
+
+  it("아랫줄 좌우 키는 OutingModel의 두 조립 함수 안에만 있고 그 함수는 OutingSide를 switch한다", () => {
+    const keys = Object.values(NEAR_SIDE).flat();
+    const users = swiftFiles(IOS).filter((f) => keys.some((k) => readFileSync(f, "utf8").includes(`"${k}"`)));
+    expect(users.map((f) => f.split("/").pop())).toEqual(["OutingModel.swift"]);
+    const model = readFileSync(MODEL, "utf8");
+    for (const [name, list] of Object.entries(NEAR_SIDE)) {
+      const body = functionBody(model, name);
+      expect(body).toMatch(/switch side/);
+      expect(body).toMatch(/case \.unknown:/);
+      for (const key of list) {
+        expect(model.split(`"${key}"`).length - 1).toBe(1);
+        expect(body).toContain(`"${key}"`);
+      }
+    }
+  });
+
+  it("두 줄은 Kit 판정(outingAheadUpper·outingAheadLower)만 읽고, 고르기는 매 fix Kit outingAheadPick 한 곳이다", () => {
+    const model = readFileSync(MODEL, "utf8");
+    expect(model).toContain("switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick)");
+    expect(model).toContain("switch outingAheadLower(heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick)");
+    expect(functionBody(model, "pickAhead")).toContain("return outingAheadPick(");
+    // 판정 3: 병원 등급은 세부 분류로만 — 모델의 등급 호출은 전부 categoryRaw를 넘긴다(분류 키 단독 판정 금지).
+    const tierCalls = model.match(/outingLandmarkTier\([^)]*\)/g) ?? [];
+    expect(tierCalls.length).toBeGreaterThan(0);
+    for (const call of tierCalls) expect(call).toContain("categoryRaw:");
+  });
+
+  it("아랫줄의 「없음」은 보행 노드도 준비일 때만 — 노드 상태는 매 조회 커밋에서 Kit outingNodesStatus가 정한다", () => {
+    const model = readFileSync(MODEL, "utf8");
+    expect(functionBody(model, "commit")).toContain("nodesStatus = outingNodesStatus(walk)");
+    expect(model.match(/nodesStatus = /g)?.length).toBe(2); // 시작 초기화 + 커밋(그 밖에서 쓰지 않는다)
+  });
+
+  it("fix가 끊기거나 못 쓰는 동안 쥔 앞 상황은 방위 유효 나이가 지나면 내린다(감시 타이머·못 쓰는 fix 두 자리)", () => {
+    const model = readFileSync(MODEL, "utf8");
+    const drop = functionBody(model, "dropStaleAhead");
+    expect(drop).toContain("outingHeadingIsCurrent(heading, state: headingState, now: now)");
+    expect(drop).toContain("aheadPick = nil");
+    expect(drop).not.toMatch(/heading = /); // 방위 상태와 다른 판정은 건드리지 않는다
+    expect(functionBody(model, "tickWatchdog")).toContain("dropStaleAhead(now: now)");
+    expect(model).toMatch(/guard isUsableFix\(accuracy: fix\.accuracy, ageSeconds: age\) else \{[^}]*dropStaleAhead\(now: now\)[^}]*return\s*\}/);
+  });
+
+  it("시트는 두 줄을 이어 둔다(윗줄 다음이 아랫줄, 둘 다 거리 낭독 정정을 지난다)", () => {
+    const sheet = readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8");
+    expect(sheet).toMatch(/distanceText\(model\.directionLine\)\s*\n\s*distanceText\(model\.nearAheadLine\)/);
+  });
+});
+
 describe("나들이 진입점", () => {
   it("상단 줄 버튼은 왼쪽 나들이 시작(실험판 전용)·메뉴 새로고침(정식판)·설정·오른쪽 새로고침(실험판) 순서다(E82 판정 8)", () => {
     const menu = readFileSync(TITLE_MENU, "utf8");
@@ -406,7 +467,7 @@ describe("나들이 장소 목록은 종료 즉시 비운다(E58 후속 ④, 카
     const guardAt = body.indexOf("guard wasActive else { return }");
     expect(guardAt).toBeGreaterThan(0);
     // 가드 뒤에 두면 이미 끝난 세션(종료 화면 → 귀환)의 재호출에서 건너뛴다 — 가드 앞이어야 모든 종료 경로가 지난다.
-    for (const line of ["places = [:]", "relations = [:]", "bundle = OutingBundle()", "aheadText = nil"]) {
+    for (const line of ["places = [:]", "relations = [:]", "bundle = OutingBundle()", "aheadPick = nil"]) {
       const at = body.indexOf(line);
       expect(at, line).toBeGreaterThan(0);
       expect(at, line).toBeLessThan(guardAt);

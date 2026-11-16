@@ -184,8 +184,11 @@ final class OutingModel {
     private var lastQueryFailedAt: Double?
     private var queryTask: Task<Void, Never>?
     private var road = OutingRoadState()
-    /// 방향 행의 앞쪽 이정표 문구 — 방위가 valid인 마지막 fix에서 정한다(정지 중에도 "…, 마지막 진행 방향"과 함께 남는다).
-    private(set) var aheadText: String?
+    /// 앞 상황 두 줄의 재료(E82 판정 4, Kit `outingAheadPick`) — 매 fix 정한다. 방위가 valid가 아니면 nil이고, 그동안 두 줄은
+    /// 「앞」을 말하지 않는다(첫 판 판정 3).
+    private(set) var aheadPick: OutingAheadPick?
+    /// 보행 노드(횡단보도·교차로) 원천의 준비 상태(마지막 조회 결과, Kit `outingNodesStatus`). 아랫줄의 「없음」은 이것도 준비일 때만.
+    private(set) var nodesStatus: OutingSurroundingsStatus = .loading
     private(set) var lastFix: (lat: Double, lng: Double, accuracy: Double)?
     /// 잠금·백그라운드에서 소리가 날 수 없는 상태(오디오 세션 승격 실패·지연). 나들이는 화면이 꺼진 뒤 기기 음성으로
     /// 주변을 말하는 것이 핵심이라 도보 안내와 같은 문장으로 알리고 시트에 행으로 남긴다(spec §13).
@@ -395,12 +398,13 @@ final class OutingModel {
         nodeLogSeq = [:]
         surroundingsStatus = .loading
         surroundingsFailures = 0
+        nodesStatus = .loading
         lastQuery = nil
         lastQueryFailedAt = nil
         queryTask?.cancel()
         queryTask = nil
         road = OutingRoadState()
-        aheadText = nil
+        aheadPick = nil
         lastFix = nil
         lastFixAt = nil
         lastStaleNoticeAt = nil
@@ -461,7 +465,7 @@ final class OutingModel {
         bundle = OutingBundle()
         // 기록도 같은 축이다(가게 이름·좌표) — 세션이 끝나면 지운다(E82 V10).
         history.clear()
-        aheadText = nil
+        aheadPick = nil
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()
         pedometer.stopLiveUpdates()
@@ -647,6 +651,7 @@ final class OutingModel {
         }
         guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
             routeUnreliableTone(now: now)
+            dropStaleAhead(now: now)
             return
         }
         lastFixAt = now
@@ -775,6 +780,7 @@ final class OutingModel {
         let next = outingSurroundingsStep(status: surroundingsStatus, failures: surroundingsFailures, result: outcome)
         surroundingsStatus = next.status
         surroundingsFailures = next.failures
+        nodesStatus = outingNodesStatus(walk)
         lastQueryFailedAt = outcome == .failure ? uptimeNow : nil
         // 원천 합성(spec §6.6): 횡단보도 OSM → 서울망 → 탐침, 교차점 OSM → 서울망 → 탐침 꺾임. 같은 자리는 먼저 온
         // 점의 id로 흡수된다(latch 하나). 탐침 결과는 이 세션 메모리에만 남는다.
@@ -848,7 +854,8 @@ final class OutingModel {
         // 그 사이의 "앞 → 옆" 전이가 묶음에 남는다.
         if level != .off {
             let candidates = next.compactMap { id, cur -> OutingPassByCandidate? in
-                guard let p = places[id], level.speaks(outingLandmarkTier(category: p.category)) else { return nil }
+                guard let p = places[id],
+                      level.speaks(outingLandmarkTier(category: p.category, categoryRaw: p.categoryRaw)) else { return nil }
                 return OutingPassByCandidate(id: id, previous: relations[id], current: cur)
             }
             for added in bundle.observe(candidates: candidates, stopped: stopped) {
@@ -889,7 +896,7 @@ final class OutingModel {
             }
         }
         if crosswalkSpoken || now < protectedUntil {
-            if case .valid = heading { aheadText = aheadLandmarkText(next) }
+            aheadPick = pickAhead(next, fix: fix)
             return
         }
         // 교차로 예고(spec §6.6) — 횡단보도 다음, 주변 문장 앞. 같은 보호 창을 세우고 그 fix는 주변 문장을 내지 않는다.
@@ -904,11 +911,11 @@ final class OutingModel {
                 // 상대 거리(s·t)도 쓰지 않는다 — 같은 로그의 fix 좌표·방위와 합치면 탐침 꺾임 지점 좌표가 복원된다(spec §6.6).
                 guideDiagLog("junction n=\(logSeq(notice.id)) shape=\(Self.junctionLog(notice.shape))")
                 sayGuarded(Self.junctionLine(notice.shape), record: .junction(notice.shape))
-                if case .valid = heading { aheadText = aheadLandmarkText(next) }
+                aheadPick = pickAhead(next, fix: fix)
                 return
             }
         }
-        if case .valid = heading { aheadText = aheadLandmarkText(next) }
+        aheadPick = pickAhead(next, fix: fix)
         flushAmbient()
     }
 
@@ -954,7 +961,7 @@ final class OutingModel {
         for id in line.ids {
             guard let p = places[id], let rel = relations[id] else { continue }
             guideDiagLog(
-                "passBy id=\(id) tier=\(outingLandmarkTier(category: p.category).rawValue) "
+                "passBy id=\(id) tier=\(outingLandmarkTier(category: p.category, categoryRaw: p.categoryRaw).rawValue) "
                     + "s=\(Int(rel.s)) t=\(Int(rel.t)) side=\(rel.side.rawValue) d=\(Int(rel.d))")
         }
         let name: (String) -> String? = { [places] id in places[id].map { bilingual($0.name, roman: $0.nameRoman).primary } }
@@ -1066,14 +1073,22 @@ final class OutingModel {
         return n
     }
 
-    /// 방향 행 앞 절반의 이정표 — 앞 구획의 가장 가까운 landmark(10m 양자화).
-    private func aheadLandmarkText(_ rels: [String: OutingRelation]) -> String {
-        let nearest = rels
-            .filter { id, r in r.zone == .ahead && places[id].map { outingLandmarkTier(category: $0.category) == .landmark } == true }
-            .min { $0.value.d < $1.value.d }
-        guard let nearest, let p = places[nearest.key] else { return appLocalized("ios.outing.aheadNone") }
-        return appLocalized(
-            "ios.outing.aheadLandmark", displayName(p), formatDistance(outingQuantizedMeters(nearest.value.d)))
+    /// 앞 상황 두 줄의 재료(E82 판정 4) — 다음 이정표(앞 구역 폭·거리 상한)와 앞 30m 안의 가게·횡단보도·교차로. 판정은 Kit
+    /// `outingAheadPick` 하나이고, 방위가 valid가 아니면 nil이다.
+    private func pickAhead(_ rels: [String: OutingRelation], fix: LocationService.BeaconFixPayload) -> OutingAheadPick? {
+        guard case .valid = heading else { return nil }
+        let candidates = rels.compactMap { id, r -> (id: String, tier: OutingLandmarkTier, relation: OutingRelation)? in
+            guard let p = places[id] else { return nil }
+            return (id: id, tier: outingLandmarkTier(category: p.category, categoryRaw: p.categoryRaw), relation: r)
+        }
+        let crosswalkRelations = crosswalks.values.map { c in
+            outingProject(
+                fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy, heading: heading, placeLat: c.lat, placeLng: c.lng)
+        }
+        let nearJunctions = outingNearJunctions(
+            Array(junctions.values), fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy, heading: heading)
+        return outingAheadPick(
+            heading: heading, places: candidates, crosswalks: crosswalkRelations, junctions: nearJunctions)
     }
 
     func displayName(_ p: SurroundingPlace) -> String {
@@ -1489,17 +1504,73 @@ final class OutingModel {
         }
     }
 
-    /// 방향 행 한 줄. 방위를 한 번도 못 얻었으면 "이동 방향 확인 중" 한 줄(spec §8.1).
+    /// 앞 상황 윗줄(E82 판정 4): 다음 이정표와 거리, 줄 끝에 진행 방위. 방위가 valid가 아니면 방위 문구만이고(「앞」을 말하지
+    /// 않는다), 「앞에 이정표 없음」은 받아 둔 목록에서만(준비되지 않은 상태는 아랫줄이 말한다). 거리는 10m 양자화.
     var directionLine: String {
-        if case .none = heading { return headingLine }
-        switch surroundingsStatus {
-        case .loading: return joinText(appLocalized("ios.outing.surroundingsLoading"), headingLine)
-        case .failed: return joinText(appLocalized("ios.outing.surroundingsFailed"), headingLine)
-        case .outOfCoverage: return joinText(appLocalized("ios.outing.outOfCoverage"), headingLine)
-        case .ready:
-            // 방위가 한 번도 valid가 아니었으면 앞을 판정한 적이 없다 — "이정표 없음"으로 단정하지 않는다(리뷰 m6).
-            guard let aheadText else { return headingLine }
-            return joinText(aheadText, headingLine)
+        switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick) {
+        case .headingOnly:
+            return headingLine
+        case .noLandmark:
+            return joinText(appLocalized("ios.outing.aheadNone"), headingLine)
+        case .landmark(let next):
+            guard let p = places[next.id] else { return headingLine }
+            return joinText(appLocalized("ios.outing.aheadLandmark", displayName(p), formatDistance(next.meters)), headingLine)
+        }
+    }
+
+    /// 앞 상황 아랫줄(E82 판정 4): 앞 30m 안 길가의 가까운 두세 곳을 한 문장으로. 「없음」(받아 둔 목록에서 비었다)과 모름(확인
+    /// 중·실패·지역 밖)·방향 모름을 문장으로 가른다. 줄마다 거리를 싣지 않는다 — 걸을 때마다 글이 바뀌면 커서가 머문 줄을
+    /// VoiceOver가 다시 읽는다(spec 리뷰 M9). 글은 실린 곳이 바뀔 때만 바뀐다.
+    var nearAheadLine: String {
+        let range = formatDistance(Int(outingNearAheadMeters))
+        switch outingAheadLower(heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick) {
+        case .noHeading:
+            return appLocalized("ios.outing.nearAheadNoHeading")
+        case .empty, .surroundings(.ready):
+            return appLocalized("ios.outing.nearAheadEmpty", range)
+        case .surroundings(.loading):
+            return appLocalized("ios.outing.surroundingsLoading")
+        case .surroundings(.failed):
+            return appLocalized("ios.outing.surroundingsFailed")
+        case .surroundings(.outOfCoverage):
+            return appLocalized("ios.outing.outOfCoverage")
+        case .items(let items):
+            let parts = items.compactMap(nearItemText)
+            guard !parts.isEmpty else { return appLocalized("ios.outing.nearAheadEmpty", range) }
+            return appLocalized(
+                "ios.outing.nearAhead", range, parts.joined(separator: appLocalized("ios.outing.bundleNameSeparator")))
+        }
+    }
+
+    private func nearItemText(_ item: OutingNearItem) -> String? {
+        switch item {
+        case .place(let id, let side): places[id].map { Self.nearPlaceLine(name: displayName($0), side: side) }
+        case .crosswalk: appLocalized("ios.outing.nearCrosswalk")
+        case .junction(let shape): Self.nearJunctionLine(shape)
+        }
+    }
+
+    /// 아랫줄의 장소 한 곳 — 좌우는 `OutingSide`에서만(spec §14 소스 가드). 모르면 이름만.
+    static func nearPlaceLine(name: String, side: OutingSide) -> String {
+        switch side {
+        case .left: appLocalized("ios.outing.nearLeft", name)
+        case .right: appLocalized("ios.outing.nearRight", name)
+        case .unknown: name
+        }
+    }
+
+    /// 아랫줄의 교차로 한 곳(「앞에」 없는 낱말 — 줄 머리가 이미 앞 30m를 말한다).
+    static func nearJunctionLine(_ shape: OutingJunctionShape) -> String {
+        switch shape {
+        case .side(let side, let alley):
+            switch side {
+            case .left: appLocalized(alley ? "ios.outing.nearJunctionLeftAlley" : "ios.outing.nearJunctionLeftPath")
+            case .right: appLocalized(alley ? "ios.outing.nearJunctionRightAlley" : "ios.outing.nearJunctionRightPath")
+            case .unknown: appLocalized("ios.outing.nearJunctionBranch")
+            }
+        case .cross: appLocalized("ios.outing.nearJunctionCross")
+        case .tee: appLocalized("ios.outing.nearJunctionTee")
+        case .branching: appLocalized("ios.outing.nearJunctionBranch")
         }
     }
 
@@ -1542,6 +1613,7 @@ final class OutingModel {
         guard let startedAt else { return }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         if now - fixRef >= noFixSeconds { routeUnreliableTone(now: now) }
+        dropStaleAhead(now: now)
         if origin == nil { decideOrigin(fix: nil, now: now) }
         refreshPedometerAvailability()
         flushAmbient()
@@ -1563,6 +1635,13 @@ final class OutingModel {
             announcer.announce(
                 appLocalized("beacon.weak"), speechClass: .deferrable, deviceOverVoiceOver: deviceOverVoiceOver(.automatic))
         }
+    }
+
+    /// fix가 끊기거나 못 쓰는 동안 쥐고 있던 앞 상황을 내린다(E82 판정 4: 「앞」은 지금 걷는 방향을 알 때만). 방위 상태 자체와
+    /// 다른 판정(지나침·횡단보도·조망)은 건드리지 않는다 — 다음 쓸 수 있는 fix가 방위와 앞 상황을 다시 정한다.
+    private func dropStaleAhead(now: Double) {
+        guard aheadPick != nil, !outingHeadingIsCurrent(heading, state: headingState, now: now) else { return }
+        aheadPick = nil
     }
 
     private func routeUnreliableTone(now: Double) {

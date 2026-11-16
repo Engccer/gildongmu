@@ -135,6 +135,7 @@ struct OutingSheet: View {
                 .accessibilityFocused($statusFocused)
             distanceText(model.walkedLine)
             distanceText(model.directionLine)
+            distanceText(model.nearAheadLine)
             // 잠금 중 무음 예고 — 세션 내내 참인 지속 상태라 행으로 남긴다(도보 시트 동형, 시작 시 1회 통지와 짝).
             if model.soundDegraded {
                 Text(appLocalized("ios.beacon.soundBackgroundUnavailable"))
