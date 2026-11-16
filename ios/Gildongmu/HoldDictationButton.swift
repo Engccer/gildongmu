@@ -244,7 +244,7 @@ struct HoldDictationButton: View {
         guard !sessionActive, !speech.isListening, !speech.isStarting,
               !finishInFlight, !cancelInFlight else {
             #if DEBUG
-            chatFocusLog("holdmic begin REJECT session=\(sessionActive) listening=\(speech.isListening) finish=\(finishInFlight) cancel=\(cancelInFlight)")
+            chatFocusLog("holdmic begin REJECT session=\(sessionActive) listening=\(speech.isListening) starting=\(speech.isStarting) finish=\(finishInFlight) cancel=\(cancelInFlight)")
             #endif
             return
         }
