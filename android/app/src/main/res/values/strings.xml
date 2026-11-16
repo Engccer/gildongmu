@@ -486,6 +486,8 @@
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>
     <string name="android_settings_weightRejectedNone">체중은 %1$s~%2$skg 사이여야 합니다. 저장하지 않았습니다.</string>
+    <string name="android_shortcut_dictation_desc">길동무에서 지금 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다</string>
+    <string name="android_shortcut_dictation_title">받아쓰기 시작</string>
     <string name="android_shortcut_nearby_desc">길동무 내 주변 화면을 엽니다</string>
     <string name="android_shortcut_nearby_title">내 주변</string>
     <string name="android_shortcut_voiceSearch_desc">길동무를 열고 바로 음성으로 검색합니다</string>
@@ -555,6 +557,7 @@
     <string name="android_voice_paused">받아쓰기 잠김</string>
     <string name="android_voice_preparing">음성 인식 준비 중</string>
     <string name="android_voice_start">받아쓰기 시작</string>
+    <string name="android_voice_triggerNoTarget">이 화면에는 받아쓰기가 없습니다</string>
     <string name="app_tagline">누구나 쓸 수 있는 대한민국 길찾기</string>
     <string name="app_title">길동무</string>
     <string name="around_button">둘러보기</string>

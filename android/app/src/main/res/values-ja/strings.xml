@@ -401,6 +401,8 @@
     <string name="android_settings_weightKg">カロリー推定用の体重(kg)</string>
     <string name="android_settings_weightRejected">体重は%1$s~%2$skgの範囲で入力してください。前の値%3$skgを保持します。</string>
     <string name="android_settings_weightRejectedNone">体重は%1$s~%2$skgの範囲で入力してください。保存しませんでした。</string>
+    <string name="android_shortcut_dictation_desc">キルドンムの今の画面で音声入力を始めます。入力中なら終わります</string>
+    <string name="android_shortcut_dictation_title">音声入力を開始</string>
     <string name="android_shortcut_nearby_desc">キルドンムの周辺画面を開きます</string>
     <string name="android_shortcut_nearby_title">周辺</string>
     <string name="android_shortcut_voiceSearch_desc">キルドンムを開いてすぐ音声で検索します</string>
@@ -470,6 +472,7 @@
     <string name="android_voice_paused">音声入力をロックしました</string>
     <string name="android_voice_preparing">音声認識を準備中</string>
     <string name="android_voice_start">音声入力を開始</string>
+    <string name="android_voice_triggerNoTarget">この画面には音声入力がありません</string>
     <string name="app_tagline">誰でも使える韓国のナビゲーション</string>
     <string name="app_title">キルドンム</string>
     <string name="around_button">周辺を探索</string>
