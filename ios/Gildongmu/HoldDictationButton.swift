@@ -151,6 +151,7 @@ struct HoldDictationButton: View {
             guard isPreparing else { return }
             AccessibilityNotification.Announcement(appLocalized("ios.voice.preparing")).post()
         }
+        .dictationTriggerTarget(isActive: { speech.isListening || speech.isStarting }, perform: externalToggle)
     }
 
     /// 클래식 탭 토글(73fb4e7 이전 계약 복원): 탭=시작, 재탭=정지·전달. 라벨 전환이
@@ -161,6 +162,7 @@ struct HoldDictationButton: View {
             micRow(title: toggleLabel)
         }
         .accessibilityLabel(toggleLabel)
+        .dictationTriggerTarget(isActive: { speech.isListening || speech.isStarting }, perform: externalToggle)
     }
 
     /// 클래식 계약의 라벨: 청취 중이면 "받아쓰기 중지"(외부 시작 세션 포함 — 정지
@@ -207,6 +209,19 @@ struct HoldDictationButton: View {
             TtsPlayer.shared.stop()
             startTask = Task { await speech.start() }
         }
+    }
+
+    /// 화면을 겨냥하지 않은 시작·끝(E82 판정 10: VoiceOver 두 손가락 두 번 탭·단축어 뒷면 탭, `DictationTriggerRegistry`).
+    /// 받아쓰기 설정이 홀드여도 토글이다 — 손가락이 버튼 위에 없는 외부 시작 세션이라 홀드 계약이 적용되지 않고(헌장 참조
+    /// 홀드 불변식 ⑧ 「시작한 방식이 끝내는 방식을 정한다」), 끝내기는 같은 동작을 한 번 더 하거나 버튼을 짧게 누르는 것이다.
+    /// 시작·끝은 탭 토글의 탭과 같은 길(`handleToggleTap`)이라 녹음 전 재생 끊기(`TtsPlayer.shared.stop()`)와 완료 뒤
+    /// 포커스·통지(`onTranscript`)가 버튼과 같다.
+    private func externalToggle() {
+        // 손가락으로 누르고 있는 홀드 세션: 떼는 순간이 끝이다(겹친 정지가 전사를 둘로 쪼개지 않게)
+        guard !sessionActive else { return }
+        hintDismissTask?.cancel()
+        showHoldHint = false
+        handleToggleTap()
     }
 
     private func beginHold() {
