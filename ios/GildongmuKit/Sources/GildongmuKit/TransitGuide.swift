@@ -79,6 +79,27 @@ public func transitBoardingObservationLost(_ signal: TransitSignal) -> Bool {
     signal == .signalLost || signal == .upstreamFailed
 }
 
+/// boarding 국면에서 선언 버튼([선택한 열차에 탔어요])을 세우는가. 관측이 끝났거나(N3 ①), 고른 열차가 고르는 순간 이미
+/// 승강장에 있어 자동 승격을 미룬 채 사용자 확인을 기다릴 때(A74)다. 웹 `boardingDeclareOffered` 미러.
+public func transitBoardingDeclareOffered(
+    signal: TransitSignal, boardConfirmPending: Bool, boardDepartedSeen: Bool
+) -> Bool {
+    transitBoardingObservationLost(signal) || boardConfirmPending || boardDepartedSeen
+}
+
+public func transitBoardingDeclareOffered(_ state: TransitGuideState) -> Bool {
+    transitBoardingDeclareOffered(
+        signal: state.signal, boardConfirmPending: state.boardConfirmPending,
+        boardDepartedSeen: state.boardDepartedSeen)
+}
+
+/// 승차 대기 목록의 풀(A74): 조회 역을 이미 떠난 것으로 서버가 판정한 열차(`departedLikely`)를 뺀다 — 고르면 한 대
+/// 앞 열차를 따라가게 된다. [이미 탔어요]의 열차 고르기(`transitAboardCandidates`)는 이 필터를 지나지 않는다
+/// (그 열차에 타고 있는 사람의 길). 웹 `boardablePool` 미러.
+public func transitBoardablePool(_ items: [TransitTrackItem]) -> [TransitTrackItem] {
+    items.filter { $0.departedLikely != true }
+}
+
 /// "이미 탔어요" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
 /// 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
 /// 남긴다. `99`(N번째 전역, 두 정거장 이상 밖)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증
@@ -217,6 +238,11 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
     public let dataStamp: String?
     /// 데이터 나이(초, 서버 계산·클램프). nil = 미제공·동결 판정 불가(§12.1 ⓑ).
     public let dataAgeSeconds: Int?
+    /// 조회 역에 「도착」으로 실렸지만 이미 떠난 것으로 서버가 판정한 열차(A74, 지하철 arvlCd 1 한정). 참일 때만 실린다 —
+    /// 부재는 nil이고 `!= true`로 읽는다. 승차 승격을 **막는 쪽으로만** 쓴다.
+    public let departedLikely: Bool?
+    /// 그 역 승강장에 선 뒤 지난 시간(초, A74 계측·로그용). 「도착」 항목에만, 알 수 없으면 nil.
+    public let platformAgeSeconds: Int?
     /// 영문 조각(E27 잔여 ①, `lang=en` 요청에만 — 웹 `TrackItem` 미러, spec 2026-09-01 §3.2 행렬).
     ///
     /// ⚠ 위 한국어 필드는 en 응답에서도 한국어다 — 실시간 매핑·종착 검사·현재역 인덱스가
@@ -233,7 +259,8 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
         destinationName: String?, express: Bool, arrivalCode: String?,
         currentLocation: String? = nil, dataStamp: String? = nil, dataAgeSeconds: Int? = nil,
         messageEn: String? = nil, directionEn: String? = nil,
-        destinationNameEn: String? = nil, currentLocationEn: String? = nil, route: String? = nil
+        destinationNameEn: String? = nil, currentLocationEn: String? = nil, route: String? = nil,
+        departedLikely: Bool? = nil, platformAgeSeconds: Int? = nil
     ) {
         self.vehicleId = vehicleId
         self.route = route
@@ -250,6 +277,8 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
         self.directionEn = directionEn
         self.destinationNameEn = destinationNameEn
         self.currentLocationEn = currentLocationEn
+        self.departedLikely = departedLikely
+        self.platformAgeSeconds = platformAgeSeconds
     }
 }
 
@@ -303,6 +332,11 @@ public enum TransitGuideEvent: Sendable, Equatable {
     case approaching(remaining: Int?, message: String, messageEn: String?)
     /// boarding: 잔여 1에서 소실(잔여 0 미관측) — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청.
     case vehiclePassed
+    /// boarding 지하철: 고른 뒤 첫 관측이 곧 「도착」(A74) — 그 도착은 관측이 아니라 이미 지난 일일 수 있어 승격하지 않고
+    /// 사용자 확인을 청한다. 국면 유지, 선언 버튼이 선다(`transitBoardingDeclareOffered`).
+    case boardConfirmNeeded
+    /// boarding 지하철: 확인을 기다리던 열차가 떠났다(A74) — 탔다면 선언, 아니면 다른 차량을 고르게 다시 묻는다.
+    case boardConfirmLapsed
     /// boarding 서울버스: 잔여 0("곧 도착" = 직전 정류소 출발, A41 spec 2026-09-12 §0) 첫 관측. 승격이 아니라
     /// 임박이다. payload 없음 — 문장에 항목 값이 필요 없다("곧 도착" 원문은 `lastMessage`로 이미 흐른다).
     case arrivingAtBoardStop
@@ -352,6 +386,13 @@ public struct TransitGuideState: Sendable {
     public var arrivedCertain: Bool
     public var ladderAnnounced: Int?
     public var trackingAnnounced: Bool
+    /// boarding에서 자동 승격을 미루고 사용자 확인을 기다리는 중(A74): 고른 뒤 첫 관측이 곧 「도착」이었다.
+    /// 서 있는 동안 도착 관측(진입 0·도착 1)은 승격하지 않는다. 잠금 추적 초기화가 내린다.
+    public var boardConfirmPending: Bool
+    /// 이 잠금의 열차가 승차역을 떠난 것으로 한 번이라도 관측됐다(A74, 잠금 단위 래치). 서버의 「떠남」 판정은 폴마다
+    /// 풀릴 수 있어 값을 매번 새로 읽으면 떠난 열차가 다음 폴에 승격된다. 한 번 서면 이 잠금으로는 자동 승격하지 않고,
+    /// 탈출은 선언과 [다른 차량 선택]뿐이다. 떠남 통지의 1회 래치를 겸한다.
+    public var boardDepartedSeen: Bool
     /// 이번 riding 진입 이후 하차역 목록 조회가 **결과(ok·empty)를 돌려준 횟수**(A36 ①).
     /// 한 번도 관측되지 않은 채 `transitNeverSeenPolls`에 닿으면 neverSeen. ⚠ 시간이 아니라
     /// 횟수인 이유: 벽시계는 주머니에 넣어 둔 시간·조회가 실패한 구간·앱이 재워진 구간을
@@ -438,6 +479,12 @@ public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool,
         return (false, final ? .arrive : .start)
     case .vehiclePassed:
         return (false, .weak)
+    case .boardConfirmNeeded:
+        // 열차가 지금 승강장에 있을 수 있다 — 지금 움직여야 하는 신호(도착 관측 승격과 같은 축).
+        return (true, .imminent)
+    case .boardConfirmLapsed:
+        // 답을 기다리는 질문이라 끼어든다. 탔다면 이 버튼이 하차 알림으로 가는 유일한 길이다.
+        return (true, .weak)
     case .trackingStarted:
         return (false, .ladder)
     case .signalLost, .neverSeen, .upstreamFailed:
@@ -762,6 +809,8 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         arrivedCertain: false,
         ladderAnnounced: nil,
         trackingAnnounced: false,
+        boardConfirmPending: false,
+        boardDepartedSeen: false,
         ridingPolls: 0,
         missCount: 0,
         failCount: 0,
@@ -852,6 +901,8 @@ private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState 
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
+    next.boardConfirmPending = false
+    next.boardDepartedSeen = false
     next.missCount = 0
     next.failCount = 0
     next.failSince = nil
@@ -941,6 +992,8 @@ private func handleChangeBoarding(
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
+    next.boardConfirmPending = false
+    next.boardDepartedSeen = false
     // 대기 국면엔 카운터가 없다 — 다음 riding 진입이 0에서 다시 센다.
     next.ridingPolls = 0
     next.missCount = 0
@@ -984,6 +1037,8 @@ private func handleAdvance(
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
+    next.boardConfirmPending = false
+    next.boardDepartedSeen = false
     // 다음 leg는 아직 승차 전이다.
     next.ridingPolls = 0
     next.missCount = 0
@@ -1120,7 +1175,12 @@ private func commitBoardingMatched(
     carriedEvent: TransitGuideEvent?,
     now: Double
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
-    if let stamp = item.dataStamp, stamp == base.dataStamp, item.message == base.lastMessage {
+    // A74: 같은 스냅숏이어도 서버의 "떠났다" 판정은 새 정보다(「도착」 레코드는 떠난 뒤에도 그대로 남는다) — 아직 알리지
+    // 않았으면 조기 반환이 그 전이를 삼키지 않게 한다.
+    let departedNow = base.lock?.mode == .subway
+        && (item.departedLikely == true || (item.arrivalCode == "2" && base.boardConfirmPending))
+    let departureNews = departedNow && !base.boardDepartedSeen
+    if !departureNews, let stamp = item.dataStamp, stamp == base.dataStamp, item.message == base.lastMessage {
         var unchanged = next
         unchanged.missCount = base.missCount + 1
         unchanged.lastUpdatedAt = now
@@ -1160,7 +1220,26 @@ private func commitBoardingMatched(
     let fresh = (item.dataAgeSeconds ?? 0) <= transitBoardStopFreshSeconds
     let arrivedAtBoardStop = base.lock?.mode == .subway
         && (item.arrivalCode == "0" || item.arrivalCode == "1")
+    // A74 ①: 떠난 열차(서버 판정 `departedLikely`, 또는 확인을 기다리던 중에 본 출발 2)는 승격하지 않는다(따라가면 한 대 앞
+    // 열차의 도착을 알린다). **잠금 단위 래치**라 한 번 서면 다음 폴에 판정이 풀려도 이 잠금으로는 자동 승격이 없다. 표시는
+    // 관측이 끝난 자리(signalLost)에 두고, 처음 한 번만 말한다 — 확인을 기다리던 중이면 다시 묻는 문장으로.
+    if departedNow || base.boardDepartedSeen {
+        out.signal = .signalLost
+        out.boardDepartedSeen = true
+        if !base.boardDepartedSeen {
+            return (out, base.boardConfirmPending ? .boardConfirmLapsed : .vehiclePassed)
+        }
+        // 이미 말했다. 장애 회복 통지("신호가 회복됐습니다")는 떠난 열차에 싣지 않는다.
+        if case .signalRecovered? = carriedEvent { return (out, nil) }
+        return (out, carriedEvent)
+    }
     if let lock = base.lock, fresh, arrivedAtBoardStop {
+        // A74 ②: 고른 뒤 첫 관측이 곧 「도착」이면 그것은 관측이 아니라 이미 지난 일일 수 있다. 승격을 미루고 확인을
+        // 청한다. 진입(0)과 기다리다 본 도착은 종전대로.
+        if base.boardConfirmPending || (item.arrivalCode == "1" && !wasTracking) {
+            out.boardConfirmPending = true
+            return (out, base.boardConfirmPending ? carriedEvent : .boardConfirmNeeded)
+        }
         return enterRiding(out, lock: lock, cause: .observed)
     }
 
@@ -1214,6 +1293,11 @@ private func boardingUnmatched(
     }
     if let remaining = base.remaining, remaining <= 1, out.missCount >= transitMissArriveCount {
         out.signal = .signalLost
+        // A74: 확인을 기다리던 열차가 사라졌다 = 떠났다. 래치를 세워 재등장해도 자동 승격하지 않고, 다시 묻는다.
+        if base.boardConfirmPending {
+            out.boardDepartedSeen = true
+            return (out, .boardConfirmLapsed)
+        }
         return (out, .vehiclePassed)
     }
     if out.missCount >= transitMissLostCount {

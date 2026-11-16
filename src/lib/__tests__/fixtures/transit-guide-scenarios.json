@@ -7712,6 +7712,1174 @@
      }
     }
    ]
+  },
+  {
+   "name": "A74 지하철: 고른 열차가 이미 떠났다(departedLikely) → 승격 없이 vehiclePassed 1회, 판정이 풀려도 승격하지 않는다(잠금 래치)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 154,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "boardConfirmPending": false,
+      "event": {
+       "kind": "vehiclePassed"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 174,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "event": null
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 진입",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "0",
+         "dataStamp": "2026-11-17 05:44:00",
+         "dataAgeSeconds": 10
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 고른 뒤 첫 관측이 곧 도착 → 승격을 미루고 확인을 청한다, 이후 도착 관측도 승격하지 않는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "boardConfirmPending": true,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 54
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "boardConfirmPending": true,
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 10
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "boardConfirmPending": true,
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 확인 대기 중 같은 스냅숏에 떠남 표식만 붙어도 삼키지 않고 다시 묻는다, 판정이 풀려도 승격하지 않는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 134,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 154,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 확인 대기 중 목록에서 사라지면 다시 묻고, 재등장해도 승격하지 않는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 확인 대기 중 출발(2)을 보면 다시 묻는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 출발",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "2",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 10
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 장애 회복 폴에서 떠남이 관측되면 회복 통지가 아니라 떠남이 이긴다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "upstreamFailed"
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 134,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 고른 뒤 첫 관측이 진입이면 종전대로 승격한다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 진입",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "0",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "observed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 기다리는 동안 관측한 도착은 종전대로 승격한다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "boardConfirmPending": false,
+      "event": {
+       "kind": "approaching"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "observed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 확인 대기와 떠남 래치는 탑승 변경으로 내려가고, 다시 고른 열차는 기다리다 본 도착으로 승격한다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 34
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "boardConfirmPending": true,
+      "event": {
+       "kind": "boardConfirmNeeded"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 134,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "boardDepartedSeen": true,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "changeBoarding"
+     },
+     "expect": {
+      "phase": "waiting",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "boardingReset"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 3,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "boardConfirmPending": false,
+      "event": {
+       "kind": "approaching"
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 3,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:44:00",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "observed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "A74 지하철: 하차역 도착 확정은 떠남 표식·숫자 나이가 실려도 그대로다(riding은 표식을 읽지 않는다)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "boardConfirmPending": false,
+      "boardDepartedSeen": false,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking"
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 200,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    }
+   ]
   }
  ]
 }

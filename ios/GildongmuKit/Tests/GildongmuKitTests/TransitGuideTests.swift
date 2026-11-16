@@ -50,9 +50,13 @@ private struct FixtureExpect: Decodable {
     let event: FixtureEvent??
     /// A36 ①: 미관측 상한 카운터 직접 단언(웹 실행기 동형).
     let ridingPolls: Int?
+    /// A74: 확인 대기·떠남 래치 직접 단언(웹 실행기 동형).
+    let boardConfirmPending: Bool?
+    let boardDepartedSeen: Bool?
 
     enum CodingKeys: String, CodingKey {
         case phase, signal, legIndex, remaining, dataAgeSeconds, previousLock, event, ridingPolls
+        case boardConfirmPending, boardDepartedSeen
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -72,6 +76,8 @@ private struct FixtureExpect: Decodable {
             ? .some(try c.decodeIfPresent(FixtureEvent.self, forKey: .event))
             : .none
         ridingPolls = try c.decodeIfPresent(Int.self, forKey: .ridingPolls)
+        boardConfirmPending = try c.decodeIfPresent(Bool.self, forKey: .boardConfirmPending)
+        boardDepartedSeen = try c.decodeIfPresent(Bool.self, forKey: .boardDepartedSeen)
     }
 }
 
@@ -160,6 +166,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     case .vehicleSelected: "vehicleSelected"
     case .approaching: "approaching"
     case .vehiclePassed: "vehiclePassed"
+    case .boardConfirmNeeded: "boardConfirmNeeded"
+    case .boardConfirmLapsed: "boardConfirmLapsed"
     case .arrivingAtBoardStop: "arrivingAtBoardStop"
     case .arrivingAtAlightStop: "arrivingAtAlightStop"
     case .trackingStarted: "trackingStarted"
@@ -209,6 +217,12 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
             }
             if let expected = step.expect.ridingPolls {
                 #expect(state.ridingPolls == expected, "\(ctx) ridingPolls")
+            }
+            if let expected = step.expect.boardConfirmPending {
+                #expect(state.boardConfirmPending == expected, "\(ctx) boardConfirmPending")
+            }
+            if let expected = step.expect.boardDepartedSeen {
+                #expect(state.boardDepartedSeen == expected, "\(ctx) boardDepartedSeen")
             }
             if case let .some(expectedLockRef) = step.expect.previousLock {
                 let expectedLock = expectedLockRef.flatMap { fixture.locks[$0] }
@@ -912,4 +926,43 @@ private let identifiedLock = TransitLock(mode: .seoulBus, routeId: "100100047", 
     // 첫 항목이 leg 자신이 아니면 버린다, 하나뿐이어도 집합이 아니다.
     #expect(transitGuideLanesOf(try decode(#"[{"lineName":"7016"},{"lineName":"1711"}]"#)) == nil)
     #expect(transitGuideLanesOf(try decode(#"[{"lineName":"1711"},{"lineName":"1711"}]"#)) == nil)
+}
+
+// A74: 선언 버튼 술어와 대기 목록 풀(웹 `transit-guide.test.ts` 동형).
+@Test func boardingDeclareOfferedPredicate() {
+    func of(_ signal: TransitSignal, _ pending: Bool = false, _ seen: Bool = false) -> Bool {
+        transitBoardingDeclareOffered(signal: signal, boardConfirmPending: pending, boardDepartedSeen: seen)
+    }
+    #expect(!of(.tracking))
+    #expect(!of(.notYetVisible))
+    #expect(of(.tracking, true))
+    #expect(of(.tracking, false, true))
+    #expect(of(.signalLost))
+    #expect(of(.upstreamFailed))
+}
+
+@Test func boardablePoolDropsDepartedKeepsOrder() {
+    func item(_ id: String, _ departed: Bool?) -> TransitTrackItem {
+        TransitTrackItem(
+            vehicleId: id, direction: "하행", message: "m", remainingStops: 0, destinationName: nil,
+            express: false, arrivalCode: "1", departedLikely: departed)
+    }
+    let pool = transitBoardablePool([item("a", true), item("b", nil), item("c", false)])
+    #expect(pool.map(\.vehicleId) == ["b", "c"])
+}
+
+// 서버 응답의 선택 필드가 디코딩에서 살아남는다 — 배선이 끊기면 조용히 nil이 돼 기능이 죽는다.
+@Test func trackItemDecodesDepartedFields() throws {
+    let json = """
+    {"vehicleId":"2230","direction":"하행","message":"m","remainingStops":0,"destinationName":null,
+     "express":false,"arrivalCode":"1","departedLikely":true,"platformAgeSeconds":143}
+    """
+    let item = try JSONDecoder().decode(TransitTrackItem.self, from: Data(json.utf8))
+    #expect(item.departedLikely == true)
+    #expect(item.platformAgeSeconds == 143)
+    let bare = try JSONDecoder().decode(
+        TransitTrackItem.self,
+        from: Data(#"{"vehicleId":"1","direction":"d","message":"m","express":false}"#.utf8))
+    #expect(bare.departedLikely == nil)
+    #expect(bare.platformAgeSeconds == nil)
 }

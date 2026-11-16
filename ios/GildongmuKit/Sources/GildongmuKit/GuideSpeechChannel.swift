@@ -172,7 +172,9 @@ public func transitEventSpeechClass(_ event: TransitGuideEvent) -> GuideSpeechCl
         // 「다음 역 {하차역}에서 내리세요」의 유일한 자리라 백그라운드에서도 말한다(잔여 ≥2·미상은 종전대로 톤이 맡는다).
         return (remaining ?? .max) <= 1 ? .actionable : .deferrable
     case .vehicleSelected, .vehiclePassed, .arrivingAtBoardStop, .arrivingAtAlightStop, .boarded, .arrived,
-         .legAdvanced, .neverSeen:
+         .legAdvanced, .neverSeen,
+         // A74: 두 문장 모두 지금 움직여야 하는(열차가 승강장에 있을 수 있다·탔다면 선언) 행동 문장이다.
+         .boardConfirmNeeded, .boardConfirmLapsed:
         return .actionable
     case .messageChanged, .backOnTrack, .approxVehicleChanged, .signalLost, .upstreamFailed,
          .signalRecovered, .boardingReset, .capSlowed:

@@ -372,6 +372,7 @@
     <string name="android_outing_narrationOff">끔</string>
     <string name="android_outing_nearAhead">앞 %1$s 안에 %2$s</string>
     <string name="android_outing_nearAheadEmpty">앞 %1$s 안에 안내할 곳 없음</string>
+    <string name="android_outing_nearAheadLocating">위치 확인 중</string>
     <string name="android_outing_nearAheadNoHeading">조금 이동해 주세요. 주변 장소 찾는 중</string>
     <string name="android_outing_nearCrosswalk">횡단보도</string>
     <string name="android_outing_nearJunctionBranch">갈림길</string>
@@ -489,7 +490,7 @@
     <string name="android_settings_title">설정</string>
     <string name="android_settings_trendHaptics">진동 알림 확장 (실험)</string>
     <string name="android_settings_trendHapticsFooter">걷는 동안 가까워짐과 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다.</string>
-    <string name="android_settings_vergiliusProvider">답변 모델</string>
+    <string name="android_settings_vergiliusProvider">나들이 답변 모델</string>
     <string name="android_settings_weightFooter">체중은 %1$s~%2$skg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요.</string>
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>
@@ -1473,6 +1474,8 @@
     <string name="transitGuide_backOnTrack">차량 신호를 다시 확인했습니다.</string>
     <string name="transitGuide_boardAlready">이미 탔어요</string>
     <string name="transitGuide_boardApprox">이미 탔어요</string>
+    <string name="transitGuide_boardConfirmLapsed">선택한 열차가 %1$s에서 출발한 것으로 보입니다. 타셨으면 선택한 열차에 탔어요 버튼을, 아니면 다른 차량 선택 버튼을 눌러 주세요.</string>
+    <string name="transitGuide_boardConfirmNeeded">선택한 열차가 %1$s에 도착한 것으로 나옵니다. 타셨으면 선택한 열차에 탔어요 버튼을 눌러 주세요.</string>
     <string name="transitGuide_boardSelected">선택한 열차에 탔어요</string>
     <string name="transitGuide_boardSelectedBus">선택한 버스에 탔어요</string>
     <string name="transitGuide_boarded">탑승했습니다.</string>

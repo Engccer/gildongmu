@@ -307,7 +307,7 @@ describe("TransitGuideModel boarding 래치·폴 주기 (N3 ①)", () => {
       "if result.state.phase != .boarding || state.phase != .boarding {",
     );
     expect(MODEL).toContain(
-      "if result.state.phase == .boarding, transitBoardingObservationLost(result.state.signal) {",
+      "if result.state.phase == .boarding, transitBoardingDeclareOffered(result.state) {",
     );
     // 세션 종료·경로 교체도 지운다(웹 `stopSession` 미러). 넷 = 선언 기본값 + stop + changeRoute + dispatch.
     expect(MODEL.match(/boardingManualAvailable = false/g) ?? []).toHaveLength(4);

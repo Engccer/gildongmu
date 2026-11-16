@@ -55,7 +55,7 @@ class TransitTrackServiceTest {
         "resolveTagoStop" -> queryItems { it.resolveTagoStop(36.35, 127.38) }
         "tagoTrack" -> queryItems { it.tagoTrack("c", "n", "10", null, "en") }
         "seoulLanes" -> queryItems { it.seoulLanes("01007", "b", "a", "r", "en") }
-        "subwayTrack" -> queryItems { it.subwayTrack("천호", "1005", "en") }
+        "subwayTrack" -> queryItems { it.subwayTrack("천호", "1005", "en", departCheck = true) }
         else -> fail("Kotlin 미러에 없는 Swift 메서드: $swiftName")
     }
 
@@ -92,7 +92,7 @@ class TransitTrackServiceTest {
         val tago = queryItems { it.tagoTrack("c", "n", "1711", listOf("1711", "7016"), "ko") }
         assertEquals(listOf("mode", "phase", "cityCode", "nodeId", "routeNos", "lang"), tago.map { it.first })
         assertEquals("1711,7016", tago.toMap()["routeNos"])
-        assertEquals("en", queryItems { it.subwayTrack("천호", "1005", "en") }.toMap()["lang"])
+        assertEquals("en", queryItems { it.subwayTrack("천호", "1005", "en", departCheck = true) }.toMap()["lang"])
         assertEquals(null, queryItems { it.resolveTagoStop(36.35, 127.38) }.toMap()["lang"])
     }
 

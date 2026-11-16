@@ -266,6 +266,16 @@ public func transitVehiclePassedLine(isEn: Bool, leg: TransitDisplayLeg) -> Tran
     makeLine(isEn, "vehiclePassed", [leg.board]) { $0 }
 }
 
+/// A74: 고른 뒤 첫 관측이 곧 「도착」 — 승격을 미루고 선언 버튼으로 확인을 청한다.
+public func transitBoardConfirmNeededLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    makeLine(isEn, "boardConfirmNeeded", [leg.board]) { $0 }
+}
+
+/// A74: 확인을 기다리던 열차가 떠났다 — 탔으면 선언, 아니면 다른 차량을 고르게 한다.
+public func transitBoardConfirmLapsedLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    makeLine(isEn, "boardConfirmLapsed", [leg.board]) { $0 }
+}
+
 public func transitArrivedAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
     makeLine(isEn, modeKey(leg, "arrivedAtBoardStop"), [leg.line]) { $0 }
 }
@@ -452,6 +462,7 @@ public let transitTextKeys: [String] = [
     "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
+    "boardConfirmNeeded", "boardConfirmLapsed",
     "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
     "boarded", "boardedAlight",
     "arrivingAtAlightStop", "arrivingAtAlightStopUnnamed", "alightStopReached", "alightStopReachedUnnamed",

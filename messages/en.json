@@ -1187,6 +1187,8 @@
     "alightStopReached": "Arrived at {stop}. Get off here.",
     "alightStopReachedUnnamed": "Arrived at your stop. Get off here.",
     "vehiclePassed": "The vehicle you selected seems to have left {stop}.",
+    "boardConfirmNeeded": "The train you selected is shown as arrived at {stop}. If you are on it, press I'm on the selected train.",
+    "boardConfirmLapsed": "The train you selected seems to have left {stop}. If you are on it, press I'm on the selected train. If not, press Choose another vehicle.",
     "boardingSignalLost": "We cannot find the vehicle you selected.",
     "boardingUpstreamFailed": "The live feed was interrupted.",
     "stateBoardingNotYetVisible": "Locating selected vehicle.",

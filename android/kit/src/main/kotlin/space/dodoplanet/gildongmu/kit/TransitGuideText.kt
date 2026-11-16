@@ -233,6 +233,14 @@ fun transitSelectedVehicleLine(isEn: Boolean, desc: TransitLabel): TransitTextLi
 fun transitVehiclePassedLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
     makeLine(isEn, "vehiclePassed", listOf(leg.board)) { it }
 
+/** A74: 고른 뒤 첫 관측이 곧 「도착」 — 승격을 미루고 선언 버튼으로 확인을 청한다. */
+fun transitBoardConfirmNeededLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
+    makeLine(isEn, "boardConfirmNeeded", listOf(leg.board)) { it }
+
+/** A74: 확인을 기다리던 열차가 떠났다 — 탔으면 선언, 아니면 다른 차량을 고르게 한다. */
+fun transitBoardConfirmLapsedLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
+    makeLine(isEn, "boardConfirmLapsed", listOf(leg.board)) { it }
+
 fun transitArrivedAtBoardStopLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
     makeLine(isEn, modeKey(leg, "arrivedAtBoardStop"), listOf(leg.line)) { it }
 
@@ -392,7 +400,7 @@ val transitTextKeys: List<String> = listOf(
     "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
-    "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
+    "boardConfirmNeeded", "boardConfirmLapsed", "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
     "boarded", "boardedAlight",
     "arrivingAtAlightStop", "arrivingAtAlightStopUnnamed", "alightStopReached", "alightStopReachedUnnamed",
     "currentStation",

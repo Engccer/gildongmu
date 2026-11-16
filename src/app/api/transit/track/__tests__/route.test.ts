@@ -110,7 +110,20 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
     );
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe("unsupported");
-    expect(trackSubway).toHaveBeenCalledWith({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
+    expect(trackSubway).toHaveBeenCalledWith({
+      station: "천호", lineName: "수도권 5호선", lang: "ko", departCheck: false,
+    });
+  });
+
+  it("subway track: 떠남 확인 옵트인(A74)은 departCheck=1일 때만 켜진다", async () => {
+    await GET(makeRequest({ mode: "subway", phase: "track", station: "천호", line: "수도권 5호선", departCheck: "1" }));
+    expect(trackSubway).toHaveBeenLastCalledWith({
+      station: "천호", lineName: "수도권 5호선", lang: "ko", departCheck: true,
+    });
+    await GET(makeRequest({ mode: "subway", phase: "track", station: "천호", line: "수도권 5호선", departCheck: "true" }));
+    expect(trackSubway).toHaveBeenLastCalledWith({
+      station: "천호", lineName: "수도권 5호선", lang: "ko", departCheck: false,
+    });
   });
 
   it("알 수 없는 mode·phase 조합은 400", async () => {

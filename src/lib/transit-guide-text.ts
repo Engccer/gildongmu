@@ -277,6 +277,16 @@ export function vehiclePassedLine(isEn: boolean, leg: TransitDisplayLeg): Transi
   return line(isEn, "vehiclePassed", [leg.board], (v) => v);
 }
 
+/** A74: 고른 뒤 첫 관측이 곧 「도착」 — 승격을 미루고 선언 버튼으로 확인을 청한다. */
+export function boardConfirmNeededLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  return line(isEn, "boardConfirmNeeded", [leg.board], (v) => v);
+}
+
+/** A74: 확인을 기다리던 열차가 떠났다 — 탔으면 선언, 아니면 다른 차량을 고르게 한다. */
+export function boardConfirmLapsedLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  return line(isEn, "boardConfirmLapsed", [leg.board], (v) => v);
+}
+
 export function arrivedAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
   return line(isEn, modeKey(leg, "arrivedAtBoardStop"), [leg.line], (v) => v);
 }
@@ -527,6 +537,8 @@ export const TRANSIT_TEXT_KEYS = [
   "vehicleSelected",
   "selectedVehicle",
   "vehiclePassed",
+  "boardConfirmNeeded",
+  "boardConfirmLapsed",
   "arrivedAtBoardStop",
   "arrivedAtBoardStopBus",
   "arrivingAtBoardStop",

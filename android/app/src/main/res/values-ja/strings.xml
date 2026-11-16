@@ -287,6 +287,7 @@
     <string name="android_outing_narrationOff">オフ</string>
     <string name="android_outing_nearAhead">前方%1$s以内：%2$s</string>
     <string name="android_outing_nearAheadEmpty">前方%1$s以内に案内する場所なし</string>
+    <string name="android_outing_nearAheadLocating">位置を確認中</string>
     <string name="android_outing_nearAheadNoHeading">少し移動してください。周辺の場所を検索中</string>
     <string name="android_outing_nearCrosswalk">横断歩道</string>
     <string name="android_outing_nearJunctionBranch">分かれ道</string>
@@ -404,7 +405,7 @@
     <string name="android_settings_title">設定</string>
     <string name="android_settings_trendHaptics">振動通知の拡張(実験)</string>
     <string name="android_settings_trendHapticsFooter">歩行中の接近と案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。</string>
-    <string name="android_settings_vergiliusProvider">回答モデル</string>
+    <string name="android_settings_vergiliusProvider">お散歩の回答モデル</string>
     <string name="android_settings_weightFooter">体重は%1$s~%2$skgの範囲で入力してください。入力した情報はサーバーに保存されません。</string>
     <string name="android_settings_weightKg">カロリー推定用の体重(kg)</string>
     <string name="android_settings_weightRejected">体重は%1$s~%2$skgの範囲で入力してください。前の値%3$skgを保持します。</string>
@@ -1388,6 +1389,8 @@
     <string name="transitGuide_backOnTrack">車両の信号を再確認しました。</string>
     <string name="transitGuide_boardAlready">すでに乗車しました</string>
     <string name="transitGuide_boardApprox">すでに乗車しました</string>
+    <string name="transitGuide_boardConfirmLapsed">選んだ列車は%1$sを出発したようです。乗車したら「選んだ列車に乗りました」を、乗っていなければ「別の車両を選ぶ」を押してください。</string>
+    <string name="transitGuide_boardConfirmNeeded">選んだ列車は%1$sに到着と表示されています。乗車したら「選んだ列車に乗りました」を押してください。</string>
     <string name="transitGuide_boardSelected">選んだ列車に乗りました</string>
     <string name="transitGuide_boardSelectedBus">選んだバスに乗りました</string>
     <string name="transitGuide_boarded">乗車しました。</string>

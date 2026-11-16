@@ -1187,6 +1187,8 @@
     "alightStopReached": "{stop}に到着。降りてください。",
     "alightStopReachedUnnamed": "降車停留所に到着。降りてください。",
     "vehiclePassed": "選択した車両が{stop}を通過したようです。",
+    "boardConfirmNeeded": "選んだ列車は{stop}に到着と表示されています。乗車したら「選んだ列車に乗りました」を押してください。",
+    "boardConfirmLapsed": "選んだ列車は{stop}を出発したようです。乗車したら「選んだ列車に乗りました」を、乗っていなければ「別の車両を選ぶ」を押してください。",
     "boardingSignalLost": "選択した車両を見つけられていません。",
     "boardingUpstreamFailed": "リアルタイム情報が途切れました。",
     "stateBoardingNotYetVisible": "選択車両を確認中。",

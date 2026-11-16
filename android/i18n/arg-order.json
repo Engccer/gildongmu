@@ -983,6 +983,12 @@
   "transitGuide.arrivingAtBoardStopBus": [
     "line"
   ],
+  "transitGuide.boardConfirmLapsed": [
+    "stop"
+  ],
+  "transitGuide.boardConfirmNeeded": [
+    "stop"
+  ],
   "transitGuide.boardedAlight": [
     "stop"
   ],

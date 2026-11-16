@@ -28,7 +28,9 @@ public func transitToneAllowedInBackground(_ source: TransitBackgroundToneSource
     case let .event(event):
         switch event {
         case .trackingStarted, .countdown, .arrivingAtAlightStop, .arrived,
-             .approaching, .arrivingAtBoardStop:
+             .approaching, .arrivingAtBoardStop,
+             // A74: 지금 행동해야 하는 문장이라 도착 관측 승격(`boarded` observed)과 같은 등급이다.
+             .boardConfirmNeeded, .boardConfirmLapsed:
             return true
         case let .boarded(_, cause):
             // 전수 switch — 새 원인이 생기면 컴파일이 멈춰 소리 쪽으로 조용히 열리지 않는다(리뷰 NIT).

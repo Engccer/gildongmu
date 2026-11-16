@@ -142,7 +142,13 @@ export async function GET(request: NextRequest) {
       if (!parsed.success) return badRequest();
       return NextResponse.json({
         mode,
-        ...(await trackSubway({ station: parsed.data.station, lineName: parsed.data.line, lang })),
+        ...(await trackSubway({
+          station: parsed.data.station,
+          lineName: parsed.data.line,
+          lang,
+          // A74 옵트인: 새 클라이언트의 승차역 폴만 싣는다(하차역 폴·옛 클라이언트는 위치를 조회하지 않는다).
+          departCheck: q.get("departCheck") === "1",
+        })),
       });
     }
     return badRequest("mode·phase 조합이 유효하지 않습니다");

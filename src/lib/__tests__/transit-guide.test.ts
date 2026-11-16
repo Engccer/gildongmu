@@ -13,6 +13,8 @@ import {
   validExitNo,
   needsExpressPrompt,
   declaredExpressVerdict,
+  boardablePool,
+  boardingDeclareOffered,
   initTransitGuide,
   isUnobservedTransitLock,
   pollIntervalMs,
@@ -83,6 +85,9 @@ describe("transitGuideStep — 공유 fixture 시나리오(B2 §8.1)", () => {
         if ("dataAgeSeconds" in exp) expect(state.dataAgeSeconds, ctx).toBe(exp.dataAgeSeconds);
         // A36 ①: 미관측 상한 카운터는 발화 타이밍으로만 간접 관측되므로 직접 단언 키를 둔다(Kit 실행기 동형).
         if ("ridingPolls" in exp) expect(state.ridingPolls, ctx).toBe(exp.ridingPolls);
+        // A74: 확인 대기 래치는 선언 버튼의 등장 조건이라 직접 단언한다(Kit·:kit 실행기 동형).
+        if ("boardConfirmPending" in exp) expect(state.boardConfirmPending, ctx).toBe(exp.boardConfirmPending);
+        if ("boardDepartedSeen" in exp) expect(state.boardDepartedSeen, ctx).toBe(exp.boardDepartedSeen);
         if ("previousLock" in exp) {
           // 값은 락 참조 이름 또는 null(§13.1 보존·소거 단언).
           expect(state.previousLock, ctx).toEqual(
@@ -814,5 +819,28 @@ describe("영문 조각 승계 (E27 잔여 ①, spec 2026-09-01 §3.4)", () => {
       legs: [{ ...r!.legs[0], walkBeforeMinutes: 4 }],
     };
     expect(transitPrewalkTarget(withWalk)).toMatchObject({ name: "천호", nameEn: "Cheonho", minutes: 4 });
+  });
+});
+
+describe("A74 — 선언 버튼 술어와 대기 목록 풀", () => {
+  it("boardingDeclareOffered: 관측이 끝났거나 확인 대기 중이거나 떠남을 본 잠금이면 선다", () => {
+    const of = (signal: TransitGuideState["signal"], boardConfirmPending = false, boardDepartedSeen = false) =>
+      boardingDeclareOffered({ signal, boardConfirmPending, boardDepartedSeen });
+    expect(of("tracking")).toBe(false);
+    expect(of("notYetVisible")).toBe(false);
+    expect(of("tracking", true)).toBe(true);
+    expect(of("tracking", false, true)).toBe(true);
+    expect(of("signalLost")).toBe(true);
+    expect(of("upstreamFailed")).toBe(true);
+  });
+
+  it("boardablePool: 떠난 열차만 빼고 순서를 지킨다", () => {
+    const base = { direction: "하행", message: "m", remainingStops: 0, destinationName: null, express: false, arrivalCode: "1" };
+    const items = [
+      { ...base, vehicleId: "a", departedLikely: true },
+      { ...base, vehicleId: "b" },
+      { ...base, vehicleId: "c", departedLikely: false },
+    ];
+    expect(boardablePool(items).map((i) => i.vehicleId)).toEqual(["b", "c"]);
   });
 });

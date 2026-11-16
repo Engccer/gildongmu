@@ -287,6 +287,7 @@
     <string name="android_outing_narrationOff">Off</string>
     <string name="android_outing_nearAhead">Within %1$s ahead: %2$s</string>
     <string name="android_outing_nearAheadEmpty">Nothing to announce within %1$s ahead</string>
+    <string name="android_outing_nearAheadLocating">Checking location</string>
     <string name="android_outing_nearAheadNoHeading">Move a little. Looking for nearby places</string>
     <string name="android_outing_nearCrosswalk">crosswalk</string>
     <string name="android_outing_nearJunctionBranch">junction</string>
@@ -404,7 +405,7 @@
     <string name="android_settings_title">Settings</string>
     <string name="android_settings_trendHaptics">Extended vibration alerts (experimental)</string>
     <string name="android_settings_trendHapticsFooter">Also vibrates for getting closer and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on.</string>
-    <string name="android_settings_vergiliusProvider">Answer model</string>
+    <string name="android_settings_vergiliusProvider">Stroll answer model</string>
     <string name="android_settings_weightFooter">Enter a weight between %1$s and %2$s kg. What you enter is not stored on a server.</string>
     <string name="android_settings_weightKg">Weight for calorie estimate (kg)</string>
     <string name="android_settings_weightRejected">Weight must be between %1$s and %2$s kg. Keeping the previous value, %3$s kg.</string>
@@ -1388,6 +1389,8 @@
     <string name="transitGuide_backOnTrack">Vehicle signal reacquired.</string>
     <string name="transitGuide_boardAlready">I already boarded</string>
     <string name="transitGuide_boardApprox">I already boarded</string>
+    <string name="transitGuide_boardConfirmLapsed">The train you selected seems to have left %1$s. If you are on it, press I\'m on the selected train. If not, press Choose another vehicle.</string>
+    <string name="transitGuide_boardConfirmNeeded">The train you selected is shown as arrived at %1$s. If you are on it, press I\'m on the selected train.</string>
     <string name="transitGuide_boardSelected">I\'m on the selected train</string>
     <string name="transitGuide_boardSelectedBus">I\'m on the selected bus</string>
     <string name="transitGuide_boarded">Boarded.</string>

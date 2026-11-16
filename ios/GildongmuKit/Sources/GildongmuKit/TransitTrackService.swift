@@ -115,13 +115,20 @@ public struct TransitTrackService: Sendable {
         ])
     }
 
-    public func subwayTrack(station: String, line: String, lang: String) async throws -> TransitTrackEnvelope {
-        try await get([
+    /// ⚠ `departCheck`는 **기본값 없는 필수 인자**다(A74) — 생략이 컴파일을 통과하면 승차역 폴이 위치 판정을 못 받아
+    /// 떠난 열차 걸러내기가 조용히 죽는다. 대기·승차 국면(승차역 폴)만 true, 하차역 폴은 false(하차역 도착 확정은
+    /// 이 판정을 읽지 않고 서버는 하차역 폴에 위치를 조회하지 않는다).
+    public func subwayTrack(
+        station: String, line: String, lang: String, departCheck: Bool
+    ) async throws -> TransitTrackEnvelope {
+        var query = [
             URLQueryItem(name: "mode", value: "subway"),
             URLQueryItem(name: "phase", value: "track"),
             URLQueryItem(name: "station", value: station),
             URLQueryItem(name: "line", value: line),
             URLQueryItem(name: "lang", value: lang),
-        ])
+        ]
+        if departCheck { query.append(URLQueryItem(name: "departCheck", value: "1")) }
+        return try await get(query)
     }
 }

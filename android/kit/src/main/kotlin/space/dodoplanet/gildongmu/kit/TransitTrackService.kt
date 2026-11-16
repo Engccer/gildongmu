@@ -80,8 +80,13 @@ class TransitTrackService(private val client: APIClient) {
             TransitLanesEnvelope.serializer(),
         )
 
-    suspend fun subwayTrack(station: String, line: String, lang: String): TransitTrackEnvelope = get(
-        listOf("mode" to "subway", "phase" to "track", "station" to station, "line" to line, "lang" to lang),
+    /**
+     * ⚠ `departCheck`는 **기본값 없는 필수 인자**다(A74) — 생략이 컴파일을 통과하면 승차역 폴이 위치 판정을 못 받아 떠난 열차
+     * 걸러내기가 조용히 죽는다. 대기·승차 국면(승차역 폴)만 true, 하차역 폴은 false. Swift `subwayTrack` 미러.
+     */
+    suspend fun subwayTrack(station: String, line: String, lang: String, departCheck: Boolean): TransitTrackEnvelope = get(
+        listOf("mode" to "subway", "phase" to "track", "station" to station, "line" to line, "lang" to lang) +
+            (if (departCheck) listOf("departCheck" to "1") else emptyList()),
     )
 
     companion object {

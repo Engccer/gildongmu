@@ -1936,6 +1936,72 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     expect(screen.getByRole("status").textContent).not.toContain("trackingStarted");
   });
 
+  it("A74: 고른 뒤 첫 관측이 곧 도착이면 승격하지 않고 확인을 청하며 선언 버튼이 선다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          mode: "subway",
+          status: "ok",
+          rawCount: 1,
+          items: [trackItem({ message: "천호 도착", remainingStops: 0, arrivalCode: "1", dataAgeSeconds: 34 })],
+        }),
+      }) as Response),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+    // 승격했다면 선언 버튼은 서지 않는다(riding엔 그 버튼이 없다) — 버튼이 서는 것이 곧 "boarding에 머문다"의 증거다.
+    await screen.findByRole("button", { name: "transitGuide.boardSelected" });
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain("transitGuide.boardConfirmNeeded"),
+    );
+    expect(screen.getByRole("status").textContent).not.toContain("transitGuide.arrivedAtBoardStop");
+  });
+
+  it("A74: 조회 역을 이미 떠난 열차(departedLikely)는 대기 목록에 서지 않는다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          mode: "subway",
+          status: "ok",
+          rawCount: 2,
+          items: [
+            trackItem({ vehicleId: "5694", message: "천호 도착", remainingStops: 0, arrivalCode: "1", departedLikely: true }),
+            trackItem({}),
+          ],
+        }),
+      }) as Response),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await screen.findByRole("button", { name: /selectTrain/ });
+    expect(screen.getAllByRole("button", { name: /selectTrain/ })).toHaveLength(1);
+  });
+
+  it("A74: 승차역 폴은 떠남 확인 옵트인(departCheck=1)을 싣는다", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        calls.push(String(input));
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await screen.findByRole("button", { name: /selectTrain/ });
+    const track = calls.filter((u) => u.includes("/api/transit/track"));
+    expect(track.length).toBeGreaterThan(0);
+    expect(track.every((u) => u.includes("departCheck=1"))).toBe(true);
+  });
+
   it("새 차량을 고르면 래치가 지워진다 — 관측이 끝나지 않은 국면에 버튼이 서 있지 않다", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

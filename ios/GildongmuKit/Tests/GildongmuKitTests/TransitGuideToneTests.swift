@@ -96,6 +96,8 @@ private func eventKind(_ e: TransitGuideEvent?) -> String? {
     case .vehicleSelected: return "vehicleSelected"
     case .approaching: return "approaching"
     case .vehiclePassed: return "vehiclePassed"
+    case .boardConfirmNeeded: return "boardConfirmNeeded"
+    case .boardConfirmLapsed: return "boardConfirmLapsed"
     case .arrivingAtBoardStop: return "arrivingAtBoardStop"
     case .arrivingAtAlightStop: return "arrivingAtAlightStop"
     case .trackingStarted: return "trackingStarted"

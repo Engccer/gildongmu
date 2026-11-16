@@ -103,7 +103,8 @@ fun transitEventSpeechClass(event: TransitGuideEvent): GuideSpeechClass = when (
     is TransitGuideEvent.Countdown -> if (event.remaining <= 1) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
     // 첫 관측이 이미 잔여 ≤1이면 뒤이은 Countdown(1)이 나오지 않는다 — 하차 지시 문장의 유일한 자리라 백그라운드에서도 말한다.
     is TransitGuideEvent.TrackingStarted -> if ((event.remaining ?: Int.MAX_VALUE) <= 1) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
-    is TransitGuideEvent.VehicleSelected, TransitGuideEvent.VehiclePassed, TransitGuideEvent.ArrivingAtBoardStop,
+    is TransitGuideEvent.VehicleSelected, TransitGuideEvent.VehiclePassed, TransitGuideEvent.BoardConfirmNeeded,
+    TransitGuideEvent.BoardConfirmLapsed, TransitGuideEvent.ArrivingAtBoardStop,
     TransitGuideEvent.ArrivingAtAlightStop, is TransitGuideEvent.Boarded, is TransitGuideEvent.Arrived, is TransitGuideEvent.LegAdvanced,
     TransitGuideEvent.NeverSeen -> GuideSpeechClass.actionable
     is TransitGuideEvent.MessageChanged, is TransitGuideEvent.BackOnTrack,

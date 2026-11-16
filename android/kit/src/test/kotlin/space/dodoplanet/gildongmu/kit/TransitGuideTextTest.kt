@@ -65,6 +65,8 @@ class TransitGuideTextTest {
             "vehicleSelected" -> transitVehicleSelectedLine(e, need(c.leg, "leg", c), c.desc)
             "selectedVehicle" -> transitSelectedVehicleLine(e, need(c.desc, "desc", c))
             "vehiclePassed" -> transitVehiclePassedLine(e, need(c.leg, "leg", c))
+            "boardConfirmNeeded" -> transitBoardConfirmNeededLine(e, need(c.leg, "leg", c))
+            "boardConfirmLapsed" -> transitBoardConfirmLapsedLine(e, need(c.leg, "leg", c))
             "arrivedAtBoardStop" -> transitArrivedAtBoardStopLine(e, need(c.leg, "leg", c))
             "arrivingAtBoardStop" -> transitArrivingAtBoardStopLine(e, need(c.leg, "leg", c))
             "boarded" -> transitBoardedLine(e)

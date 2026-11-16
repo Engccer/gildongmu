@@ -287,6 +287,7 @@
     <string name="android_outing_narrationOff">Desactivada</string>
     <string name="android_outing_nearAhead">A menos de %1$s delante: %2$s</string>
     <string name="android_outing_nearAheadEmpty">Nada que anunciar a menos de %1$s delante</string>
+    <string name="android_outing_nearAheadLocating">Comprobando la ubicación</string>
     <string name="android_outing_nearAheadNoHeading">Muévete un poco. Buscando lugares cercanos</string>
     <string name="android_outing_nearCrosswalk">paso de peatones</string>
     <string name="android_outing_nearJunctionBranch">bifurcación</string>
@@ -404,7 +405,7 @@
     <string name="android_settings_title">Ajustes</string>
     <string name="android_settings_trendHaptics">Alertas de vibración ampliadas (experimental)</string>
     <string name="android_settings_trendHapticsFooter">También vibra al acercarte y cuando la guía no es fiable mientras caminas. Los resultados de la búsqueda, de los alrededores y de las indicaciones, y los cambios de estado durante la guía, también vibran. Solo vibra con la pantalla encendida.</string>
-    <string name="android_settings_vergiliusProvider">Modelo de respuesta</string>
+    <string name="android_settings_vergiliusProvider">Modelo de respuesta del paseo</string>
     <string name="android_settings_weightFooter">Introduce un peso entre %1$s y %2$s kg. Los datos introducidos no se guardan en ningún servidor.</string>
     <string name="android_settings_weightKg">Peso para estimar calorías (kg)</string>
     <string name="android_settings_weightRejected">El peso debe estar entre %1$s y %2$s kg. Se mantiene el valor anterior, %3$s kg.</string>
@@ -1388,6 +1389,8 @@
     <string name="transitGuide_backOnTrack">Señal del vehículo recuperada.</string>
     <string name="transitGuide_boardAlready">Ya subí</string>
     <string name="transitGuide_boardApprox">Ya subí</string>
+    <string name="transitGuide_boardConfirmLapsed">El tren elegido parece haber salido de %1$s. Si ya subió, pulse Subí al tren elegido. Si no, pulse Elegir otro vehículo.</string>
+    <string name="transitGuide_boardConfirmNeeded">El tren elegido figura como llegado a %1$s. Si ya subió, pulse Subí al tren elegido.</string>
     <string name="transitGuide_boardSelected">Subí al tren elegido</string>
     <string name="transitGuide_boardSelectedBus">Subí al autobús elegido</string>
     <string name="transitGuide_boarded">A bordo.</string>

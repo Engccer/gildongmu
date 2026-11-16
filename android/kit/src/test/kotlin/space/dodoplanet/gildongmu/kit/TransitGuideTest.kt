@@ -97,6 +97,8 @@ class TransitGuideTest {
                 ex.int("legIndex")?.let { assertEquals(it, state.legIndex, "$ctx legIndex") }
                 if ("remaining" in ex) assertEquals(ex.int("remaining"), state.remaining, "$ctx remaining")
                 if ("dataAgeSeconds" in ex) assertEquals(ex.int("dataAgeSeconds"), state.dataAgeSeconds, "$ctx dataAgeSeconds")
+                ex.bool("boardConfirmPending")?.let { assertEquals(it, state.boardConfirmPending, "$ctx boardConfirmPending") }
+                ex.bool("boardDepartedSeen")?.let { assertEquals(it, state.boardDepartedSeen, "$ctx boardDepartedSeen") }
                 ex.int("ridingPolls")?.let { assertEquals(it, state.ridingPolls, "$ctx ridingPolls") }
                 if ("previousLock" in ex) {
                     val expected = ex.str("previousLock")?.let { lock(it) }
@@ -619,6 +621,8 @@ internal fun transitEventKind(event: TransitGuideEvent?): String? = when (event)
     is TransitGuideEvent.VehicleSelected -> "vehicleSelected"
     is TransitGuideEvent.Approaching -> "approaching"
     TransitGuideEvent.VehiclePassed -> "vehiclePassed"
+    TransitGuideEvent.BoardConfirmNeeded -> "boardConfirmNeeded"
+    TransitGuideEvent.BoardConfirmLapsed -> "boardConfirmLapsed"
     TransitGuideEvent.ArrivingAtBoardStop -> "arrivingAtBoardStop"
     TransitGuideEvent.ArrivingAtAlightStop -> "arrivingAtAlightStop"
     is TransitGuideEvent.TrackingStarted -> "trackingStarted"

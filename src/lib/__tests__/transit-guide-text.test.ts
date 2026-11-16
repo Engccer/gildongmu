@@ -24,6 +24,8 @@ import {
   expressStatusLine,
   exitBoundLine,
   vehiclePassedLine,
+  boardConfirmNeededLine,
+  boardConfirmLapsedLine,
   vehicleSelectedLine,
   vehicleDescLine,
   viaStopLine,
@@ -129,6 +131,16 @@ const CASES: {
     fn: vehiclePassedLine, name: "vehiclePassedLine",
     run: (e) => vehiclePassedLine(e, LEG),
     en: { parts: [{ key: "vehiclePassed", args: ["Cheonho"] }], lang: "en" },
+  },
+  {
+    fn: boardConfirmNeededLine, name: "boardConfirmNeededLine",
+    run: (e) => boardConfirmNeededLine(e, LEG),
+    en: { parts: [{ key: "boardConfirmNeeded", args: ["Cheonho"] }], lang: "en" },
+  },
+  {
+    fn: boardConfirmLapsedLine, name: "boardConfirmLapsedLine",
+    run: (e) => boardConfirmLapsedLine(e, LEG),
+    en: { parts: [{ key: "boardConfirmLapsed", args: ["Cheonho"] }], lang: "en" },
   },
   {
     fn: arrivedAtBoardStopLine, name: "arrivedAtBoardStopLine",
@@ -411,6 +423,8 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "vehicleSelected": return vehicleSelectedLine(e, c.leg!, c.desc ?? null);
     case "selectedVehicle": return selectedVehicleLine(e, c.desc!);
     case "vehiclePassed": return vehiclePassedLine(e, c.leg!);
+    case "boardConfirmNeeded": return boardConfirmNeededLine(e, c.leg!);
+    case "boardConfirmLapsed": return boardConfirmLapsedLine(e, c.leg!);
     case "arrivedAtBoardStop": return arrivedAtBoardStopLine(e, c.leg!);
     case "arrivingAtBoardStop": return arrivingAtBoardStopLine(e, c.leg!);
     case "boarded": return boardedLine(e);

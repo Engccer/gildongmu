@@ -28691,6 +28691,46 @@
         }
       }
     },
+    "ios.outing.nearAheadLocating": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치 확인 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking location"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando la ubicación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification de la position"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica della posizione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置を確認中"
+          }
+        }
+      }
+    },
     "ios.outing.nearAheadNoHeading": {
       "localizations": {
         "ko": {
@@ -33336,37 +33376,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "답변 모델"
+            "value": "나들이 답변 모델"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Answer model"
+            "value": "Stroll answer model"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modelo de respuesta"
+            "value": "Modelo de respuesta del paseo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modèle de réponse"
+            "value": "Modèle de réponse de la balade"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modello di risposta"
+            "value": "Modello di risposta della passeggiata"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "回答モデル"
+            "value": "お散歩の回答モデル"
           }
         }
       }
@@ -55367,6 +55407,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "すでに乗車しました"
+          }
+        }
+      }
+    },
+    "transitGuide.boardConfirmLapsed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 열차가 %1$@에서 출발한 것으로 보입니다. 타셨으면 선택한 열차에 탔어요 버튼을, 아니면 다른 차량 선택 버튼을 눌러 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The train you selected seems to have left %1$@. If you are on it, press I'm on the selected train. If not, press Choose another vehicle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tren elegido parece haber salido de %1$@. Si ya subió, pulse Subí al tren elegido. Si no, pulse Elegir otro vehículo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le train choisi semble avoir quitté %1$@. Si vous êtes à bord, appuyez sur Je suis dans le train choisi. Sinon, appuyez sur Choisir un autre véhicule."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il treno scelto sembra aver lasciato %1$@. Se sei a bordo, premi Sono sul treno scelto. Altrimenti premi Scegli un altro veicolo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだ列車は%1$@を出発したようです。乗車したら「選んだ列車に乗りました」を、乗っていなければ「別の車両を選ぶ」を押してください。"
+          }
+        }
+      }
+    },
+    "transitGuide.boardConfirmNeeded": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 열차가 %1$@에 도착한 것으로 나옵니다. 타셨으면 선택한 열차에 탔어요 버튼을 눌러 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The train you selected is shown as arrived at %1$@. If you are on it, press I'm on the selected train."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tren elegido figura como llegado a %1$@. Si ya subió, pulse Subí al tren elegido."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le train choisi est indiqué comme arrivé à %1$@. Si vous êtes à bord, appuyez sur Je suis dans le train choisi."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il treno scelto risulta arrivato a %1$@. Se sei a bordo, premi Sono sul treno scelto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだ列車は%1$@に到着と表示されています。乗車したら「選んだ列車に乗りました」を押してください。"
           }
         }
       }

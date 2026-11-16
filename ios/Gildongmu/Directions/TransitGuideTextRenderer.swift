@@ -55,6 +55,8 @@ enum TransitGuideTextRenderer {
         case "vehicleSelected": return appLocalized("transitGuide.vehicleSelected", arguments: args)
         case "selectedVehicle": return appLocalized("transitGuide.selectedVehicle", arguments: args)
         case "vehiclePassed": return appLocalized("transitGuide.vehiclePassed", arguments: args)
+        case "boardConfirmNeeded": return appLocalized("transitGuide.boardConfirmNeeded", arguments: args)
+        case "boardConfirmLapsed": return appLocalized("transitGuide.boardConfirmLapsed", arguments: args)
         case "arrivedAtBoardStop": return appLocalized("transitGuide.arrivedAtBoardStop", arguments: args)
         case "arrivedAtBoardStopBus": return appLocalized("transitGuide.arrivedAtBoardStopBus", arguments: args)
         case "arrivingAtBoardStop": return appLocalized("transitGuide.arrivingAtBoardStop", arguments: args)

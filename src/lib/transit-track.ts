@@ -21,6 +21,8 @@ import {
 } from "./providers/seoul-subway-arrival";
 import { busArrivalMessageEnFrom } from "./bus-arrival-en";
 import { stationNameEn } from "./subway-arrival-en";
+import { fetchSubwayLinePositions, type SubwayTrainPosition } from "./providers/seoul-subway-position";
+import { normalizeStationName } from "./station-match";
 import { findStationsByName } from "./subway-stations";
 import type { DataLang } from "./lang-param";
 
@@ -475,6 +477,105 @@ export function subwayDataAgeSeconds(
 }
 
 /**
+ * 승강장 정차 상한(초, A74 잠정 — 실승차 판정 대상). 위치가 움직였다는 증거 없이 「도착」이 이보다 오래됐으면
+ * 그 열차는 떠난 것으로 본다. 실측 2026-11-17(spec `2026-11-17-a74-departed-train-at-board-stop-design.md` §1):
+ * 수인분당선 도착 피드는 열차가 떠난 뒤에도 「도착」을 194초까지 유지했고, 2호선 교대의 실제 정차는 96초였다.
+ * 그래서 문턱은 넉넉히 두고(문이 열린 열차를 떠났다고 하지 않는다), 그보다 이른 몫은 위치 이동과
+ * 클라이언트의 확인 요청이 받는다.
+ */
+export const PLATFORM_DWELL_SECONDS = 120;
+
+/** 위치 조회 예산(ms) — 도착 폴 안에 직렬로 끼므로 짧게 자르고, 넘기면 위치 없이 판정한다. */
+const BOARD_STOP_POSITION_BUDGET_MS = 1_500;
+
+export interface BoardStopDeparture {
+  /** 조회 역에 「도착」으로 실렸지만 이미 떠난 것으로 판정. */
+  departed: boolean;
+  /** 그 역 승강장에 선 뒤 지난 시간(초). 알 수 없으면 null. */
+  platformAgeSeconds: number | null;
+}
+
+/**
+ * 조회 역에 「도착」(arvlCd 1)으로 실린 열차가 이미 떠났는가(A74, spec §3). 순수 판정.
+ *
+ * 떠남의 증거는 둘이다. ①위치가 움직였다: 위치 행이 도착 레코드보다 **나중에** 수신됐고 다른 역을 말하거나,
+ * 같은 역에서 출발(2)을 말한다. 더 오래된 위치(캐시·피드 지연)는 증거가 아니다 — 막 도착한 열차를 떠났다고
+ * 하게 된다. ②움직임을 모르면 승강장 나이(두 피드 중 큰 값)가 `PLATFORM_DWELL_SECONDS`를 넘는다.
+ *
+ * ⚠ 위치 행은 **이 한 가지 판정에만** 쓴다 — 조인은 열차 번호, 비교는 역 이름·상태·수신 시각뿐이고
+ * 방향 코드·정거장 순번은 쓰지 않는다(판정서 2026-08-23 §3이 기각한 "위치로 추적 대체"가 아니다).
+ * 결과는 승격을 막는 쪽으로만 쓰인다.
+ */
+export function boardStopDeparture(input: {
+  station: string;
+  /** 같은 도착 레코드의 현재 위치(`arvlMsg3`) — 조회 역의 또 다른 표기라 역 이름 비교에 함께 쓴다. */
+  currentLocation?: string | null;
+  receivedAt: string | undefined;
+  position: SubwayTrainPosition | null;
+  nowMs: number;
+}): BoardStopDeparture {
+  const timeOf = (raw: string | undefined): number | null => (raw ? parseRecptnDt(raw) : null);
+  const ageOf = (t: number | null): number | null =>
+    t == null ? null : Math.max(0, Math.round((input.nowMs - t) / 1000));
+  const arrivalAt = timeOf(input.receivedAt);
+  const arrivalAge = ageOf(arrivalAt);
+  const pos = input.position;
+  const posAt = pos ? timeOf(pos.receivedAt) : null;
+  const posStation = pos ? normalizeStationName(pos.station) : null;
+  const sameStation =
+    posStation != null &&
+    (posStation === normalizeStationName(input.station) ||
+      (!!input.currentLocation && posStation === normalizeStationName(input.currentLocation)));
+  if (pos) {
+    if (sameStation && pos.trainStatus === "2") return { departed: true, platformAgeSeconds: arrivalAge };
+    if (!sameStation && posAt != null && arrivalAt != null && posAt > arrivalAt) {
+      return { departed: true, platformAgeSeconds: arrivalAge };
+    }
+  }
+  const positionAge = pos && sameStation && pos.trainStatus === "1" ? ageOf(posAt) : null;
+  const platformAge =
+    arrivalAge == null && positionAge == null ? null : Math.max(arrivalAge ?? 0, positionAge ?? 0);
+  return {
+    departed: platformAge != null && platformAge > PLATFORM_DWELL_SECONDS,
+    platformAgeSeconds: platformAge,
+  };
+}
+
+/**
+ * 위치 목록은 **새 클라이언트의 승차역 폴**(`departCheck`)이고, 위치가 판정을 바꿀 수 있는 「도착」 항목
+ * (레코드 나이가 아직 문턱 이하)이 있을 때만 받는다 — 하차역 폴과 옛 클라이언트는 위치를 조회하지 않는다
+ * (실시간 키 일 1,000회를 도착과 나눈다). 실패·예산 초과·키 없음은 빈 맵(추적을 실패시키지 않는다).
+ * 같은 열차 번호가 둘 이상이면 수신 시각이 가장 새로운 행을 쓴다.
+ */
+async function boardStopPositions(
+  line: string,
+  arrivals: { trainNo?: string; arrivalCode?: string; receivedAt?: string }[],
+  nowMs: number,
+): Promise<Map<string, SubwayTrainPosition>> {
+  const out = new Map<string, SubwayTrainPosition>();
+  const undecided = arrivals.some((a) => {
+    if (a.arrivalCode !== "1" || !a.trainNo) return false;
+    const t = a.receivedAt ? parseRecptnDt(a.receivedAt) : null;
+    return t == null || (nowMs - t) / 1000 <= PLATFORM_DWELL_SECONDS;
+  });
+  if (!undecided) return out;
+  try {
+    const positions = await Promise.race([
+      fetchSubwayLinePositions(line, nowMs),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), BOARD_STOP_POSITION_BUDGET_MS)),
+    ]);
+    for (const t of positions?.trains ?? []) {
+      const prev = out.get(t.trainNo);
+      const at = (row: SubwayTrainPosition) => (row.receivedAt ? parseRecptnDt(row.receivedAt) : null) ?? 0;
+      if (!prev || at(t) > at(prev)) out.set(t.trainNo, t);
+    }
+  } catch {
+    // 위치 조회 실패는 판정 재료가 하나 줄 뿐이다 — 도착 레코드 나이만으로 가른다.
+  }
+  return out;
+}
+
+/**
  * 승차 대기·하차 카운트다운 공용: 역 도착조회를 노선(ODsay lineName → subwayId
  * 매핑표)으로 필터. 미커버 노선(비수도권)·미커버 역은 unsupported.
  */
@@ -482,6 +583,8 @@ export async function trackSubway(params: {
   station: string;
   lineName: string;
   lang: DataLang;
+  /** 승차역 폴(대기·승차 국면)이 싣는 옵트인(A74) — 떠난 열차 판정에 위치 목록을 쓴다. 미지정이면 레코드 나이만. */
+  departCheck?: boolean;
 }): Promise<TransitTrackResult> {
   const subwayId = subwayIdForOdsayLine(params.lineName);
   const expectedLine = subwayId ? subwayLineNameForId(subwayId) : undefined;
@@ -497,12 +600,31 @@ export async function trackSubway(params: {
   // 뭉개져 "신호 끊김"으로 오통지되는 것을 확인(2026-08-04).
   if (result === null) return { status: "empty", rawCount: 0 };
   const now = Date.now();
-  const items = result.arrivals
+  const lineArrivals = result.arrivals
     .filter((a) => a.line === expectedLine)
     // 코드는 문장과 맞춘 뒤에만 싣는다(`reconcileArvlCd`) — 상태 기계의 승차·도착 판정이 이 코드를 읽는다.
-    .map((a) => ({ ...a, arrivalCode: reconcileArvlCd(a.message, a.arrivalCode) ?? undefined }))
+    .map((a) => ({ ...a, arrivalCode: reconcileArvlCd(a.message, a.arrivalCode) ?? undefined }));
+  // A74: 「도착」으로 실린 열차가 이미 떠났는지 가른다. arvlCd·message는 건드리지 않는다 — 같은 응답을
+  // 하차역 폴도 읽고, 거기서는 코드 1이 도착 확정의 유일한 근거다.
+  const positions = params.departCheck
+    ? await boardStopPositions(expectedLine, lineArrivals, now)
+    : new Map<string, SubwayTrainPosition>();
+  const items = lineArrivals
+    .map((a) => ({
+      a,
+      departure:
+        a.arrivalCode === "1"
+          ? boardStopDeparture({
+              station: params.station,
+              currentLocation: a.currentLocation,
+              receivedAt: a.receivedAt,
+              position: (a.trainNo ? positions.get(a.trainNo) : undefined) ?? null,
+              nowMs: now,
+            })
+          : null,
+    }))
     .map(
-      (a): TrackItem => ({
+      ({ a, departure }): TrackItem => ({
         vehicleId: a.trainNo ?? null,
         direction: a.direction,
         message: a.message,
@@ -512,7 +634,14 @@ export async function trackSubway(params: {
         arrivalCode: a.arrivalCode ?? null,
         currentLocation: a.currentLocation || null,
         dataStamp: a.receivedAt ?? null,
-        dataAgeSeconds: subwayDataAgeSeconds(a.receivedAt, a.arrivalCode, now),
+        // 스토어판 보호(A74): 떠난 열차의 승강장 나이가 옛 클라이언트의 신선도 상한을 넘으면 그 나이를 싣는다 —
+        // 종전엔 동결 판정이 null로 내려 리듀서가 "신선"으로 읽었다. 상한 이하는 값을 부풀리지 않는다.
+        dataAgeSeconds:
+          departure?.departed && (departure.platformAgeSeconds ?? 0) > STALE_FROZEN_SECONDS
+            ? departure.platformAgeSeconds
+            : subwayDataAgeSeconds(a.receivedAt, a.arrivalCode, now),
+        ...(departure?.departed ? { departedLikely: true } : {}),
+        ...(departure?.platformAgeSeconds != null ? { platformAgeSeconds: departure.platformAgeSeconds } : {}),
         // 영문 조각(spec §3.2). `""`는 정보 소실이라 실지 않는다 — `nonEmpty`가 그 정규화다.
         // 종착역은 `trainLineNmEn`("To X via Y" 문장)에서 뗄 수 없어 seed 영문을 직접 조회한다.
         ...(params.lang === "en"

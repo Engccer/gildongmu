@@ -817,8 +817,28 @@ final class TransitGuideModel {
             vehicleId: item.vehicleId ?? ""
         )
         selectedDescription = description
+        logVehiclePick(kind: "board", chosen: item, leg: leg)
         dispatch(.board(lock))
         restartPollLoop(immediate: true)
+    }
+
+    /// 차량을 고르는 순간의 계측(A74, 실험판) — 그때 화면에 있던 후보 전부와 고른 항목을 한 줄씩. 사후에 "고른 열차가 이미
+    /// 떠난 열차였는가"를 가르는 유일한 증거다. 좌표·개인 정보는 싣지 않는다(열차 번호·문장·나이·판정만).
+    private func logVehiclePick(kind: String, chosen: TransitTrackItem, leg: TransitGuideLeg) {
+        transitGuideLog({
+            func row(_ item: TransitTrackItem) -> String {
+                "train=\(item.vehicleId ?? "-") code=\(item.arrivalCode ?? "-") msg=\(item.message)"
+                    + " age=\(item.dataAgeSeconds.map(String.init) ?? "-")"
+                    + " departedLikely=\(item.departedLikely.map(String.init) ?? "-")"
+                    + " platformAge=\(item.platformAgeSeconds.map(String.init) ?? "-")"
+            }
+            let shown = classifyTransitBoardingCandidates(waitingCandidatesPool(), leg: leg).candidates
+            // 대기 목록에서 빠진(떠난 것으로 판정된) 열차도 함께 남긴다 — 걸러낸 판정이 맞았는지 사후에 가른다.
+            let hidden = (waitingLive + waitingDeparted.map(\.item)).filter { $0.departedLikely == true }
+            return "vehiclePick kind=\(kind) chosen[\(row(chosen))] shown=\(shown.count) hidden=\(hidden.count)"
+                + shown.enumerated().map { "\n  shown[\($0.offset)] \(row($0.element.item))" }.joined()
+                + hidden.enumerated().map { "\n  hidden[\($0.offset)] \(row($0.element))" }.joined()
+        }())
     }
 
     /// 선택 차량 설명(boarding 상시 표시·통지). 탑승 변경으로 waiting에 돌아가도
@@ -1080,6 +1100,7 @@ final class TransitGuideModel {
         )
         selectedDescription = description
         transitGuideLog("boardAboard vehicle=\(item.vehicleId ?? "-")")
+        logVehiclePick(kind: "boardAboard", chosen: item, leg: leg)
         aboardBoardInStep = true
         dispatch(.boardAboard(lock))
         aboardBoardInStep = false
@@ -1980,6 +2001,9 @@ final class TransitGuideModel {
                 refreshResponse = waitingReason == .unavailable
                     ? reasonText(.unavailable)
                     : appLocalized("transitGuide.waitingCount", candidates.count)
+                // A74 계측: 새로고침 응답으로 낭독한 대기 목록 문장(떠난 열차를 뺀 풀의 후보 수).
+                transitGuideLog("refreshResponse text=\(refreshResponse ?? "-") candidates=\(candidates.count)"
+                    + " pool=\(waitingLive.count + waitingDeparted.count)")
             }
         }
         refreshAnnounce = false
@@ -2059,10 +2083,16 @@ final class TransitGuideModel {
         transitGuideLog({
             let items: [TransitTrackItem] = if case let .ok(list) = poll { list } else { [] }
             let matched = state.lock.flatMap { transitFindLockedItem(items, lock: $0) }
-            let m = matched.map { item in
-                "yes remaining=\(item.remainingStops.map(String.init) ?? "-")"
-                    + " code=\(item.arrivalCode ?? "-") loc=\(item.currentLocation ?? "-")"
-                    + " age=\(item.dataAgeSeconds.map(String.init) ?? "-") stamp=\(item.dataStamp ?? "-")"
+            let m = matched.map { (item: TransitTrackItem) -> String in
+                let remaining = item.remainingStops.map(String.init) ?? "-"
+                let age = item.dataAgeSeconds.map(String.init) ?? "-"
+                var text = "yes remaining=\(remaining)"
+                text += " code=\(item.arrivalCode ?? "-") loc=\(item.currentLocation ?? "-")"
+                text += " age=\(age) stamp=\(item.dataStamp ?? "-")"
+                // A74 계측: 서버의 떠남 판정과 승강장 나이(boarding 폴에서 판정 근거를 가른다).
+                text += " departedLikely=\(item.departedLikely.map(String.init) ?? "-")"
+                text += " platformAge=\(item.platformAgeSeconds.map(String.init) ?? "-")"
+                return text
             } ?? "no"
             return "ridePoll seq=\(seq) phase=\(state.phase.rawValue) status=\(Self.pollStatusText(poll))"
                 + " raw=\(rawCount.map(String.init) ?? "-") matched=\(m) signal=\(state.signal.rawValue)"
@@ -2115,7 +2145,9 @@ final class TransitGuideModel {
                     : leg.alightName
                 guard !station.isEmpty else { return (.unsupported, nil) }
                 let env = try await trackService.subwayTrack(
-                    station: station, line: leg.lineName, lang: AppLanguage.dataLocale)
+                    station: station, line: leg.lineName, lang: AppLanguage.dataLocale,
+                    // A74: 승차역 폴(대기·승차 국면)만 떠난 열차 판정을 옵트인한다. 하차역 폴은 붙이지 않는다.
+                    departCheck: phase == .waiting || phase == .boarding)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case nil:
                 return (.unsupported, nil)
@@ -2129,7 +2161,8 @@ final class TransitGuideModel {
     /// (`transitAboardCandidates`, A34 ② 후보 필터) — 두 소비자가 다른 풀을 보면 "탑승 후보 N개"가 화면과 어긋난다.
     func waitingCandidatesPool() -> [TransitTrackItem] {
         let all = waitingLive + waitingDeparted.map(\.item)
-        guard aboardStep == .pickVehicle else { return all }
+        // 대기 목록은 조회 역을 이미 떠난 열차를 뺀다(A74) — [이미 탔어요]의 열차 고르기는 빼지 않는다(그 열차에 타고 있는 사람의 길).
+        guard aboardStep == .pickVehicle else { return transitBoardablePool(all) }
         let candidates = transitAboardCandidates(all)
         // E71 R14: 지금 탄 열차에서 시작한 세션은 고른 방향만(반대 방향을 되살리지 않는다).
         return aboardDirection.map { journeyAboardTrainItems(candidates, direction: $0) } ?? candidates
@@ -2278,7 +2311,8 @@ final class TransitGuideModel {
         if result.state.phase != .boarding || state.phase != .boarding {
             boardingManualAvailable = false
         }
-        if result.state.phase == .boarding, transitBoardingObservationLost(result.state.signal) {
+        // A74: 관측이 끝났을 때뿐 아니라 고른 열차가 이미 승강장에 있어 확인을 기다릴 때·떠난 것을 본 잠금일 때도 선다.
+        if result.state.phase == .boarding, transitBoardingDeclareOffered(result.state) {
             boardingManualAvailable = true
         }
         // 급행 거절 문장은 그 대기 국면에 묶인다 — 국면 세대가 바뀌면 낡았다.
@@ -2426,6 +2460,16 @@ final class TransitGuideModel {
         case .vehiclePassed:
             if let leg {
                 parts.append(TransitGuideTextRenderer.render(transitVehiclePassedLine(
+                    isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true))))
+            }
+        case .boardConfirmNeeded:
+            if let leg {
+                parts.append(TransitGuideTextRenderer.render(transitBoardConfirmNeededLine(
+                    isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true))))
+            }
+        case .boardConfirmLapsed:
+            if let leg {
+                parts.append(TransitGuideTextRenderer.render(transitBoardConfirmLapsedLine(
                     isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true))))
             }
         case .arrivingAtBoardStop:

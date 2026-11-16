@@ -40,6 +40,12 @@ struct TransitBackgroundToneTests {
         #expect(allowed(.boarded(legIndex: 0, cause: .departed)))
     }
 
+    // A74: 승차 확인을 청하는 두 문장은 지금 행동해야 하는 문장이라 도착 관측 승차와 같은 등급이다.
+    @Test func 승차_확인_문장은_백그라운드에서도_낸다() {
+        #expect(allowed(.boardConfirmNeeded))
+        #expect(allowed(.boardConfirmLapsed))
+    }
+
     @Test func 사용자_조작_응답은_전경만이다() {
         #expect(!allowed(.boarded(legIndex: 0, cause: .declared)))
         #expect(!allowed(.legAdvanced(legIndex: 1, final: false)))

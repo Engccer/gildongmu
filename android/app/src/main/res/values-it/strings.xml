@@ -287,6 +287,7 @@
     <string name="android_outing_narrationOff">Disattivata</string>
     <string name="android_outing_nearAhead">Entro %1$s davanti: %2$s</string>
     <string name="android_outing_nearAheadEmpty">Niente da annunciare entro %1$s davanti</string>
+    <string name="android_outing_nearAheadLocating">Verifica della posizione</string>
     <string name="android_outing_nearAheadNoHeading">Spostati un po\'. Ricerca dei luoghi vicini</string>
     <string name="android_outing_nearCrosswalk">attraversamento pedonale</string>
     <string name="android_outing_nearJunctionBranch">bivio</string>
@@ -404,7 +405,7 @@
     <string name="android_settings_title">Impostazioni</string>
     <string name="android_settings_trendHaptics">Avvisi a vibrazione estesi (sperimentale)</string>
     <string name="android_settings_trendHapticsFooter">Vibra anche quando ti avvicini o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati della ricerca, dei dintorni e degli itinerari, e i cambi di stato durante la guida. Vibra solo con lo schermo acceso.</string>
-    <string name="android_settings_vergiliusProvider">Modello di risposta</string>
+    <string name="android_settings_vergiliusProvider">Modello di risposta della passeggiata</string>
     <string name="android_settings_weightFooter">Inserisci un peso tra %1$s e %2$s kg. I dati inseriti non vengono salvati su un server.</string>
     <string name="android_settings_weightKg">Peso per la stima delle calorie (kg)</string>
     <string name="android_settings_weightRejected">Il peso deve essere tra %1$s e %2$s kg. Mantengo il valore precedente, %3$s kg.</string>
@@ -1388,6 +1389,8 @@
     <string name="transitGuide_backOnTrack">Segnale del veicolo ritrovato.</string>
     <string name="transitGuide_boardAlready">Sono già a bordo</string>
     <string name="transitGuide_boardApprox">Sono già a bordo</string>
+    <string name="transitGuide_boardConfirmLapsed">Il treno scelto sembra aver lasciato %1$s. Se sei a bordo, premi Sono sul treno scelto. Altrimenti premi Scegli un altro veicolo.</string>
+    <string name="transitGuide_boardConfirmNeeded">Il treno scelto risulta arrivato a %1$s. Se sei a bordo, premi Sono sul treno scelto.</string>
     <string name="transitGuide_boardSelected">Sono sul treno scelto</string>
     <string name="transitGuide_boardSelectedBus">Sono sull\'autobus scelto</string>
     <string name="transitGuide_boarded">A bordo.</string>

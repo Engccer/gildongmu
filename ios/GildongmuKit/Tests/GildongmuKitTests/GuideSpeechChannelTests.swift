@@ -124,6 +124,7 @@ struct GuideSpeechChannelTests {
     @Test func transitEventClassification() {
         let actionable: [TransitGuideEvent] = [
             .vehicleSelected(legIndex: 0), .vehiclePassed, .arrivingAtBoardStop, .arrivingAtAlightStop,
+            .boardConfirmNeeded, .boardConfirmLapsed,
             .boarded(legIndex: 0, cause: .observed), .boarded(legIndex: 0, cause: .departed),
             .boarded(legIndex: 0, cause: .declared), .arrived(certain: true), .arrived(certain: false),
             .legAdvanced(legIndex: 1, final: false), .legAdvanced(legIndex: 1, final: true), .neverSeen,

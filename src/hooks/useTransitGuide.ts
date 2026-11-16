@@ -8,7 +8,8 @@ import {
   classifyBoardingCandidates,
   initTransitGuide,
   aboardCandidates,
-  boardingObservationLost,
+  boardingDeclareOffered,
+  boardablePool,
   isUnobservedTransitLock,
   laneForItem,
   lanesWithRoutes,
@@ -61,6 +62,8 @@ import {
   prewalkArrivedLine,
   selectedVehicleLine,
   vehiclePassedLine,
+  boardConfirmNeededLine,
+  boardConfirmLapsedLine,
   vehicleSelectedLine,
   waitContextLine,
   type TransitTextLine,
@@ -211,7 +214,7 @@ export function trackTargetUrl(
     boardOverrideIndex != null ? (leg.viaStops[boardOverrideIndex] ?? null) : null;
   const station = atBoardStop ? (overrideStop?.name ?? leg.boardName) : leg.alightName;
   if (!station) return null;
-  return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
+  return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}&lang=${lang}${atBoardStop ? "&departCheck=1" : ""}`;
 }
 
 export function useTransitGuide(
@@ -825,6 +828,12 @@ export function useTransitGuide(
         case "vehiclePassed":
           if (leg) pushPiece(piece(vehiclePassedLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
           break;
+        case "boardConfirmNeeded":
+          if (leg) pushPiece(piece(boardConfirmNeededLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
+          break;
+        case "boardConfirmLapsed":
+          if (leg) pushPiece(piece(boardConfirmLapsedLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
+          break;
         case "arrivingAtBoardStop":
           // A41: "곧 도착" = 직전 정류소 출발. 승격 없이 임박만 — 탑승 문장은 소실 뒤 boarded(departed)가 낸다.
           if (leg) pushPiece(piece(arrivingAtBoardStopLine(isEn, displayLegOf(leg, null))));
@@ -1020,7 +1029,7 @@ export function useTransitGuide(
       // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
       // 그 국면 안에서 관측이 끝나면 세운다. 국면 밖에선 언제나 false.
       if (next.phase !== "boarding" || s.phase !== "boarding") setBoardingManualAvailable(false);
-      if (next.phase === "boarding" && boardingObservationLost(next.signal)) {
+      if (next.phase === "boarding" && boardingDeclareOffered(next)) {
         setBoardingManualAvailable(true);
       }
       if (input.kind !== "poll" && next !== s) setUserTransitionSeq((n) => n + 1);
@@ -1259,7 +1268,8 @@ export function useTransitGuide(
             // 화면 목록과 같은 풀(A34 pickVehicle은 그 역에 있는 열차만) — 발화 수와 행 수가 어긋나지 않게(리뷰 M2).
             const pool = [...items, ...departed.map((d) => d.item)];
             const { candidates } = classifyBoardingCandidates(
-              aboardStepRef.current === "pickVehicle" ? aboardCandidates(pool) : pool,
+              // 대기 목록은 조회 역을 이미 떠난 열차를 뺀다(A74) — [이미 탔어요]의 열차 고르기는 빼지 않는다.
+              aboardStepRef.current === "pickVehicle" ? aboardCandidates(pool) : boardablePool(pool),
               legNow,
             );
             refreshResponse =
@@ -1872,7 +1882,8 @@ export function useTransitGuide(
     const pool = [...waiting.live, ...waiting.departed.map((d) => d.item)];
     const aboardPicking = aboardStep === "pickVehicle";
     const { candidates, directionUncertain } = classifyBoardingCandidates(
-      aboardPicking ? aboardCandidates(pool) : pool,
+      // 대기 목록은 조회 역을 이미 떠난 열차를 뺀다(A74) — [이미 탔어요]의 열차 고르기는 빼지 않는다.
+      aboardPicking ? aboardCandidates(pool) : boardablePool(pool),
       leg,
     );
     // 필터 전멸(그 역에 있는 열차가 없다)은 "진짜 0건"과 다른 상태다(3-state, 코드 리뷰 M3).

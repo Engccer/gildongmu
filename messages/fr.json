@@ -1187,6 +1187,8 @@
     "alightStopReached": "Arrivée à {stop}. Descendez ici.",
     "alightStopReachedUnnamed": "Arrivée à votre arrêt. Descendez ici.",
     "vehiclePassed": "Le véhicule sélectionné semble avoir quitté {stop}.",
+    "boardConfirmNeeded": "Le train choisi est indiqué comme arrivé à {stop}. Si vous êtes à bord, appuyez sur Je suis dans le train choisi.",
+    "boardConfirmLapsed": "Le train choisi semble avoir quitté {stop}. Si vous êtes à bord, appuyez sur Je suis dans le train choisi. Sinon, appuyez sur Choisir un autre véhicule.",
     "boardingSignalLost": "Nous ne trouvons pas le véhicule sélectionné.",
     "boardingUpstreamFailed": "Le flux temps réel est interrompu.",
     "stateBoardingNotYetVisible": "Localisation du véhicule sélectionné.",

@@ -30,8 +30,9 @@ function leg(over: Partial<TransitGuideLeg> = {}): TransitGuideLeg {
 describe("trackTargetUrl — lang", () => {
   it("지하철(대기·승차)", () => {
     expect(trackTargetUrl(leg(), "waiting", null, null, "en")).toBe(
-      "/api/transit/track?mode=subway&phase=track&station=%EC%B2%9C%ED%98%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en",
+      "/api/transit/track?mode=subway&phase=track&station=%EC%B2%9C%ED%98%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en&departCheck=1",
     );
+    // 하차역 폴은 떠남 확인 옵트인(A74)을 싣지 않는다 — 서버가 위치 목록을 조회하지 않는다.
     expect(trackTargetUrl(leg(), "riding", null, null, "ko")).toBe(
       "/api/transit/track?mode=subway&phase=track&station=%EA%B4%91%ED%99%94%EB%AC%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=ko",
     );
@@ -69,13 +70,13 @@ describe("trackTargetUrl — lang", () => {
       ],
     } as Partial<TransitGuideLeg>);
     expect(trackTargetUrl(withStops, "waiting", null, 1, "en")).toBe(
-      "/api/transit/track?mode=subway&phase=track&station=%EC%99%95%EC%8B%AD%EB%A6%AC&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en",
+      "/api/transit/track?mode=subway&phase=track&station=%EC%99%95%EC%8B%AD%EB%A6%AC&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en&departCheck=1",
     );
   });
 
   it("범위 밖 인덱스는 원래 승차역으로 떨어진다(조용한 빈 쿼리 금지)", () => {
     expect(trackTargetUrl(leg(), "waiting", null, 9, "en")).toBe(
-      "/api/transit/track?mode=subway&phase=track&station=%EC%B2%9C%ED%98%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en",
+      "/api/transit/track?mode=subway&phase=track&station=%EC%B2%9C%ED%98%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en&departCheck=1",
     );
   });
 });

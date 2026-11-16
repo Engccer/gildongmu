@@ -287,6 +287,7 @@
     <string name="android_outing_narrationOff">Désactivée</string>
     <string name="android_outing_nearAhead">À moins de %1$s devant : %2$s</string>
     <string name="android_outing_nearAheadEmpty">Rien à annoncer à moins de %1$s devant</string>
+    <string name="android_outing_nearAheadLocating">Vérification de la position</string>
     <string name="android_outing_nearAheadNoHeading">Avancez un peu. Recherche des lieux à proximité</string>
     <string name="android_outing_nearCrosswalk">passage piéton</string>
     <string name="android_outing_nearJunctionBranch">embranchement</string>
@@ -404,7 +405,7 @@
     <string name="android_settings_title">Réglages</string>
     <string name="android_settings_trendHaptics">Alertes vibrantes étendues (expérimental)</string>
     <string name="android_settings_trendHapticsFooter">Vibre aussi quand vous vous rapprochez ou quand le guidage n\'est pas fiable pendant la marche. Les résultats de la recherche, des alentours et de l\'itinéraire, ainsi que les changements d\'état pendant le guidage, vibrent aussi. Vibre uniquement écran allumé.</string>
-    <string name="android_settings_vergiliusProvider">Modèle de réponse</string>
+    <string name="android_settings_vergiliusProvider">Modèle de réponse de la balade</string>
     <string name="android_settings_weightFooter">Saisissez un poids entre %1$s et %2$s kg. Les informations saisies ne sont pas enregistrées sur un serveur.</string>
     <string name="android_settings_weightKg">Poids pour l\'estimation des calories (kg)</string>
     <string name="android_settings_weightRejected">Le poids doit être entre %1$s et %2$s kg. La valeur précédente, %3$s kg, est conservée.</string>
@@ -1388,6 +1389,8 @@
     <string name="transitGuide_backOnTrack">Signal du véhicule retrouvé.</string>
     <string name="transitGuide_boardAlready">Je suis déjà à bord</string>
     <string name="transitGuide_boardApprox">Je suis déjà à bord</string>
+    <string name="transitGuide_boardConfirmLapsed">Le train choisi semble avoir quitté %1$s. Si vous êtes à bord, appuyez sur Je suis dans le train choisi. Sinon, appuyez sur Choisir un autre véhicule.</string>
+    <string name="transitGuide_boardConfirmNeeded">Le train choisi est indiqué comme arrivé à %1$s. Si vous êtes à bord, appuyez sur Je suis dans le train choisi.</string>
     <string name="transitGuide_boardSelected">Je suis dans le train choisi</string>
     <string name="transitGuide_boardSelectedBus">Je suis dans le bus choisi</string>
     <string name="transitGuide_boarded">À bord.</string>

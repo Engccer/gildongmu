@@ -94,6 +94,21 @@ fun transitBoardingObservationLost(signal: TransitSignal): Boolean =
     signal == TransitSignal.signalLost || signal == TransitSignal.upstreamFailed
 
 /**
+ * boarding 국면에서 선언 버튼([선택한 열차에 탔어요])을 세우는가. 관측이 끝났거나(N3 ①), 고른 열차가 고르는 순간 이미
+ * 승강장에 있어 자동 승격을 미룬 채 사용자 확인을 기다릴 때(A74)다. 웹 `boardingDeclareOffered` 미러.
+ */
+fun transitBoardingDeclareOffered(state: TransitGuideState): Boolean =
+    transitBoardingObservationLost(state.signal) || state.boardConfirmPending || state.boardDepartedSeen
+
+/**
+ * 승차 대기 목록의 풀(A74): 조회 역을 이미 떠난 것으로 서버가 판정한 열차(`departedLikely`)를 뺀다 — 고르면 한 대 앞
+ * 열차를 따라가게 된다. [이미 탔어요]의 열차 고르기는 이 필터를 지나지 않는다(그 열차에 타고 있는 사람의 길).
+ * 웹 `boardablePool` 미러.
+ */
+fun transitBoardablePool(items: List<TransitTrackItem>): List<TransitTrackItem> =
+    items.filter { it.departedLikely != true }
+
+/**
  * "이미 탔어요" 흐름의 후보 필터(A34 ②): 사용자가 "지금 지나는 역"이라 답한 역의 도착 목록에서 **그 역에 있는
  * 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5)만 남긴다. `99`(두 정거장 이상 밖)는 사용자가 타고 있을 수
  * 없다. 이 필터가 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. 웹 `aboardCandidates` 미러.
@@ -182,6 +197,13 @@ data class TransitTrackItem(
     /** 데이터 나이(초, 서버 계산·클램프). null = 미제공·동결 판정 불가(§12.1 ⓑ). */
     val dataAgeSeconds: Int? = null,
     /**
+     * 조회 역에 「도착」으로 실렸지만 이미 떠난 것으로 서버가 판정한 열차(A74, 지하철 arvlCd 1 한정). 참일 때만 실린다.
+     * 승차 승격을 **막는 쪽으로만** 쓴다 — 하차역 도착 확정(코드 1)은 이 값을 읽지 않는다. 부재 = false.
+     */
+    val departedLikely: Boolean? = null,
+    /** 그 역 승강장에 선 뒤 지난 시간(초, A74 계측·로그용). 「도착」 항목에만, 알 수 없으면 부재. */
+    val platformAgeSeconds: Int? = null,
+    /**
      * 영문 조각(E27 잔여 ①, `lang=en` 요청에만). ⚠ 위 한국어 필드는 en 응답에서도 한국어다 — 실시간 매핑·종착 검사·
      * 현재역 인덱스가 전부 그 값으로 조인한다. ⚠ **`messageEn`만 빈 문자열이 유효한 값이다**(TAGO는 ko도 완성
      * 문장이 없어 `""`). 나머지 셋의 `""`는 정보 소실이라 서버가 부재로 정규화해 보낸다.
@@ -258,6 +280,18 @@ sealed class TransitGuideEvent {
     data object VehiclePassed : TransitGuideEvent()
 
     /**
+     * boarding 지하철: 고른 뒤 첫 관측이 곧 「도착」(A74) — 그 도착은 관측이 아니라 이미 지난 일일 수 있어 승격하지 않고
+     * 사용자 확인을 청한다. 국면 유지, 선언 버튼이 선다(`transitBoardingDeclareOffered`).
+     */
+    data object BoardConfirmNeeded : TransitGuideEvent()
+
+    /**
+     * boarding 지하철: 확인을 기다리던 열차가 떠났다(A74) — 탔다면 선언, 아니면 다른 차량을 고르게 다시 묻는다.
+     * 「이미 출발」만 말하면 탄 사람에게 거짓이고 riding으로 가는 길이 선언뿐임이 전해지지 않는다.
+     */
+    data object BoardConfirmLapsed : TransitGuideEvent()
+
+    /**
      * boarding 서울버스: 잔여 0("곧 도착" = 직전 정류소 출발, A41) 첫 관측. 승격이 아니라 임박이다. payload 없음 —
      * "곧 도착" 원문은 `lastMessage`로 이미 흐른다.
      */
@@ -315,6 +349,17 @@ data class TransitGuideState(
     val arrivedCertain: Boolean,
     val ladderAnnounced: Int?,
     val trackingAnnounced: Boolean,
+    /**
+     * boarding에서 자동 승격을 미루고 사용자 확인을 기다리는 중(A74): 고른 뒤 첫 관측이 곧 「도착」이었다. 서 있는 동안
+     * 도착 관측(진입 0·도착 1)은 승격하지 않는다. 잠금 추적 초기화가 내린다. 웹 `boardConfirmPending` 미러.
+     */
+    val boardConfirmPending: Boolean,
+    /**
+     * 이 잠금의 열차가 승차역을 떠난 것으로 한 번이라도 관측됐다(A74, 잠금 단위 래치). 서버의 「떠남」 판정은 폴마다
+     * 풀릴 수 있어 값을 매번 새로 읽으면 떠난 열차가 다음 폴에 승격된다. 한 번 서면 이 잠금으로는 자동 승격하지 않고
+     * 탈출은 선언과 [다른 차량 선택]뿐이다. 떠남 통지의 1회 래치를 겸한다. 웹 `boardDepartedSeen` 미러.
+     */
+    val boardDepartedSeen: Boolean,
     /**
      * 이번 riding 진입 이후 하차역 목록 조회가 **결과(ok·empty)를 돌려준 횟수**(A36 ①). 한 번도 관측되지 않은 채
      * `transitNeverSeenPolls`에 닿으면 neverSeen. ⚠ 시간이 아니라 횟수인 이유: 벽시계는 주머니에 넣어 둔 시간·조회가
@@ -407,6 +452,10 @@ fun transitEventProfile(event: TransitGuideEvent): TransitEventProfile = when (e
     // 마지막 구간 완료는 여정 종료라 도착 종(도보 도착 동형). 중간 구간은 다음 구간 시작.
     is TransitGuideEvent.LegAdvanced -> TransitEventProfile(false, if (event.final) TransitGuideTone.arrive else TransitGuideTone.start)
     TransitGuideEvent.VehiclePassed -> TransitEventProfile(false, TransitGuideTone.weak)
+    // 열차가 지금 승강장에 있을 수 있다 — 지금 움직여야 하는 신호(도착 관측 승격과 같은 축).
+    TransitGuideEvent.BoardConfirmNeeded -> TransitEventProfile(true, TransitGuideTone.imminent)
+    // 답을 기다리는 질문이라 끼어든다. 탔다면 이 버튼이 하차 알림으로 가는 유일한 길이다.
+    TransitGuideEvent.BoardConfirmLapsed -> TransitEventProfile(true, TransitGuideTone.weak)
     is TransitGuideEvent.TrackingStarted -> TransitEventProfile(false, TransitGuideTone.ladder)
     TransitGuideEvent.SignalLost, TransitGuideEvent.NeverSeen, TransitGuideEvent.UpstreamFailed ->
         TransitEventProfile(false, TransitGuideTone.weak)
@@ -710,6 +759,8 @@ fun initTransitGuide(route: TransitGuideRoute, @Suppress("UNUSED_PARAMETER") now
     arrivedCertain = false,
     ladderAnnounced = null,
     trackingAnnounced = false,
+    boardConfirmPending = false,
+    boardDepartedSeen = false,
     ridingPolls = 0,
     missCount = 0,
     failCount = 0,
@@ -787,6 +838,8 @@ private fun resetLockTracking(state: TransitGuideState): TransitGuideState = sta
     arrivedCertain = false,
     ladderAnnounced = null,
     trackingAnnounced = false,
+    boardConfirmPending = false,
+    boardDepartedSeen = false,
     missCount = 0,
     failCount = 0,
     failSince = null,
@@ -864,6 +917,8 @@ private fun handleChangeBoarding(state: TransitGuideState): TransitGuideStepResu
         arrivedCertain = false,
         ladderAnnounced = null,
         trackingAnnounced = false,
+        boardConfirmPending = false,
+        boardDepartedSeen = false,
         // 대기 국면엔 카운터가 없다 — 다음 riding 진입이 0에서 다시 센다.
         ridingPolls = 0,
         missCount = 0,
@@ -913,6 +968,8 @@ private fun handleAdvance(state: TransitGuideState, route: TransitGuideRoute): T
         arrivedCertain = false,
         ladderAnnounced = null,
         trackingAnnounced = false,
+        boardConfirmPending = false,
+        boardDepartedSeen = false,
         // 다음 leg는 아직 승차 전이다.
         ridingPolls = 0,
         missCount = 0,
@@ -1045,7 +1102,12 @@ private fun commitBoardingMatched(
     carriedEvent: TransitGuideEvent?,
     now: Double,
 ): TransitGuideStepResult {
-    if (isSameSnapshot(item, base)) {
+    // A74: 같은 스냅숏이어도 서버의 "떠났다" 판정은 새 정보다(「도착」 레코드는 떠난 뒤에도 그대로 남는다) — 아직 알리지
+    // 않았으면 조기 반환이 그 전이를 삼키지 않게 한다.
+    val departedNow = base.lock?.mode == TransitTrackMode.subway &&
+        (item.departedLikely == true || (item.arrivalCode == "2" && base.boardConfirmPending))
+    val departureNews = departedNow && !base.boardDepartedSeen
+    if (!departureNews && isSameSnapshot(item, base)) {
         return TransitGuideStepResult(
             next.copy(missCount = base.missCount + 1, lastUpdatedAt = now, dataAgeSeconds = item.dataAgeSeconds),
             carriedEvent,
@@ -1071,7 +1133,29 @@ private fun commitBoardingMatched(
     val fresh = (item.dataAgeSeconds ?: 0) <= transitBoardStopFreshSeconds
     val arrivedAtBoardStop = base.lock?.mode == TransitTrackMode.subway && (item.arrivalCode == "0" || item.arrivalCode == "1")
     val lock = base.lock
-    if (lock != null && fresh && arrivedAtBoardStop) return enterRiding(out, lock, TransitBoardedCause.observed)
+    // A74 ①: 떠난 열차(서버 판정 `departedLikely`, 또는 확인을 기다리던 중에 본 출발 2)는 승격하지 않는다(따라가면 한 대 앞
+    // 열차의 도착을 알린다). **잠금 단위 래치**라 한 번 서면 다음 폴에 판정이 풀려도 이 잠금으로는 자동 승격이 없다. 표시는
+    // 관측이 끝난 자리(signalLost)에 두고, 처음 한 번만 말한다 — 확인을 기다리던 중이면 다시 묻는 문장으로.
+    if (departedNow || base.boardDepartedSeen) {
+        out = out.copy(signal = TransitSignal.signalLost, boardDepartedSeen = true)
+        if (!base.boardDepartedSeen) {
+            return TransitGuideStepResult(
+                out,
+                if (base.boardConfirmPending) TransitGuideEvent.BoardConfirmLapsed else TransitGuideEvent.VehiclePassed,
+            )
+        }
+        // 이미 말했다. 장애 회복 통지("신호가 회복됐습니다")는 떠난 열차에 싣지 않는다.
+        return TransitGuideStepResult(out, if (carriedEvent == TransitGuideEvent.SignalRecovered) null else carriedEvent)
+    }
+    if (lock != null && fresh && arrivedAtBoardStop) {
+        // A74 ②: 고른 뒤 첫 관측이 곧 「도착」이면 그것은 관측이 아니라 이미 지난 일일 수 있다(처음 보이는 「도착」도 나이가
+        // 30초를 넘는다, 실측 2026-11-17). 승격을 미루고 확인을 청한다. 진입(0)과 기다리다 본 도착은 종전대로.
+        if (base.boardConfirmPending || (item.arrivalCode == "1" && !wasTracking)) {
+            out = out.copy(boardConfirmPending = true)
+            return TransitGuideStepResult(out, if (base.boardConfirmPending) carriedEvent else TransitGuideEvent.BoardConfirmNeeded)
+        }
+        return enterRiding(out, lock, TransitBoardedCause.observed)
+    }
 
     // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).
     if (!wasTracking) {
@@ -1124,6 +1208,13 @@ private fun boardingUnmatched(
     }
     val remaining = base.remaining
     if (remaining != null && remaining <= 1 && out.missCount >= transitMissArriveCount) {
+        // A74: 확인을 기다리던 열차가 사라졌다 = 떠났다. 래치를 세워 재등장해도 자동 승격하지 않고, 다시 묻는다.
+        if (base.boardConfirmPending) {
+            return TransitGuideStepResult(
+                out.copy(signal = TransitSignal.signalLost, boardDepartedSeen = true),
+                TransitGuideEvent.BoardConfirmLapsed,
+            )
+        }
         return TransitGuideStepResult(out.copy(signal = TransitSignal.signalLost), TransitGuideEvent.VehiclePassed)
     }
     if (out.missCount >= transitMissLostCount) {
