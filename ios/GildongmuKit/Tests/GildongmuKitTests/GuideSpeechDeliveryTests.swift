@@ -314,6 +314,21 @@ struct GuideSpeechDeliveryTests {
         #expect(out.dropped.isEmpty)
     }
 
+    // 세션 경계의 침묵: 말하던 발화를 멈추되 어느 통지도 부르지 않고, 말하는 것이 없으면 아무것도 하지 않는다.
+    @Test func silenceSpokenStopsWithoutNotifying() async {
+        let h = Harness()
+        let out = Outcomes()
+        submit(h, out, "옆에 가게 하나", cls: .ambient)
+        h.queue.silenceSpoken()
+        h.queue.reset()
+        await drain()
+        #expect(h.synth.stops == 1)
+        #expect(out.spoken.isEmpty)
+        #expect(out.dropped.isEmpty)
+        h.queue.silenceSpoken()
+        #expect(h.synth.stops == 1)
+    }
+
     // 복귀 인계: 주변·답 문장은 VoiceOver로 넘기지 않고 버림으로 돌려준다(V0c — 자리에 묶인 문장은 다시 계산해 말한다).
     // 안전 문장은 종전대로 넘어가고, 합본이 끝까지 말해지면 그 문장의 「말했다」가 선다.
     @Test func handOverExcludesAmbientAndAnswer() async {

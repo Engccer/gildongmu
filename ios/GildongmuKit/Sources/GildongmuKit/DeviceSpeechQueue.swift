@@ -240,6 +240,14 @@ public final class DeviceSpeechQueue {
         unsettled = [:]
     }
 
+    /// 이 칸이 말하는 중인 발화를 멈춘다(버림 통지 없음). 세션 경계에서 뒤이을 문장이 기기 음성이 아니라 끊어 줄 다음
+    /// 발화가 없을 때만 호출부가 `reset()` 앞에 부른다(나들이 전경 VoiceOver의 사용자 종료).
+    public func silenceSpoken() {
+        guard let current = lastSpoken else { return }
+        lastSpoken = nil
+        if isSpeakingToken(current.token) { stopSpeaking() }
+    }
+
     /// 전경 복귀(계약 6). VoiceOver로 넘길 문장을 옛 것 → 새 것 순서로 돌려준다(게시는 호출부가 한 통지로). 합본 통지가
     /// 끝내 나가지 못하면 호출부가 결과의 `undelivered()`를 부른다.
     public func handOver() -> DeviceSpeechHandover {

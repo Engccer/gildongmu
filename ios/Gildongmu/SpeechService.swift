@@ -22,6 +22,15 @@ private let speechLog = Logger(subsystem: "app.gildongmu", category: "speech")
 /// (웹 detect_language 교훈과 동형). 시작·정지는 소리+햅틱 이중 채널로 통지.
 @Observable @MainActor
 final class SpeechService {
+    #if EXPERIMENTAL
+    /// 살아 있는 인스턴스(약한 참조). 화면을 겨냥하지 않는 받아쓰기 동작이 「버튼은 화면에 없지만 녹음 중」을 가리는 데만 쓴다
+    /// (`DictationTriggerRegistry`, E82 판정 10).
+    @ObservationIgnored private static let live = NSHashTable<SpeechService>.weakObjects()
+    /// 앱 어디서든 받아쓰기 녹음이 진행 중인가.
+    static var isAnyListening: Bool { live.allObjects.contains { $0.isListening } }
+    init() { Self.live.add(self) }
+    #endif
+
     enum Phase: Equatable {
         case idle
         /// 마이크 권한 요청 대기

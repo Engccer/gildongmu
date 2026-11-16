@@ -244,8 +244,9 @@ final class OutingModel {
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
         backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
         askWindowActive: { [weak self] in (self?.askPhase ?? .idle) != .idle },
-        // 칸에 든 문장은 자동 안내로 본다(E82 판정 7): 전이 문장(종료·복귀 상환)은 `.high`라 칸에 서지 않고 선점하며, 전경
-        // VoiceOver에서는 시작·응답 문장이 VoiceOver로 나가 칸에 들지 않는다.
+        // 칸에 든 문장은 자동 안내로 본다(E82 판정 7): 전이 문장(종료·복귀 상환)은 `.high`라 대기 칸에 서지 않고 선점하며, 전경
+        // VoiceOver에서는 시작·응답 문장이 VoiceOver로 나가 칸에 들지 않는다. 단 백그라운드에서 말하던 종료 사유 문장은 전경
+        // 복귀 때 이 판정을 타서, 스위치가 켜져 있으면 VoiceOver로 넘기지 않고 기기 음성으로 끝까지 말한다(문장 손실 없음).
         deviceOverVoiceOver: {
             outingDeviceOverVoiceOver(
                 switchEnabled: GuideSpeechOutput.outingForegroundSpeechEnabled, origin: .automatic)
@@ -482,6 +483,7 @@ final class OutingModel {
     func stopByUser() {
         guideDiagLog("outingEnd reason=user")
         let text = appLocalized("ios.outing.endedByUser")
+        silenceForegroundDeviceSpeech()
         endLeavingScreen(reason: text, playStopTone: true)
         say(text, highPriority: true, speechClass: .actionable, origin: .transition)
     }
@@ -518,8 +520,17 @@ final class OutingModel {
     /// 종료 화면에서, 기록 줄의 「도보 안내 시작」은 세션 중에 온다.
     func endForHandover() {
         if isTracking { guideDiagLog("outingEnd reason=handover") }
+        silenceForegroundDeviceSpeech()
         stop()
         clearEnd()
+    }
+
+    /// 전경 VoiceOver에서 사용자가 세션을 끝내는 순간(종료 버튼·안내 인계), 말하던 자동 안내(전경 기기 음성, E82 판정 7)를
+    /// 멈춘다. 이 조합에서는 종료 문장이 VoiceOver로 나가 기기 음성을 끊어 줄 다음 발화가 없어, 끝난 세션의 문장이 종료
+    /// 문장·착지 낭독과 겹친다. 백그라운드·VoiceOver 꺼짐은 종료 문장이 기기 음성 선점이라 손대지 않는다(`stop()` 공통에 넣지 말 것).
+    private func silenceForegroundDeviceSpeech() {
+        guard isForeground, UIAccessibility.isVoiceOverRunning else { return }
+        deviceSpeech.silenceSpoken()
     }
 
     /// 기다리던 질문 요청과 받아쓰기를 거둔다(E82 V13·V15) — 안내로 넘기기 직전과 세션 끝(`stop`)이 부른다.
@@ -1687,7 +1698,8 @@ final class OutingModel {
             soundDegraded = degraded
             if degraded, startAnnounced {
                 ResultHaptic.fire(.attention)
-                say(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable, origin: .automatic)
+                // 소리 상태 알림은 자동 안내가 아니다(E82 구현 뒤 판정 ③ 「신호 약함」과 같은 성격) — 전경 VoiceOver에서는 VoiceOver로.
+                say(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable, origin: .status)
             }
         }
         // 재생 수단이 죽었으면 침묵의 원인을 알린다(도보 안내와 같은 문장·같은 진입 1회 진동).
@@ -1695,7 +1707,8 @@ final class OutingModel {
             guard !silencedNoticed else { return }
             silencedNoticed = true
             ResultHaptic.fire(.failure)
-            say(appLocalized("ios.beacon.soundUnavailable"), speechClass: .actionable, origin: .automatic)
+            // 「소리를 낼 수 없다」를 방금 실패한 소리 채널로 말하지 않는다 — 들리지 않으면 다시 알리지도 않는다(`silencedNoticed`).
+            say(appLocalized("ios.beacon.soundUnavailable"), speechClass: .actionable, origin: .status)
         } else {
             silencedNoticed = false
         }

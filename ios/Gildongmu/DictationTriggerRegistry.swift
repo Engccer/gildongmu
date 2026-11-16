@@ -84,12 +84,19 @@ final class DictationTriggerRegistry {
             )
         }
         let inCall = callObserver.calls.contains { !$0.hasEnded }
-        switch dictationTriggerResponse(source: source, inCall: inCall, candidates: candidates) {
+        // 버튼이 화면에 없어도 녹음은 이어질 수 있다(나들이 받아쓰기는 모델이 쥐어 시트를 접어도 계속된다).
+        // 녹음 중의 통지는 열린 마이크에 섞여 전사를 오염시키므로 어느 갈래에서도 말하지 않는다.
+        let micHot = SpeechService.isAnyListening
+        switch dictationTriggerResponse(source: source, inCall: inCall, micHot: micHot, candidates: candidates) {
         case .toggle(let id):
             if handles.first(where: { $0.id == id })?.perform() == true { return true }
-            // 버튼이 지금 받지 않는 순간(준비·정리 중): 단축어는 침묵이 실패와 구분되지 않으니 상태를 한 문장으로 말한다
-            if source == .shortcut { Self.announce(appLocalized("ios.voice.triggerBusy")) }
-            return false
+            // 버튼이 지금 받지 않는 순간(준비·정리 중, 손가락으로 누르고 있는 홀드 세션): 단축어는 침묵이 실패와 구분되지 않으니
+            // 상태를 한 문장으로 말한다(녹음 중이면 말하지 않는다). 대상이 있는 화면의 Magic Tap은 받아쓰기를 향한 것이라
+            // 시스템에 넘기지 않는다 — 끝내려고 연달아 두 번 한 탭의 두 번째가 음악을 켜지 않게.
+            if source == .shortcut, !micHot { Self.announce(appLocalized("ios.voice.triggerBusy")) }
+            return true
+        case .swallow:
+            return true
         case .announceNoTarget:
             Self.announce(appLocalized("ios.voice.triggerNoTarget"))
             return true
@@ -149,6 +156,8 @@ final class DictationTriggerRegistry {
     /// 콜드 스타트면 화면(받아쓰기 버튼)도 아직 창에 붙지 않았다. 그래서 ①활성화를, ②보이는 받아쓰기 버튼을 각각 상한까지
     /// 기다린다 — 고정 대기로 판정하면 늦게 그려진 화면에서 거짓 「받아쓰기가 없습니다」가 나온다. 이미 준비됐으면 기다리지 않는다.
     func triggerFromShortcut() async {
+        // 이미 앞에 떠 있던 앱이면 화면도 이미 그려져 있다 — 버튼을 기다리지 않는다(받아쓰기 없는 화면의 응답이 2초 늦지 않게).
+        let wasActive = UIApplication.shared.applicationState == .active
         var polls = 0
         while UIApplication.shared.applicationState != .active, polls < ShortcutWait.maxPolls {
             try? await Task.sleep(for: ShortcutWait.interval)
@@ -158,7 +167,7 @@ final class DictationTriggerRegistry {
         // VoiceOver는 앞에 있는 앱의 통지만 읽어 이 자리의 통지는 닿지 않는다.
         guard UIApplication.shared.applicationState == .active else { return }
         polls = 0
-        while !hasFrontmostTarget(), polls < ShortcutWait.maxPolls {
+        while !wasActive, !hasFrontmostTarget(), polls < ShortcutWait.maxPolls {
             try? await Task.sleep(for: ShortcutWait.interval)
             polls += 1
         }
@@ -175,7 +184,9 @@ final class DictationTriggerRegistry {
             if current.isHidden || current.alpha < 0.01 { return false }
             node = current.superview
         }
-        while let presented = top.presentedViewController, !presented.isBeingDismissed {
+        // 검색 필드 편집 중의 `UISearchController`는 화면을 덮는 시트가 아니다(그 화면의 마이크 행이 대상에서 빠지지 않게).
+        while let presented = top.presentedViewController, !presented.isBeingDismissed,
+              !(presented is UISearchController) {
             top = presented
         }
         return view.isDescendant(of: top.view)

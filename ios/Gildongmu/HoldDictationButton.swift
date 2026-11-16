@@ -240,7 +240,8 @@ struct HoldDictationButton: View {
 
     private func beginHold() {
         // 단축어 시작 세션(외부 시작)·정지·취소 정리 중엔 새 세션을 만들지 않는다
-        guard !sessionActive, !speech.isListening,
+        // 준비 중(`isStarting`)도 막는다: 외부 시작 직후의 홀드가 startTask를 덮어쓰면 아무도 쥐지 않은 녹음이 남는다
+        guard !sessionActive, !speech.isListening, !speech.isStarting,
               !finishInFlight, !cancelInFlight else {
             #if DEBUG
             chatFocusLog("holdmic begin REJECT session=\(sessionActive) listening=\(speech.isListening) finish=\(finishInFlight) cancel=\(cancelInFlight)")

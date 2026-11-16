@@ -38,6 +38,9 @@ public enum DictationTriggerResponse: Equatable, Sendable {
     case passToSystem
     /// 받아쓰기가 없는 화면임을 한 문장으로 알린다. 단축어는 그대로 끝나면 실패와 침묵이 구분되지 않는다.
     case announceNoTarget
+    /// 아무것도 하지 않고 말하지도 않되 우리가 처리한 것으로 답한다. 지금 화면에 버튼이 없는데 앱 어딘가에서 녹음 중일 때다
+    /// (접은 나들이 시트, 다른 시트에 덮인 화면). 통지는 열린 마이크에 섞여 전사를 오염시키고, 시스템에 넘기면 녹음 중에 음악이 켜진다.
+    case swallow
 }
 
 /// 화면을 겨냥하지 않은 받아쓰기 동작을 어디로 보낼지 고른다.
@@ -47,10 +50,14 @@ public enum DictationTriggerResponse: Equatable, Sendable {
 ///   한 화면에 버튼이 둘 이상인 경우는 지금 코드에 없다(길찾기 출발·도착 칸은 각자의 시트다). 이 규칙은 그때를 위한 결정론이다.
 /// - 통화 중의 Magic Tap은 언제나 시스템에 넘긴다. 시스템 기본이 「전화 끊기」이고, 통화가 마이크를 쥐고 있어 받아쓰기는 어차피 시작하지 못한다.
 ///
+/// - 지금 화면에 대상이 없는데 녹음 중(`micHot`)이면 조용히 삼킨다. 「받아쓰기가 없습니다」는 거짓이고 그 낭독이 전사에 섞인다.
+///
 /// - Parameter inCall: 통화가 이어지는 중인가. 안전 인자라 기본값이 없다.
+/// - Parameter micHot: 앱 어디서든 받아쓰기 녹음이 진행 중인가(버튼이 화면에 없어도). 안전 인자라 기본값이 없다.
 public func dictationTriggerResponse(
     source: DictationTriggerSource,
     inCall: Bool,
+    micHot: Bool,
     candidates: [DictationTriggerCandidate]
 ) -> DictationTriggerResponse {
     if source == .magicTap, inCall { return .passToSystem }
@@ -58,6 +65,7 @@ public func dictationTriggerResponse(
     let pick = visible.filter(\.active).max(by: { $0.order < $1.order })
         ?? visible.max(by: { $0.order < $1.order })
     if let pick { return .toggle(id: pick.id) }
+    if micHot { return .swallow }
     switch source {
     case .magicTap: return .passToSystem
     case .shortcut: return .announceNoTarget
