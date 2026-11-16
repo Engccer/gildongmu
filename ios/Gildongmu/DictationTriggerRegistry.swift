@@ -17,11 +17,12 @@ import GildongmuKit
 extension View {
     /// 이 컨트롤을 「화면을 겨냥하지 않는 받아쓰기」의 대상으로 등록한다(E82 판정 10). `perform`은 그 컨트롤을 누른 것과 같은
     /// 길이어야 한다 — 녹음 시작 때 낭독 끊기·완료 뒤 포커스·통지 계약이 버튼으로 시작한 경우와 갈리지 않게.
+    /// `perform`의 반환값은 실제로 무언가 했는가다(무시했으면 `false` — Magic Tap은 시스템 기본 동작으로 돌아간다).
     /// 정식판에서는 아무것도 하지 않는다(등록부·인텐트·Magic Tap 처리가 컴파일에서 빠진다).
     @ViewBuilder
     func dictationTriggerTarget(
         isActive: @escaping @MainActor () -> Bool,
-        perform: @escaping @MainActor () -> Void
+        perform: @escaping @MainActor () -> Bool
     ) -> some View {
         #if EXPERIMENTAL
         modifier(DictationTriggerTargetModifier(isActive: isActive, perform: perform))
@@ -43,7 +44,7 @@ final class DictationTriggerHandle {
     /// 화면에 나타난 차례(클수록 나중).
     var order = 0
     var isActive: @MainActor () -> Bool = { false }
-    var perform: @MainActor () -> Void = {}
+    var perform: @MainActor () -> Bool = { false }
 
     var id: Int { ObjectIdentifier(self).hashValue }
 }
@@ -70,11 +71,10 @@ final class DictationTriggerRegistry {
         entries.append(Entry(handle: handle))
     }
 
-    /// 판정하고 그대로 실행한다. 반환값은 판정(Magic Tap이 처리했는지를 시스템에 돌려주는 데 쓴다).
+    /// 판정하고 그대로 실행한다. 반환값은 이 동작을 앱이 처리했는가(`false`면 Magic Tap은 시스템 기본 동작으로 간다).
     @discardableResult
-    func trigger(from source: DictationTriggerSource) -> DictationTriggerResponse {
-        entries.removeAll { $0.handle == nil }
-        let handles = entries.compactMap(\.handle)
+    func trigger(from source: DictationTriggerSource) -> Bool {
+        let handles = liveHandles()
         let candidates = handles.map { handle in
             DictationTriggerCandidate(
                 id: handle.id,
@@ -84,20 +84,36 @@ final class DictationTriggerRegistry {
             )
         }
         let inCall = callObserver.calls.contains { !$0.hasEnded }
-        let response = dictationTriggerResponse(source: source, inCall: inCall, candidates: candidates)
-        switch response {
+        switch dictationTriggerResponse(source: source, inCall: inCall, candidates: candidates) {
         case .toggle(let id):
-            handles.first { $0.id == id }?.perform()
+            if handles.first(where: { $0.id == id })?.perform() == true { return true }
+            // 버튼이 지금 받지 않는 순간(준비·정리 중): 단축어는 침묵이 실패와 구분되지 않으니 상태를 한 문장으로 말한다
+            if source == .shortcut { Self.announce(appLocalized("ios.voice.triggerBusy")) }
+            return false
         case .announceNoTarget:
-            // 사용자가 방금 한 동작에 대한 직접 응답이고 포커스가 움직이지 않는다 — 기본 우선순위는 활성화 처리·앱 전환 낭독에
-            // 잠식된다(화면 규칙: 화면 변화 없는 활성화 응답은 `.high`).
-            var text = AttributedString(appLocalized("ios.voice.triggerNoTarget"))
-            text.accessibilitySpeechAnnouncementPriority = .high
-            AccessibilityNotification.Announcement(text).post()
+            Self.announce(appLocalized("ios.voice.triggerNoTarget"))
+            return true
         case .passToSystem:
-            break
+            return false
         }
-        return response
+    }
+
+    private func liveHandles() -> [DictationTriggerHandle] {
+        entries.removeAll { $0.handle == nil }
+        return entries.compactMap(\.handle)
+    }
+
+    /// 지금 보이는 화면에 받아쓰기 버튼이 있는가(단축어 콜드 스타트 대기의 끝 조건).
+    private func hasFrontmostTarget() -> Bool {
+        liveHandles().contains { $0.proxy.map(Self.isFrontmost) ?? false }
+    }
+
+    /// 사용자가 방금 한 동작에 대한 직접 응답이고 포커스가 움직이지 않는다 — 기본 우선순위는 활성화 처리·앱 전환 낭독에
+    /// 잠식된다(화면 규칙: 화면 변화 없는 활성화 응답은 `.high`).
+    private static func announce(_ sentence: String) {
+        var text = AttributedString(sentence)
+        text.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(text).post()
     }
 
     /// Magic Tap 처리 블록을 창과 앱 객체에 건다(iOS 17+ `accessibilityMagicTapBlock`, 멱등).
@@ -114,7 +130,7 @@ final class DictationTriggerRegistry {
         guard !magicTapWindows.contains(window) else { return }
         magicTapWindows.add(window)
         let block: AXBoolReturnBlock = {
-            MainActor.assumeIsolated { DictationTriggerRegistry.shared.trigger(from: .magicTap) != .passToSystem }
+            MainActor.assumeIsolated { DictationTriggerRegistry.shared.trigger(from: .magicTap) }
         }
         window.accessibilityMagicTapBlock = block
         if !magicTapOnApplication {
@@ -123,16 +139,28 @@ final class DictationTriggerRegistry {
         }
     }
 
-    /// 단축어 진입. `openAppWhenRun` 인텐트는 앱을 앞으로 가져온 뒤 돈다지만, 뒤에 있던(또는 막 켜진) 앱은 아직 활성화 중이라
-    /// 화면이 자리 잡을 때까지 잠깐 기다린다. 이미 앞에 있으면 기다리지 않는다.
+    /// 단축어 대기 상수. 간격 × 횟수 = 각 대기의 상한(약 2초).
+    private enum ShortcutWait {
+        static let interval: Duration = .milliseconds(100)
+        static let maxPolls = 20
+    }
+
+    /// 단축어 진입. `openAppWhenRun` 인텐트는 앱을 앞으로 가져온 뒤 돈다지만, 뒤에 있던(또는 막 켜진) 앱은 아직 활성화 중이고
+    /// 콜드 스타트면 화면(받아쓰기 버튼)도 아직 창에 붙지 않았다. 그래서 ①활성화를, ②보이는 받아쓰기 버튼을 각각 상한까지
+    /// 기다린다 — 고정 대기로 판정하면 늦게 그려진 화면에서 거짓 「받아쓰기가 없습니다」가 나온다. 이미 준비됐으면 기다리지 않는다.
     func triggerFromShortcut() async {
-        if UIApplication.shared.applicationState != .active {
-            var waited = 0
-            while UIApplication.shared.applicationState != .active, waited < 20 {
-                try? await Task.sleep(for: .milliseconds(100))
-                waited += 1
-            }
-            try? await Task.sleep(for: .milliseconds(400))
+        var polls = 0
+        while UIApplication.shared.applicationState != .active, polls < ShortcutWait.maxPolls {
+            try? await Task.sleep(for: ShortcutWait.interval)
+            polls += 1
+        }
+        // 끝내 앞으로 오지 못했으면(잠금 화면 등) 시작하지 않는다 — 백그라운드에서 마이크를 열지 않는다. 알리지도 않는다:
+        // VoiceOver는 앞에 있는 앱의 통지만 읽어 이 자리의 통지는 닿지 않는다.
+        guard UIApplication.shared.applicationState == .active else { return }
+        polls = 0
+        while !hasFrontmostTarget(), polls < ShortcutWait.maxPolls {
+            try? await Task.sleep(for: ShortcutWait.interval)
+            polls += 1
         }
         trigger(from: .shortcut)
     }
@@ -140,7 +168,13 @@ final class DictationTriggerRegistry {
     /// 그 뷰가 지금 사용자가 보는 화면에 있는가: 창에 붙어 있고(숨은 탭·밀려난 화면은 창에서 떨어진다) 가장 위에 떠 있는
     /// 시트 안이다(시트에 덮인 화면의 받아쓰기를 몰래 켜지 않는다).
     private static func isFrontmost(_ view: UIView) -> Bool {
-        guard let window = view.window, !view.isHidden, var top = window.rootViewController else { return false }
+        guard let window = view.window, var top = window.rootViewController else { return false }
+        // 자신이나 조상이 숨었거나 투명하면 보이지 않는 화면이다
+        var node: UIView? = view
+        while let current = node, current !== window {
+            if current.isHidden || current.alpha < 0.01 { return false }
+            node = current.superview
+        }
         while let presented = top.presentedViewController, !presented.isBeingDismissed {
             top = presented
         }
@@ -150,7 +184,7 @@ final class DictationTriggerRegistry {
 
 private struct DictationTriggerTargetModifier: ViewModifier {
     let isActive: @MainActor () -> Bool
-    let perform: @MainActor () -> Void
+    let perform: @MainActor () -> Bool
     @State private var handle = DictationTriggerHandle()
 
     func body(content: Content) -> some View {
@@ -165,7 +199,7 @@ private struct DictationTriggerTargetModifier: ViewModifier {
 private struct DictationTriggerAnchor: UIViewRepresentable {
     let handle: DictationTriggerHandle
     let isActive: @MainActor () -> Bool
-    let perform: @MainActor () -> Void
+    let perform: @MainActor () -> Bool
 
     func makeUIView(context: Context) -> DictationTriggerAnchorView {
         let view = DictationTriggerAnchorView()

@@ -480,6 +480,7 @@
     <string name="android_voice_paused">音声入力をロックしました</string>
     <string name="android_voice_preparing">音声認識を準備中</string>
     <string name="android_voice_start">音声入力を開始</string>
+    <string name="android_voice_triggerBusy">音声入力を準備中、または終了処理中です</string>
     <string name="android_voice_triggerNoTarget">この画面には音声入力がありません</string>
     <string name="app_tagline">誰でも使える韓国のナビゲーション</string>
     <string name="app_title">キルドンム</string>

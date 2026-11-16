@@ -36291,6 +36291,46 @@
         }
       }
     },
+    "ios.voice.triggerBusy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받아쓰기를 준비하거나 마무리하는 중입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictation is getting ready or finishing up"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado se está preparando o terminando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dictée est en cours de préparation ou de finalisation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura si sta preparando o sta terminando"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声入力を準備中、または終了処理中です"
+          }
+        }
+      }
+    },
     "ios.voice.triggerNoTarget": {
       "localizations": {
         "ko": {

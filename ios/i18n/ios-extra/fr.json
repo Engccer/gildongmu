@@ -81,7 +81,8 @@
       "errorOnDevice": "Cet appareil ne prend pas en charge la reconnaissance vocale sur l'appareil pour cette langue.",
       "deniedRecognition": "Autorisez la reconnaissance vocale dans Réglages.",
       "paused": "Dictée verrouillée",
-      "triggerNoTarget": "Cet écran n’a pas de dictée"
+      "triggerNoTarget": "Cet écran n’a pas de dictée",
+      "triggerBusy": "La dictée est en cours de préparation ou de finalisation"
     },
     "search": {
       "prompt": "Rechercher lieux et adresses",

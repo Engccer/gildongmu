@@ -81,7 +81,8 @@
       "errorOnDevice": "Questo dispositivo non supporta il riconoscimento vocale sul dispositivo per questa lingua.",
       "deniedRecognition": "Consenti il riconoscimento vocale nelle Impostazioni.",
       "paused": "Dettatura bloccata",
-      "triggerNoTarget": "Questa schermata non ha la dettatura"
+      "triggerNoTarget": "Questa schermata non ha la dettatura",
+      "triggerBusy": "La dettatura si sta preparando o sta terminando"
     },
     "search": {
       "prompt": "Cerca luoghi e indirizzi",

@@ -218,13 +218,24 @@ struct HoldDictationButton: View {
     /// 받아쓰기 설정이 홀드여도 토글이다 — 손가락이 버튼 위에 없는 외부 시작 세션이라 홀드 계약이 적용되지 않고(헌장 참조
     /// 홀드 불변식 ⑧ 「시작한 방식이 끝내는 방식을 정한다」), 끝내기는 같은 동작을 한 번 더 하거나 버튼을 짧게 누르는 것이다.
     /// 시작·끝은 탭 토글의 탭과 같은 길(`handleToggleTap`)이라 녹음 전 재생 끊기(`TtsPlayer.shared.stop()`)와 완료 뒤
-    /// 포커스·통지(`onTranscript`)가 버튼과 같다.
-    private func externalToggle() {
+    /// 포커스·통지(`onTranscript`)가 버튼과 같다. 반환값은 실제로 시작·끝냈는가(무시했으면 Magic Tap을 시스템에 돌려준다).
+    private func externalToggle() -> Bool {
         // 손가락으로 누르고 있는 홀드 세션: 떼는 순간이 끝이다(겹친 정지가 전사를 둘로 쪼개지 않게)
-        guard !sessionActive else { return }
+        guard !sessionActive else { return false }
+        let stopping = speech.isListening || (startTask != nil && speech.isStarting)
+        if stopping {
+            guard !finishInFlight else { return false }  // finishAndDeliver의 재진입 가드와 같은 판정
+        } else {
+            // handleToggleTap이 아무것도 하지 않는 두 갈래(남이 시작한 준비 중, 정지·취소 정리 중)
+            guard !speech.isStarting, !finishInFlight, !cancelInFlight else { return false }
+            // 홀드 설정의 사용자는 녹음 시작 순간 낭독 끊기(홀드 불변식 ①)를 기대한다 — beginHold와 같은 자리.
+            // 탭 토글 설정은 버튼 탭과 같은 현행을 그대로 둔다.
+            if style == .hold { interruptVoiceOverSpeech() }
+        }
         hintDismissTask?.cancel()
         showHoldHint = false
         handleToggleTap()
+        return true
     }
 
     private func beginHold() {

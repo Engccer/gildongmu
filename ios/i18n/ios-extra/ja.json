@@ -81,7 +81,8 @@
       "errorOnDevice": "このデバイスはこの言語のオンデバイス音声認識に対応していません",
       "deniedRecognition": "設定で音声認識を許可してください",
       "paused": "音声入力をロックしました",
-      "triggerNoTarget": "この画面には音声入力がありません"
+      "triggerNoTarget": "この画面には音声入力がありません",
+      "triggerBusy": "音声入力を準備中、または終了処理中です"
     },
     "search": {
       "prompt": "場所、住所を検索",

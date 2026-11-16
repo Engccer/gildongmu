@@ -480,6 +480,7 @@
     <string name="android_voice_paused">Dettatura bloccata</string>
     <string name="android_voice_preparing">Preparazione del riconoscimento vocale</string>
     <string name="android_voice_start">Avvia dettatura</string>
+    <string name="android_voice_triggerBusy">La dettatura si sta preparando o sta terminando</string>
     <string name="android_voice_triggerNoTarget">Questa schermata non ha la dettatura</string>
     <string name="app_tagline">Navigazione in Corea, accessibile a tutti</string>
     <string name="app_title">Gildongmu</string>

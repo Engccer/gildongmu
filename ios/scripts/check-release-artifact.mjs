@@ -59,6 +59,9 @@ const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 /** 실험 게이트 안 코드만 쓰는 프레임워크. 정식 실행 파일의 링크 목록에 보이면 코드가 샌 것이다. */
 // CallKit(E82 판정 10): 통화 중 Magic Tap을 시스템에 넘기려고 실험판 받아쓰기 등록부만 `CXCallObserver`를 읽는다.
 const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth", "CallKit"];
+/** 실험 게이트 안 앱 타입 이름. 정식 실행 파일 바이트에 이 문자열(Swift 맹글 이름의 일부)이 보이면 코드가 샌 것이다.
+ *  프레임워크 링크로는 안 잡히는 것(App Intent는 프레임워크가 정식판에도 링크된다)만 둔다. */
+const EXPERIMENTAL_ONLY_SYMBOLS = ["ToggleDictationIntent", "DictationTriggerRegistry"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */
@@ -253,6 +256,13 @@ function main() {
       if (linked.includes(`/${framework}.framework/`)) {
         failures.push(`정식 실행 파일이 ${framework}를 링크한다 (실험 게이트 안 코드가 정식판에 컴파일됐다)`);
       }
+    }
+    // 5) 실험 전용 앱 심볼. 디버그 dylib 분리 빌드(시뮬레이터 Debug·Experimental)는 코드가 `<실행 파일>.debug.dylib`에 있어
+    //    그 파일도 본다(아카이브에는 없다).
+    const binaries = [executable, `${executable}.debug.dylib`].filter((p) => existsSync(p));
+    for (const symbol of EXPERIMENTAL_ONLY_SYMBOLS) {
+      const hit = binaries.find((p) => readFileSync(p).includes(symbol));
+      if (hit) failures.push(`정식 실행 파일에 실험 전용 심볼 ${symbol}이 있다 (${hit})`);
     }
   }
 

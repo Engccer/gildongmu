@@ -480,6 +480,7 @@
     <string name="android_voice_paused">Dictation locked</string>
     <string name="android_voice_preparing">Preparing speech recognition</string>
     <string name="android_voice_start">Start dictation</string>
+    <string name="android_voice_triggerBusy">Dictation is getting ready or finishing up</string>
     <string name="android_voice_triggerNoTarget">There is no dictation on this screen</string>
     <string name="app_tagline">Navigation in Korea, usable by everyone</string>
     <string name="app_title">Gildongmu</string>

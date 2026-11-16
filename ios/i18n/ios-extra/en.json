@@ -81,7 +81,8 @@
       "errorOnDevice": "This device does not support on-device speech recognition for this language.",
       "deniedRecognition": "Allow speech recognition in Settings.",
       "paused": "Dictation locked",
-      "triggerNoTarget": "There is no dictation on this screen"
+      "triggerNoTarget": "There is no dictation on this screen",
+      "triggerBusy": "Dictation is getting ready or finishing up"
     },
     "search": {
       "prompt": "Search places and addresses",

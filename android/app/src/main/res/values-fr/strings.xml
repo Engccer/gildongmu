@@ -480,6 +480,7 @@
     <string name="android_voice_paused">Dictée verrouillée</string>
     <string name="android_voice_preparing">Préparation de la reconnaissance vocale</string>
     <string name="android_voice_start">Démarrer la dictée</string>
+    <string name="android_voice_triggerBusy">La dictée est en cours de préparation ou de finalisation</string>
     <string name="android_voice_triggerNoTarget">Cet écran n’a pas de dictée</string>
     <string name="app_tagline">La navigation en Corée, accessible à tous</string>
     <string name="app_title">Gildongmu</string>

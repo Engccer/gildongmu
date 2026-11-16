@@ -480,6 +480,7 @@
     <string name="android_voice_paused">Dictado bloqueado</string>
     <string name="android_voice_preparing">Preparando el reconocimiento de voz</string>
     <string name="android_voice_start">Iniciar dictado</string>
+    <string name="android_voice_triggerBusy">El dictado se está preparando o terminando</string>
     <string name="android_voice_triggerNoTarget">Esta pantalla no tiene dictado</string>
     <string name="app_tagline">Navegación en Corea, accesible para todos</string>
     <string name="app_title">Gildongmu</string>

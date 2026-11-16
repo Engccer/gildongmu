@@ -81,7 +81,8 @@
       "errorOnDevice": "이 기기는 이 언어의 온디바이스 음성 인식을 지원하지 않습니다",
       "deniedRecognition": "설정에서 음성 인식을 허용해 주세요",
       "paused": "받아쓰기 잠김",
-      "triggerNoTarget": "이 화면에는 받아쓰기가 없습니다"
+      "triggerNoTarget": "이 화면에는 받아쓰기가 없습니다",
+      "triggerBusy": "받아쓰기를 준비하거나 마무리하는 중입니다"
     },
     "search": {
       "prompt": "장소, 주소 검색",

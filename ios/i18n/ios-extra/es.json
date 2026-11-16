@@ -81,7 +81,8 @@
       "errorOnDevice": "Este dispositivo no admite el reconocimiento de voz en el dispositivo para este idioma.",
       "deniedRecognition": "Permite el reconocimiento de voz en Ajustes.",
       "paused": "Dictado bloqueado",
-      "triggerNoTarget": "Esta pantalla no tiene dictado"
+      "triggerNoTarget": "Esta pantalla no tiene dictado",
+      "triggerBusy": "El dictado se está preparando o terminando"
     },
     "search": {
       "prompt": "Buscar lugares y direcciones",
