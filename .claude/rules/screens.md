@@ -48,6 +48,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - **iOS "내 주변" 화면도 공유 상태 머신으로 만든다**(Kit `NearbyLoadCore`+`RevealWindow`+앱 `nearbyAnnouncer`·`NearbyOverlayDescriptor`; `load()` 복붙 금지, 계약은 `NearbyLoadCoreTests`). → PATTERNS
 - **"내 주변" 섹션들(현재 10개)은 허브 뷰(`NearbyHub`, `?panel=nearby`)에 있고 패널은 `nearby-panel-store.ts` 싱글턴으로 접는다**(직접 닫기·Esc는 `restoreFocus=true`, 자동 닫힘은 `false`). → PATTERNS
 - **둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다**(반경 `OVERVIEW_RADIUS_M` 한 상수, 불릿 문장 `overview-lines.ts` 4벌 미러). "현재 위치 확인" 되살리기 금지. → PATTERNS
+- **둘러보기 호스트는 `AroundHost { nearbyTab, session }`(기본값 없는 인자)다**(E82 판정 5): 나들이 시트의 `session`은 위치가 `hereCoordinate()`이고 길찾기 진입·「이 위치에 관해 물어보기」가 없다. 정식판 내 주변 탭은 `nearbyTab`. → INTEGRATIONS §나들이(E51)는 세 번째 안내 세션이고 판정은 Kit 순수 함수(`Outing*.swift`)다
 - **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(`SearchView.landFirstRowFocus`, "내 주변"은 `NearbyFocusLander`, 대중교통 시트만 3단 위 A35 `landControlFocus`). 착지 대상 부착은 `landingTarget` 한 자리(`transit-landing-guard.test.ts`). → PATTERNS
 - **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
 - **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS

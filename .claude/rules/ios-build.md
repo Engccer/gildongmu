@@ -19,6 +19,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다. 2.0에서 간략 단독 시작 얼굴을 지워 그 버튼은 추적 중 "안내 종료" 하나다(E16 축2 — 간략 단독 진입점 재도입 금지). → PATTERNS
 - ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다**: 로컬라이즈 문자열은 `ios/scripts/experimental-infoplist.sh`, 비로컬라이즈 키는 `Support/Info-Experimental.plist`. → PATTERNS
 - ⚠ **두 plist 계약의 의도된 예외: Bluetooth 권한 문구와 CoreBluetooth 심볼** — `NSBluetoothAlwaysUsageDescription`은 실험판 plist에만, CoreBluetooth는 앱 타깃 `#if DEBUG || EXPERIMENTAL` 안(Kit에 `import CoreBluetooth` 금지, `check-release-artifact.mjs`가 잡는다). BLE 실측은 Experimental로. → PATTERNS
+- ⚠ **CallKit(`CXCallObserver`)은 실험판 전용이다**(E82 판정 10 받아쓰기 시작 동작): 정식판에 새면 `check-release-artifact.mjs`의 `EXPERIMENTAL_ONLY_FRAMEWORKS`·`EXPERIMENTAL_ONLY_SYMBOLS`(`ToggleDictationIntent`·`DictationTriggerRegistry`)가 잡고, 졸업 때 중국 스토어의 CallKit 제약을 확인한다. → PATTERNS
 - ⚠ **졸업 때 옮겨야 하는 것은 코드 게이트만이 아니다** — 백그라운드 모드도 정식 plist로 함께 승격. → PATTERNS
 - ⚠ **새 게이트는 그것을 실제로 부르는 경로로 한 번 밟아 본다**(손으로 인자를 준 수동 실행 통과는 증거가 아니다). → PATTERNS
 - ⚠ **아이콘 표식만으로는 부족하다** — 스크린 리더 사용자에겐 **표시 이름이 유일한 구분 수단**이라 이름 접미사를 반드시 유지한다.
