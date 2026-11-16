@@ -26,8 +26,8 @@ final class SpeechService {
     /// 살아 있는 인스턴스(약한 참조). 화면을 겨냥하지 않는 받아쓰기 동작이 「버튼은 화면에 없지만 녹음 중」을 가리는 데만 쓴다
     /// (`DictationTriggerRegistry`, E82 판정 10).
     @ObservationIgnored private static let live = NSHashTable<SpeechService>.weakObjects()
-    /// 앱 어디서든 받아쓰기 녹음이 진행 중인가.
-    static var isAnyListening: Bool { live.allObjects.contains { $0.isListening } }
+    /// 앱 어디서든 받아쓰기가 진행 중인가(녹음 중이거나 시작 준비 중).
+    static var isAnyActive: Bool { live.allObjects.contains { $0.isListening || $0.isStarting } }
     init() { Self.live.add(self) }
     #endif
 

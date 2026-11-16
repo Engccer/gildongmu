@@ -202,8 +202,7 @@ struct AroundNearbyView: View {
             .navigationDestination(item: $detailTarget) { target in
                 // 행사는 목록 화면과 같은 상세(행사 섹션), 역은 노선 힌트를 함께 넘긴다(E44 전화 조회).
                 PlaceDetailView(
-                    place: target.place, showsDirectionsEntry: directionsEntryAllowed,
-                    showsChatEntry: host == .nearbyTab, stationLineHint: target.lineHint
+                    place: target.place, showsDirectionsEntry: directionsEntryAllowed, stationLineHint: target.lineHint
                 ) {
                     if let event = target.event { CultureEventSection(event: event) }
                 }
@@ -276,9 +275,7 @@ struct AroundNearbyView: View {
             ForEach(places.prefix(model.visibleCount)) { place in
                 // 보조 텍스트 정보량은 현행 유지(카테고리·방위·거리). ⚠ 방위는 북 기준 절대 8방위만.
                 let link = NavigationLink {
-                    PlaceDetailView(
-                        place: surroundingPlaceToPlace(place), showsDirectionsEntry: directionsEntryAllowed,
-                        showsChatEntry: host == .nearbyTab)
+                    PlaceDetailView(place: surroundingPlaceToPlace(place), showsDirectionsEntry: directionsEntryAllowed)
                         .onAppear { model.notePushed() }
                 } label: {
                     PlaceRow(

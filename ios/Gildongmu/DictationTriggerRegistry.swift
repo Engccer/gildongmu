@@ -86,7 +86,7 @@ final class DictationTriggerRegistry {
         let inCall = callObserver.calls.contains { !$0.hasEnded }
         // 버튼이 화면에 없어도 녹음은 이어질 수 있다(나들이 받아쓰기는 모델이 쥐어 시트를 접어도 계속된다).
         // 녹음 중의 통지는 열린 마이크에 섞여 전사를 오염시키므로 어느 갈래에서도 말하지 않는다.
-        let micHot = SpeechService.isAnyListening
+        let micHot = SpeechService.isAnyActive
         switch dictationTriggerResponse(source: source, inCall: inCall, micHot: micHot, candidates: candidates) {
         case .toggle(let id):
             if handles.first(where: { $0.id == id })?.perform() == true { return true }
@@ -156,8 +156,9 @@ final class DictationTriggerRegistry {
     /// 콜드 스타트면 화면(받아쓰기 버튼)도 아직 창에 붙지 않았다. 그래서 ①활성화를, ②보이는 받아쓰기 버튼을 각각 상한까지
     /// 기다린다 — 고정 대기로 판정하면 늦게 그려진 화면에서 거짓 「받아쓰기가 없습니다」가 나온다. 이미 준비됐으면 기다리지 않는다.
     func triggerFromShortcut() async {
-        // 이미 앞에 떠 있던 앱이면 화면도 이미 그려져 있다 — 버튼을 기다리지 않는다(받아쓰기 없는 화면의 응답이 2초 늦지 않게).
-        let wasActive = UIApplication.shared.applicationState == .active
+        // 이미 앞에 떠 있었고 받아쓰기 버튼이 한 번이라도 창에 붙은 적이 있는 앱이면 화면이 이미 그려져 있다 — 버튼을 기다리지
+        // 않는다(받아쓰기 없는 화면의 응답이 2초 늦지 않게). 막 켜진 앱은 활성 상태로 들어와도 등록이 0이라 종전대로 기다린다.
+        let wasActive = UIApplication.shared.applicationState == .active && nextOrder > 0
         var polls = 0
         while UIApplication.shared.applicationState != .active, polls < ShortcutWait.maxPolls {
             try? await Task.sleep(for: ShortcutWait.interval)
@@ -185,9 +186,11 @@ final class DictationTriggerRegistry {
             node = current.superview
         }
         // 검색 필드 편집 중의 `UISearchController`는 화면을 덮는 시트가 아니다(그 화면의 마이크 행이 대상에서 빠지지 않게).
-        while let presented = top.presentedViewController, !presented.isBeingDismissed,
-              !(presented is UISearchController) {
-            top = presented
+        // 건너뛰되 사슬은 끝까지 오른다 — 그 위에 뜬 시트는 여전히 덮는 화면이다.
+        var cursor = top
+        while let presented = cursor.presentedViewController, !presented.isBeingDismissed {
+            cursor = presented
+            if !(presented is UISearchController) { top = presented }
         }
         return view.isDescendant(of: top.view)
     }

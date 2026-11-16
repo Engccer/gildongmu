@@ -98,6 +98,8 @@ struct OutingSheet: View {
                         }
                     }
             }
+            // 이 스택에서 들어가는 장소 상세(주변 역, 역 상세까지)에는 채팅 진입이 없다. 목적지 화면은 스택의 환경을 물려받는다.
+            .environment(\.placeChatEntryAllowed, false)
         }
         .sheet(isPresented: $showsConsent) {
             ChatConsentView {

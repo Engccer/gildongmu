@@ -53,7 +53,7 @@ public enum DictationTriggerResponse: Equatable, Sendable {
 /// - 지금 화면에 대상이 없는데 녹음 중(`micHot`)이면 조용히 삼킨다. 「받아쓰기가 없습니다」는 거짓이고 그 낭독이 전사에 섞인다.
 ///
 /// - Parameter inCall: 통화가 이어지는 중인가. 안전 인자라 기본값이 없다.
-/// - Parameter micHot: 앱 어디서든 받아쓰기 녹음이 진행 중인가(버튼이 화면에 없어도). 안전 인자라 기본값이 없다.
+/// - Parameter micHot: 앱 어디서든 받아쓰기가 진행 중인가(준비 중 포함, 버튼이 화면에 없어도). 안전 인자라 기본값이 없다.
 public func dictationTriggerResponse(
     source: DictationTriggerSource,
     inCall: Bool,
@@ -62,10 +62,11 @@ public func dictationTriggerResponse(
 ) -> DictationTriggerResponse {
     if source == .magicTap, inCall { return .passToSystem }
     let visible = candidates.filter(\.frontmost)
-    let pick = visible.filter(\.active).max(by: { $0.order < $1.order })
-        ?? visible.max(by: { $0.order < $1.order })
-    if let pick { return .toggle(id: pick.id) }
+    // 받아쓰는 중인 버튼이 보이면 그것이다(끝내기).
+    if let active = visible.filter(\.active).max(by: { $0.order < $1.order }) { return .toggle(id: active.id) }
+    // 보이지 않는 곳에서 녹음 중이면 삼킨다 — 지금 화면의 쉬는 버튼을 켜면 두 번째 녹음이 시작되고 그 시작음·낭독이 열린 마이크에 든다.
     if micHot { return .swallow }
+    if let pick = visible.max(by: { $0.order < $1.order }) { return .toggle(id: pick.id) }
     switch source {
     case .magicTap: return .passToSystem
     case .shortcut: return .announceNoTarget

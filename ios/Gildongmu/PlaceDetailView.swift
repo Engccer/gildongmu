@@ -21,6 +21,9 @@ struct PlaceDetailView<DomainSection: View>: View {
     /// "이 장소에 관해 물어보기" 노출 여부(기본 표시). 채팅 안에서 연 상세(카드·산문
     /// 액션)에서만 숨긴다 — 채팅 위에 새 채팅 시트를 쌓는 재진입 순환 방지.
     var showsChatEntry: Bool = true
+    /// 이 화면이 놓인 스택 전체의 채팅 진입 허용(나들이 위 「둘러보기」 스택만 false). 상세에서 주변 역, 역 상세로 더 들어가도
+    /// 같은 값이 따라온다(인자로 넘기면 사슬의 한 자리 누락이 조용히 허용 쪽으로 간다).
+    @Environment(\.placeChatEntryAllowed) private var chatEntryAllowed
     /// 경유역 전화번호 조회의 노선 힌트(E44 spec §5.2) — 대중교통 안내 시트가 경유역을 열 때만, 누르는 순간 확정한
     /// leg `lineName`을 넘긴다. 그 밖의 상세는 nil(자기 `phone`이 전부다).
     var stationLineHint: String? = nil
@@ -209,7 +212,7 @@ struct PlaceDetailView<DomainSection: View>: View {
     }
 
     @ViewBuilder private var chatRow: some View {
-        if showsChatEntry {
+        if showsChatEntry, chatEntryAllowed {
             Button(appLocalized("placeChat.launch")) { isChatPresented = true }
         }
     }
@@ -368,4 +371,9 @@ extension PlaceDetailView where DomainSection == EmptyView {
             place: place, showsDirectionsEntry: showsDirectionsEntry,
             showsChatEntry: showsChatEntry, stationLineHint: stationLineHint, domainSection: { EmptyView() })
     }
+}
+
+extension EnvironmentValues {
+    /// 장소 상세의 채팅 진입을 스택 단위로 끈다(E82: 나들이 세션 위에서 채팅을 겹쳐 열면 받아쓰기와 기기 음성이 둘이 된다).
+    @Entry var placeChatEntryAllowed: Bool = true
 }

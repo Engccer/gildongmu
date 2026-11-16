@@ -485,3 +485,31 @@ describe("나들이 장소 목록은 종료 즉시 비운다(E58 후속 ④, 카
     expect(model).not.toMatch(/func place\(id:/);
   });
 });
+
+describe("E82 재리뷰(2026-11-17) 배선", () => {
+  const model = readFileSync(MODEL, "utf8");
+  const read = (rel: string) => readFileSync(join(IOS, rel), "utf8");
+
+  it("소리 상태 경고 두 문장은 자동 안내가 아니다(전경 VoiceOver에서 VoiceOver로)", () => {
+    for (const key of ["ios.beacon.soundBackgroundUnavailable", "ios.beacon.soundUnavailable"]) {
+      const line = functionBody(model, "playTone").split("\n").find((l) => l.includes(`"${key}"`));
+      expect(line, key).toContain("origin: .status");
+    }
+  });
+
+  it("말하던 기기 음성을 멈추는 자리는 사용자 종료와 안내 인계 둘뿐이고 공통 stop()에는 없다", () => {
+    expect(model.split("silenceForegroundDeviceSpeech()").length - 1).toBe(3); // 선언 1 + 호출 2
+    expect(functionBody(model, "stopByUser")).toContain("silenceForegroundDeviceSpeech()");
+    expect(functionBody(model, "endForHandover")).toContain("silenceForegroundDeviceSpeech()");
+    expect(functionBody(model, "stop")).not.toContain("silenceSpoken");
+  });
+
+  it("나들이 위 둘러보기 스택은 장소 상세의 채팅 진입을 환경 값으로 끈다", () => {
+    expect(read("Gildongmu/Directions/OutingSheet.swift")).toContain(".environment(\\.placeChatEntryAllowed, false)");
+    expect(read("Gildongmu/PlaceDetailView.swift")).toContain("if showsChatEntry, chatEntryAllowed {");
+  });
+
+  it("홀드 시작은 외부 시작의 준비 중에도 새 세션을 만들지 않는다", () => {
+    expect(functionBody(read("Gildongmu/HoldDictationButton.swift"), "beginHold")).toContain("!speech.isStarting");
+  });
+});

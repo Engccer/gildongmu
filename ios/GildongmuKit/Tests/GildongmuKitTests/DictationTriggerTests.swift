@@ -60,7 +60,16 @@ struct DictationTriggerTests {
         }
     }
 
-    @Test("녹음 중이어도 지금 화면의 버튼이 먼저다(끝내기), 통화 중 Magic Tap은 그대로 시스템이다")
+    @Test("다른 곳에서 녹음 중이면 지금 화면의 쉬는 버튼을 켜지 않는다(두 번째 녹음 금지)")
+    func micHotNeverStartsIdleButton() {
+        let candidates = [c(1, frontmost: false, active: true, order: 1), c(2, order: 9)]
+        for source in [DictationTriggerSource.magicTap, .shortcut] {
+            #expect(dictationTriggerResponse(source: source, inCall: false, micHot: true, candidates: candidates) == .swallow)
+            #expect(dictationTriggerResponse(source: source, inCall: false, micHot: true, candidates: [c(2, order: 9)]) == .swallow)
+        }
+    }
+
+    @Test("녹음 중이어도 지금 화면의 받아쓰는 버튼이 먼저다(끝내기), 통화 중 Magic Tap은 그대로 시스템이다")
     func micHotKeepsToggleAndCall() {
         #expect(dictationTriggerResponse(source: .shortcut, inCall: false, micHot: true, candidates: [c(3, active: true, order: 1)]) == .toggle(id: 3))
         #expect(dictationTriggerResponse(source: .magicTap, inCall: true, micHot: true, candidates: []) == .passToSystem)

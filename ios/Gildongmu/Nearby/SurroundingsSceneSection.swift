@@ -280,8 +280,6 @@ struct SurroundingsSceneGroupsView: View {
     /// 장소 상세의 길찾기 프리필·목적지 바꾸기(E75) — 안내 중 「지금 여기는 어디?」 창만 false(시트 뒤 탭을 조작하고, 시트 세
     /// 겹 깊이에서 목적지 착지 계약을 우회한다).
     var showsDirectionsEntry = true
-    /// 장소 상세의 채팅 진입. 나들이 위 「둘러보기」만 false(채팅을 겹쳐 열면 받아쓰기와 기기 음성이 둘이 된다).
-    var showsChatEntry = true
 
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
@@ -301,9 +299,7 @@ struct SurroundingsSceneGroupsView: View {
             ) { index, item in
                 // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
                 let link = NavigationLink {
-                    PlaceDetailView(
-                        place: sceneItemToPlace(item), showsDirectionsEntry: showsDirectionsEntry,
-                        showsChatEntry: showsChatEntry)
+                    PlaceDetailView(place: sceneItemToPlace(item), showsDirectionsEntry: showsDirectionsEntry)
                         .onAppear { onPushed?() }
                 } label: {
                     SceneText.itemRow(item)
@@ -368,8 +364,7 @@ struct SurroundingsSceneAutoSection: View {
         } else if let scene {
             SurroundingsSceneGroupsView(
                 scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false,
-                rowActionsAskAbout: onAskAbout, onPushed: onPushed, showsDirectionsEntry: showsDirectionsEntry,
-                showsChatEntry: onAskAbout != nil)
+                rowActionsAskAbout: onAskAbout, onPushed: onPushed, showsDirectionsEntry: showsDirectionsEntry)
         }
     }
 }
