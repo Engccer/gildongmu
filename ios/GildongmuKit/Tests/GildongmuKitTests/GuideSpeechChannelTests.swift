@@ -38,7 +38,7 @@ struct GuideSpeechChannelTests {
         guideSpeechChannel(
             foreground: i.foreground, voiceOverRunning: i.voiceOver, speechClass: i.cls,
             backgroundSpeechEnabled: i.enabled, backgroundAudible: i.audible, foregroundDeviceSpeech: outing,
-            askWindowActive: false)
+            askWindowActive: false, deviceOverVoiceOver: false)
     }
 
     // spec §1: 토글을 끄면(2.0 전 정식판의 상수 거짓과 같은 값) 도보·자동차·대중교통의 결과가 종전과 입력 전

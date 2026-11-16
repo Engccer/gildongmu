@@ -377,6 +377,8 @@
     <string name="android_settings_listenSpeed15x">1.5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
+    <string name="android_settings_outingForegroundSpeech">Stroll guidance in device voice</string>
+    <string name="android_settings_outingForegroundSpeechFooter">During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on.</string>
     <string name="android_settings_releaseNotes">Release notes</string>
     <string name="android_settings_releaseNotesError">Could not load release notes</string>
     <string name="android_settings_releaseNotesVersion">Version %1$s</string>

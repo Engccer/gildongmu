@@ -32291,6 +32291,86 @@
         }
       }
     },
+    "ios.settings.outingForegroundSpeech": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 안내를 기기 음성으로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stroll guidance in device voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía del paseo con la voz del dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage de la balade avec la voix de l'appareil"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida della passeggiata con la voce del dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩の案内を端末の音声で"
+          }
+        }
+      }
+    },
+    "ios.settings.outingForegroundSpeechFooter": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 중 화면을 켜 두어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante el paseo, anuncia los lugares cercanos, los cruces de calles y los pasos de peatones con la voz del dispositivo en lugar de VoiceOver, incluso con la pantalla encendida."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendant la balade, annonce les lieux proches, les intersections et les passages piétons avec la voix de l'appareil au lieu de VoiceOver, même écran allumé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante la passeggiata, annuncia i luoghi vicini, gli incroci e gli attraversamenti pedonali con la voce del dispositivo invece di VoiceOver, anche a schermo acceso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩中は画面がついていても、周辺、分かれ道、横断歩道の案内をVoiceOverの代わりに端末の音声で伝えます。"
+          }
+        }
+      }
+    },
     "ios.settings.releaseNotes": {
       "localizations": {
         "ko": {

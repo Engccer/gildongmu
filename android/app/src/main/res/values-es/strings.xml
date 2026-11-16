@@ -377,6 +377,8 @@
     <string name="android_settings_listenSpeed15x">1,5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
+    <string name="android_settings_outingForegroundSpeech">Guía del paseo con la voz del dispositivo</string>
+    <string name="android_settings_outingForegroundSpeechFooter">Durante el paseo, anuncia los lugares cercanos, los cruces de calles y los pasos de peatones con la voz del dispositivo en lugar de VoiceOver, incluso con la pantalla encendida.</string>
     <string name="android_settings_releaseNotes">Notas de la versión</string>
     <string name="android_settings_releaseNotesError">No se pudieron cargar las notas de la versión</string>
     <string name="android_settings_releaseNotesVersion">Versión %1$s</string>

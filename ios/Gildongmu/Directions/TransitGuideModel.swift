@@ -214,7 +214,8 @@ final class TransitGuideModel {
         isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
         backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false },
-        askWindowActive: { false }  // 묻고 답하는 구간은 나들이에만 있다(E82 V0c)
+        askWindowActive: { false },  // 묻고 답하는 구간은 나들이에만 있다(E82 V0c)
+        deviceOverVoiceOver: { false }  // 전경 기기 음성은 나들이에만 있다(E82 판정 7)
     )
     /// 직전 폴 시작의 단조 시각(초) — `pollStart sinceLast=` 계측(A16 미확정 ②).
     private var lastPollStartAt: Double?
@@ -2704,7 +2705,7 @@ final class TransitGuideModel {
         // 하나만 낭독한다(`missedAnnouncement`). 정식판은 토글 실효값이 거짓이라 종전 그대로다.
         let channel = GuideSpeechOutput.channel(
             speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible,
-            askWindowActive: false)
+            askWindowActive: false, deviceOverVoiceOver: false)
         // 계측(E53 실사용 판정 — 백그라운드 문장 빈도): 전경 VoiceOver 게시는 종전처럼 남기지 않고 백그라운드 판정만.
         if !GuideSpeechOutput.isForeground {
             transitGuideLog("bgSpeech channel=\(channel.rawValue) class=\(speechClass.rawValue) text=\(message)")
