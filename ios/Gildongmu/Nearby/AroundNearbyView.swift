@@ -182,8 +182,9 @@ struct AroundNearbyView: View {
                         onAskAbout: directionsEntryAllowed ? { chatPlace = $0 } : nil,
                         onPushed: { model.notePushed() }, showsDirectionsEntry: directionsEntryAllowed)
 
-                    // 4. 이 위치에 관해 물어보기.
-                    if let overview = payload.overview {
+                    // 4. 이 위치에 관해 물어보기. 안내 세션 위(`AroundHost.session`)에서는 없다 — 나들이에는 「말로 묻기」가 있고
+                    // 채팅을 겹쳐 열면 받아쓰기와 기기 음성이 둘이 된다.
+                    if host == .nearbyTab, let overview = payload.overview {
                         Button(appLocalized("ios.nearby.whereAmIChat")) {
                             chatPlace = overviewAnchorPlace(
                                 overview, lat: payload.lat, lng: payload.lng, lang: AppLanguage.current)

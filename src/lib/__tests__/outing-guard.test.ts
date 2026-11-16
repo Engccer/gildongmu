@@ -301,6 +301,10 @@ describe("나들이 시트 배치(E54)", () => {
     const sheet = readFileSync(SHEET, "utf8");
     expect(sheet).toContain('Button(appLocalized("ios.nearby.around")) { showsAround = true }');
     expect(sheet).toContain("AroundNearbyView(host: .session)");
+    // 세션 위 둘러보기에는 채팅 진입이 없다(나들이의 「말로 묻기」와 받아쓰기·기기 음성이 겹친다).
+    expect(readFileSync(join(IOS, "Gildongmu/Nearby/AroundNearbyView.swift"), "utf8")).toContain(
+      "if host == .nearbyTab, let overview = payload.overview {",
+    );
     expect(sheet).not.toMatch(/GuideOverviewSheet|OverviewAdapter|refreshForOverview/);
     expect(existsSync(join(IOS, "Gildongmu/Directions/OutingOverviewAdapter.swift"))).toBe(false);
     const around = readFileSync(join(IOS, "Gildongmu/Nearby/AroundNearbyView.swift"), "utf8");
