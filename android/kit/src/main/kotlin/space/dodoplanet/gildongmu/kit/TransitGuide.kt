@@ -1141,7 +1141,8 @@ private fun commitBoardingMatched(
         if (!base.boardDepartedSeen) {
             return TransitGuideStepResult(
                 out,
-                if (base.boardConfirmPending) TransitGuideEvent.BoardConfirmLapsed else TransitGuideEvent.VehiclePassed,
+                // 기다리며 지켜보던 열차라면 탔을 수 있다 — 「이미 출발」만 말하지 않고 다시 묻는다(구현 리뷰 M1).
+                if (base.boardConfirmPending || wasTracking) TransitGuideEvent.BoardConfirmLapsed else TransitGuideEvent.VehiclePassed,
             )
         }
         // 이미 말했다. 장애 회복 통지("신호가 회복됐습니다")는 떠난 열차에 싣지 않는다.

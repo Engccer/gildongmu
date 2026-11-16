@@ -463,7 +463,7 @@ export type TransitGuideEvent =
    */
   | { kind: "boardConfirmNeeded" }
   /**
-   * boarding 지하철: 확인을 기다리던 열차가 떠났다(A74) — 탔다면 선언, 아니면 다른 차량을 고르게 다시 묻는다.
+   * boarding 지하철: 확인을 기다리던(또는 다가오는 것을 지켜보던) 열차가 떠났다(A74) — 탔다면 선언, 아니면 다른 차량을 고르게 다시 묻는다.
    * 「이미 출발」만 말하면 탄 사람에게 거짓이고 riding으로 가는 길이 선언뿐임이 전해지지 않는다.
    */
   | { kind: "boardConfirmLapsed" }
@@ -1527,14 +1527,16 @@ function commitBoardingMatched(
     base.lock?.mode === "subway" && (item.arrivalCode === "0" || item.arrivalCode === "1");
   // A74 ①: 떠난 열차(서버 판정 `departedLikely`, 또는 확인을 기다리던 중에 본 출발 2)는 승격하지 않는다(따라가면 한 대 앞 열차의 도착을
   // 알린다). **잠금 단위 래치**라 한 번 서면 다음 폴에 판정이 풀려도 이 잠금으로는 자동 승격이 없다. 표시는 관측이
-  // 끝난 자리(signalLost)에 두고, 처음 한 번만 말한다 — 확인을 기다리던 중이면 다시 묻는 문장으로.
+  // 끝난 자리(signalLost)에 두고, 처음 한 번만 말한다 — 확인을 기다리던 중이거나 지켜보던 열차면 다시 묻는 문장으로.
   if (departedNow || base.boardDepartedSeen) {
     next.signal = "signalLost";
     next.boardDepartedSeen = true;
     if (!base.boardDepartedSeen) {
       return {
         state: next,
-        event: { kind: base.boardConfirmPending ? "boardConfirmLapsed" : "vehiclePassed" },
+        // 기다리며 지켜보던 열차라면 탔을 수 있다 — 「이미 출발」만 말하지 않고 다시 묻는다(구현 리뷰 M1).
+        // 고른 뒤 첫 관측이 곧 떠남(= 떠난 열차를 골랐다)일 때만 「이미 출발」이다.
+        event: { kind: base.boardConfirmPending || wasTracking ? "boardConfirmLapsed" : "vehiclePassed" },
       };
     }
     // 이미 말했다. 장애 회복 통지("신호가 회복됐습니다")는 떠난 열차에 싣지 않는다.

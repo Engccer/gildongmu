@@ -615,7 +615,8 @@ struct TransitTrackingSheet: View {
             } else if state.phase == .boarding {
                 // 차량을 골랐고 승차 정류소 도착을 기다린다(N3). 도착 관측이 riding 승격을
                 // **자동으로** 하므로 선언 버튼은 서지 않는다(위원장 판정 2026-09-10) —
-                // 관측이 끝난 뒤(`boardingManualAvailable` 래치)에만 수동 진행 수단을 낸다.
+                // 관측이 끝났거나 고른 열차의 확인을 기다리거나 그 열차가 떠난 것으로 관측된 뒤
+                // (`boardingManualAvailable` 래치, Kit `transitBoardingDeclareOffered`)에만 수동 진행 수단을 낸다.
                 // 그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔어요]가
                 // 탈출구다(spec §5 — 실제 탄 열차를 다시 지목하므로 더 정확한 잠금이 된다).
                 if model.boardingManualAvailable {

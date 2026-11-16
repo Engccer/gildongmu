@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { boardStopDeparture, PLATFORM_DWELL_SECONDS } from "../transit-track";
+import { boardStopDeparture, PLATFORM_DWELL_SECONDS, STALE_FROZEN_SECONDS } from "../transit-track";
+import { BOARD_STOP_FRESH_SECONDS } from "../transit-guide";
 
 /**
  * A74(spec `2026-11-17-a74-departed-train-at-board-stop-design.md` §3): 조회 역에 「도착」으로 실린 열차가
@@ -95,6 +96,13 @@ describe("boardStopDeparture — 승강장을 떠난 열차 판정(A74)", () => 
   it("미래 수신 시각(신분당선 고장)은 0초로 읽는다", () => {
     expect(boardStopDeparture({ station: "강남", receivedAt: at("05:48:00"), position: null, nowMs: NOW }))
       .toEqual({ departed: false, platformAgeSeconds: 0 });
+  });
+});
+
+describe("옛 클라이언트 보호의 전제(A74)", () => {
+  it("서버가 숫자 나이를 싣는 문턱과 클라이언트의 승차역 신선도 상한이 같다 — 어긋나면 옛 앱의 자동 승격이 다시 열린다", () => {
+    expect(STALE_FROZEN_SECONDS).toBe(BOARD_STOP_FRESH_SECONDS);
+    expect(PLATFORM_DWELL_SECONDS).toBeGreaterThanOrEqual(STALE_FROZEN_SECONDS);
   });
 });
 

@@ -559,10 +559,13 @@ async function boardStopPositions(
     return t == null || (nowMs - t) / 1000 <= PLATFORM_DWELL_SECONDS;
   });
   if (!undecided) return out;
+  let budget: ReturnType<typeof setTimeout> | undefined;
   try {
     const positions = await Promise.race([
       fetchSubwayLinePositions(line, nowMs),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), BOARD_STOP_POSITION_BUDGET_MS)),
+      new Promise<null>((resolve) => {
+        budget = setTimeout(() => resolve(null), BOARD_STOP_POSITION_BUDGET_MS);
+      }),
     ]);
     for (const t of positions?.trains ?? []) {
       const prev = out.get(t.trainNo);
@@ -571,6 +574,8 @@ async function boardStopPositions(
     }
   } catch {
     // 위치 조회 실패는 판정 재료가 하나 줄 뿐이다 — 도착 레코드 나이만으로 가른다.
+  } finally {
+    clearTimeout(budget);
   }
   return out;
 }

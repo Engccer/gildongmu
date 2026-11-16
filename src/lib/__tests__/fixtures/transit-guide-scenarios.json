@@ -8880,6 +8880,119 @@
      }
     }
    ]
+  },
+  {
+   "name": "A74 지하철: 지켜보던 열차의 첫 도착에 이미 떠남 표식이 붙으면 승격하지 않고 다시 묻는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3",
+         "dataStamp": "2026-11-17 05:40:33",
+         "dataAgeSeconds": 20
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "event": {
+       "kind": "approaching"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:02",
+         "dataAgeSeconds": 40,
+         "departedLikely": true
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "boardDepartedSeen": true,
+      "boardConfirmPending": false,
+      "event": {
+       "kind": "boardConfirmLapsed"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "2026-11-17 05:41:40",
+         "dataAgeSeconds": 10
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    }
+   ]
   }
  ]
 }
