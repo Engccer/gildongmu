@@ -60,7 +60,7 @@ const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 // CallKit(E82 판정 10): 통화 중 Magic Tap을 시스템에 넘기려고 실험판 받아쓰기 등록부만 `CXCallObserver`를 읽는다.
 const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth", "CallKit"];
 /** 실험 게이트 안 앱 타입 이름. 정식 실행 파일 바이트에 이 문자열(Swift 맹글 이름의 일부)이 보이면 코드가 샌 것이다.
- *  프레임워크 링크로는 안 잡히는 것(App Intent는 프레임워크가 정식판에도 링크된다)만 둔다. */
+ *  프레임워크 링크로는 안 잡히는 것만 둔다. */
 const EXPERIMENTAL_ONLY_SYMBOLS = ["DictationTriggerRegistry"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 

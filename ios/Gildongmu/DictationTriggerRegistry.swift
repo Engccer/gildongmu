@@ -14,7 +14,7 @@ import GildongmuKit
 extension View {
     /// 이 컨트롤을 「화면을 겨냥하지 않는 받아쓰기」의 대상으로 등록한다(E82 판정 10). `perform`은 그 컨트롤을 누른 것과 같은
     /// 길이어야 한다 — 녹음 시작 때 낭독 끊기·완료 뒤 포커스·통지 계약이 버튼으로 시작한 경우와 갈리지 않게.
-    /// `perform`의 반환값은 실제로 무언가 했는가다(무시했으면 `false` — Magic Tap은 시스템 기본 동작으로 돌아간다).
+    /// `perform`의 반환값은 실제로 무언가 했는가다. 무시했어도(`false`) Magic Tap은 삼킨다 — 대상이 있는 화면의 두 번 탭이 음악을 켜지 않게(`handleMagicTap`).
     /// 정식판에서는 아무것도 하지 않는다(등록부·Magic Tap 처리가 컴파일에서 빠진다).
     @ViewBuilder
     func dictationTriggerTarget(

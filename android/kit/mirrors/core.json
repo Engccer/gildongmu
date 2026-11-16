@@ -67,7 +67,7 @@
     {
       "swift": "DictationTrigger.swift",
       "status": "pending",
-      "note": "E82 판정 10 화면을 겨냥하지 않는 받아쓰기 시작·끝(iOS 실험판 선행: VoiceOver Magic Tap·단축어 뒷면 탭). TalkBack에는 Magic Tap 대응 제스처가 없어 안드로이드 동작 판정 전 이식 보류"
+      "note": "E82 판정 10 화면을 겨냥하지 않는 받아쓰기 시작·끝(iOS 실험판 선행: VoiceOver Magic Tap). TalkBack에는 Magic Tap 대응 제스처가 없어 안드로이드 동작 판정 전 이식 보류"
     },
     {
       "swift": "DeviceSpeechQueue.swift",

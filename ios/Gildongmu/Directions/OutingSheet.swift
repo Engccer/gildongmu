@@ -185,7 +185,7 @@ struct OutingSheet: View {
             Button { showsConsent = true } label: {
                 Text(appLocalized("ios.outing.askButton")).frame(maxWidth: .infinity, minHeight: 44)
             }
-            .dictationTriggerTarget(isActive: { false }) { showsConsent = true; return true }  // 동의 전: 두 동작도 동의 화면을 연다(E82 판정 10)
+            .dictationTriggerTarget(isActive: { false }) { showsConsent = true; return true }  // 동의 전: 두 번 탭도 동의 화면을 연다(E82 판정 10)
         }
     }
 
