@@ -76,8 +76,9 @@ describe("규칙 1·2: 장소 목록 행은 밀기 버튼, 딥링크 없음", ()
       const rows = s.split("PlaceRow(\n").length - 1 + s.split("PlaceRow(place:").length - 1;
       const swipes = s.split(".placeRowSwipeActions(").length - 1;
       expect(swipes, file).toBe(rows);
-      // 밀기 수정자는 라벨 안이 아니라 링크 뒤(`}` 다음 줄)에 온다.
-      if (rows > 0) expect(s, file).toMatch(/\n\s*\}\n\s*\.placeRowSwipeActions\(/);
+      // 밀기 수정자는 라벨 안이 아니라 링크 뒤(`}` 다음 줄, 또는 행 뿌리를 담은 `link`)에 온다. 둘러보기는 길찾기 진입이 없는
+      // 자리(나들이 「둘러보기」)에서 묶음째 달지 않으려고 `link`로 받는다(주변 상황 행과 같은 모양).
+      if (rows > 0) expect(s, file).toMatch(/(\n\s*\}\n\s*|\blink)\.placeRowSwipeActions\(/);
       total += rows;
     }
     expect(total).toBe(6); // 검색 결과 · 소아 진료 · 행사 · 아이 놀 곳 · 무장애 · 둘러보기 주변 가게

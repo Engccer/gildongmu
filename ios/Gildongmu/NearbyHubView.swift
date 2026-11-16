@@ -16,7 +16,7 @@ struct NearbyHubView: View {
             List {
                 Section { LocationBarView() }
                 // 맨 위 — "내가 어디 있고 주변에 뭐가 있나"가 이 탭의 첫 질문이다(위원장 판정 2026-08-22).
-                NavigationLink(appLocalized("ios.nearby.around")) { AroundNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.around")) { AroundNearbyView(host: .nearbyTab) }
                 NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView(directionsEntryAllowed: true) }
                 NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView(directionsEntryAllowed: true) }
                 NavigationLink(appLocalized("ios.nearby.bike")) { BikeNearbyView() }

@@ -770,12 +770,6 @@
   "ios.outing.historyMinutesAgo": [
     "minutes"
   ],
-  "ios.outing.itemLeft": [
-    "distance"
-  ],
-  "ios.outing.itemRight": [
-    "distance"
-  ],
   "ios.outing.lastHeading": [
     "dir"
   ],
@@ -801,15 +795,6 @@
     "road"
   ],
   "ios.outing.walked": [
-    "distance"
-  ],
-  "ios.outing.zoneAhead": [
-    "distance"
-  ],
-  "ios.outing.zoneAround": [
-    "distance"
-  ],
-  "ios.outing.zoneBehind": [
     "distance"
   ],
   "ios.place.askAbout": [

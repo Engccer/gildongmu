@@ -83,4 +83,72 @@ struct OutingHistoryTests {
         #expect(outingHistoryAgeMinutes(at: 100, now: 100 + 125) == 2)
         #expect(outingHistoryAgeMinutes(at: 100, now: 40) == 0)
     }
+
+    @Test("두 묶음: 「지나온 곳」은 답이 아닌 줄 최신이 위, 「물어본 것」은 답만 최신이 아래(판정 2026-11-16 ①⑨)")
+    func splitsPassedAndAnswers() {
+        var history = OutingHistory()
+        history.record(.place(place("a"), side: .left, passedBy: false), at: 1)
+        let firstAnswer = history.record(.answer(text: "첫 답"), at: 2)
+        history.record(.junction(.tee), at: 3)
+        let secondAnswer = history.record(.answer(text: "둘째 답"), at: 4)
+        history.record(.road(name: "가로수길"), at: 5)
+        #expect(history.passedEntries.map(\.at) == [5, 3, 1])
+        #expect(history.answerEntries == [firstAnswer, secondAnswer])
+        // 질문 재료가 읽는 전체 기록은 시간 순서 그대로 섞여 있다.
+        #expect(history.entries.map(\.at) == [5, 4, 3, 2, 1])
+    }
+
+    @Test("한 번도 묻지 않았으면 「물어본 것」은 비어 있다")
+    func noAnswersNoGroup() {
+        var history = OutingHistory()
+        history.record(.crosswalk(audioSignal: false), at: 1)
+        #expect(history.answerEntries.isEmpty)
+    }
+
+    @Test("상한은 묶음마다 센다 — 지나온 줄이 아무리 쌓여도 답은 남는다")
+    func capacityPerGroup() {
+        var history = OutingHistory()
+        let answer = history.record(.answer(text: "답"), at: 0)
+        for i in 1...(OutingHistory.capacity + 5) {
+            history.record(.junction(.cross), at: Double(i))
+        }
+        #expect(history.answerEntries == [answer])
+        #expect(history.passedEntries.count == OutingHistory.capacity)
+        #expect(history.passedEntries.last?.at == 6)
+        for i in 1...(OutingHistory.capacity + 2) {
+            history.record(.answer(text: "답 \(i)"), at: Double(100 + i))
+        }
+        #expect(history.answerEntries.count == OutingHistory.capacity)
+        #expect(history.answerEntries.first?.at == 103)
+        #expect(history.passedEntries.count == OutingHistory.capacity)
+    }
+
+    @Test("지나온 곳의 보일 줄 수: 창 수가 기본이고, 커서가 머문 아래 줄까지는 남긴다")
+    func passedShownCount() {
+        #expect(outingPassedShownCount(windowCount: 20, total: 29, focusedIndex: nil) == 20)
+        #expect(outingPassedShownCount(windowCount: 20, total: 12, focusedIndex: nil) == 12)
+        #expect(outingPassedShownCount(windowCount: 20, total: 29, focusedIndex: 5) == 20)
+        // 새 줄 두 개가 위에 들어와 커서가 머문 줄(창의 맨 아래였던 줄)이 21번째로 밀렸다.
+        #expect(outingPassedShownCount(windowCount: 20, total: 31, focusedIndex: 21) == 22)
+        #expect(outingPassedShownCount(windowCount: 20, total: 3, focusedIndex: 9) == 3)
+    }
+
+    @Test("지나온 곳의 더 보기: 처음 20줄, 누를 때마다 20줄 더, 첫 새 줄 위치를 돌려준다")
+    func passedRevealMore() {
+        var window = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
+        #expect(window.visibleCount == 20)
+        #expect(outingPassedRevealMore(&window, shown: 20, total: 45) == 20)
+        #expect(window.visibleCount == 40)
+        #expect(outingPassedRevealMore(&window, shown: 40, total: 45) == 40)
+        #expect(window.visibleCount == 45)
+        #expect(outingPassedRevealMore(&window, shown: 45, total: 45) == nil)
+        #expect(window.visibleCount == 45)
+    }
+
+    @Test("커서가 붙든 줄 때문에 창보다 많이 보일 때 더 보기는 보이는 줄 다음부터 연다")
+    func passedRevealMorePastKeptRow() {
+        var window = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
+        #expect(outingPassedRevealMore(&window, shown: 22, total: 50) == 22)
+        #expect(window.visibleCount == 40)
+    }
 }

@@ -271,8 +271,9 @@ struct GuideHereSurroundingsRows: View {
 }
 
 /// 지금 위치(`force: true`, 수동 위치 없이). 위치 오류를 코어 상태로 번역한다 — 취득 실패가 서버 실패 문장으로 새지 않게.
+/// 나들이 「둘러보기」(`AroundNearbyView(host: .session)`)도 이 길을 쓴다.
 @MainActor
-private func hereCoordinate() async throws -> NearbyCoord {
+func hereCoordinate() async throws -> NearbyCoord {
     do {
         return try await LocationService.shared.currentCoordinate(force: true)
     } catch let error as LocationService.LocationError {

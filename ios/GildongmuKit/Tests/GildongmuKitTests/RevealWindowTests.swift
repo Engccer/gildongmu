@@ -58,4 +58,14 @@ struct RevealWindowTests {
         window.reset()
         #expect(window.visibleCount == 10)
     }
+
+    /// 수만 다른 창(나들이 「지나온 곳」 20·+20) — 동작은 같고 reset은 그 창의 처음 수로 돌아간다.
+    @Test func customCounts() {
+        var window = RevealWindow(initialVisible: 20, revealStep: 20)
+        #expect(window.visibleCount == 20)
+        #expect(window.revealMore(totalCount: 50) == 20)
+        #expect(window.visibleCount == 40)
+        window.reset()
+        #expect(window.visibleCount == 20)
+    }
 }

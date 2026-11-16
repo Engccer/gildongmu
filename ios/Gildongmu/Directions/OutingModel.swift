@@ -183,13 +183,6 @@ final class OutingModel {
     /// 직전 조회가 실패한 시각 — 제자리에서도 재시도한다(`outingRequeryStep`).
     private var lastQueryFailedAt: Double?
     private var queryTask: Task<Void, Never>?
-    /// 조망 스냅샷(연 순간 + 그때 건 재조회가 반영된 첫 fix). 조망이 fix마다 다시 계산되면 커서 아래 항목이
-    /// 구획 사이를 옮겨 다닌다(접근성 감사 M4) — "지금 둘러보기"라 열린 동안 몇 초의 낡음은 손실이 아니다.
-    private(set) var overviewRelations: [String: OutingRelation] = [:]
-    private(set) var overviewHeadingValid = false
-    /// 조망을 연 뒤 첫 조회 커밋에서 스냅샷을 다시 찍는다 — 조회가 진행 중이거나 출발점 확정 전에 연 조망이 빈 스냅샷을
-    /// 든 채 "없음"을 말하지 않게(구현 검증 N1). 조망이 따로 거는 재조회든 진행 중이던 조회든 같은 표식이다.
-    private var overviewAwaitingCommit = false
     private var road = OutingRoadState()
     /// 방향 행의 앞쪽 이정표 문구 — 방위가 valid인 마지막 fix에서 정한다(정지 중에도 "…, 마지막 진행 방향"과 함께 남는다).
     private(set) var aheadText: String?
@@ -399,9 +392,6 @@ final class OutingModel {
         lastQueryFailedAt = nil
         queryTask?.cancel()
         queryTask = nil
-        overviewRelations = [:]
-        overviewHeadingValid = false
-        overviewAwaitingCommit = false
         road = OutingRoadState()
         aheadText = nil
         lastFix = nil
@@ -458,13 +448,12 @@ final class OutingModel {
         nodeLogSeq = [:]
         lastProbe = nil
         // 둘러보기 장소(카카오)와 거기서 유도한 관계·이름 문장도 같은 축(E58 후속 ④): 종료 화면은 사유·걸음 요약·출발점만
-        // 읽고 조망은 종료 전이에서 닫히므로(`OutingSheet` onChange) 종료 즉시 비운다.
+        // 읽으므로 종료 즉시 비운다.
         places = [:]
         relations = [:]
         bundle = OutingBundle()
         // 기록도 같은 축이다(가게 이름·좌표) — 세션이 끝나면 지운다(E82 V10).
         history.clear()
-        overviewRelations = [:]
         aheadText = nil
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()
@@ -780,10 +769,6 @@ final class OutingModel {
         surroundingsStatus = next.status
         surroundingsFailures = next.failures
         lastQueryFailedAt = outcome == .failure ? uptimeNow : nil
-        if overviewAwaitingCommit {
-            overviewAwaitingCommit = false
-            snapshotOverview(projectingFrom: lastFix)
-        }
         // 원천 합성(spec §6.6): 횡단보도 OSM → 서울망 → 탐침, 교차점 OSM → 서울망 → 탐침 꺾임. 같은 자리는 먼저 온
         // 점의 id로 흡수된다(latch 하나). 탐침 결과는 이 세션 메모리에만 남는다.
         if case .ok(let osm) = walk?.infra.osm {
@@ -1141,15 +1126,6 @@ final class OutingModel {
         case .cross: "cross"
         case .tee: "tee"
         case .branching: "branching"
-        }
-    }
-
-    static func overviewItemLine(name: String, side: OutingSide, meters: Int) -> String {
-        let distance = formatDistance(meters)
-        switch side {
-        case .left: return joinText(name, appLocalized("ios.outing.itemLeft", distance))
-        case .right: return joinText(name, appLocalized("ios.outing.itemRight", distance))
-        case .unknown: return joinText(name, distance)
         }
     }
 
@@ -1539,32 +1515,6 @@ final class OutingModel {
         default: appLocalized("ios.outing.dir.nw")
         }
     }
-
-    // MARK: - 조망
-
-    /// 조망 열기 — 현재 위치로 1회 재조회(사용자 요청이라 비용 정당, spec §8.2).
-    func refreshForOverview() {
-        snapshotOverview(projectingFrom: lastFix)
-        guard isTracking else { return }
-        overviewAwaitingCommit = true
-        guard origin != nil, queryTask == nil, let fix = lastFix else { return }
-        requery(at: RoutePoint(lat: fix.lat, lng: fix.lng), reason: "overview")
-    }
-
-    /// 조망 스냅샷 — 마지막 fix에서 받아 둔 장소 전부를 투영한다(지나침 판정의 `relations`는 건드리지 않는다).
-    private func snapshotOverview(projectingFrom fix: (lat: Double, lng: Double, accuracy: Double)?) {
-        if case .valid = heading { overviewHeadingValid = true } else { overviewHeadingValid = false }
-        guard let fix else { overviewRelations = relations; return }
-        var snapshot: [String: OutingRelation] = [:]
-        for (id, p) in places {
-            snapshot[id] = outingProject(
-                fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy,
-                heading: heading, placeLat: p.lat, placeLng: p.lng)
-        }
-        overviewRelations = snapshot
-    }
-
-    func place(id: String) -> SurroundingPlace? { places[id] }
 
     // MARK: - 무-fix 감시·안전망
 

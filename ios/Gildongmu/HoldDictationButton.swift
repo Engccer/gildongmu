@@ -75,6 +75,9 @@ struct HoldDictationButton: View {
     /// 받아쓴 말이 없이 끝났을 때(무발화·문장부호뿐). nil이면 종전처럼 정지음만이다. 받아쓰기 완료를 침묵으로 끝내면 안 되는
     /// 소비자(전송이 곧 다음 행동인 자동 전송, 헌장 §6)만 준다.
     var onNoSpeech: (() -> Void)? = nil
+    /// 줄 전체 폭을 누르는 자리로 쓴다(나들이 맨 아래 고정 줄의 「말로 묻기」, 위원장 판정 2026-11-16 ⑨). 탭 영역과 접근성 틀이
+    /// 이 안의 줄 크기라 호출부의 바깥 frame으로는 넓어지지 않는다.
+    var fillsWidth = false
 
     /// 잠금·취소 판정 이동량(pt). 오발동 방지와 도달성의 절충(WhatsApp 관행 수준).
     private static let slideThreshold: CGFloat = 60
@@ -185,7 +188,7 @@ struct HoldDictationButton: View {
                 Text(title)
             }
         }
-        .frame(minWidth: 44, minHeight: 44)
+        .frame(minWidth: 44, maxWidth: fillsWidth ? .infinity : nil, minHeight: 44)
         .contentShape(Rectangle())
     }
 

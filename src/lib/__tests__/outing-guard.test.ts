@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -46,12 +46,10 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
     "ios.outing.passRight",
     "ios.outing.bundleLeft",
     "ios.outing.bundleRight",
-    "ios.outing.itemLeft",
-    "ios.outing.itemRight",
   ];
-  const SIDE_BUILDERS = ["passByLine", "bundleSideLine", "overviewItemLine"];
+  const SIDE_BUILDERS = ["passByLine", "bundleSideLine"];
 
-  it("좌우 문구 키는 OutingModel의 세 조립 함수 안에만 있다", () => {
+  it("좌우 문구 키는 OutingModel의 두 조립 함수 안에만 있다", () => {
     const users = swiftFiles(IOS).filter((f) => SIDE_KEYS.some((k) => readFileSync(f, "utf8").includes(`"${k}"`)));
     expect(users.map((f) => f.split("/").pop())).toEqual(["OutingModel.swift"]);
     const model = readFileSync(MODEL, "utf8");
@@ -62,7 +60,7 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
     }
   });
 
-  it("세 조립 함수는 OutingSide를 switch한다(문자열·방위에서 좌우를 다시 추론하지 않는다)", () => {
+  it("두 조립 함수는 OutingSide를 switch한다(문자열·방위에서 좌우를 다시 추론하지 않는다)", () => {
     const model = readFileSync(MODEL, "utf8");
     for (const name of SIDE_BUILDERS) {
       const body = functionBody(model, name);
@@ -72,7 +70,6 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
       expect(body).toMatch(/case \.unknown:/);
     }
     expect(model).toMatch(/static func passByLine\(name: String, side: OutingSide\)/);
-    expect(model).toMatch(/static func overviewItemLine\(name: String, side: OutingSide, meters: Int\)/);
   });
 
   it("교차로 좌우 문구 키(E58 ①)는 junctionLine 안에만 있고 그 함수는 OutingSide를 switch한다", () => {
@@ -214,15 +211,40 @@ describe("나들이 문장 창구", () => {
 describe("나들이 시트 배치(E54)", () => {
   const SHEET = join(IOS, "Gildongmu/Directions/OutingSheet.swift");
 
-  it("\"출발점으로\"는 종료 화면에만 있고 안내 중 최하단엔 \"나들이 종료\"만 남는다", () => {
+  it("\"출발점으로\"는 종료 화면에만 있고, 안내 중 맨 아래 고정 줄은 「말로 묻기」 혼자다(위원장 판정 2026-11-16 ⑨)", () => {
     const sheet = readFileSync(SHEET, "utf8");
     expect(sheet.split('"ios.outing.returnToOrigin"').length - 1).toBe(1);
     expect(functionBody(sheet, "endSection")).toContain('"ios.outing.returnToOrigin"');
-    const inset = sheet.slice(sheet.indexOf(".safeAreaInset(edge: .bottom)"), sheet.indexOf(".task {"));
-    expect(inset).toContain('"ios.outing.stop"');
+    const inset = sheet.slice(sheet.indexOf(".safeAreaInset(edge: .bottom)"), sheet.indexOf(".onChange(of: model.history"));
+    expect(inset).toMatch(/if model\.endScreen == nil \{\s*askControl\s*\./);
     expect(inset).not.toContain("returnToOrigin");
+    expect(inset).not.toContain("stopByUser");
+    // 목록 안에는 말로 묻기가 없다(맨 아래 줄 하나뿐 — 종전 「시트 맨 앞 버튼」을 바꿨다).
+    expect(sheet.split("askControl").length - 1).toBe(2); // 선언 + 맨 아래 줄
+    expect(sheet).toContain("fillsWidth: true");
     // 시트 버튼이 사라지면 미확정 라벨 분기·통지도 함께 없다.
     expect(readFileSync(MODEL, "utf8")).not.toContain("announceOriginPending");
+  });
+
+  it("종료는 제목 줄 오른쪽 끝의 「종료」 하나다 — 줄은 나들이, 접기, 종료 순(위원장 판정 2026-11-16 ⑨)", () => {
+    const sheet = readFileSync(SHEET, "utf8");
+    expect(sheet).toMatch(/\} trailing: \{\s*GuideMinimizeButton\(action: onMinimize\)\s*stopButton\s*\}/);
+    expect(sheet.split("model.stopByUser()").length - 1).toBe(1);
+    const stop = sheet.slice(sheet.indexOf("private var stopButton"), sheet.indexOf("/// 「말로 묻기」(E82 V14)"));
+    expect(stop).toContain('appLocalized("ios.outing.stop")');
+    expect(stop).toContain(".frame(minWidth: 44, minHeight: 44)");
+  });
+
+  it("「둘러보기」는 내 주변 탭의 둘러보기를 지금 위치로 연다 — 나들이 전용 조망은 없다(위원장 판정 2026-11-16 ⑤)", () => {
+    const sheet = readFileSync(SHEET, "utf8");
+    expect(sheet).toContain('Button(appLocalized("ios.nearby.around")) { showsAround = true }');
+    expect(sheet).toContain("AroundNearbyView(host: .session)");
+    expect(sheet).not.toMatch(/GuideOverviewSheet|OverviewAdapter|refreshForOverview/);
+    expect(existsSync(join(IOS, "Gildongmu/Directions/OutingOverviewAdapter.swift"))).toBe(false);
+    const around = readFileSync(join(IOS, "Gildongmu/Nearby/AroundNearbyView.swift"), "utf8");
+    // 세션 위에서는 수동 위치를 거치지 않는 지금 위치(안내 시트 「지금 여기는 어디?」와 같은 길)다.
+    expect(around).toContain(".current { _ in try await hereCoordinate() }");
+    expect(around).toContain("private var directionsEntryAllowed: Bool { host == .nearbyTab }");
   });
 
   it("주변 낭독은 펼침 메뉴가 아니라 누를 때마다 다음 단계로 넘어가는 버튼이다", () => {
@@ -231,12 +253,17 @@ describe("나들이 시트 배치(E54)", () => {
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
   });
 
-  it("「방금 말한 것」의 지난 시간은 시트 등장·기록 변경 때 잡은 기준 시각으로 센다(E82 V11)", () => {
+  it("기록 줄(지나온 곳·물어본 것)의 지난 시간은 시트 등장·기록 변경 때 잡은 기준 시각으로 센다(E82 V11)", () => {
     // 그리는 순간의 시각으로 세면 위치 갱신마다 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
     const sheet = readFileSync(SHEET, "utf8");
-    const history = sheet.slice(sheet.indexOf("private var historySection"), sheet.indexOf("private func historyRow"));
+    const history = sheet.slice(sheet.indexOf("private func historySection"), sheet.indexOf("private func historyRow"));
     expect(history).not.toContain("Date()");
-    expect(history).toContain("historyRow(entry, now: historyNow)");
+    expect(history.split("historyRow(entry, now: historyNow)").length - 1).toBe(2);
+    // 두 묶음은 Kit 기록 하나를 화면에서 거른다(질문 재료는 섞인 시간 순서 그대로 읽는다).
+    expect(history).toContain("model.history.passedEntries");
+    expect(history).toContain("model.history.answerEntries");
+    expect(history).toContain("outingPassedShownCount(");
+    expect(history).toContain("outingPassedRevealMore(&passedWindow");
     expect(sheet).toMatch(/\.onChange\(of: model\.history\.entries\.map\(\\\.id\)\) \{\s*historyNow = Date\(\)\.timeIntervalSince1970\s*\}/);
   });
 });
@@ -378,23 +405,17 @@ describe("나들이 장소 목록은 종료 즉시 비운다(E58 후속 ④, 카
     const guardAt = body.indexOf("guard wasActive else { return }");
     expect(guardAt).toBeGreaterThan(0);
     // 가드 뒤에 두면 이미 끝난 세션(종료 화면 → 귀환)의 재호출에서 건너뛴다 — 가드 앞이어야 모든 종료 경로가 지난다.
-    for (const line of ["places = [:]", "relations = [:]", "bundle = OutingBundle()", "overviewRelations = [:]", "aheadText = nil"]) {
+    for (const line of ["places = [:]", "relations = [:]", "bundle = OutingBundle()", "aheadText = nil"]) {
       const at = body.indexOf(line);
       expect(at, line).toBeGreaterThan(0);
       expect(at, line).toBeLessThan(guardAt);
     }
   });
 
-  it("종료 화면은 장소를 들고 있지 않고, 조망은 종료 전이에서 닫힌다(비움의 전제)", () => {
+  it("종료 화면은 장소를 들고 있지 않고, 시트의 어느 화면도 나들이 장소를 읽지 않는다(비움의 전제)", () => {
     const model = readFileSync(MODEL, "utf8");
     const endScreen = model.slice(model.indexOf("struct EndScreen"), model.indexOf("struct ReturnTarget"));
     expect(endScreen).not.toMatch(/SurroundingPlace|places/);
-    expect(readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8")).toMatch(
-      /onChange\(of: model\.endScreen\)[\s\S]{0,200}overviewAdapter = nil/,
-    );
-  });
-  it("조망은 세션이 끝나면 마지막 행을 그대로 낸다(닫히기 전 한 프레임에 \"없음\"으로 다시 그려지지 않게)", () => {
-    const adapter = readFileSync(join(IOS, "Gildongmu/Directions/OutingOverviewAdapter.swift"), "utf8");
-    expect(adapter).toMatch(/var overviewRows: \[GuideOverviewRow\] \{\s*guard model\.isTracking else \{ return lastRows \}/);
+    expect(model).not.toMatch(/func place\(id:/);
   });
 });

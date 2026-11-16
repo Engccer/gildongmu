@@ -343,10 +343,13 @@ struct SurroundingsSceneAutoSection: View {
     let commitID: UUID
     let proxy: ScrollViewProxy
     var focusedID: AccessibilityFocusState<String?>.Binding
-    /// 장소 행 「물어보기」(E72 행 밀기 버튼) — 부모 화면의 장소 채팅 시트.
-    let onAskAbout: (Place) -> Void
+    /// 장소 행 「물어보기」(E72 행 밀기 버튼) — 부모 화면의 장소 채팅 시트. nil이면 행 밀기 묶음이 없다(그 묶음에 길찾기가
+    /// 들어 있어 길찾기 진입이 없는 자리 — 나들이 「둘러보기」).
+    let onAskAbout: ((Place) -> Void)?
     /// 장소 상세가 나타났다(A64 — 부모 코어의 복귀 재조회 생략 표식).
     let onPushed: () -> Void
+    /// 장소 상세의 길찾기 진입. 기본값 없음(새 호스트가 빠뜨리면 조용히 허용 쪽으로 간다).
+    let showsDirectionsEntry: Bool
     @State private var reveal = SceneRevealWindows()
 
     var body: some View {
@@ -361,7 +364,7 @@ struct SurroundingsSceneAutoSection: View {
         } else if let scene {
             SurroundingsSceneGroupsView(
                 scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false,
-                rowActionsAskAbout: onAskAbout, onPushed: onPushed)
+                rowActionsAskAbout: onAskAbout, onPushed: onPushed, showsDirectionsEntry: showsDirectionsEntry)
         }
     }
 }

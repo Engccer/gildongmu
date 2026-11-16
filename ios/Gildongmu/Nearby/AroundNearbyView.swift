@@ -26,6 +26,16 @@ struct AroundPayload: Sendable {
     }
 }
 
+/// 둘러보기를 띄운 자리. 기본값이 없다 — 새 호스트가 빠뜨리면 조용히 수동 위치·길찾기 진입 쪽으로 간다(안전 인자 기본값 금지).
+enum AroundHost {
+    /// 내 주변 탭: 유효 위치(수동 위치 포함), 장소의 길찾기 진입 있음.
+    case nearbyTab
+    /// 안내 세션 위(나들이 「둘러보기」, 위원장 판정 2026-11-16 ⑤): 지금 위치(`hereCoordinate` — 안내 스트림의 최신 fix를 재사용
+    /// 게이트로 거른 값, 수동 위치 없이)이고, 길찾기 진입(행 밀기 버튼·상세의 길찾기)이 없다. 안내 시트 「지금 여기는 어디?」와
+    /// 같은 이유다: 프리필은 시트 뒤 탭을 조작한다.
+    case session
+}
+
 /// 둘러보기 — 현재 위치 확인 + 한눈에 보기 + 주변 상황 + 주변 가게(M4 통합, 2026-08-22).
 /// NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴). ⚠ 방위는 북 기준 절대 8방위만.
 @Observable @MainActor
@@ -35,10 +45,13 @@ final class AroundNearbyModel {
     var phase: NearbyLoadPhase<AroundPayload> { core.phase }
     var visibleCount: Int { window.visibleCount }
 
-    init() {
+    init(host: AroundHost) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        // 세션 위에서는 수동 위치를 거치지 않으므로 "지정한 위치" 문장도 쓰지 않는다.
+        let usesManualLocation = host == .nearbyTab
         core = NearbyLoadCore(
-            coordinate: LocationService.nearbyCoordinateSource(),
+            coordinate: usesManualLocation
+                ? LocationService.nearbyCoordinateSource() : .current { _ in try await hereCoordinate() },
             coverage: .korea,
             fetch: { coord, _ in
                 guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
@@ -66,7 +79,7 @@ final class AroundNearbyModel {
                 let haptic: ResultHaptic.Kind = failed == 3 ? .failure
                     : (failed > 0 || payload.isAllAbsent) ? .attention : .success
                 return NearbyLoadedNotice(
-                    message: ManualLocationStore.shared.current == nil
+                    message: !usesManualLocation || ManualLocationStore.shared.current == nil
                         ? appLocalized("ios.nearby.aroundLoaded")
                         : appLocalized("ios.nearby.aroundLoadedManual"),
                     haptic: haptic)
@@ -99,7 +112,8 @@ private extension Result {
 private let topRowID = "around-top"
 
 struct AroundNearbyView: View {
-    @State private var model = AroundNearbyModel()
+    private let host: AroundHost
+    @State private var model: AroundNearbyModel
     /// 위치 문장의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
     @State private var manualLocationStore = ManualLocationStore.shared
     /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
@@ -109,6 +123,15 @@ struct AroundNearbyView: View {
     @State private var lander = NearbyFocusLander()
     /// 「한눈에 보기」 문장 로터 「○○ 상세 보기」가 push하는 상세(E65).
     @State private var detailTarget: OverviewDetailTarget?
+
+    /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
+    init(host: AroundHost) {
+        self.host = host
+        _model = State(initialValue: AroundNearbyModel(host: host))
+    }
+
+    /// 장소의 길찾기 진입(행 밀기 버튼·상세의 길찾기)을 낼 수 있는가 — 세션 위에서는 없다(`AroundHost.session`).
+    private var directionsEntryAllowed: Bool { host == .nearbyTab }
 
     /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음). 착지는 **위치 문장 1회**뿐
     /// (spec §2.1) — 장면·목록은 같은 커밋이라 늦게 와서 포커스를 끌 수 없다.
@@ -120,7 +143,7 @@ struct AroundNearbyView: View {
     /// 위치 문장 — 이 화면에서 위치 출처(GPS vs 수동)를 선언하는 **유일한 자리**
     /// (종전 WhereAmIView.headerText 책임 승계). 표시줄의 "조회 기준"과 층이 다르다.
     private func hereLine(_ payload: AroundPayload, place: String?) -> String {
-        if manualLocationStore.current == nil {
+        if host == .session || manualLocationStore.current == nil {
             return place.map { appLocalized("ios.nearby.aroundHere", $0) }
                 ?? appLocalized("ios.nearby.aroundHereNoPlace")
         }
@@ -154,8 +177,10 @@ struct AroundNearbyView: View {
                     // 3. 주변 상황 — 자동 펼침(헤딩이 발견 경로, 포커스 이동 없음).
                     SurroundingsSceneAutoSection(
                         scene: payload.scene, failed: payload.sceneFailed, commitID: payload.commitID,
-                        proxy: proxy, focusedID: $focusedID, onAskAbout: { chatPlace = $0 },
-                        onPushed: { model.notePushed() })
+                        proxy: proxy, focusedID: $focusedID,
+                        // 행 밀기 묶음에 「여기까지 길찾기」가 들어 있어 길찾기 진입이 없는 자리에서는 묶음째 달지 않는다.
+                        onAskAbout: directionsEntryAllowed ? { chatPlace = $0 } : nil,
+                        onPushed: { model.notePushed() }, showsDirectionsEntry: directionsEntryAllowed)
 
                     // 4. 이 위치에 관해 물어보기.
                     if let overview = payload.overview {
@@ -175,7 +200,9 @@ struct AroundNearbyView: View {
                 apply: { focusedID = $0 })
             .navigationDestination(item: $detailTarget) { target in
                 // 행사는 목록 화면과 같은 상세(행사 섹션), 역은 노선 힌트를 함께 넘긴다(E44 전화 조회).
-                PlaceDetailView(place: target.place, stationLineHint: target.lineHint) {
+                PlaceDetailView(
+                    place: target.place, showsDirectionsEntry: directionsEntryAllowed, stationLineHint: target.lineHint
+                ) {
                     if let event = target.event { CultureEventSection(event: event) }
                 }
                 .onAppear { model.notePushed() }
@@ -246,8 +273,8 @@ struct AroundNearbyView: View {
             }
             ForEach(places.prefix(model.visibleCount)) { place in
                 // 보조 텍스트 정보량은 현행 유지(카테고리·방위·거리). ⚠ 방위는 북 기준 절대 8방위만.
-                NavigationLink {
-                    PlaceDetailView(place: surroundingPlaceToPlace(place))
+                let link = NavigationLink {
+                    PlaceDetailView(place: surroundingPlaceToPlace(place), showsDirectionsEntry: directionsEntryAllowed)
                         .onAppear { model.notePushed() }
                 } label: {
                     PlaceRow(
@@ -257,9 +284,14 @@ struct AroundNearbyView: View {
                             bearingLabel(place.bearing),
                             appLocalized("place.distance", formatDistance(place.distanceMeters))))
                 }
-                .placeRowSwipeActions(surroundingPlaceToPlace(place), onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
                 .id(place.id)
                 .accessibilityFocused($focusedID, equals: place.id)
+                // 행 밀기 묶음에 「여기까지 길찾기」가 들어 있어 길찾기 진입이 없는 자리(세션 위)에서는 묶음째 달지 않는다.
+                if directionsEntryAllowed {
+                    link.placeRowSwipeActions(surroundingPlaceToPlace(place), onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
+                } else {
+                    link
+                }
             }
             if places.count > model.visibleCount {
                 Button(appLocalized("actions.showMore")) {

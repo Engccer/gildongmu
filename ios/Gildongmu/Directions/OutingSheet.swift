@@ -1,10 +1,12 @@
 import GildongmuKit
 import SwiftUI
 
-/// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 말로 묻기(E82 V14) → 주변 낭독 → 주변 보기 →
-/// **상태 행(착지 — 열림·띠바 복귀)** → 걸은 거리 → 방향 → 「방금 말한 것」 목록(E82 V11, 마지막 답 줄 아래에 그 답의 버튼),
-/// 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
-/// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. "출발점으로"는 종료 화면에만 있다(E54).
+/// 나들이 시트(E51 spec §8). 읽기 순서(위에서 아래): 제목 줄(나들이 → 접기 → 종료) → 주변 낭독 → 둘러보기 →
+/// **상태 행(착지 — 열림·띠바 복귀)** → 걸은 거리 → 방향 → 「지나온 곳 (최신순)」(최신이 위, 처음 20줄 + 더 보기) →
+/// 「물어본 것」(물은 적이 있을 때만, 최신이 아래, 마지막 답 아래에 그 답의 버튼) → 화면 맨 아래 고정 줄 「말로 묻기」.
+/// 버튼은 위, 실시간 갱신 정보는 아래(위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. 「말로 묻기」는 걷는 중 엄지로
+/// 겨냥 없이 누르는 맨 아래 줄을 혼자 쓰고, 종료는 기록이 지워져 되돌릴 수 없어 그 줄과 떨어진 제목 줄 끝에 둔다(위원장 판정
+/// 2026-11-16 ⑨). 맨 아래에서 위로 쓸면 방금 받은 답부터 거꾸로 듣는다. "출발점으로"는 종료 화면에만 있다(E54).
 ///
 /// 착지 행은 이벤트로만 바뀌는 상태 행이다(출발점 잡는 중 → 출발점 {라벨}). 걸을 때마다 바뀌는 걸은 거리를
 /// 착지 행에 두면 커서가 머무는 동안 VoiceOver가 바뀔 때마다 다시 읽는다(spec 리뷰 M9).
@@ -22,13 +24,17 @@ struct OutingSheet: View {
     @AccessibilityFocusState private var statusFocused: Bool
     @AccessibilityFocusState private var endFocused: Bool
     @AccessibilityFocusState private var healthSummaryFocused: Bool
-    @State private var overviewAdapter: OutingOverviewAdapter?
-    /// 조망에서 고른 장소 — 조망이 닫힌 **뒤** 상세를 연다(닫힌 뒤 행동 계약).
-    @State private var pendingPlace: Place?
-    @State private var detailPlace: Place?
+    /// 「둘러보기」(위원장 판정 2026-11-16 ⑤) — 내 주변 탭의 둘러보기를 지금 위치로 연다(`AroundNearbyView(host: .session)`).
+    @State private var showsAround = false
     @State private var showsSettings = false
-    /// 「방금 말한 것」의 지난 시간을 셀 기준 시각 — 시트가 열릴 때와 기록이 바뀔 때만 잡는다(아래 `historySection`).
+    /// 기록 줄의 지난 시간을 셀 기준 시각 — 시트가 열릴 때와 기록이 바뀔 때만 잡는다(아래 `historySection`).
     @State private var historyNow = Date().timeIntervalSince1970
+    /// 「지나온 곳」의 단계 공개 창(처음 20줄, 더 보기마다 20줄 — `RevealWindow` 관례, 위원장 판정 2026-11-16 ②).
+    @State private var passedWindow = RevealWindow(
+        initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
+    /// 「지나온 곳」에서 VoiceOver 커서가 머문 줄(기록 순번) — 더 보기의 착지 대상이고, 새 줄이 위에 들어와도 이 줄은 창 밖으로
+    /// 밀려나지 않는다(`outingPassedShownCount`).
+    @AccessibilityFocusState private var focusedPassedID: Int?
     /// 체중 입력 권유(도보 종료 화면과 같은 저장 키·같은 판정, E31).
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
@@ -39,25 +45,28 @@ struct OutingSheet: View {
     private var narration: OutingNarration { OutingNarration(rawValue: narrationRaw) ?? .default }
 
     var body: some View {
+        // 「더 보기」 가시화용 proxy(List는 화면 밖 행을 접근성 트리에서 뺀다 — 내 주변 목록의 더 보기와 같은 순서).
+        ScrollViewReader { proxy in
         List {
             if let end = model.endScreen {
                 endSection(end)
             } else {
                 trackingSection
-                historySection
+                historySection(proxy: proxy)
+                askedSection
             }
         }
+        // 「말로 묻기」는 화면 맨 아래 고정 줄을 혼자 쓴다(줄 전체 폭) — 목록 밖 마지막 객체라 네 손가락 아래쪽 탭으로도 닿는다.
         .safeAreaInset(edge: .bottom) {
             if model.endScreen == nil {
-                Button { model.stopByUser() } label: {
-                    Text(appLocalized("ios.outing.stop")).frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.bar, ignoresSafeAreaEdges: [])
+                askControl
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(.bar, ignoresSafeAreaEdges: [])
             }
+        }
         }
         .onChange(of: model.history.entries.map(\.id)) {
             historyNow = Date().timeIntervalSince1970
@@ -71,25 +80,24 @@ struct OutingSheet: View {
                 await land($statusFocused, "status")
             }
         }
-        // 종료 전이: 포커스를 쥔 버튼이 통째로 사라진다 — 사유 문장으로 선점(헌장 §5). 조망이 열려 있으면 닫는다.
+        // 종료 전이: 포커스를 쥔 버튼(제목 줄의 종료·맨 아래 말로 묻기)이 통째로 사라진다 — 사유 문장으로 선점(헌장 §5).
         .onChange(of: model.endScreen) { previous, end in
             guard previous == nil, end != nil else { return }
-            overviewAdapter = nil
             Task { await land($endFocused, "end") }
         }
-        .sheet(item: $overviewAdapter, onDismiss: {
-            if let place = pendingPlace {
-                pendingPlace = nil
-                detailPlace = place
-            }
-        }) { adapter in
-            GuideOverviewSheet(capability: adapter) { _ in }
-        }
-        // 상세를 읽는 동안 세션이 끝났으면(안전망 5분) 닫은 뒤 사유 문장으로 착지한다(종료 전이의 착지가 시트에 가렸다).
-        .sheet(item: $detailPlace, onDismiss: {
+        // 둘러보기는 세션 상태가 아니라 위치에서 나온 화면이라 세션이 끝나도 닫지 않는다. 읽는 동안 끝났으면(안전망 5분) 닫은 뒤
+        // 사유 문장으로 착지한다(종료 전이의 착지가 시트에 가렸다).
+        .sheet(isPresented: $showsAround, onDismiss: {
             if model.endScreen != nil { Task { await land($endFocused, "end") } }
-        }) { place in
-            PlaceDetailSheet(place: place, showsDirectionsEntry: false)
+        }) {
+            NavigationStack {
+                AroundNearbyView(host: .session)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(appLocalized("actions.close")) { showsAround = false }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $showsConsent) {
             ChatConsentView {
@@ -117,15 +125,12 @@ struct OutingSheet: View {
 
     private var trackingSection: some View {
         Section {
-            askControl
             // 누를 때마다 다음 단계로(E54). 라벨 변화가 곧 상태 신호라 별도 통지는 없다(헌장 §5).
             Button(appLocalized("ios.outing.narration", narrationLabel(narration))) {
                 narrationRaw = narration.next.rawValue
             }
-            Button(appLocalized("ios.outing.overviewButton")) {
-                model.refreshForOverview()
-                overviewAdapter = OutingOverviewAdapter(model: model) { pendingPlace = $0 }
-            }
+            // 내 주변 탭의 둘러보기와 같은 화면·같은 문자열이다(위원장 판정 2026-11-16 ⑤).
+            Button(appLocalized("ios.nearby.around")) { showsAround = true }
             Text(model.statusLine)
                 .accessibilityFocused($statusFocused)
             distanceText(model.walkedLine)
@@ -142,12 +147,25 @@ struct OutingSheet: View {
                     .accessibilityAddTraits(.isHeader)
             } trailing: {
                 GuideMinimizeButton(action: onMinimize)
+                stopButton
             }
         }
     }
 
+    /// 제목 줄 오른쪽 끝의 「종료」(위원장 판정 2026-11-16 ⑨) — 읽기 순서는 나들이 → 접기 → 종료. 접기 아이콘과 같은 틀(44×44
+    /// 터치 영역, 테두리 없음)이고 글자가 곧 이름이다. 누르면 기록이 지워지는 되돌릴 수 없는 동작이라 맨 아래 「말로 묻기」 줄과
+    /// 떨어뜨렸다(나란히 두면 묻으려다 종료를 누른다).
+    private var stopButton: some View {
+        Button { model.stopByUser() } label: {
+            Text(appLocalized("ios.outing.stop"))
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+    }
+
     /// 「말로 묻기」(E82 V14) — 받아쓰기 설정(탭 토글·홀드)을 따르고, 끝나면 모델이 질문을 보낸다(전송 버튼이 없는 자동 전송).
-    /// 받아쓰기·요청·답의 상태는 모델이 쥔다(V15 — 시트를 내려도 이어진다).
+    /// 받아쓰기·요청·답의 상태는 모델이 쥔다(V15 — 시트를 내려도 이어진다). 맨 아래 고정 줄에서 줄 전체 폭을 쓴다.
     @ViewBuilder
     private var askControl: some View {
         if aiConsentGranted {
@@ -158,31 +176,72 @@ struct OutingSheet: View {
                 onTranscript: { model.ask($0) },
                 onPause: nil,
                 startTitle: appLocalized("ios.outing.askButton"),
-                onNoSpeech: { model.askHeardNothing() })
+                onNoSpeech: { model.askHeardNothing() },
+                fillsWidth: true)
         } else {
-            Button(appLocalized("ios.outing.askButton")) { showsConsent = true }
+            Button { showsConsent = true } label: {
+                Text(appLocalized("ios.outing.askButton")).frame(maxWidth: .infinity, minHeight: 44)
+            }
         }
     }
 
-    /// 「방금 말한 것」(E82 V11) — 끝까지 말한 문장과 말하지 못하고 지나온 가게, 최신이 위. 제목 하나만 heading이고
-    /// 한 줄이 한 접근성 객체다. 행의 정체성은 기록 순번이라 새 줄이 들어와도 커서가 있던 줄은 그대로다. 지난 시간은
-    /// 시트가 열린 때와 기록이 바뀐 때 잡은 기준 시각(`historyNow`)으로 센다 — 그리는 순간의 시각으로 세면 위치 갱신마다
-    /// 다시 그려지면서 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
-    private var historySection: some View {
-        Section {
-            if model.history.entries.isEmpty {
+    /// 「지나온 곳 (최신순)」(E82 V11, 위원장 판정 2026-11-16 ①②) — 끝까지 말한 가게·갈림길·횡단보도·도로명 문장과 말하지
+    /// 못하고 지나온 가게, 최신이 위. 말로 물은 답은 「물어본 것」(`askedSection`)에 따로 둔다. 제목 하나만 heading이고 한 줄이
+    /// 한 접근성 객체다. 처음 20줄, 「더 보기」를 누를 때마다 20줄을 더 열고 커서는 첫 새 줄로(통지 없음). 행의 정체성은 기록
+    /// 순번이라 새 줄이 들어와도 커서가 있던 줄은 그대로다(창 아래 끝으로 밀려도 커서가 있는 동안은 남는다). 지난 시간은 시트가
+    /// 열린 때와 기록이 바뀐 때 잡은 기준 시각(`historyNow`)으로 센다 — 그리는 순간의 시각으로 세면 위치 갱신마다 다시
+    /// 그려지면서 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
+    private func historySection(proxy: ScrollViewProxy) -> some View {
+        let passed = model.history.passedEntries
+        let shown = outingPassedShownCount(
+            windowCount: passedWindow.visibleCount, total: passed.count,
+            focusedIndex: focusedPassedID.flatMap { id in passed.firstIndex { $0.id == id } })
+        return Section {
+            if passed.isEmpty {
                 Text(appLocalized("ios.outing.historyEmpty"))
             } else {
-                ForEach(model.history.entries) { entry in
+                ForEach(passed.prefix(shown)) { entry in
                     historyRow(entry, now: historyNow)
-                    if let followUp = model.askFollowUp, followUp.entryID == entry.id {
-                        answerButtons(followUp)
+                        .id(passedRowID(entry.id))
+                        .accessibilityFocused($focusedPassedID, equals: entry.id)
+                }
+                if passed.count > shown {
+                    Button(appLocalized("actions.showMore")) {
+                        guard let index = outingPassedRevealMore(&passedWindow, shown: shown, total: passed.count) else {
+                            return
+                        }
+                        let id = passed[index].id
+                        proxy.scrollTo(passedRowID(id), anchor: .top)   // 가시화 후 포커스(내 주변 더 보기와 같은 순서)
+                        DispatchQueue.main.async { focusedPassedID = id }
                     }
                 }
             }
         } header: {
             Text(appLocalized("ios.outing.historyHeading"))
                 .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private func passedRowID(_ id: Int) -> String { "passed-\(id)" }
+
+    /// 「물어본 것」(위원장 판정 2026-11-16 ①⑨) — 말로 물은 답, 오래된 것이 위이고 **최신이 아래**다. 목록의 맨 끝, 맨 아래
+    /// 「말로 묻기」 줄 바로 위라 그 버튼에서 위로 쓸면 방금 받은 답부터 거꾸로 듣는다. 한 번도 묻지 않았으면 묶음이 없다. 답 줄은
+    /// 「지나온 곳」 줄과 같은 행 정체성(기록 순번)·같은 기준 시각을 쓴다. 마지막 답 아래에 그 답의 버튼이 붙는다.
+    @ViewBuilder
+    private var askedSection: some View {
+        let answers = model.history.answerEntries
+        if !answers.isEmpty {
+            Section {
+                ForEach(answers) { entry in
+                    historyRow(entry, now: historyNow)
+                    if let followUp = model.askFollowUp, followUp.entryID == entry.id {
+                        answerButtons(followUp)
+                    }
+                }
+            } header: {
+                Text(appLocalized("ios.outing.askedHeading"))
+                    .accessibilityAddTraits(.isHeader)
+            }
         }
     }
 
