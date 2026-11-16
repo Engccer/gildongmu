@@ -33,6 +33,15 @@ enum AppConfig {
     static let experimentalOutingEnabled = false
     #endif
 
+    /// 상단 줄 새로고침 자리(E82 판정 8, 2026-11-16)의 봉인. 켜지면 새로고침이 "길동무" 메뉴에서 나와 상단 줄 오른쪽 버튼이 된다.
+    /// 나들이와 별개 기능이라 `experimentalOutingEnabled`에 얹지 않았다(졸업 시점이 다르다: 정식판 반영은 써 본 뒤 다음 제출 때 판정).
+    /// 소비자는 `TitleMenu.swift` 한 곳이다. 판정을 통과하면 이 검사를 삭제한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
+    #if EXPERIMENTAL
+    static let experimentalTopBarRefreshEnabled = true
+    #else
+    static let experimentalTopBarRefreshEnabled = false
+    #endif
+
     /// 탭 순서 설정(E66, 위원장 판정 2026-10-05)의 봉인. 켜지면 설정 일반 묶음에 "탭 순서" 줄이 서고
     /// `AppTab.order(stored:)`가 사용자가 정한 순서(저장값)를 쓴다. 꺼지면 줄이 없고 순서는 `AppTab.defaultOrder`로 고정이다.
     /// 소비자는 그 둘뿐이다(`SettingsView` 한 줄, `AppTab.order(stored:)`). 실험판 실사용 판정을 통과하면

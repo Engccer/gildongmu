@@ -104,13 +104,14 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
 });
 
 describe("나들이 진입점", () => {
-  it("제목 메뉴 버튼은 나들이 시작(실험판 전용)·새로고침·설정 순서다", () => {
+  it("상단 줄 버튼은 왼쪽 나들이 시작(실험판 전용)·메뉴 새로고침(정식판)·설정·오른쪽 새로고침(실험판) 순서다(E82 판정 8)", () => {
     const menu = readFileSync(TITLE_MENU, "utf8");
     const buttons = menu.match(/Button\(appLocalized\("[^"]+"\)\)/g) ?? [];
     expect(buttons).toEqual([
       'Button(appLocalized("ios.outing.start"))',
       'Button(appLocalized("ios.common.refresh"))',
       'Button(appLocalized("ios.settings.title"))',
+      'Button(appLocalized("ios.common.refresh"))',
     ]);
   });
 

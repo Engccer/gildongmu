@@ -575,6 +575,30 @@ describe("7. 여정(E70) — 졸업 확인과 내부 인계", () => {
   });
 });
 
+describe("9-b. 상단 줄 새로고침 자리(E82 판정 8) — 실험판 봉인", () => {
+  const TITLE_MENU = join(ROOT, "ios/Gildongmu/TitleMenu.swift");
+
+  it("플래그는 빌드 구성이 가르고(#if EXPERIMENTAL) 소비자는 제목 메뉴 한 곳이다", () => {
+    expect(readFileSync(APP_CONFIG, "utf8")).toMatch(
+      /#if EXPERIMENTAL\s+static let experimentalTopBarRefreshEnabled = true\s+#else\s+static let experimentalTopBarRefreshEnabled = false\s+#endif/,
+    );
+    const users = swiftFiles(IOS_DIR)
+      .filter((file) => blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).includes("experimentalTopBarRefreshEnabled"))
+      .map((file) => file.split("/").pop())
+      .sort();
+    expect(users).toEqual(["AppConfig.swift", "TitleMenu.swift"]);
+  });
+
+  it("정식판에선 새로고침이 메뉴에 남고(부정 조건), 상단 오른쪽 버튼은 플래그 안이다", () => {
+    const src = readFileSync(TITLE_MENU, "utf8");
+    const refreshCalls = enclosingHeaders(src, "refreshTab()");
+    expect(refreshCalls).toHaveLength(2);
+    const joined = refreshCalls.map((h) => h.join("\n"));
+    expect(joined.some((h) => h.includes("!AppConfig.experimentalTopBarRefreshEnabled"))).toBe(true);
+    expect(joined.some((h) => /(?<!!)AppConfig\.experimentalTopBarRefreshEnabled/.test(h))).toBe(true);
+  });
+});
+
 describe("10. 채팅 경로 카드의 [안내 시작](E83) — 실험판 봉인", () => {
   const session = () => readFileSync(GUIDE_SESSION, "utf8");
   const filesCalling = (pattern: RegExp) =>
