@@ -267,10 +267,22 @@ struct OutingAheadLinesTests {
         let course = DerivedCourse(bearing: 0, uncertaintyDeg: 10)
         let state = outingHeadingRecord(OutingHeadingState(), course: course, at: 100)
         let valid = OutingHeading.valid(bearing: 0, uncertaintyDeg: 10)
-        #expect(!outingAheadLocationLost(valid, state: state, now: 100 + outingHeadingMaxAgeSeconds))
-        #expect(outingAheadLocationLost(valid, state: state, now: 100 + outingHeadingMaxAgeSeconds + 0.1))
-        #expect(!outingAheadLocationLost(.stale(bearing: 0), state: state, now: 200))
-        #expect(!outingAheadLocationLost(.none, state: OutingHeadingState(), now: 200))
+        #expect(!outingAheadLocationLost(valid, state: state, lastUsableFixAt: nil, now: 100 + outingHeadingMaxAgeSeconds))
+        #expect(outingAheadLocationLost(valid, state: state, lastUsableFixAt: nil, now: 100 + outingHeadingMaxAgeSeconds + 0.1))
+        #expect(!outingAheadLocationLost(.stale(bearing: 0), state: state, lastUsableFixAt: nil, now: 200))
+        #expect(!outingAheadLocationLost(.none, state: OutingHeadingState(), lastUsableFixAt: nil, now: 200))
+    }
+
+    @Test("쓸 수 있는 fix가 최근이면 방위 표가 낡아도 위치 끊김 표식을 세우지 않는다(경계 3초)")
+    func locationLostSkipsWhenFixIsFresh() {
+        let course = DerivedCourse(bearing: 0, uncertaintyDeg: 10)
+        let state = outingHeadingRecord(OutingHeadingState(), course: course, at: 100)
+        let valid = OutingHeading.valid(bearing: 0, uncertaintyDeg: 10)
+        let now = 100 + outingHeadingMaxAgeSeconds + 5
+        #expect(!outingAheadLocationLost(valid, state: state, lastUsableFixAt: now - 1, now: now))
+        #expect(!outingAheadLocationLost(valid, state: state, lastUsableFixAt: now - outingLocationFreshSeconds, now: now))
+        #expect(outingAheadLocationLost(valid, state: state, lastUsableFixAt: now - outingLocationFreshSeconds - 0.1, now: now))
+        #expect(outingAheadLocationLost(valid, state: state, lastUsableFixAt: nil, now: now))
     }
 
     @Test("위치가 끊긴 동안 두 줄은 「마지막 진행 방향」·「위치 확인 중」 — 쥔 고르기·목록 상태와 무관하다")

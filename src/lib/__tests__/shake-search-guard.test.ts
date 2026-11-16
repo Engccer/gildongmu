@@ -29,7 +29,9 @@ function insideExperimental(source: string, needle: string): boolean {
   if (at < 0) return false;
   const open = source.lastIndexOf("#if EXPERIMENTAL", at);
   const close = source.lastIndexOf("#endif", at);
-  return open >= 0 && open > close;
+  // `#else` 갈래(정식판이 컴파일하는 쪽)는 안이 아니다.
+  const otherwise = source.lastIndexOf("#else", at);
+  return open >= 0 && open > close && open > otherwise;
 }
 
 describe("E87 흔들기 → 장소 검색 창", () => {

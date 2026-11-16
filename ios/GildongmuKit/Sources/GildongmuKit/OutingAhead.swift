@@ -217,7 +217,23 @@ public func outingHeadingIsCurrent(_ heading: OutingHeading, state: OutingHeadin
 /// 방위는 쓸 수 있는 fix가 올 때만 다시 정해지므로(fix 두절·못 쓰는 fix는 방위를 그대로 둔다) 「방위는 valid인데 지금의 방위가
 /// 아니다」가 곧 걷던 중 위치를 확인하지 못하고 있는 상태다. 처음부터 방위를 모르는 상태(`none`)와 멈춰서 방위가 흐려진
 /// 상태(`stale` — 쓸 수 있는 fix가 다시 정한 값)는 들지 않는다. 다음 쓸 수 있는 fix가 방위를 다시 정하면 호출부가 내린다.
-public func outingAheadLocationLost(_ heading: OutingHeading, state: OutingHeadingState, now: Double) -> Bool {
+///
+/// 표식은 한 가지를 더 본다: 마지막으로 쓸 수 있었던 fix(`lastUsableFixAt`, 기본값 없음 — 모르면 nil)가 `outingLocationFreshSeconds`
+/// 안에 왔으면 위치는 끊기지 않은 것이라 표식을 세우지 않는다. 방위 표만 10초 넘게 안 나오는 아주 느린 걸음·좌표가 묶인 fix에서
+/// 감시 타이머가 다음 fix 직전에 끼어 「위치 확인 중」이 거짓으로 서는 것을 막는다(앞 상황을 내리는 조건 `outingHeadingIsCurrent`는
+/// 그대로다).
+public func outingAheadLocationLost(
+    _ heading: OutingHeading, state: OutingHeadingState, lastUsableFixAt: Double?, now: Double
+) -> Bool {
     guard case .valid = heading else { return false }
-    return !outingHeadingIsCurrent(heading, state: state, now: now)
+    guard !outingHeadingIsCurrent(heading, state: state, now: now) else { return false }
+    if let lastUsableFixAt {
+        let fixAge = now - lastUsableFixAt
+        if fixAge >= 0, fixAge <= outingLocationFreshSeconds { return false }
+    }
+    return true
 }
+
+/// 마지막으로 쓸 수 있었던 fix가 이만큼 안쪽이면 위치가 끊긴 것이 아니다(초). fix 간격이 약 1초이고 감시 타이머가 2초 주기라
+/// 정상 흐름에서 타이머가 fix 사이에 끼어도 3초 안이다. 이보다 길어야 「위치 확인 중」이 사실이다.
+public let outingLocationFreshSeconds: Double = 3

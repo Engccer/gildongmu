@@ -183,6 +183,7 @@ struct GildongmuApp: App {
                 bandFocusTask?.cancel()
                 bandFocusTask = nil
                 bandFocusedTab = nil
+                skipBandLanding = false
             }
             .onChange(of: guideSession.isMinimized) { _, minimized in
                 bandFocusTask?.cancel()
@@ -391,6 +392,9 @@ struct GildongmuApp: App {
     /// 설정·2.0 공지는 루트가 띄운 시트라 상태로 닫는다(공지는 확인하지 않은 것이라 다음 실행에 다시 뜬다). 다른 탭이 띄운
     /// 시트는 루트 상태가 아니라 창에서 닫는다(`dismissLeftoverModals`).
     private func handleShake() {
+        // 손으로 접은 직후의 늦은 띠바 착지 대입이 흔든 뒤 초점을 끌어가지 않게 한다.
+        bandFocusTask?.cancel()
+        bandFocusTask = nil
         if guideSession.hasScreen, !guideSession.isMinimized {
             skipBandLanding = true
             guideSession.isMinimized = true

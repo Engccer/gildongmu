@@ -1691,7 +1691,7 @@ final class OutingModel {
     /// 끊김이라는 표식(`aheadLocationLost`)을 함께 세운다(2026-11-17 판정의 두 줄). 같은 값을 다시 쓰지 않는다 — 관찰 갱신이
     /// 감시 타이머마다 시트를 다시 그리게 된다.
     private func dropStaleAhead(now: Double) {
-        guard outingAheadLocationLost(heading, state: headingState, now: now) else { return }
+        guard outingAheadLocationLost(heading, state: headingState, lastUsableFixAt: lastFixAt, now: now) else { return }
         if aheadPick != nil { aheadPick = nil }
         if !aheadLocationLost { aheadLocationLost = true }
     }

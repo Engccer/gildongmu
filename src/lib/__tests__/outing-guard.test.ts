@@ -152,7 +152,7 @@ describe("나들이 앞 상황 두 줄(E82 판정 4)", () => {
   it("fix가 끊기거나 못 쓰는 동안 쥔 앞 상황은 방위 유효 나이가 지나면 내린다(감시 타이머·못 쓰는 fix 두 자리)", () => {
     const model = readFileSync(MODEL, "utf8");
     const drop = functionBody(model, "dropStaleAhead");
-    expect(drop).toContain("outingAheadLocationLost(heading, state: headingState, now: now)");
+    expect(drop).toContain("outingAheadLocationLost(heading, state: headingState, lastUsableFixAt: lastFixAt, now: now)");
     expect(drop).toContain("aheadPick = nil");
     expect(drop).not.toMatch(/heading = /); // 방위 상태와 다른 판정은 건드리지 않는다
     expect(functionBody(model, "tickWatchdog")).toContain("dropStaleAhead(now: now)");
