@@ -65,6 +65,11 @@
       "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유. E53 announce의 필수 speechClass·post의 speechClass·onLateDrop, E57 hasPending까지 이식(2026-10-02 android-2)"
     },
     {
+      "swift": "DictationTrigger.swift",
+      "status": "pending",
+      "note": "E82 판정 10 화면을 겨냥하지 않는 받아쓰기 시작·끝(iOS 실험판 선행: VoiceOver Magic Tap·단축어 뒷면 탭). TalkBack에는 Magic Tap 대응 제스처가 없어 안드로이드 동작 판정 전 이식 보류"
+    },
+    {
       "swift": "DeviceSpeechQueue.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DeviceSpeechQueue.kt",

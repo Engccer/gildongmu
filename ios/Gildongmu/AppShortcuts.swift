@@ -76,5 +76,20 @@ struct GildongmuShortcuts: AppShortcutsProvider {
             shortTitle: LocalizedStringResource("ios.shortcut.nearby.title"),
             systemImageName: "location"
         )
+        // 받아쓰기 시작·끝(E82 판정 10, 실험판 전용) — 뒷면 탭에 연결하는 단축어. 앱의 App Shortcuts 제공자는 하나여야 해서
+        // 여기에 두고, 정식판 바이너리에는 인텐트째 빠진다(`DictationTriggerRegistry.swift`).
+        #if EXPERIMENTAL
+        AppShortcut(
+            intent: ToggleDictationIntent(),
+            phrases: [
+                "\(.applicationName) 받아쓰기",
+                "\(.applicationName)에서 받아쓰기",
+                "Dictate in \(.applicationName)",
+                "Start dictation in \(.applicationName)"
+            ],
+            shortTitle: LocalizedStringResource("ios.shortcut.dictation.title"),
+            systemImageName: "mic.circle"
+        )
+        #endif
     }
 }

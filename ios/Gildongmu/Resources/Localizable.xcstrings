@@ -33531,6 +33531,86 @@
         }
       }
     },
+    "ios.shortcut.dictation.desc": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무에서 지금 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts dictation on the current Gildongmu screen, or stops it if it is already listening"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia el dictado en la pantalla actual de Gildongmu, o lo detiene si ya está escuchando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarre la dictée sur l’écran actuel de Gildongmu, ou l’arrête si elle est déjà en cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia la dettatura nella schermata attuale di Gildongmu, oppure la interrompe se è già in ascolto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンムの今の画面で音声入力を始めます。入力中なら終わります"
+          }
+        }
+      }
+    },
+    "ios.shortcut.dictation.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받아쓰기 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start dictation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar dictado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer la dictée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia dettatura"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声入力を開始"
+          }
+        }
+      }
+    },
     "ios.shortcut.nearby.desc": {
       "localizations": {
         "ko": {
@@ -36207,6 +36287,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "音声入力を開始"
+          }
+        }
+      }
+    },
+    "ios.voice.triggerNoTarget": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 화면에는 받아쓰기가 없습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no dictation on this screen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta pantalla no tiene dictado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet écran n’a pas de dictée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa schermata non ha la dettatura"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この画面には音声入力がありません"
           }
         }
       }

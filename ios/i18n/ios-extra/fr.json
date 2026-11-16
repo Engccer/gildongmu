@@ -80,7 +80,8 @@
       "errorDownload": "Impossible de préparer la reconnaissance vocale. Connectez-vous au réseau, puis réessayez.",
       "errorOnDevice": "Cet appareil ne prend pas en charge la reconnaissance vocale sur l'appareil pour cette langue.",
       "deniedRecognition": "Autorisez la reconnaissance vocale dans Réglages.",
-      "paused": "Dictée verrouillée"
+      "paused": "Dictée verrouillée",
+      "triggerNoTarget": "Cet écran n’a pas de dictée"
     },
     "search": {
       "prompt": "Rechercher lieux et adresses",
@@ -275,6 +276,10 @@
       "nearby": {
         "title": "À proximité",
         "desc": "Ouvre l'écran À proximité de Gildongmu"
+      },
+      "dictation": {
+        "title": "Démarrer la dictée",
+        "desc": "Démarre la dictée sur l’écran actuel de Gildongmu, ou l’arrête si elle est déjà en cours"
       }
     },
     "beacon": {
