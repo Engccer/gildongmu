@@ -217,6 +217,16 @@ struct SettingsView: View {
                     .id("listenSpeed-\(AppLanguage.current)")
                 }
 
+                // 나들이 전경 기기 음성(E82 판정 7, 음성 묶음의 끝): 나들이가 있는 판(실험판)에만 줄이 선다. 이름만으로는 VoiceOver를 켠 채
+                // 화면을 켜 둔 동안의 일이라는 범위가 드러나지 않아 설명을 둔다.
+                if AppConfig.experimentalOutingEnabled {
+                    Section {
+                        Toggle(appLocalized("ios.settings.outingForegroundSpeech"), isOn: $outingForegroundSpeechEnabled)
+                    } footer: {
+                        Text(appLocalized("ios.settings.outingForegroundSpeechFooter"))
+                    }
+                }
+
                 // 백그라운드 음성 안내는 이름에 "음성"이 있어도 쓰이는 자리 기준으로 길 안내 묶음이다(E59 판정).
                 Section {
                     Toggle(appLocalized("ios.settings.backgroundSpeech"), isOn: $backgroundSpeechEnabled)
@@ -227,16 +237,6 @@ struct SettingsView: View {
                     // 나들이가 있는 판(실험판)에서만 말한다(A59 — 정식판에 없는 기능을 약속하지 않는다).
                     Text(AppConfig.experimentalOutingEnabled
                         ? appLocalized("ios.settings.backgroundSpeechFooterOuting") : appLocalized("ios.settings.backgroundSpeechFooter"))
-                }
-
-                // 나들이 전경 기기 음성(E82 판정 7): 나들이가 있는 판(실험판)에만 줄이 선다. 이름만으로는 VoiceOver를 켠 채
-                // 화면을 켜 둔 동안의 일이라는 범위가 드러나지 않아 설명을 둔다.
-                if AppConfig.experimentalOutingEnabled {
-                    Section {
-                        Toggle(appLocalized("ios.settings.outingForegroundSpeech"), isOn: $outingForegroundSpeechEnabled)
-                    } footer: {
-                        Text(appLocalized("ios.settings.outingForegroundSpeechFooter"))
-                    }
                 }
 
                 Section {

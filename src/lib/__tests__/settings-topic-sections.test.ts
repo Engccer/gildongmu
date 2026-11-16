@@ -15,12 +15,11 @@ const BODY = SETTINGS.slice(SETTINGS.indexOf("var body: some View"));
 /** 판정의 묶음과 그 안 항목 순서(실험판 항목은 `#if` 안이라도 소스 순서로 잠근다). */
 const GROUPS: [heading: string, items: string[]][] = [
   ["ios.settings.sectionGeneral", ["ios.settings.theme", "ios.settings.language", "ios.settings.tabOrder"]],
-  ["ios.settings.sectionVoice", ["ios.settings.dictationStyle", "ios.settings.listenSpeed"]],
+  ["ios.settings.sectionVoice", ["ios.settings.dictationStyle", "ios.settings.listenSpeed", "ios.settings.outingForegroundSpeech"]],
   [
     "ios.settings.sectionGuidance",
     [
       "ios.settings.backgroundSpeech",
-      "ios.settings.outingForegroundSpeech",
       "ios.settings.weightKg",
       "ios.settings.carListener",
       "ios.settings.leftRightTone",
@@ -68,8 +67,8 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
 
   it("설명 문장은 그 설정 바로 뒤의 footer다", () => {
     for (const [setting, footer] of [
-      ["ios.settings.backgroundSpeech", "ios.settings.backgroundSpeechFooter"],
       ["ios.settings.outingForegroundSpeech", "ios.settings.outingForegroundSpeechFooter"],
+      ["ios.settings.backgroundSpeech", "ios.settings.backgroundSpeechFooter"],
       ["ios.settings.weightKg", "ios.settings.weightFooter"],
       ["ios.settings.trendHaptics", "ios.settings.trendHapticsFooter"],
     ]) {

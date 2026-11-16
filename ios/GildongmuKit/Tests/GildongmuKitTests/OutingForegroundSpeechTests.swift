@@ -17,7 +17,7 @@ struct OutingForegroundSpeechTests {
 
     // 대상은 자동 안내뿐이다. 시작·종료(화면 전이)와 조작의 직접 응답은 스위치와 무관하게 VoiceOver에 남는다. 명시 표로 잠근다.
     @Test func onlyAutomaticFollowsTheSwitch() {
-        let expected: [OutingSpeechOrigin: Bool] = [.automatic: true, .transition: false, .response: false]
+        let expected: [OutingSpeechOrigin: Bool] = [.automatic: true, .transition: false, .response: false, .status: false]
         #expect(Set(expected.keys) == Set(OutingSpeechOrigin.allCases))
         for origin in OutingSpeechOrigin.allCases {
             #expect(outingDeviceOverVoiceOver(switchEnabled: true, origin: origin) == expected[origin], "\(origin)")

@@ -1627,13 +1627,13 @@ final class OutingModel {
             return
         }
         // 약신호 통지(도보 안내 동형) — 전경 ∧ VoiceOver일 때만 낸다(spec §13). VoiceOver를 쓰지 않거나 화면이 꺼진
-        // 사용자에게 기기 음성으로 30초마다 "신호 약함"을 말하지 않는다. 전경 기기 음성 스위치를 켠 VoiceOver 사용자에게는
-        // 자동 안내라 기기 음성으로 나간다(E82 판정 7).
+        // 사용자에게 기기 음성으로 30초마다 "신호 약함"을 말하지 않는다. 전경 기기 음성 스위치가 켜져 있어도 상태 알림이라
+        // VoiceOver로 낸다(`OutingSpeechOrigin.status`).
         if now - fixRef >= noFixTimeout, isForeground, UIAccessibility.isVoiceOverRunning {
             if let last = lastStaleNoticeAt, now - last < staleRenotifyInterval { return }
             lastStaleNoticeAt = now
             announcer.announce(
-                appLocalized("beacon.weak"), speechClass: .deferrable, deviceOverVoiceOver: deviceOverVoiceOver(.automatic))
+                appLocalized("beacon.weak"), speechClass: .deferrable, deviceOverVoiceOver: deviceOverVoiceOver(.status))
         }
     }
 

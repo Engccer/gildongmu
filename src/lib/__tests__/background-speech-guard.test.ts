@@ -296,7 +296,7 @@ describe("나들이 전경 기기 음성 배선 (E82 판정 7)", () => {
     const direct = outing.match(/announcer\.announce\(/g) ?? [];
     expect(direct).toHaveLength(2); // say 안 1 + 신호 약함 1
     expect(outing).toMatch(
-      /announcer\.announce\(\s*appLocalized\("beacon\.weak"\), speechClass: \.deferrable, deviceOverVoiceOver: deviceOverVoiceOver\(\.automatic\)\)/,
+      /announcer\.announce\(\s*appLocalized\("beacon\.weak"\), speechClass: \.deferrable, deviceOverVoiceOver: deviceOverVoiceOver\(\.status\)\)/,
     );
   });
 
