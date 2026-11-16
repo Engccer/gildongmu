@@ -25,13 +25,13 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(s).toContain('appLocalized("transitGuide.openStation", target.name)');
     expect(s).toContain('appLocalized("ios.chat.openPlace", target.name)');
     // 행사는 목록 화면과 같은 상세(행사 섹션 포함).
-    expect(s).toMatch(/PlaceDetailView\(place: target\.place, stationLineHint: target\.lineHint\) \{\s*if let event = target\.event \{ CultureEventSection\(event: event\) \}/);
+    expect(s).toMatch(/PlaceDetailView\(\s*place: target\.place, showsDirectionsEntry: directionsEntryAllowed, stationLineHint: target\.lineHint\s*\) \{\s*if let event = target\.event \{ CultureEventSection\(event: event\) \}/);
   });
 
   it("주변 상황: 둘러보기(자동 펼침)만 PlaceRow 묶음을 단다 — 버튼형(안내 시트)은 붙이지 않는다", () => {
     const s = nearby("SurroundingsSceneSection.swift");
     expect(s).toContain("link.placeRowSwipeActions(place, onAskAbout: { rowActionsAskAbout(place) })");
-    expect(s).toContain("rowActionsAskAbout: onAskAbout, onPushed: onPushed)");
+    expect(s).toContain("rowActionsAskAbout: onAskAbout, onPushed: onPushed, showsDirectionsEntry: showsDirectionsEntry)");
     // 버튼형 호출은 rowActionsAskAbout을 넘기지 않는다(기본값 nil). 호출 전체를 공백 무관으로 잡는다.
     const buttonCall = s.match(/SurroundingsSceneGroupsView\(\s*scene: scene, reveal: model\.reveal[^)]*\)/);
     expect(buttonCall).not.toBeNull();

@@ -26931,6 +26931,46 @@
         }
       }
     },
+    "ios.outing.askedHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "물어본 것"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your questions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus preguntas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos questions"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le tue domande"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "質問したこと"
+          }
+        }
+      }
+    },
     "ios.outing.band": {
       "localizations": {
         "ko": {
@@ -27776,37 +27816,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아직 말한 것이 없습니다"
+            "value": "아직 지나온 곳이 없습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing announced yet"
+            "value": "Nothing passed yet"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no hay anuncios"
+            "value": "Aún no has pasado por ningún lugar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune annonce pour l’instant"
+            "value": "Aucun lieu passé pour l’instant"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ancora nessun annuncio"
+            "value": "Ancora nessun luogo superato"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まだ案内はありません"
+            "value": "まだ通ったところはありません"
           }
         }
       }
@@ -27816,37 +27856,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "방금 말한 것"
+            "value": "지나온 곳 (최신순)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recently announced"
+            "value": "Passed places (newest first)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anuncios recientes"
+            "value": "Lugares por los que pasaste (más recientes primero)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annonces récentes"
+            "value": "Lieux passés (plus récents d’abord)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annunci recenti"
+            "value": "Luoghi superati (più recenti prima)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "直前の案内"
+            "value": "通ったところ（新しい順）"
           }
         }
       }
@@ -28047,86 +28087,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "右"
-          }
-        }
-      }
-    },
-    "ios.outing.itemLeft": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "왼쪽 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "left, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "izquierda, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "gauche, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "sinistra, %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "左 %1$@"
-          }
-        }
-      }
-    },
-    "ios.outing.itemRight": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "오른쪽 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "right, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "derecha, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "droite, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "destra, %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "右 %1$@"
           }
         }
       }
@@ -28851,46 +28811,6 @@
         }
       }
     },
-    "ios.outing.overviewButton": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "주변 보기"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Look around"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver alrededor"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir autour"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guarda intorno"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周辺を見る"
-          }
-        }
-      }
-    },
     "ios.outing.passLeft": {
       "localizations": {
         "ko": {
@@ -29176,37 +29096,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 종료"
+            "value": "종료"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "End stroll"
+            "value": "End"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminar paseo"
+            "value": "Terminar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminer la balade"
+            "value": "Terminer"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Termina passeggiata"
+            "value": "Termina"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お散歩を終了"
+            "value": "終了"
           }
         }
       }
@@ -29367,206 +29287,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "歩数データなし"
-          }
-        }
-      }
-    },
-    "ios.outing.zoneAhead": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "앞 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ahead, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delante, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Devant, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Davanti, %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "前方 %1$@"
-          }
-        }
-      }
-    },
-    "ios.outing.zoneAround": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "주변 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nearby, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cerca, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À proximité, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nei dintorni, %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周辺 %1$@"
-          }
-        }
-      }
-    },
-    "ios.outing.zoneBehind": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "지나온 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Behind, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detrás, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Derrière, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dietro, %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "後方 %1$@"
-          }
-        }
-      }
-    },
-    "ios.outing.zoneBeside": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "옆"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Beside"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Al lado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À côté"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accanto"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "横"
-          }
-        }
-      }
-    },
-    "ios.outing.zoneEmpty": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "없음"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "None"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessuno"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "なし"
           }
         }
       }

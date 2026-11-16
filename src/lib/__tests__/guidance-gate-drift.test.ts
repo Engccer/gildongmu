@@ -424,7 +424,7 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
     expect(callSites(/(?<!func )handOverOuting\(/g).sort()).toEqual(["GildongmuApp.swift", "GuideSessionCoordinator.swift"]);
     expect(callersOf(session, "handOverOuting(")).toEqual(["acceptOutingReturn"]);
     // 나들이 모델과 시트는 세션을 직접 시작하지도, 길찾기 탭에 직접 넘기지도 않는다.
-    for (const name of ["OutingModel.swift", "OutingSheet.swift", "OutingOverviewAdapter.swift"]) {
+    for (const name of ["OutingModel.swift", "OutingSheet.swift"]) {
       const source = readFileSync(join(ROOT, "ios/Gildongmu/Directions", name), "utf8");
       expect(source, name).not.toMatch(/start(?:Guide|Beacon|Transit|Journey)\(|DirectionsPrefillStore/);
     }

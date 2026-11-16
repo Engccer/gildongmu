@@ -1618,12 +1618,6 @@
   "android.outing.historyMinutesAgo": [
     "minutes"
   ],
-  "android.outing.itemLeft": [
-    "distance"
-  ],
-  "android.outing.itemRight": [
-    "distance"
-  ],
   "android.outing.lastHeading": [
     "dir"
   ],
@@ -1649,15 +1643,6 @@
     "road"
   ],
   "android.outing.walked": [
-    "distance"
-  ],
-  "android.outing.zoneAhead": [
-    "distance"
-  ],
-  "android.outing.zoneAround": [
-    "distance"
-  ],
-  "android.outing.zoneBehind": [
     "distance"
   ],
   "android.place.askAbout": [
