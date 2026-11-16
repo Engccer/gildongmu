@@ -409,8 +409,6 @@
     <string name="android_settings_weightKg">Poids pour l\'estimation des calories (kg)</string>
     <string name="android_settings_weightRejected">Le poids doit être entre %1$s et %2$s kg. La valeur précédente, %3$s kg, est conservée.</string>
     <string name="android_settings_weightRejectedNone">Le poids doit être entre %1$s et %2$s kg. Rien n’a été enregistré.</string>
-    <string name="android_shortcut_dictation_desc">Démarre la dictée sur l’écran actuel de Gildongmu, ou l’arrête si elle est déjà en cours</string>
-    <string name="android_shortcut_dictation_title">Démarrer la dictée</string>
     <string name="android_shortcut_nearby_desc">Ouvre l\'écran À proximité de Gildongmu</string>
     <string name="android_shortcut_nearby_title">À proximité</string>
     <string name="android_shortcut_voiceSearch_desc">Ouvre Gildongmu et lance une recherche vocale</string>
@@ -480,8 +478,6 @@
     <string name="android_voice_paused">Dictée verrouillée</string>
     <string name="android_voice_preparing">Préparation de la reconnaissance vocale</string>
     <string name="android_voice_start">Démarrer la dictée</string>
-    <string name="android_voice_triggerBusy">La dictée est en cours de préparation ou de finalisation</string>
-    <string name="android_voice_triggerNoTarget">Cet écran n’a pas de dictée</string>
     <string name="app_tagline">La navigation en Corée, accessible à tous</string>
     <string name="app_title">Gildongmu</string>
     <string name="around_button">Explorer les environs</string>

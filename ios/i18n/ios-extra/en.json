@@ -80,9 +80,7 @@
       "errorDownload": "Couldn't prepare speech recognition. Connect to the network and try again.",
       "errorOnDevice": "This device does not support on-device speech recognition for this language.",
       "deniedRecognition": "Allow speech recognition in Settings.",
-      "paused": "Dictation locked",
-      "triggerNoTarget": "There is no dictation on this screen",
-      "triggerBusy": "Dictation is getting ready or finishing up"
+      "paused": "Dictation locked"
     },
     "search": {
       "prompt": "Search places and addresses",
@@ -277,10 +275,6 @@
       "nearby": {
         "title": "Nearby",
         "desc": "Opens the Gildongmu nearby screen"
-      },
-      "dictation": {
-        "title": "Start dictation",
-        "desc": "Starts dictation on the current Gildongmu screen, or stops it if it is already listening"
       }
     },
     "beacon": {

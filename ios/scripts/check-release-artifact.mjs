@@ -61,7 +61,7 @@ const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth", "CallKit"];
 /** 실험 게이트 안 앱 타입 이름. 정식 실행 파일 바이트에 이 문자열(Swift 맹글 이름의 일부)이 보이면 코드가 샌 것이다.
  *  프레임워크 링크로는 안 잡히는 것(App Intent는 프레임워크가 정식판에도 링크된다)만 둔다. */
-const EXPERIMENTAL_ONLY_SYMBOLS = ["ToggleDictationIntent", "DictationTriggerRegistry"];
+const EXPERIMENTAL_ONLY_SYMBOLS = ["DictationTriggerRegistry"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */

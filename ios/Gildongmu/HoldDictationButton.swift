@@ -214,7 +214,7 @@ struct HoldDictationButton: View {
         }
     }
 
-    /// 화면을 겨냥하지 않은 시작·끝(E82 판정 10: VoiceOver 두 손가락 두 번 탭·단축어 뒷면 탭, `DictationTriggerRegistry`).
+    /// 화면을 겨냥하지 않은 시작·끝(E82 판정 10: VoiceOver 두 손가락 두 번 탭, `DictationTriggerRegistry`).
     /// 받아쓰기 설정이 홀드여도 토글이다 — 손가락이 버튼 위에 없는 외부 시작 세션이라 홀드 계약이 적용되지 않고(헌장 참조
     /// 홀드 불변식 ⑧ 「시작한 방식이 끝내는 방식을 정한다」), 끝내기는 같은 동작을 한 번 더 하거나 버튼을 짧게 누르는 것이다.
     /// 시작·끝은 탭 토글의 탭과 같은 길(`handleToggleTap`)이라 녹음 전 재생 끊기(`TtsPlayer.shared.stop()`)와 완료 뒤

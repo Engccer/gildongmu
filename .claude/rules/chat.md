@@ -41,7 +41,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
   - 받아쓰기는 **탭 토글이 기본**(2026-07-29 위원장 결정 — 비-VO 심사자가 짧게 탭하면 홀드가 무반응으로 보여 App Store 반려됐다), 홀드는 설정 선택지이고 짧은 탭에 3초 가시 안내(`ios.voice.holdHintVisible`)를 병행한다. 구현 `HoldDictationButton.swift`.
   - ⚠ **제스처 계층은 UIKit 인식기(`HoldGestureCatcher`)가 정본** — SwiftUI LongPress+Drag 조합은 List 스크롤 팬 경합·VO pass-through 드래그 유실로 실기기 불합격했다(재도입 금지).
   - ⚠ **"녹음 시작 순간 VO 낭독 차단"은 `SpeechService.start()`의 책임이다**(홀드 버튼이 아니라). 홀드 없이 시작되는 경로엔 그 차단이 없어 녹음 중 라벨이 낭독된 회귀가 있었다.
-  - **화면을 겨냥하지 않는 받아쓰기 시작(VoiceOver 두 손가락 두 번 탭·단축어, E82 판정 10, 실험판)은 `HoldDictationButton`이 스스로 등록하는 등록부가 맨 위 화면의 버튼 하나를 고른다**: 새 받아쓰기 버튼은 `HoldDictationButton`을 쓰면 자동 포함이고 별도 등록을 만들지 않는다. ⚠ SwiftUI App은 `NSPrincipalClass`를 무시하니 `accessibilityMagicTapBlock`으로 받는다. → PATTERNS §받아쓰기 시작 동작은 등록부가 맨 위 화면의 버튼 하나를 고른다
+  - **화면을 겨냥하지 않는 받아쓰기 시작(VoiceOver 두 손가락 두 번 탭, E82 판정 10, 실험판)은 `HoldDictationButton`이 스스로 등록하는 등록부가 맨 위 화면의 버튼 하나를 고른다**: 새 받아쓰기 버튼은 `HoldDictationButton`을 쓰면 자동 포함이고 별도 등록을 만들지 않는다. ⚠ SwiftUI App은 `NSPrincipalClass`를 무시하니 `accessibilityMagicTapBlock`으로 받는다. → PATTERNS §받아쓰기 시작 동작은 등록부가 맨 위 화면의 버튼 하나를 고른다
   - **받아쓰기 엔진은 OS 버전이 정하고 둘 다 온디바이스다**(`SpeechEngine`: iOS 26+ `AnalyzerSpeechEngine`, 그 아래 `LegacySpeechEngine`+`requiresOnDeviceRecognition = true`, 이 한 줄이 개인정보 3자 일치의 근거). 상태 전이·취소 세대·VO 차단·통지는 `SpeechService`에 남긴다. → PATTERNS
   - 단축어 "음성 검색" 세션은 진입 시 VO 커서를 마이크 행에 선점한다(`SearchView.task`의 `micRowFocused`, `speech.start()` 전 + 완료 후 1회 재확정). 정지 수단이 그 행 탭인데 커서가 최상단이면 스와이프로 찾아가야 하기 때문이다.
   - 채팅 입력 필드의 지우기 버튼(`ios.chat.clear`)은 초안이 있을 때만 나타나고, 누르면 자신이 사라지므로 포커스를 입력 필드로 선점 이동한다.

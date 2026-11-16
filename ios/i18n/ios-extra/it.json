@@ -80,9 +80,7 @@
       "errorDownload": "Impossibile preparare il riconoscimento vocale. Connettiti alla rete e riprova.",
       "errorOnDevice": "Questo dispositivo non supporta il riconoscimento vocale sul dispositivo per questa lingua.",
       "deniedRecognition": "Consenti il riconoscimento vocale nelle Impostazioni.",
-      "paused": "Dettatura bloccata",
-      "triggerNoTarget": "Questa schermata non ha la dettatura",
-      "triggerBusy": "La dettatura si sta preparando o sta terminando"
+      "paused": "Dettatura bloccata"
     },
     "search": {
       "prompt": "Cerca luoghi e indirizzi",
@@ -277,10 +275,6 @@
       "nearby": {
         "title": "Nei dintorni",
         "desc": "Apre la schermata Nei dintorni di Gildongmu"
-      },
-      "dictation": {
-        "title": "Avvia dettatura",
-        "desc": "Avvia la dettatura nella schermata attuale di Gildongmu, oppure la interrompe se è già in ascolto"
       }
     },
     "beacon": {

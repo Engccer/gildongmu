@@ -1,16 +1,13 @@
 import SwiftUI
 import UIKit
 #if EXPERIMENTAL
-import Accessibility
-import AppIntents
 import CallKit
 import GildongmuKit
 #endif
 
-// 화면을 겨냥하지 않고 받아쓰기를 시작·끝내는 동작 둘(E82 판정 10, 실험판 전용):
-// ⓐ VoiceOver 두 손가락 두 번 탭(Magic Tap) — 창·앱 객체의 `accessibilityMagicTapBlock`(`installMagicTap`)
-// ⓑ 단축어 동작 `ToggleDictationIntent` — 설정 > 손쉬운 사용 > 터치 > 뒷면 탭에 연결한다.
-// 둘 다 「지금 화면의 받아쓰기」를 이 등록부 한 곳에서 찾는다. 받아쓰기 버튼(`HoldDictationButton`)이 스스로 등록하므로
+// 화면을 겨냥하지 않고 받아쓰기를 시작·끝내는 동작(E82 판정 10, 실험판 전용):
+// VoiceOver 두 손가락 두 번 탭(Magic Tap) — 창·앱 객체의 `accessibilityMagicTapBlock`(`installMagicTap`).
+// 「지금 화면의 받아쓰기」를 이 등록부 한 곳에서 찾는다. 받아쓰기 버튼(`HoldDictationButton`)이 스스로 등록하므로
 // 받아쓰기가 있는 화면이 늘어도 화면마다 배선할 것이 없다(호출부 한 곳 누락이 조용한 결함이 되는 길을 구조로 막는다).
 // 무엇을 할지의 판정은 Kit `dictationTriggerResponse`(순수 함수)다.
 
@@ -18,7 +15,7 @@ extension View {
     /// 이 컨트롤을 「화면을 겨냥하지 않는 받아쓰기」의 대상으로 등록한다(E82 판정 10). `perform`은 그 컨트롤을 누른 것과 같은
     /// 길이어야 한다 — 녹음 시작 때 낭독 끊기·완료 뒤 포커스·통지 계약이 버튼으로 시작한 경우와 갈리지 않게.
     /// `perform`의 반환값은 실제로 무언가 했는가다(무시했으면 `false` — Magic Tap은 시스템 기본 동작으로 돌아간다).
-    /// 정식판에서는 아무것도 하지 않는다(등록부·인텐트·Magic Tap 처리가 컴파일에서 빠진다).
+    /// 정식판에서는 아무것도 하지 않는다(등록부·Magic Tap 처리가 컴파일에서 빠진다).
     @ViewBuilder
     func dictationTriggerTarget(
         isActive: @escaping @MainActor () -> Bool,
@@ -71,9 +68,9 @@ final class DictationTriggerRegistry {
         entries.append(Entry(handle: handle))
     }
 
-    /// 판정하고 그대로 실행한다. 반환값은 이 동작을 앱이 처리했는가(`false`면 Magic Tap은 시스템 기본 동작으로 간다).
+    /// Magic Tap을 판정하고 그대로 실행한다. 반환값은 이 동작을 앱이 처리했는가(`false`면 시스템 기본 동작으로 간다).
     @discardableResult
-    func trigger(from source: DictationTriggerSource) -> Bool {
+    func handleMagicTap() -> Bool {
         let handles = liveHandles()
         let candidates = handles.map { handle in
             DictationTriggerCandidate(
@@ -85,20 +82,14 @@ final class DictationTriggerRegistry {
         }
         let inCall = callObserver.calls.contains { !$0.hasEnded }
         // 버튼이 화면에 없어도 녹음은 이어질 수 있다(나들이 받아쓰기는 모델이 쥐어 시트를 접어도 계속된다).
-        // 녹음 중의 통지는 열린 마이크에 섞여 전사를 오염시키므로 어느 갈래에서도 말하지 않는다.
         let micHot = SpeechService.isAnyActive
-        switch dictationTriggerResponse(source: source, inCall: inCall, micHot: micHot, candidates: candidates) {
+        switch dictationTriggerResponse(inCall: inCall, micHot: micHot, candidates: candidates) {
         case .toggle(let id):
-            if handles.first(where: { $0.id == id })?.perform() == true { return true }
-            // 버튼이 지금 받지 않는 순간(준비·정리 중, 손가락으로 누르고 있는 홀드 세션): 단축어는 침묵이 실패와 구분되지 않으니
-            // 상태를 한 문장으로 말한다(녹음 중이면 말하지 않는다). 대상이 있는 화면의 Magic Tap은 받아쓰기를 향한 것이라
-            // 시스템에 넘기지 않는다 — 끝내려고 연달아 두 번 한 탭의 두 번째가 음악을 켜지 않게.
-            if source == .shortcut, !micHot { Self.announce(appLocalized("ios.voice.triggerBusy")) }
+            // 버튼이 지금 받지 않는 순간(준비·정리 중, 손가락으로 누르고 있는 홀드 세션)에도 시스템에 넘기지 않는다 —
+            // 대상이 있는 화면의 Magic Tap은 받아쓰기를 향한 것이라, 끝내려고 연달아 두 번 한 탭의 두 번째가 음악을 켜지 않게.
+            _ = handles.first(where: { $0.id == id })?.perform()
             return true
         case .swallow:
-            return true
-        case .announceNoTarget:
-            Self.announce(appLocalized("ios.voice.triggerNoTarget"))
             return true
         case .passToSystem:
             return false
@@ -108,19 +99,6 @@ final class DictationTriggerRegistry {
     private func liveHandles() -> [DictationTriggerHandle] {
         entries.removeAll { $0.handle == nil }
         return entries.compactMap(\.handle)
-    }
-
-    /// 지금 보이는 화면에 받아쓰기 버튼이 있는가(단축어 콜드 스타트 대기의 끝 조건).
-    private func hasFrontmostTarget() -> Bool {
-        liveHandles().contains { $0.proxy.map(Self.isFrontmost) ?? false }
-    }
-
-    /// 사용자가 방금 한 동작에 대한 직접 응답이고 포커스가 움직이지 않는다 — 기본 우선순위는 활성화 처리·앱 전환 낭독에
-    /// 잠식된다(화면 규칙: 화면 변화 없는 활성화 응답은 `.high`).
-    private static func announce(_ sentence: String) {
-        var text = AttributedString(sentence)
-        text.accessibilitySpeechAnnouncementPriority = .high
-        AccessibilityNotification.Announcement(text).post()
     }
 
     /// Magic Tap 처리 블록을 창과 앱 객체에 건다(iOS 17+ `accessibilityMagicTapBlock`, 멱등).
@@ -137,42 +115,13 @@ final class DictationTriggerRegistry {
         guard !magicTapWindows.contains(window) else { return }
         magicTapWindows.add(window)
         let block: AXBoolReturnBlock = {
-            MainActor.assumeIsolated { DictationTriggerRegistry.shared.trigger(from: .magicTap) }
+            MainActor.assumeIsolated { DictationTriggerRegistry.shared.handleMagicTap() }
         }
         window.accessibilityMagicTapBlock = block
         if !magicTapOnApplication {
             magicTapOnApplication = true
             UIApplication.shared.accessibilityMagicTapBlock = block
         }
-    }
-
-    /// 단축어 대기 상수. 간격 × 횟수 = 각 대기의 상한(약 2초).
-    private enum ShortcutWait {
-        static let interval: Duration = .milliseconds(100)
-        static let maxPolls = 20
-    }
-
-    /// 단축어 진입. `openAppWhenRun` 인텐트는 앱을 앞으로 가져온 뒤 돈다지만, 뒤에 있던(또는 막 켜진) 앱은 아직 활성화 중이고
-    /// 콜드 스타트면 화면(받아쓰기 버튼)도 아직 창에 붙지 않았다. 그래서 ①활성화를, ②보이는 받아쓰기 버튼을 각각 상한까지
-    /// 기다린다 — 고정 대기로 판정하면 늦게 그려진 화면에서 거짓 「받아쓰기가 없습니다」가 나온다. 이미 준비됐으면 기다리지 않는다.
-    func triggerFromShortcut() async {
-        // 이미 앞에 떠 있었고 받아쓰기 버튼이 한 번이라도 창에 붙은 적이 있는 앱이면 화면이 이미 그려져 있다 — 버튼을 기다리지
-        // 않는다(받아쓰기 없는 화면의 응답이 2초 늦지 않게). 막 켜진 앱은 활성 상태로 들어와도 등록이 0이라 종전대로 기다린다.
-        let wasActive = UIApplication.shared.applicationState == .active && nextOrder > 0
-        var polls = 0
-        while UIApplication.shared.applicationState != .active, polls < ShortcutWait.maxPolls {
-            try? await Task.sleep(for: ShortcutWait.interval)
-            polls += 1
-        }
-        // 끝내 앞으로 오지 못했으면(잠금 화면 등) 시작하지 않는다 — 백그라운드에서 마이크를 열지 않는다. 알리지도 않는다:
-        // VoiceOver는 앞에 있는 앱의 통지만 읽어 이 자리의 통지는 닿지 않는다.
-        guard UIApplication.shared.applicationState == .active else { return }
-        polls = 0
-        while !wasActive, !hasFrontmostTarget(), polls < ShortcutWait.maxPolls {
-            try? await Task.sleep(for: ShortcutWait.interval)
-            polls += 1
-        }
-        trigger(from: .shortcut)
     }
 
     /// 그 뷰가 지금 사용자가 보는 화면에 있는가: 창에 붙어 있고(숨은 탭·밀려난 화면은 창에서 떨어진다) 가장 위에 떠 있는
@@ -261,20 +210,6 @@ private final class DictationTriggerAnchorView: UIView {
             current = view.superview
         }
         return self
-    }
-}
-
-/// 「받아쓰기 시작」 단축어 동작. 지금 화면의 받아쓰기를 시작하고, 받아쓰는 중이면 끝낸다(버튼을 누른 것과 같다).
-/// 받아쓰기가 없는 화면이면 그렇다고 한 문장으로 알린다(침묵이 실패와 구분되지 않는다).
-struct ToggleDictationIntent: AppIntent {
-    static let title = LocalizedStringResource("ios.shortcut.dictation.title")
-    static let description = IntentDescription(LocalizedStringResource("ios.shortcut.dictation.desc"))
-    static let openAppWhenRun = true
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        await DictationTriggerRegistry.shared.triggerFromShortcut()
-        return .result()
     }
 }
 
