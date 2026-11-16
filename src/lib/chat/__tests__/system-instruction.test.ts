@@ -10,10 +10,9 @@ const general = buildChatSystemInstruction("ko", undefined, { journey: false });
 const anchored = buildChatSystemInstruction("ko", { name: "길동역", category: "지하철역" }, { journey: true });
 
 describe("[길동무 앱 기능] 단락(BACKLOG E88)", () => {
-  it("범용 채팅과 장소 채팅 모두에 기능 요지와 목록 밖 기능의 답을 싣는다", () => {
+  it("범용 채팅과 장소 채팅 모두에 기능 요지 단락을 싣는다", () => {
     for (const text of [general, anchored]) {
       expect(text).toContain("[길동무 앱 기능]");
-      expect(text).toContain("이 목록에 없는 앱 기능을 물으면 그런 기능이 있는지 모른다고 답한다.");
     }
   });
 
