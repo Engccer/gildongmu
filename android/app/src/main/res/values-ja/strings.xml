@@ -286,8 +286,8 @@
     <string name="android_outing_narrationLandmarks">目印のみ</string>
     <string name="android_outing_narrationOff">オフ</string>
     <string name="android_outing_nearAhead">前方%1$s以内：%2$s</string>
-    <string name="android_outing_nearAheadEmpty">前方%1$s以内に既知の場所なし</string>
-    <string name="android_outing_nearAheadNoHeading">進行方向がわかると前方の様子が表示されます</string>
+    <string name="android_outing_nearAheadEmpty">前方%1$s以内に案内する場所なし</string>
+    <string name="android_outing_nearAheadNoHeading">少し移動してください。周辺の場所を検索中</string>
     <string name="android_outing_nearCrosswalk">横断歩道</string>
     <string name="android_outing_nearJunctionBranch">分かれ道</string>
     <string name="android_outing_nearJunctionCross">十字路</string>
@@ -383,7 +383,7 @@
     <string name="android_settings_listenSpeed15x">1.5倍</string>
     <string name="android_settings_listenSpeed1x">1倍</string>
     <string name="android_settings_listenSpeed2x">2倍</string>
-    <string name="android_settings_outingForegroundSpeech">お散歩の案内を端末の音声で</string>
+    <string name="android_settings_outingForegroundSpeech">お散歩の案内を端末の音声で聞く</string>
     <string name="android_settings_outingForegroundSpeechFooter">お散歩中は画面がついていても、周辺、分かれ道、横断歩道の案内をVoiceOverの代わりに端末の音声で伝えます。</string>
     <string name="android_settings_releaseNotes">アップデート履歴</string>
     <string name="android_settings_releaseNotesError">アップデート履歴を読み込めませんでした</string>

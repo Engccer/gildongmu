@@ -286,8 +286,8 @@
     <string name="android_outing_narrationLandmarks">Landmarks only</string>
     <string name="android_outing_narrationOff">Off</string>
     <string name="android_outing_nearAhead">Within %1$s ahead: %2$s</string>
-    <string name="android_outing_nearAheadEmpty">Nothing known within %1$s ahead</string>
-    <string name="android_outing_nearAheadNoHeading">What\'s ahead appears once your heading is known</string>
+    <string name="android_outing_nearAheadEmpty">Nothing to announce within %1$s ahead</string>
+    <string name="android_outing_nearAheadNoHeading">Move a little. Looking for nearby places</string>
     <string name="android_outing_nearCrosswalk">crosswalk</string>
     <string name="android_outing_nearJunctionBranch">junction</string>
     <string name="android_outing_nearJunctionCross">crossroads</string>
@@ -383,7 +383,7 @@
     <string name="android_settings_listenSpeed15x">1.5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
-    <string name="android_settings_outingForegroundSpeech">Stroll guidance in device voice</string>
+    <string name="android_settings_outingForegroundSpeech">Hear stroll guidance in device voice</string>
     <string name="android_settings_outingForegroundSpeechFooter">During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on.</string>
     <string name="android_settings_releaseNotes">Release notes</string>
     <string name="android_settings_releaseNotesError">Could not load release notes</string>

@@ -286,8 +286,8 @@
     <string name="android_outing_narrationLandmarks">Solo punti di riferimento</string>
     <string name="android_outing_narrationOff">Disattivata</string>
     <string name="android_outing_nearAhead">Entro %1$s davanti: %2$s</string>
-    <string name="android_outing_nearAheadEmpty">Niente di noto entro %1$s davanti</string>
-    <string name="android_outing_nearAheadNoHeading">Ciò che c\'è davanti appare quando la direzione è nota</string>
+    <string name="android_outing_nearAheadEmpty">Niente da annunciare entro %1$s davanti</string>
+    <string name="android_outing_nearAheadNoHeading">Spostati un po\'. Ricerca dei luoghi vicini</string>
     <string name="android_outing_nearCrosswalk">attraversamento pedonale</string>
     <string name="android_outing_nearJunctionBranch">bivio</string>
     <string name="android_outing_nearJunctionCross">incrocio</string>
@@ -383,7 +383,7 @@
     <string name="android_settings_listenSpeed15x">1,5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
-    <string name="android_settings_outingForegroundSpeech">Guida della passeggiata con la voce del dispositivo</string>
+    <string name="android_settings_outingForegroundSpeech">Ascolta la guida della passeggiata con la voce del dispositivo</string>
     <string name="android_settings_outingForegroundSpeechFooter">Durante la passeggiata, annuncia i luoghi vicini, gli incroci e gli attraversamenti pedonali con la voce del dispositivo invece di VoiceOver, anche a schermo acceso.</string>
     <string name="android_settings_releaseNotes">Note di rilascio</string>
     <string name="android_settings_releaseNotesError">Impossibile caricare le note di rilascio</string>

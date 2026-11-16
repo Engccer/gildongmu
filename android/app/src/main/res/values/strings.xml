@@ -370,9 +370,9 @@
     <string name="android_outing_narrationAll">전부</string>
     <string name="android_outing_narrationLandmarks">이정표만</string>
     <string name="android_outing_narrationOff">끔</string>
-    <string name="android_outing_nearAhead">앞 %1$s 안: %2$s</string>
-    <string name="android_outing_nearAheadEmpty">앞 %1$s 안에 알려진 곳 없음</string>
-    <string name="android_outing_nearAheadNoHeading">진행 방향을 알면 앞 상황이 나옵니다</string>
+    <string name="android_outing_nearAhead">앞 %1$s 안에 %2$s</string>
+    <string name="android_outing_nearAheadEmpty">앞 %1$s 안에 안내할 곳 없음</string>
+    <string name="android_outing_nearAheadNoHeading">조금 이동해 주세요. 주변 장소 찾는 중</string>
     <string name="android_outing_nearCrosswalk">횡단보도</string>
     <string name="android_outing_nearJunctionBranch">갈림길</string>
     <string name="android_outing_nearJunctionCross">사거리</string>
@@ -468,8 +468,8 @@
     <string name="android_settings_listenSpeed15x">1.5배</string>
     <string name="android_settings_listenSpeed1x">1배</string>
     <string name="android_settings_listenSpeed2x">2배</string>
-    <string name="android_settings_outingForegroundSpeech">나들이 안내를 기기 음성으로</string>
-    <string name="android_settings_outingForegroundSpeechFooter">나들이 중 화면을 켜 두어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.</string>
+    <string name="android_settings_outingForegroundSpeech">나들이 안내를 기기 음성으로 듣기</string>
+    <string name="android_settings_outingForegroundSpeechFooter">나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.</string>
     <string name="android_settings_releaseNotes">업데이트 이력</string>
     <string name="android_settings_releaseNotesError">업데이트 이력을 불러올 수 없습니다</string>
     <string name="android_settings_releaseNotesVersion">버전 %1$s</string>
@@ -494,7 +494,7 @@
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>
     <string name="android_settings_weightRejectedNone">체중은 %1$s~%2$skg 사이여야 합니다. 저장하지 않았습니다.</string>
-    <string name="android_shortcut_dictation_desc">길동무에서 지금 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다</string>
+    <string name="android_shortcut_dictation_desc">길동무에서 지금 열린 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다.</string>
     <string name="android_shortcut_dictation_title">받아쓰기 시작</string>
     <string name="android_shortcut_nearby_desc">길동무 내 주변 화면을 엽니다</string>
     <string name="android_shortcut_nearby_title">내 주변</string>

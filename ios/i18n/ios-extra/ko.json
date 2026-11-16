@@ -249,8 +249,8 @@
       "backgroundSpeech": "백그라운드 음성 안내",
       "backgroundSpeechFooter": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다.",
       "backgroundSpeechFooterOuting": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다. 나들이 중에는 주변 정보도 안내합니다.",
-      "outingForegroundSpeech": "나들이 안내를 기기 음성으로",
-      "outingForegroundSpeechFooter": "나들이 중 화면을 켜 두어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.",
+      "outingForegroundSpeech": "나들이 안내를 기기 음성으로 듣기",
+      "outingForegroundSpeechFooter": "나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.",
       "aiSection": "AI 채팅",
       "aiConsentToggle": "AI 채팅 데이터 전송 동의",
       "reportProblem": "문제 신고",
@@ -280,7 +280,7 @@
       },
       "dictation": {
         "title": "받아쓰기 시작",
-        "desc": "길동무에서 지금 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다"
+        "desc": "길동무에서 지금 열린 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다."
       }
     },
     "beacon": {
@@ -386,9 +386,9 @@
       "lastHeading": "마지막 진행 방향 {dir}",
       "aheadLandmark": "앞에 {name}, {distance}",
       "aheadNone": "앞에 이정표 없음",
-      "nearAhead": "앞 {distance} 안: {items}",
-      "nearAheadEmpty": "앞 {distance} 안에 알려진 곳 없음",
-      "nearAheadNoHeading": "진행 방향을 알면 앞 상황이 나옵니다",
+      "nearAhead": "앞 {distance} 안에 {items}",
+      "nearAheadEmpty": "앞 {distance} 안에 안내할 곳 없음",
+      "nearAheadNoHeading": "조금 이동해 주세요. 주변 장소 찾는 중",
       "nearLeft": "왼쪽 {name}",
       "nearRight": "오른쪽 {name}",
       "nearCrosswalk": "횡단보도",

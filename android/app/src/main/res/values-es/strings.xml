@@ -286,8 +286,8 @@
     <string name="android_outing_narrationLandmarks">Solo referencias</string>
     <string name="android_outing_narrationOff">Desactivada</string>
     <string name="android_outing_nearAhead">A menos de %1$s delante: %2$s</string>
-    <string name="android_outing_nearAheadEmpty">Nada conocido a menos de %1$s delante</string>
-    <string name="android_outing_nearAheadNoHeading">Lo que hay delante aparece cuando se conoce tu dirección</string>
+    <string name="android_outing_nearAheadEmpty">Nada que anunciar a menos de %1$s delante</string>
+    <string name="android_outing_nearAheadNoHeading">Muévete un poco. Buscando lugares cercanos</string>
     <string name="android_outing_nearCrosswalk">paso de peatones</string>
     <string name="android_outing_nearJunctionBranch">bifurcación</string>
     <string name="android_outing_nearJunctionCross">cruce</string>
@@ -383,7 +383,7 @@
     <string name="android_settings_listenSpeed15x">1,5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
-    <string name="android_settings_outingForegroundSpeech">Guía del paseo con la voz del dispositivo</string>
+    <string name="android_settings_outingForegroundSpeech">Oír la guía del paseo con la voz del dispositivo</string>
     <string name="android_settings_outingForegroundSpeechFooter">Durante el paseo, anuncia los lugares cercanos, los cruces de calles y los pasos de peatones con la voz del dispositivo en lugar de VoiceOver, incluso con la pantalla encendida.</string>
     <string name="android_settings_releaseNotes">Notas de la versión</string>
     <string name="android_settings_releaseNotesError">No se pudieron cargar las notas de la versión</string>

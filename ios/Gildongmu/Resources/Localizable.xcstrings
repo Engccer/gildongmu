@@ -28616,7 +28616,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앞 %1$@ 안: %2$@"
+            "value": "앞 %1$@ 안에 %2$@"
           }
         },
         "en": {
@@ -28656,37 +28656,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앞 %1$@ 안에 알려진 곳 없음"
+            "value": "앞 %1$@ 안에 안내할 곳 없음"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing known within %1$@ ahead"
+            "value": "Nothing to announce within %1$@ ahead"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada conocido a menos de %1$@ delante"
+            "value": "Nada que anunciar a menos de %1$@ delante"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rien de connu à moins de %1$@ devant"
+            "value": "Rien à annoncer à moins de %1$@ devant"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Niente di noto entro %1$@ davanti"
+            "value": "Niente da annunciare entro %1$@ davanti"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "前方%1$@以内に既知の場所なし"
+            "value": "前方%1$@以内に案内する場所なし"
           }
         }
       }
@@ -28696,37 +28696,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "진행 방향을 알면 앞 상황이 나옵니다"
+            "value": "조금 이동해 주세요. 주변 장소 찾는 중"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What's ahead appears once your heading is known"
+            "value": "Move a little. Looking for nearby places"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lo que hay delante aparece cuando se conoce tu dirección"
+            "value": "Muévete un poco. Buscando lugares cercanos"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce qui est devant s'affiche quand votre direction est connue"
+            "value": "Avancez un peu. Recherche des lieux à proximité"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ciò che c'è davanti appare quando la direzione è nota"
+            "value": "Spostati un po'. Ricerca dei luoghi vicini"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "進行方向がわかると前方の様子が表示されます"
+            "value": "少し移動してください。周辺の場所を検索中"
           }
         }
       }
@@ -32536,37 +32536,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 안내를 기기 음성으로"
+            "value": "나들이 안내를 기기 음성으로 듣기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stroll guidance in device voice"
+            "value": "Hear stroll guidance in device voice"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía del paseo con la voz del dispositivo"
+            "value": "Oír la guía del paseo con la voz del dispositivo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage de la balade avec la voix de l'appareil"
+            "value": "Entendre le guidage de la balade avec la voix de l'appareil"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida della passeggiata con la voce del dispositivo"
+            "value": "Ascolta la guida della passeggiata con la voce del dispositivo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お散歩の案内を端末の音声で"
+            "value": "お散歩の案内を端末の音声で聞く"
           }
         }
       }
@@ -32576,7 +32576,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 중 화면을 켜 두어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다."
+            "value": "나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다."
           }
         },
         "en": {
@@ -33536,7 +33536,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길동무에서 지금 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다"
+            "value": "길동무에서 지금 열린 화면의 받아쓰기를 시작합니다. 받아쓰는 중이면 끝냅니다."
           }
         },
         "en": {
