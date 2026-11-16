@@ -94,6 +94,9 @@ struct GildongmuApp: App {
     /// `Bool`이면 여러 뷰가 같은 참을 들어 탭 전환마다 커서를 끌어간다(리뷰 2026-08-23).
     @AccessibilityFocusState private var bandFocusedTab: AppTab?
     @State private var bandFocusTask: Task<Void, Never>?
+    /// 흔들기(E87, 실험판)가 접은 최소화는 띠바로 착지하지 않는다 — 커서는 검색 창으로 간다(두 착지가 다툰다). 정식판에서는
+    /// 세우는 자리가 없다.
+    @State private var skipBandLanding = false
 
     var body: some Scene {
         WindowGroup {
@@ -186,6 +189,7 @@ struct GildongmuApp: App {
                 // 펼치면 바인딩을 비운다 — 안 비우면 다음 최소화의 대입이 같은 값이라
                 // 포커스 전이가 걸리지 않는다(리뷰 2026-08-23).
                 guard minimized else { bandFocusTask = nil; bandFocusedTab = nil; return }
+                if skipBandLanding { skipBandLanding = false; bandFocusTask = nil; return }
                 let target = selectedTab
                 bandFocusTask = Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(450))
@@ -240,6 +244,10 @@ struct GildongmuApp: App {
                 await ManualLocationJudge.run()
             }
             .onChange(of: launchStore.pending) { _, _ in consumeLaunchAction() }
+            #if EXPERIMENTAL
+            // 흔들면 어느 화면에서나 장소 검색 창으로(E87, 실험판). 리셋 없이 초점만 옮긴다(단축어 진입과 다르다).
+            .onDeviceShake(perform: handleShake)
+            #endif
             // 인앱 "길찾기" 진입(장소 상세·검색): 단축어와 달리 세션 리셋 없음(다른 탭
             // 상태 보존). 콜드 런치 레이스가 없어(버튼은 앱 실행 중에만 눌린다)
             // .task 대응짝은 불필요하다. .onChange만으로 충분하다.
@@ -375,6 +383,25 @@ struct GildongmuApp: App {
             selectedTab = .nearby
         }
     }
+
+    #if EXPERIMENTAL
+    /// 흔들기 → 장소 검색 창(E87, 위원장 판정 2026-11-16·17). 세션 리셋 없이(다른 탭 상태 보존) 덮개를 걷고 검색 탭으로 가서
+    /// 검색 창 초점을 요청한다. 안내 시트는 접기만 한다 — 안내는 뒤에서 계속(종료·소거 없음, 판정 ②). 접기는 나들이 받아쓰기도
+    /// 끝내고 보낸다(`GuideSession.isMinimized`). 받아쓰기를 켜지 않고 통지를 겹치지 않는다(판정 2026-11-17: 초점이 신호다).
+    /// 설정·2.0 공지는 루트가 띄운 시트라 상태로 닫는다(공지는 확인하지 않은 것이라 다음 실행에 다시 뜬다). 다른 탭이 띄운
+    /// 시트는 루트 상태가 아니라 창에서 닫는다(`dismissLeftoverModals`).
+    private func handleShake() {
+        if guideSession.hasScreen, !guideSession.isMinimized {
+            skipBandLanding = true
+            guideSession.isMinimized = true
+        }
+        showsSettings = false
+        releaseNoticePresented = false
+        selectedTab = .search
+        ShakeToSearch.shared.requestFocus()
+        ShakeToSearch.dismissLeftoverModals()
+    }
+    #endif
 
     /// 장소 상세·검색 결과 "길찾기" 진입 소비(Task I4). 세션 리셋 없이 길찾기 탭으로만
     /// 전환한다. 사용자가 이미 채팅·검색을 쓰던 중일 수 있어 단축어 진입과 달리 그

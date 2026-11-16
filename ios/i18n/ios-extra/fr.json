@@ -265,7 +265,7 @@
       "tabOrder": "Ordre des onglets",
       "tabOrderReset": "Rétablir l’ordre par défaut",
       "tabOrderResetDone": "Ordre par défaut rétabli",
-      "vergiliusProvider": "Modèle de réponse"
+      "vergiliusProvider": "Modèle de réponse de la balade"
     },
     "shortcut": {
       "voiceSearch": {
@@ -383,6 +383,7 @@
       "nearAhead": "À moins de {distance} devant : {items}",
       "nearAheadEmpty": "Rien à annoncer à moins de {distance} devant",
       "nearAheadNoHeading": "Avancez un peu. Recherche des lieux à proximité",
+      "nearAheadLocating": "Vérification de la position",
       "nearLeft": "{name} à gauche",
       "nearRight": "{name} à droite",
       "nearCrosswalk": "passage piéton",

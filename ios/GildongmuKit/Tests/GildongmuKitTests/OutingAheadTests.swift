@@ -181,47 +181,47 @@ struct OutingAheadLinesTests {
     @Test("방위가 valid가 아니면 윗줄은 방위 문구만, 아랫줄은 목록이 준비됐을 때 「방향 모름」")
     func noHeading() {
         for h in [OutingHeading.none, .stale(bearing: 0)] {
-            #expect(outingAheadUpper(heading: h, status: .ready, pick: nil) == .headingOnly)
-            #expect(outingAheadLower(heading: h, status: .ready, nodes: .ready, pick: nil) == .noHeading)
+            #expect(outingAheadUpper(heading: h, status: .ready, pick: nil, locationLost: false) == .headingOnly)
+            #expect(outingAheadLower(heading: h, status: .ready, nodes: .ready, pick: nil, locationLost: false) == .noHeading)
             // 목록이 준비되지 않았으면 그 상태가 먼저다(방향과 무관한 정보).
-            #expect(outingAheadLower(heading: h, status: .loading, nodes: .ready, pick: nil) == .surroundings(.loading))
+            #expect(outingAheadLower(heading: h, status: .loading, nodes: .ready, pick: nil, locationLost: false) == .surroundings(.loading))
             // 직전 fix의 고르기가 남아 있어도 방위가 지금 valid가 아니면 앞을 말하지 않는다.
-            #expect(outingAheadUpper(heading: h, status: .ready, pick: pickWith) == .headingOnly)
-            #expect(outingAheadLower(heading: h, status: .ready, nodes: .ready, pick: pickWith) == .noHeading)
+            #expect(outingAheadUpper(heading: h, status: .ready, pick: pickWith, locationLost: false) == .headingOnly)
+            #expect(outingAheadLower(heading: h, status: .ready, nodes: .ready, pick: pickWith, locationLost: false) == .noHeading)
         }
     }
 
     @Test("찾은 것이 있으면 상태와 무관하게 보인다")
     func found() {
         for status in [OutingSurroundingsStatus.ready, .failed, .loading] {
-            #expect(outingAheadUpper(heading: northValid, status: status, pick: pickWith)
+            #expect(outingAheadUpper(heading: northValid, status: status, pick: pickWith, locationLost: false)
                 == .landmark(OutingNextLandmark(id: "a", meters: 40)))
-            #expect(outingAheadLower(heading: northValid, status: status, nodes: .failed, pick: pickWith)
+            #expect(outingAheadLower(heading: northValid, status: status, nodes: .failed, pick: pickWith, locationLost: false)
                 == .items([.place(id: "s", side: .left)]))
         }
     }
 
     @Test("「없음」은 목록을 받아 둔 때만 — 확인 중·실패·지역 밖은 상태를 말한다")
     func noneVersusUnknown() {
-        #expect(outingAheadUpper(heading: northValid, status: .ready, pick: pickEmpty) == .noLandmark)
-        #expect(outingAheadLower(heading: northValid, status: .ready, nodes: .ready, pick: pickEmpty) == .empty)
+        #expect(outingAheadUpper(heading: northValid, status: .ready, pick: pickEmpty, locationLost: false) == .noLandmark)
+        #expect(outingAheadLower(heading: northValid, status: .ready, nodes: .ready, pick: pickEmpty, locationLost: false) == .empty)
         for status in [OutingSurroundingsStatus.loading, .failed, .outOfCoverage] {
-            #expect(outingAheadUpper(heading: northValid, status: status, pick: pickEmpty) == .headingOnly)
-            #expect(outingAheadLower(heading: northValid, status: status, nodes: .ready, pick: pickEmpty) == .surroundings(status))
+            #expect(outingAheadUpper(heading: northValid, status: status, pick: pickEmpty, locationLost: false) == .headingOnly)
+            #expect(outingAheadLower(heading: northValid, status: status, nodes: .ready, pick: pickEmpty, locationLost: false) == .surroundings(status))
         }
     }
 
     @Test("장소는 받았어도 횡단보도·교차로 원천이 준비되지 않았으면 「없음」이 아니다 — 찾은 장소만 보이거나 그 상태를 말한다")
     func nodesNotReady() {
         for nodes in [OutingSurroundingsStatus.loading, .failed] {
-            #expect(outingAheadLower(heading: northValid, status: .ready, nodes: nodes, pick: pickEmpty) == .surroundings(nodes))
-            #expect(outingAheadLower(heading: northValid, status: .ready, nodes: nodes, pick: pickWith)
+            #expect(outingAheadLower(heading: northValid, status: .ready, nodes: nodes, pick: pickEmpty, locationLost: false) == .surroundings(nodes))
+            #expect(outingAheadLower(heading: northValid, status: .ready, nodes: nodes, pick: pickWith, locationLost: false)
                 == .items([.place(id: "s", side: .left)]))
             // 방향을 모르면 앞을 판정하지 않는다는 문장이 그대로다(없음을 단정하지 않는다).
-            #expect(outingAheadLower(heading: .stale(bearing: 0), status: .ready, nodes: nodes, pick: nil) == .noHeading)
+            #expect(outingAheadLower(heading: .stale(bearing: 0), status: .ready, nodes: nodes, pick: nil, locationLost: false) == .noHeading)
         }
         // 윗줄(이정표)은 장소에서만 고르므로 노드 상태와 무관하다.
-        #expect(outingAheadUpper(heading: northValid, status: .ready, pick: pickEmpty) == .noLandmark)
+        #expect(outingAheadUpper(heading: northValid, status: .ready, pick: pickEmpty, locationLost: false) == .noLandmark)
     }
 
     @Test("보행 노드 조회 결과의 준비 상태: 조회 실패·원천 실패는 failed, 미제공은 준비")
@@ -260,6 +260,33 @@ struct OutingAheadLinesTests {
         #expect(!outingHeadingIsCurrent(.stale(bearing: 0), state: state, now: 100))
         #expect(!outingHeadingIsCurrent(.none, state: OutingHeadingState(), now: 100))
         #expect(!outingHeadingIsCurrent(valid, state: OutingHeadingState(), now: 100))
+    }
+
+    @Test("위치 끊김은 쥔 방위가 valid인데 유효 나이를 넘긴 때만 — 처음부터 모름·멈춤(stale)은 들지 않는다(2026-11-17 판정)")
+    func locationLost() {
+        let course = DerivedCourse(bearing: 0, uncertaintyDeg: 10)
+        let state = outingHeadingRecord(OutingHeadingState(), course: course, at: 100)
+        let valid = OutingHeading.valid(bearing: 0, uncertaintyDeg: 10)
+        #expect(!outingAheadLocationLost(valid, state: state, now: 100 + outingHeadingMaxAgeSeconds))
+        #expect(outingAheadLocationLost(valid, state: state, now: 100 + outingHeadingMaxAgeSeconds + 0.1))
+        #expect(!outingAheadLocationLost(.stale(bearing: 0), state: state, now: 200))
+        #expect(!outingAheadLocationLost(.none, state: OutingHeadingState(), now: 200))
+    }
+
+    @Test("위치가 끊긴 동안 두 줄은 「마지막 진행 방향」·「위치 확인 중」 — 쥔 고르기·목록 상태와 무관하다")
+    func locationLostLines() {
+        for status in [OutingSurroundingsStatus.ready, .loading, .failed, .outOfCoverage] {
+            for pick in [nil, pickWith, pickEmpty] {
+                #expect(outingAheadUpper(heading: northValid, status: status, pick: pick, locationLost: true) == .lastHeading)
+                #expect(outingAheadLower(
+                    heading: northValid, status: status, nodes: .ready, pick: pick, locationLost: true) == .locating)
+            }
+        }
+        // 대조군: 방향을 처음부터 모르는 상태와 멈춘 상태의 종전 문장은 그대로다.
+        for h in [OutingHeading.none, .stale(bearing: 0)] {
+            #expect(outingAheadUpper(heading: h, status: .ready, pick: nil, locationLost: false) == .headingOnly)
+            #expect(outingAheadLower(heading: h, status: .ready, nodes: .ready, pick: nil, locationLost: false) == .noHeading)
+        }
     }
 }
 
@@ -325,7 +352,7 @@ struct OutingAheadReplayTests {
                 },
                 crosswalks: [], junctions: [])
             #expect(pick?.next == nil, "사례 \(n)")
-            #expect(outingAheadUpper(heading: heading, status: .ready, pick: pick) == .noLandmark, "사례 \(n)")
+            #expect(outingAheadUpper(heading: heading, status: .ready, pick: pick, locationLost: false) == .noLandmark, "사례 \(n)")
         }
     }
 

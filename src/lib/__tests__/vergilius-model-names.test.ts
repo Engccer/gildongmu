@@ -5,7 +5,7 @@ import { OPENAI_VERGILIUS_MODELS } from "../vergilius/openai";
 import { GOOGLE_VERGILIUS_MODEL } from "../vergilius/google";
 
 /**
- * 실험판 설정 「답변 모델」의 화면 이름은 모델 이름이다(E82, 위원장 2026-11-15). 서버 식별자 `openai`·`openai-luna`·`google`이 가리키는
+ * 실험판 설정 「나들이 답변 모델」의 화면 이름은 모델 이름이다(E82, 위원장 2026-11-15). 서버 식별자 `openai`·`openai-luna`·`google`이 가리키는
  * 모델은 서버 상수가 정하므로, 서버에서 모델을 바꾸고 앱 이름을 그대로 두면 설정이 다른 모델을 고르는 것처럼 들린다.
  */
 const KIT = readFileSync(

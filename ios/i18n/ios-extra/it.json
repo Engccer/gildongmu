@@ -265,7 +265,7 @@
       "tabOrder": "Ordine delle schede",
       "tabOrderReset": "Ripristina l’ordine predefinito",
       "tabOrderResetDone": "Ordine predefinito ripristinato",
-      "vergiliusProvider": "Modello di risposta"
+      "vergiliusProvider": "Modello di risposta della passeggiata"
     },
     "shortcut": {
       "voiceSearch": {
@@ -383,6 +383,7 @@
       "nearAhead": "Entro {distance} davanti: {items}",
       "nearAheadEmpty": "Niente da annunciare entro {distance} davanti",
       "nearAheadNoHeading": "Spostati un po'. Ricerca dei luoghi vicini",
+      "nearAheadLocating": "Verifica della posizione",
       "nearLeft": "{name} a sinistra",
       "nearRight": "{name} a destra",
       "nearCrosswalk": "attraversamento pedonale",

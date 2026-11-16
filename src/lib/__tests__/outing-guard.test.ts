@@ -130,8 +130,12 @@ describe("나들이 앞 상황 두 줄(E82 판정 4)", () => {
 
   it("두 줄은 Kit 판정(outingAheadUpper·outingAheadLower)만 읽고, 고르기는 매 fix Kit outingAheadPick 한 곳이다", () => {
     const model = readFileSync(MODEL, "utf8");
-    expect(model).toContain("switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick)");
-    expect(model).toContain("switch outingAheadLower(heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick)");
+    expect(model).toContain(
+      "switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick, locationLost: aheadLocationLost)",
+    );
+    expect(model).toMatch(
+      /switch outingAheadLower\(\s*heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick, locationLost: aheadLocationLost\s*\)/,
+    );
     expect(functionBody(model, "pickAhead")).toContain("return outingAheadPick(");
     // 판정 3: 병원 등급은 세부 분류로만 — 모델의 등급 호출은 전부 categoryRaw를 넘긴다(분류 키 단독 판정 금지).
     const tierCalls = model.match(/outingLandmarkTier\([^)]*\)/g) ?? [];
@@ -148,7 +152,7 @@ describe("나들이 앞 상황 두 줄(E82 판정 4)", () => {
   it("fix가 끊기거나 못 쓰는 동안 쥔 앞 상황은 방위 유효 나이가 지나면 내린다(감시 타이머·못 쓰는 fix 두 자리)", () => {
     const model = readFileSync(MODEL, "utf8");
     const drop = functionBody(model, "dropStaleAhead");
-    expect(drop).toContain("outingHeadingIsCurrent(heading, state: headingState, now: now)");
+    expect(drop).toContain("outingAheadLocationLost(heading, state: headingState, now: now)");
     expect(drop).toContain("aheadPick = nil");
     expect(drop).not.toMatch(/heading = /); // 방위 상태와 다른 판정은 건드리지 않는다
     expect(functionBody(model, "tickWatchdog")).toContain("dropStaleAhead(now: now)");
@@ -511,5 +515,43 @@ describe("E82 재리뷰(2026-11-17) 배선", () => {
 
   it("홀드 시작은 외부 시작의 준비 중에도 새 세션을 만들지 않는다", () => {
     expect(functionBody(read("Gildongmu/HoldDictationButton.swift"), "beginHold")).toContain("!speech.isStarting");
+  });
+});
+
+describe("E82 위원장 판정(2026-11-17) 배선", () => {
+  const model = readFileSync(MODEL, "utf8");
+  const read = (rel: string) => readFileSync(join(IOS, rel), "utf8");
+
+  it("위치 끊김 표식은 내리는 자리(dropStaleAhead)가 세우고, 쓸 수 있는 fix가 방위를 다시 정하는 자리와 초기화 두 자리에서만 내린다", () => {
+    expect(functionBody(model, "dropStaleAhead")).toContain("aheadLocationLost = true");
+    expect(model.match(/aheadLocationLost = true/g)?.length).toBe(1);
+    // 쓸 수 있는 fix: 방위를 다시 정한 바로 다음 줄에서 내린다(못 쓰는 fix 갈래는 그 앞에서 return한다).
+    expect(model).toMatch(
+      /heading = outingHeading\(headingState, motion: motion, now: now\)\n(?:\s*\/\/[^\n]*\n)*\s*if aheadLocationLost \{ aheadLocationLost = false \}/,
+    );
+    expect(model.match(/(?<!var )aheadLocationLost = false/g)?.length).toBe(3); // fix 1 + 시작·종료 초기화 2(선언 제외)
+  });
+
+  it("두 줄의 위치 끊김 문구는 기존 lastHeading 키와 새 nearAheadLocating 키이고 모델 한 곳에서만 쓴다", () => {
+    expect(model).toMatch(/case \.lastHeading:[\s\S]*?appLocalized\("ios\.outing\.lastHeading", compassWord\(b\)\)/);
+    expect(model).toMatch(/case \.locating:\s*return appLocalized\("ios\.outing\.nearAheadLocating"\)/);
+    const users = swiftFiles(IOS).filter((f) => readFileSync(f, "utf8").includes('"ios.outing.nearAheadLocating"'));
+    expect(users.map((f) => f.split("/").pop())).toEqual(["OutingModel.swift"]);
+  });
+
+  it("시트를 접는 사건(GuideSession.isMinimized)이 나들이 받아쓰기를 끝내고 보낸다 — 뷰 수명에 걸지 않는다", () => {
+    const session = read("Gildongmu/Directions/GuideSessionCoordinator.swift");
+    expect(session).toMatch(
+      /var isMinimized = false \{\s*didSet \{\s*if isMinimized, !oldValue \{ outing\.finishAskOnSheetMinimized\(\) \}/,
+    );
+    const finish = functionBody(model, "finishAskOnSheetMinimized");
+    expect(finish).toContain("await self.speech.stop()");
+    expect(finish).toContain("self.ask(text)");
+    // 말한 것이 없으면 조용히 끝낸다(위원장 판정) — 「듣지 못했다」 문장을 내지 않는다.
+    expect(finish).not.toContain("askHeardNothing");
+    // 시작 준비 중이면 거둔다(아직 말한 것이 없다).
+    expect(finish).toMatch(/if speech\.isStarting \{[^}]*speech\.cancel\(\)/);
+    // 시트 뷰는 이 종료를 스스로 걸지 않는다(접히면 파괴된다).
+    expect(read("Gildongmu/Directions/OutingSheet.swift")).not.toContain("finishAskOnSheetMinimized");
   });
 });

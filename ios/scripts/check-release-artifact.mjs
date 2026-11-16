@@ -61,7 +61,8 @@ const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth", "CallKit"];
 /** 실험 게이트 안 앱 타입 이름. 정식 실행 파일 바이트에 이 문자열(Swift 맹글 이름의 일부)이 보이면 코드가 샌 것이다.
  *  프레임워크 링크로는 안 잡히는 것만 둔다. */
-const EXPERIMENTAL_ONLY_SYMBOLS = ["DictationTriggerRegistry"];
+// ShakeToSearch(E87): 흔들기 → 장소 검색 창. 창 클래스 확장의 흔들기 받기와 시스템 「실행 취소」 알림 끄기가 함께 들어 있다.
+const EXPERIMENTAL_ONLY_SYMBOLS = ["DictationTriggerRegistry", "ShakeToSearch"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */

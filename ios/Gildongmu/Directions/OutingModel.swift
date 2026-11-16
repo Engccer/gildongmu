@@ -187,6 +187,10 @@ final class OutingModel {
     /// 앞 상황 두 줄의 재료(E82 판정 4, Kit `outingAheadPick`) — 매 fix 정한다. 방위가 valid가 아니면 nil이고, 그동안 두 줄은
     /// 「앞」을 말하지 않는다(첫 판 판정 3).
     private(set) var aheadPick: OutingAheadPick?
+    /// 걷던 중 위치가 끊겨 앞 상황을 내린 상태(E82 위원장 판정 2026-11-17, Kit `outingAheadLocationLost`). 내리는 자리
+    /// `dropStaleAhead`가 세우고, 다음 쓸 수 있는 fix가 방위를 다시 정하는 자리에서 내린다. 두 줄은 이 동안
+    /// 「마지막 진행 방향 {방위}」·「위치 확인 중」이다.
+    private(set) var aheadLocationLost = false
     /// 보행 노드(횡단보도·교차로) 원천의 준비 상태(마지막 조회 결과, Kit `outingNodesStatus`). 아랫줄의 「없음」은 이것도 준비일 때만.
     private(set) var nodesStatus: OutingSurroundingsStatus = .loading
     private(set) var lastFix: (lat: Double, lng: Double, accuracy: Double)?
@@ -406,6 +410,7 @@ final class OutingModel {
         queryTask = nil
         road = OutingRoadState()
         aheadPick = nil
+        aheadLocationLost = false
         lastFix = nil
         lastFixAt = nil
         lastStaleNoticeAt = nil
@@ -467,6 +472,7 @@ final class OutingModel {
         // 기록도 같은 축이다(가게 이름·좌표) — 세션이 끝나면 지운다(E82 V10).
         history.clear()
         aheadPick = nil
+        aheadLocationLost = false
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()
         pedometer.stopLiveUpdates()
@@ -684,6 +690,8 @@ final class OutingModel {
         derivation = derived.state
         if let obs = derived.obs { headingState = outingHeadingRecord(headingState, course: obs, at: now) }
         heading = outingHeading(headingState, motion: motion, now: now)
+        // 쓸 수 있는 fix가 방위를 다시 정했다 — 위치 끊김이 끝났다(같은 fix의 `evaluate`가 앞 상황을 다시 고른다).
+        if aheadLocationLost { aheadLocationLost = false }
         // 열 뜻은 로그 색인(`docs/superpowers/specs/logs/README.md`): `walked=` 만보계 누적 거리(m, 값 없음은 `-`),
         // `bg=` 백그라운드(1)·전경(0), `narr=` 그 fix의 낭독 단계. 걸은 거리·잠금 여부·단계를 로그만으로 가르기 위해서다(E58 ⑥).
         guideDiagLog(
@@ -1196,6 +1204,28 @@ final class OutingModel {
         say(appLocalized("ios.outing.askNoSpeech"), speechClass: .answer, origin: .response)
     }
 
+    /// 시트를 접는 순간 「말로 묻기」 받아쓰기를 끝내고 그때까지 말한 내용으로 질문을 보낸다(E82 위원장 판정 2026-11-17).
+    /// 접힌 동안 버튼이 화면에 없어 두 손가락 두 번 탭(등록부는 화면에 있는 버튼만 고른다)도, 버튼 탭도 닿지 않는다 — 녹음이
+    /// 조용히 이어지다 삼켜졌다. 버튼(뷰)은 접으면 파괴되므로 이 종료는 뷰 수명이 아니라 세션의 접기 사건이 부른다
+    /// (`GuideSession.isMinimized`). 말한 것이 없으면(빈 전사·문장부호뿐) 보내지 않고 정지음만으로 조용히 끝낸다. 시작 준비 중
+    /// (권한·모델 준비)이면 아직 말한 것이 없으므로 거둔다. 버튼이 이미 정지·전달 중이면 `stop()`이 nil이라 겹쳐 보내지 않는다.
+    func finishAskOnSheetMinimized() {
+        guard isTracking else { return }
+        if speech.isStarting {
+            guideDiagLog("askMinimize starting=1")
+            Task { await speech.cancel() }
+            return
+        }
+        guard speech.isListening else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            let text = await self.speech.stop()
+            guideDiagLog("askMinimize chars=\(text?.count ?? 0)")
+            guard let text else { return }
+            self.ask(text)
+        }
+    }
+
     private func runAsk(_ question: String, epoch: Int) async {
         guard let fix = lastFix else {
             return finishAskEarly(appLocalized("ios.outing.askNoLocation"), epoch: epoch, reason: "noFix")
@@ -1518,9 +1548,13 @@ final class OutingModel {
     /// 앞 상황 윗줄(E82 판정 4): 다음 이정표와 거리, 줄 끝에 진행 방위. 방위가 valid가 아니면 방위 문구만이고(「앞」을 말하지
     /// 않는다), 「앞에 이정표 없음」은 받아 둔 목록에서만(준비되지 않은 상태는 아랫줄이 말한다). 거리는 10m 양자화.
     var directionLine: String {
-        switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick) {
+        switch outingAheadUpper(heading: heading, status: surroundingsStatus, pick: aheadPick, locationLost: aheadLocationLost) {
         case .headingOnly:
             return headingLine
+        case .lastHeading:
+            // 위치가 끊긴 동안 쥔 방위는 valid로 남아 있다 — 방위 문구(`headingLine`)는 「이동 중」이라 이 자리에서 고른다.
+            guard let b = heading.bearing else { return headingLine }
+            return appLocalized("ios.outing.lastHeading", compassWord(b))
         case .noLandmark:
             return joinText(appLocalized("ios.outing.aheadNone"), headingLine)
         case .landmark(let next):
@@ -1534,9 +1568,13 @@ final class OutingModel {
     /// VoiceOver가 다시 읽는다(spec 리뷰 M9). 글은 실린 곳이 바뀔 때만 바뀐다.
     var nearAheadLine: String {
         let range = formatDistance(Int(outingNearAheadMeters))
-        switch outingAheadLower(heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick) {
+        switch outingAheadLower(
+            heading: heading, status: surroundingsStatus, nodes: nodesStatus, pick: aheadPick, locationLost: aheadLocationLost
+        ) {
         case .noHeading:
             return appLocalized("ios.outing.nearAheadNoHeading")
+        case .locating:
+            return appLocalized("ios.outing.nearAheadLocating")
         case .empty, .surroundings(.ready):
             return appLocalized("ios.outing.nearAheadEmpty", range)
         case .surroundings(.loading):
@@ -1649,10 +1687,13 @@ final class OutingModel {
     }
 
     /// fix가 끊기거나 못 쓰는 동안 쥐고 있던 앞 상황을 내린다(E82 판정 4: 「앞」은 지금 걷는 방향을 알 때만). 방위 상태 자체와
-    /// 다른 판정(지나침·횡단보도·조망)은 건드리지 않는다 — 다음 쓸 수 있는 fix가 방위와 앞 상황을 다시 정한다.
+    /// 다른 판정(지나침·횡단보도·조망)은 건드리지 않는다 — 다음 쓸 수 있는 fix가 방위와 앞 상황을 다시 정한다. 내린 사유가 위치
+    /// 끊김이라는 표식(`aheadLocationLost`)을 함께 세운다(2026-11-17 판정의 두 줄). 같은 값을 다시 쓰지 않는다 — 관찰 갱신이
+    /// 감시 타이머마다 시트를 다시 그리게 된다.
     private func dropStaleAhead(now: Double) {
-        guard aheadPick != nil, !outingHeadingIsCurrent(heading, state: headingState, now: now) else { return }
-        aheadPick = nil
+        guard outingAheadLocationLost(heading, state: headingState, now: now) else { return }
+        if aheadPick != nil { aheadPick = nil }
+        if !aheadLocationLost { aheadLocationLost = true }
     }
 
     private func routeUnreliableTone(now: Double) {

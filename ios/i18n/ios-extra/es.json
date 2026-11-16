@@ -265,7 +265,7 @@
       "tabOrder": "Orden de las pestañas",
       "tabOrderReset": "Restablecer el orden predeterminado",
       "tabOrderResetDone": "Orden predeterminado restablecido",
-      "vergiliusProvider": "Modelo de respuesta"
+      "vergiliusProvider": "Modelo de respuesta del paseo"
     },
     "shortcut": {
       "voiceSearch": {
@@ -383,6 +383,7 @@
       "nearAhead": "A menos de {distance} delante: {items}",
       "nearAheadEmpty": "Nada que anunciar a menos de {distance} delante",
       "nearAheadNoHeading": "Muévete un poco. Buscando lugares cercanos",
+      "nearAheadLocating": "Comprobando la ubicación",
       "nearLeft": "{name} a la izquierda",
       "nearRight": "{name} a la derecha",
       "nearCrosswalk": "paso de peatones",

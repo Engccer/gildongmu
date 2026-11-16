@@ -265,7 +265,7 @@
       "tabOrder": "タブの順序",
       "tabOrderReset": "標準の順序に戻す",
       "tabOrderResetDone": "標準の順序に戻しました",
-      "vergiliusProvider": "回答モデル"
+      "vergiliusProvider": "お散歩の回答モデル"
     },
     "shortcut": {
       "voiceSearch": {
@@ -383,6 +383,7 @@
       "nearAhead": "前方{distance}以内：{items}",
       "nearAheadEmpty": "前方{distance}以内に案内する場所なし",
       "nearAheadNoHeading": "少し移動してください。周辺の場所を検索中",
+      "nearAheadLocating": "位置を確認中",
       "nearLeft": "左に{name}",
       "nearRight": "右に{name}",
       "nearCrosswalk": "横断歩道",

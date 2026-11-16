@@ -49,7 +49,13 @@ final class GuideSession {
 
     /// 시트가 내려가 있고 띠바가 세션을 대표하는 상태. `hasScreen`이 false로 떨어질 때
     /// `GildongmuApp`이 명시적으로 되돌린다(설계 리뷰 M1).
-    var isMinimized = false
+    /// 접는 순간 나들이 「말로 묻기」 받아쓰기를 끝내고 보낸다(E82 위원장 판정 2026-11-17) — 접기는 내리는 제스처·접기 버튼·
+    /// 흔들기(E87)가 모두 이 값을 쓰는 한 사건이고, 받아쓰기 버튼은 접히면 파괴되어 스스로 끝내지 못한다.
+    var isMinimized = false {
+        didSet {
+            if isMinimized, !oldValue { outing.finishAskOnSheetMinimized() }
+        }
+    }
     /// 경유지 지원 조건(N4): 비콘(도보·자동차) 세션 추적 중 ∧ ko 데이터 로케일(상세 경로
     /// 조회 자체가 ko 전용이라 그 밖에선 경유지가 의미 없다). 대중교통 세션은 제외(ODsay
     /// 미지원). 장소 상세 버튼과 안내 시트 버튼이 같은 게이트를 본다.

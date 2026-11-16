@@ -141,6 +141,9 @@ public func outingAheadPick(
 public enum OutingAheadUpper: Sendable, Equatable {
     /// 앞을 말하지 않는다 — 진행 방위 문구만(방위 모름·마지막 진행 방향, 또는 준비되지 않은 목록에서 찾은 것 없음).
     case headingOnly
+    /// 걷던 중 위치가 끊겨 앞을 내렸다(`outingAheadLocationLost`) — 「마지막 진행 방향 {방위}」. 쥔 방위는 아직 valid라
+    /// 방위 문구(`headingOnly`)로 두면 「{방위}으로 이동 중」이 선다(E82 위원장 판정 2026-11-17).
+    case lastHeading
     /// 다음 이정표와 거리.
     case landmark(OutingNextLandmark)
     /// 받아 둔 목록에서 앞 구역에 이정표가 없다.
@@ -151,6 +154,9 @@ public enum OutingAheadUpper: Sendable, Equatable {
 public enum OutingAheadLower: Sendable, Equatable {
     /// 진행 방향을 몰라 앞을 판정하지 않는다(목록은 받아 둠).
     case noHeading
+    /// 걷던 중 위치가 끊겨 앞을 판정하지 않는다(`outingAheadLocationLost`) — 「위치 확인 중」. 걷고 있는 사람에게 이동을
+    /// 청하는 `noHeading` 문장을 세우지 않는다(E82 위원장 판정 2026-11-17).
+    case locating
     /// 앞 구역의 한 곳 이상.
     case items([OutingNearItem])
     /// 받아 둔 목록에서 앞 구역이 비었다.
@@ -159,18 +165,25 @@ public enum OutingAheadLower: Sendable, Equatable {
     case surroundings(OutingSurroundingsStatus)
 }
 
-/// `pick`은 이번 fix의 `outingAheadPick` 결과(방위가 valid가 아니면 nil)다. 방위·상태는 그리는 순간의 값.
+/// `pick`은 이번 fix의 `outingAheadPick` 결과(방위가 valid가 아니면 nil)다. 방위·상태는 그리는 순간의 값. `locationLost`는 앞을
+/// 내린 사유가 위치 끊김인가(`outingAheadLocationLost`로 정해 쥔 값, 기본값 없음) — 참이면 두 줄은 앞도 목록 상태도 말하지 않고
+/// 위치 끊김만 말한다(쥔 고르기가 남아 있어도 그것은 끊기기 전 자리의 앞이다).
 public func outingAheadUpper(
-    heading: OutingHeading, status: OutingSurroundingsStatus, pick: OutingAheadPick?
+    heading: OutingHeading, status: OutingSurroundingsStatus, pick: OutingAheadPick?, locationLost: Bool
 ) -> OutingAheadUpper {
+    if locationLost { return .lastHeading }
     guard case .valid = heading, let pick else { return .headingOnly }
     if let next = pick.next { return .landmark(next) }
     return status == .ready ? .noLandmark : .headingOnly
 }
 
 public func outingAheadLower(
-    heading: OutingHeading, status: OutingSurroundingsStatus, nodes: OutingSurroundingsStatus, pick: OutingAheadPick?
+    heading: OutingHeading, status: OutingSurroundingsStatus, nodes: OutingSurroundingsStatus, pick: OutingAheadPick?,
+    locationLost: Bool
 ) -> OutingAheadLower {
+    // 위치가 끊긴 동안은 주변 조회도 나아가지 못한다 — 목록 상태(확인 중·실패)보다 위치 끊김이 지금 사용자에게 맞는 말이다.
+    // 「위치 확인 중」은 없음을 단정하지 않으므로 3-state를 뭉개지 않는다.
+    if locationLost { return .locating }
     let valid: Bool = if case .valid = heading, pick != nil { true } else { false }
     if valid, let pick, !pick.near.isEmpty { return .items(pick.near) }
     if status != .ready { return .surroundings(status) }
@@ -198,4 +211,13 @@ public func outingHeadingIsCurrent(_ heading: OutingHeading, state: OutingHeadin
     guard case .valid = heading, let latest = state.latest else { return false }
     let age = now - latest.at
     return age >= 0 && age <= outingHeadingMaxAgeSeconds
+}
+
+/// 걷던 중 위치가 끊겨 앞 상황을 내릴 때인가(E82 위원장 판정 2026-11-17: 두 줄은 「마지막 진행 방향 {방위}」·「위치 확인 중」).
+/// 방위는 쓸 수 있는 fix가 올 때만 다시 정해지므로(fix 두절·못 쓰는 fix는 방위를 그대로 둔다) 「방위는 valid인데 지금의 방위가
+/// 아니다」가 곧 걷던 중 위치를 확인하지 못하고 있는 상태다. 처음부터 방위를 모르는 상태(`none`)와 멈춰서 방위가 흐려진
+/// 상태(`stale` — 쓸 수 있는 fix가 다시 정한 값)는 들지 않는다. 다음 쓸 수 있는 fix가 방위를 다시 정하면 호출부가 내린다.
+public func outingAheadLocationLost(_ heading: OutingHeading, state: OutingHeadingState, now: Double) -> Bool {
+    guard case .valid = heading else { return false }
+    return !outingHeadingIsCurrent(heading, state: state, now: now)
 }

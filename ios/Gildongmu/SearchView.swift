@@ -22,9 +22,13 @@ struct SearchView: View {
     @State private var rowFocusTask: Task<Void, Never>?
     /// 고정 항목 이동 뒤 커서 유지 재시도(E67).
     @State private var reorderFocusTask: Task<Void, Never>?
+    /// 장소 상세 등 깊은 화면의 쌓임. 흔들기(E87, 실험판)가 목록 루트로 되돌릴 때만 비운다.
+    @State private var path = NavigationPath()
+    /// 장소 검색 입력 창의 키보드 초점(E87 흔들기, 실험판). 키보드 초점이 VoiceOver 커서를 끈다.
+    @FocusState private var searchFieldFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollViewReader { proxy in
             List {
                 // 마이크는 검색 필드 바로 다음 행(위원장 판정 2026-09-04: 시스템 검색창
@@ -111,6 +115,13 @@ struct SearchView: View {
             .gildongmuTitleMenu()
             .searchable(text: $model.query, prompt: Text(appLocalized("ios.search.prompt")))
             .onSubmit(of: .search) { runSearch() }
+            #if EXPERIMENTAL
+            // 흔들기(E87): 검색 화면의 덮개(장소 채팅)를 걷고 목록 루트로 되돌린 뒤 검색 창에 초점을 둔다.
+            .shakeSearchFocusTarget(focused: $searchFieldFocused) {
+                chatPlace = nil
+                path = NavigationPath()
+            }
+            #endif
             // 단축어 "음성 검색" 진입: App이 리셋·탭 전환을 마친 뒤 세운 플래그를
             // 재생성된 이 뷰가 소비해 마이크 시작(시작음·햅틱·권한은 기존 경로 그대로).
             // 홀드 없이 시작된 이 세션의 정지는 마이크 행 탭(HoldDictationButton의

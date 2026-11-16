@@ -265,7 +265,7 @@
       "tabOrder": "Tab order",
       "tabOrderReset": "Restore default order",
       "tabOrderResetDone": "Default order restored",
-      "vergiliusProvider": "Answer model"
+      "vergiliusProvider": "Stroll answer model"
     },
     "shortcut": {
       "voiceSearch": {
@@ -383,6 +383,7 @@
       "nearAhead": "Within {distance} ahead: {items}",
       "nearAheadEmpty": "Nothing to announce within {distance} ahead",
       "nearAheadNoHeading": "Move a little. Looking for nearby places",
+      "nearAheadLocating": "Checking location",
       "nearLeft": "{name} on your left",
       "nearRight": "{name} on your right",
       "nearCrosswalk": "crosswalk",
