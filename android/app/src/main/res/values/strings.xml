@@ -347,6 +347,7 @@
     <string name="android_outing_dir_w">서쪽</string>
     <string name="android_outing_ended">나들이 종료</string>
     <string name="android_outing_endedByUser">나들이를 종료했습니다.</string>
+    <string name="android_outing_guideWalkToHere">여기까지 도보 안내</string>
     <string name="android_outing_heading">나들이</string>
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
     <string name="android_outing_historyBeside">옆</string>

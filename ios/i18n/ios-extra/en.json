@@ -439,6 +439,7 @@
       "historyMinutesAgo": "{minutes} min ago",
       "askButton": "Ask by voice",
       "askHint": "Hold and speak. Lift your finger to ask.",
+      "guideWalkToHere": "Walking guidance to here",
       "askNoAnswer": "No answer received.",
       "askCutOff": "The answer was cut off.",
       "askNoSpeech": "No question was heard.",

@@ -4,7 +4,7 @@ import Testing
 @Suite("나들이 방금 말한 것 기록")
 struct OutingHistoryTests {
     private func place(_ id: String) -> OutingHistoryPlace {
-        OutingHistoryPlace(id: id, name: "가게 \(id)", nameRoman: nil, lat: 37.5, lng: 127.0)
+        OutingHistoryPlace(id: id, name: "가게 \(id)", nameRoman: nil, lat: 37.5, lng: 127.0, phone: nil)
     }
 
     @Test("최신이 맨 앞이고 순번은 줄마다 다르다")

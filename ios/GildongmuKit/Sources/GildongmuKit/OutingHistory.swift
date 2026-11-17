@@ -7,20 +7,22 @@ import Foundation
 // 조립한다(여기에는 재료만 있다). 질문 재료(「방금 말한 것」)는 두 묶음을 가르지 않은 시간 순서 그대로 읽는다.
 // 세션이 끝나면 지운다. ⚠ 가게 이름·좌표와 답의 글이 들어 있으므로 디스크 로그에는 `logSummary`(종류별 건수)만 쓴다.
 
-/// 기록에 남는 가게 — 도보 안내의 도착지가 될 재료(id·이름·좌표).
+/// 기록에 남는 가게 — 도보 안내의 도착지가 될 재료(id·이름·좌표)와 줄의 「전화 걸기」가 쓰는 전화번호(없으면 nil).
 public struct OutingHistoryPlace: Sendable, Equatable {
     public let id: String
     public let name: String
     public let nameRoman: String?
     public let lat: Double
     public let lng: Double
+    public let phone: String?
 
-    public init(id: String, name: String, nameRoman: String?, lat: Double, lng: Double) {
+    public init(id: String, name: String, nameRoman: String?, lat: Double, lng: Double, phone: String?) {
         self.id = id
         self.name = name
         self.nameRoman = nameRoman
         self.lat = lat
         self.lng = lng
+        self.phone = phone
     }
 }
 

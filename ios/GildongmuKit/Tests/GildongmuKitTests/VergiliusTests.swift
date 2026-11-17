@@ -113,10 +113,10 @@ struct VergiliusTests {
     @Test("기록은 최신부터 20건, 지나온 가게는 싣지 않고 가게 줄은 id를 단다")
     func logEntries() {
         var history = OutingHistory()
-        let place = OutingHistoryPlace(id: "k1", name: "카페", nameRoman: nil, lat: 0, lng: 0)
+        let place = OutingHistoryPlace(id: "k1", name: "카페", nameRoman: nil, lat: 0, lng: 0, phone: nil)
         history.record(.place(place, side: .left, passedBy: false), at: 100)
         history.record(
-            .place(OutingHistoryPlace(id: "k2", name: "약국", nameRoman: nil, lat: 0, lng: 0), side: .left, passedBy: true),
+            .place(OutingHistoryPlace(id: "k2", name: "약국", nameRoman: nil, lat: 0, lng: 0, phone: nil), side: .left, passedBy: true),
             at: 110)
         for i in 0..<25 { history.record(.junction(.cross), at: 200 + Double(i)) }
         history.record(.answer(text: "왼쪽에 카페가 있습니다."), at: 300)

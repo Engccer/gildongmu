@@ -1060,7 +1060,7 @@ final class OutingModel {
     private func recordPlace(_ id: String, side: OutingSide, passedBy: Bool) {
         guard let p = places[id] else { return }
         recordHistory(.place(
-            OutingHistoryPlace(id: id, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng),
+            OutingHistoryPlace(id: id, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng, phone: p.phone),
             side: side, passedBy: passedBy))
     }
 
@@ -1353,7 +1353,7 @@ final class OutingModel {
         if let entryID = recordAnswer(line) {
             askFollowUp = AskFollowUp(
                 entryID: entryID, routeGroups: [],
-                proposal: OutingHistoryPlace(id: placeId, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng))
+                proposal: OutingHistoryPlace(id: placeId, name: p.name, nameRoman: p.nameRoman, lat: p.lat, lng: p.lng, phone: p.phone))
         }
     }
 

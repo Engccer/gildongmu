@@ -439,6 +439,7 @@
       "historyMinutesAgo": "hace {minutes} min",
       "askButton": "Preguntar por voz",
       "askHint": "Mantén pulsado y habla. Levanta el dedo para preguntar.",
+      "guideWalkToHere": "Guía a pie hasta aquí",
       "askNoAnswer": "No se recibió respuesta.",
       "askCutOff": "La respuesta se cortó.",
       "askNoSpeech": "No se oyó ninguna pregunta.",

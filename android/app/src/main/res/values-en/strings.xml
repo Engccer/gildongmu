@@ -262,6 +262,7 @@
     <string name="android_outing_dir_w">west</string>
     <string name="android_outing_ended">Stroll ended</string>
     <string name="android_outing_endedByUser">Stroll ended.</string>
+    <string name="android_outing_guideWalkToHere">Walking guidance to here</string>
     <string name="android_outing_heading">Stroll</string>
     <string name="android_outing_headingUnknown">Checking direction</string>
     <string name="android_outing_historyBeside">beside</string>

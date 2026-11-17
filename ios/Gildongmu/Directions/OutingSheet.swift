@@ -266,14 +266,17 @@ struct OutingSheet: View {
         }
     }
 
-    /// 가게 줄에는 「도보 안내 시작」을 행 뿌리의 밀기 버튼으로 둔다 — VoiceOver에서는 같은 줄의 동작(로터)으로 들린다
-    /// (E72 판별선: 장소 하나인 `List` 행). 끝까지 밀기 실행은 끈다(나들이를 끝내고 안내를 시작하는 되돌릴 수 없는 동작).
+    /// 가게 줄에는 「전화 걸기」(번호가 있을 때만)와 「여기까지 도보 안내」를 행 뿌리의 밀기 버튼으로 둔다 — VoiceOver에서는 같은
+    /// 줄의 동작(로터)으로 들린다(E72 판별선: 장소 하나인 `List` 행). 순서와 이름은 장소 행 묶음(`PlaceRowActions`의 전화 걸기 →
+    /// 여기까지 길찾기)을 따른다. 길찾기 진입·물어보기는 없다(세션 위, 위원장 판정 2026-11-16 ⑤·2026-11-18). 끝까지 밀기 실행은
+    /// 끈다(전화, 그리고 나들이를 끝내고 안내를 시작하는 동작은 되돌릴 수 없다).
     @ViewBuilder
     private func historyRow(_ entry: OutingHistoryEntry, now: Double) -> some View {
         if case .place(let place, _, _) = entry.content {
             Text(historyLine(entry, now: now))
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    Button(appLocalized("beacon.guideStartWalk")) {
+                    PlaceCallButton(phone: place.phone)
+                    Button(appLocalized("ios.outing.guideWalkToHere")) {
                         onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))
                     }
                 }

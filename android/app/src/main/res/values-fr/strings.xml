@@ -262,6 +262,7 @@
     <string name="android_outing_dir_w">ouest</string>
     <string name="android_outing_ended">Balade terminée</string>
     <string name="android_outing_endedByUser">Balade terminée.</string>
+    <string name="android_outing_guideWalkToHere">Guidage à pied jusqu\'ici</string>
     <string name="android_outing_heading">Balade</string>
     <string name="android_outing_headingUnknown">Détection de la direction</string>
     <string name="android_outing_historyBeside">à côté</string>

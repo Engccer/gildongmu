@@ -439,6 +439,7 @@
       "historyMinutesAgo": "{minutes}분 전",
       "askButton": "말로 묻기",
       "askHint": "누른 채로 말하세요. 손가락을 떼면 묻습니다.",
+      "guideWalkToHere": "여기까지 도보 안내",
       "askNoAnswer": "답을 받지 못했습니다.",
       "askCutOff": "답이 끊겼습니다.",
       "askNoSpeech": "질문을 듣지 못했습니다.",

@@ -334,6 +334,24 @@ describe("나들이 시트 배치(E54)", () => {
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
   });
 
+  it("지나온 곳 가게 줄의 동작은 전화 걸기 → 여기까지 도보 안내이고 길찾기 진입·물어보기가 없다(위원장 판정 2026-11-18)", () => {
+    const sheet = readFileSync(SHEET, "utf8");
+    const row = sheet.slice(sheet.indexOf("private func historyRow"), sheet.indexOf("private func historyLine"));
+    const call = row.indexOf("PlaceCallButton(phone: place.phone)");
+    const walk = row.indexOf('Button(appLocalized("ios.outing.guideWalkToHere"))');
+    expect(call).toBeGreaterThan(-1);
+    expect(walk).toBeGreaterThan(call);
+    // 전화와 나들이를 끝내는 안내 시작은 되돌릴 수 없다: 끝까지 밀기 실행을 끈 한 묶음이다.
+    expect(row.split(".swipeActions(").length - 1).toBe(1);
+    expect(row).toContain(".swipeActions(edge: .leading, allowsFullSwipe: false)");
+    // 세션 위에서는 시트 뒤 탭을 건드리는 길찾기 프리필과 장소 채팅을 내지 않는다(둘러보기 `AroundHost.session`과 같은 판정).
+    expect(row).not.toContain("placeRowSwipeActions");
+    expect(row).not.toContain("DirectionsPrefill");
+    // 전화번호는 기록에 실린다(기록을 적는 두 자리 모두).
+    const model = readFileSync(join(IOS, "Gildongmu/Directions/OutingModel.swift"), "utf8");
+    expect(model.split("lng: p.lng, phone: p.phone)").length - 1).toBe(2);
+  });
+
   it("기록 줄(지나온 곳·물어본 것)의 지난 시간은 시트 등장·기록 변경 때 잡은 기준 시각으로 센다(E82 V11)", () => {
     // 그리는 순간의 시각으로 세면 위치 갱신마다 줄 글이 바뀌어 커서가 머문 줄을 VoiceOver가 다시 읽는다.
     const sheet = readFileSync(SHEET, "utf8");

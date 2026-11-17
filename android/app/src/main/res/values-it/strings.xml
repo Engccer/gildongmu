@@ -262,6 +262,7 @@
     <string name="android_outing_dir_w">ovest</string>
     <string name="android_outing_ended">Passeggiata terminata</string>
     <string name="android_outing_endedByUser">Passeggiata terminata.</string>
+    <string name="android_outing_guideWalkToHere">Guida a piedi fino a qui</string>
     <string name="android_outing_heading">Passeggiata</string>
     <string name="android_outing_headingUnknown">Verifica della direzione</string>
     <string name="android_outing_historyBeside">accanto</string>
