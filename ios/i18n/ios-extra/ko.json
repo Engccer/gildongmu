@@ -362,7 +362,7 @@
     "outing": {
       "heading": "나들이",
       "start": "나들이 시작",
-      "stop": "종료",
+      "stop": "나들이 종료",
       "endedByUser": "나들이를 종료했습니다.",
       "returnToOrigin": "출발점으로",
       "originPending": "출발점 잡는 중",
@@ -428,7 +428,7 @@
       },
       "started": "나들이 시작",
       "ended": "나들이 종료",
-      "historyHeading": "지나온 곳 (최신순)",
+      "historyHeading": "지나온 곳",
       "historyEmpty": "아직 지나온 곳이 없습니다",
       "askedHeading": "물어본 것",
       "historyLeft": "왼쪽",

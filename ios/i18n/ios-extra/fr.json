@@ -362,7 +362,7 @@
     "outing": {
       "heading": "Balade",
       "start": "Commencer la balade",
-      "stop": "Terminer",
+      "stop": "Terminer la balade",
       "endedByUser": "Balade terminée.",
       "returnToOrigin": "Retour au départ",
       "originPending": "Recherche du point de départ",
@@ -428,7 +428,7 @@
       },
       "started": "Balade commencée",
       "ended": "Balade terminée",
-      "historyHeading": "Lieux passés (plus récents d’abord)",
+      "historyHeading": "Lieux passés",
       "historyEmpty": "Aucun lieu passé pour l’instant",
       "askedHeading": "Vos questions",
       "historyLeft": "à gauche",

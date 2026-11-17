@@ -266,7 +266,7 @@
     <string name="android_outing_headingUnknown">進行方向を確認中</string>
     <string name="android_outing_historyBeside">そば</string>
     <string name="android_outing_historyEmpty">まだ通ったところはありません</string>
-    <string name="android_outing_historyHeading">通ったところ（新しい順）</string>
+    <string name="android_outing_historyHeading">通ったところ</string>
     <string name="android_outing_historyJustNow">たった今</string>
     <string name="android_outing_historyLeft">左</string>
     <string name="android_outing_historyMinutesAgo">%1$s分前</string>
@@ -311,7 +311,7 @@
     <string name="android_outing_roadEntered">%1$sに入りました</string>
     <string name="android_outing_start">お散歩を開始</string>
     <string name="android_outing_started">お散歩を開始しました</string>
-    <string name="android_outing_stop">終了</string>
+    <string name="android_outing_stop">お散歩を終了</string>
     <string name="android_outing_surroundingsFailed">周辺情報なし</string>
     <string name="android_outing_surroundingsLoading">周辺を確認中</string>
     <string name="android_outing_walked">歩いた距離 %1$s</string>

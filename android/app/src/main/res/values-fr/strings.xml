@@ -266,7 +266,7 @@
     <string name="android_outing_headingUnknown">Détection de la direction</string>
     <string name="android_outing_historyBeside">à côté</string>
     <string name="android_outing_historyEmpty">Aucun lieu passé pour l’instant</string>
-    <string name="android_outing_historyHeading">Lieux passés (plus récents d’abord)</string>
+    <string name="android_outing_historyHeading">Lieux passés</string>
     <string name="android_outing_historyJustNow">à l’instant</string>
     <string name="android_outing_historyLeft">à gauche</string>
     <string name="android_outing_historyMinutesAgo">il y a %1$s min</string>
@@ -311,7 +311,7 @@
     <string name="android_outing_roadEntered">Vous êtes sur %1$s</string>
     <string name="android_outing_start">Commencer la balade</string>
     <string name="android_outing_started">Balade commencée</string>
-    <string name="android_outing_stop">Terminer</string>
+    <string name="android_outing_stop">Terminer la balade</string>
     <string name="android_outing_surroundingsFailed">Pas d\'informations sur les alentours</string>
     <string name="android_outing_surroundingsLoading">Recherche des alentours</string>
     <string name="android_outing_walked">Parcouru %1$s</string>
