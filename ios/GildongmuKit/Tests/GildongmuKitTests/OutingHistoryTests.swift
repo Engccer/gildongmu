@@ -84,7 +84,7 @@ struct OutingHistoryTests {
         #expect(outingHistoryAgeMinutes(at: 100, now: 40) == 0)
     }
 
-    @Test("두 묶음: 「지나온 곳」은 답이 아닌 줄 최신이 위, 「물어본 것」은 답만 최신이 아래(판정 2026-11-16 ①⑨)")
+    @Test("두 묶음: 「지나온 곳」은 답이 아닌 줄, 「물어본 것」은 답만, 둘 다 최신이 아래(판정 2026-11-17)")
     func splitsPassedAndAnswers() {
         var history = OutingHistory()
         history.record(.place(place("a"), side: .left, passedBy: false), at: 1)
@@ -92,7 +92,7 @@ struct OutingHistoryTests {
         history.record(.junction(.tee), at: 3)
         let secondAnswer = history.record(.answer(text: "둘째 답"), at: 4)
         history.record(.road(name: "가로수길"), at: 5)
-        #expect(history.passedEntries.map(\.at) == [5, 3, 1])
+        #expect(history.passedEntries.map(\.at) == [1, 3, 5])
         #expect(history.answerEntries == [firstAnswer, secondAnswer])
         // 질문 재료가 읽는 전체 기록은 시간 순서 그대로 섞여 있다.
         #expect(history.entries.map(\.at) == [5, 4, 3, 2, 1])
@@ -114,7 +114,7 @@ struct OutingHistoryTests {
         }
         #expect(history.answerEntries == [answer])
         #expect(history.passedEntries.count == OutingHistory.capacity)
-        #expect(history.passedEntries.last?.at == 6)
+        #expect(history.passedEntries.first?.at == 6)
         for i in 1...(OutingHistory.capacity + 2) {
             history.record(.answer(text: "답 \(i)"), at: Double(100 + i))
         }
@@ -123,17 +123,17 @@ struct OutingHistoryTests {
         #expect(history.passedEntries.count == OutingHistory.capacity)
     }
 
-    @Test("지나온 곳의 보일 줄 수: 창 수가 기본이고, 커서가 머문 아래 줄까지는 남긴다")
+    @Test("지나온 곳의 보일 줄 수(최신에서 센다): 창 수가 기본이고, 커서가 머문 더 오래된 줄까지는 남긴다")
     func passedShownCount() {
         #expect(outingPassedShownCount(windowCount: 20, total: 29, focusedIndex: nil) == 20)
         #expect(outingPassedShownCount(windowCount: 20, total: 12, focusedIndex: nil) == 12)
         #expect(outingPassedShownCount(windowCount: 20, total: 29, focusedIndex: 5) == 20)
-        // 새 줄 두 개가 위에 들어와 커서가 머문 줄(창의 맨 아래였던 줄)이 21번째로 밀렸다.
+        // 새 줄 두 개가 아래에 들어와 커서가 머문 줄(창의 가장 오래된 줄)이 최신에서 22번째로 밀렸다.
         #expect(outingPassedShownCount(windowCount: 20, total: 31, focusedIndex: 21) == 22)
         #expect(outingPassedShownCount(windowCount: 20, total: 3, focusedIndex: 9) == 3)
     }
 
-    @Test("지나온 곳의 더 보기: 처음 20줄, 누를 때마다 20줄 더, 첫 새 줄 위치를 돌려준다")
+    @Test("지나온 곳의 더 보기: 최신 20줄, 누를 때마다 더 오래된 20줄, 첫 새 줄의 최신에서 센 순번을 돌려준다")
     func passedRevealMore() {
         var window = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
         #expect(window.visibleCount == 20)

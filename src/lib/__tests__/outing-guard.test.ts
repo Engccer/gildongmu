@@ -277,28 +277,39 @@ describe("나들이 문장 창구", () => {
 describe("나들이 시트 배치(E54)", () => {
   const SHEET = join(IOS, "Gildongmu/Directions/OutingSheet.swift");
 
-  it("\"출발점으로\"는 종료 화면에만 있고, 안내 중 맨 아래 고정 줄은 「말로 묻기」 혼자다(위원장 판정 2026-11-16 ⑨)", () => {
+  it("\"출발점으로\"는 종료 화면에만 있고, 안내 중 맨 아래 고정 줄은 왼쪽 끝 「말로 묻기」 아이콘과 가운데 「나들이 종료」다(위원장 판정 2026-11-17)", () => {
     const sheet = readFileSync(SHEET, "utf8");
     expect(sheet.split('"ios.outing.returnToOrigin"').length - 1).toBe(1);
     expect(functionBody(sheet, "endSection")).toContain('"ios.outing.returnToOrigin"');
     const inset = sheet.slice(sheet.indexOf(".safeAreaInset(edge: .bottom)"), sheet.indexOf(".onChange(of: model.history"));
-    expect(inset).toMatch(/if model\.endScreen == nil \{\s*askControl\s*\./);
-    expect(inset).not.toContain("returnToOrigin");
-    expect(inset).not.toContain("stopByUser");
-    // 목록 안에는 말로 묻기가 없다(맨 아래 줄 하나뿐 — 종전 「시트 맨 앞 버튼」을 바꿨다).
+    expect(inset).toMatch(/if model\.endScreen == nil \{\s*bottomBar\s*\}/);
+    const bar = sheet.slice(sheet.indexOf("private var bottomBar"), sheet.indexOf("private var stopButton"));
+    // 같은 폭의 세 칸: 말로 묻기(앞 끝) → 나들이 종료(가운데) → 가운데를 맞추는 빈 칸. 두 버튼을 붙이지 않는다.
+    expect(bar).toMatch(
+      /askControl\s*\.font\(\.title2\)\s*\.frame\(maxWidth: \.infinity, alignment: \.leading\)\s*stopButton\s*Color\.clear\s*\.frame\(maxWidth: \.infinity, maxHeight: 1\)\s*\.accessibilityHidden\(true\)/,
+    );
+    expect(bar).not.toContain("returnToOrigin");
+    // 목록 안에는 말로 묻기가 없다(맨 아래 줄 하나뿐).
     expect(sheet.split("askControl").length - 1).toBe(2); // 선언 + 맨 아래 줄
-    expect(sheet).toContain("fillsWidth: true");
+    // 아이콘만 보이고 이름은 접근성 라벨이 든다(동의 전 버튼도 같다).
+    const ask = sheet.slice(sheet.indexOf("private var askControl"), sheet.indexOf("private func historySection"));
+    expect(ask).toContain("showsTitle: false");
+    expect(ask).toContain('startTitle: appLocalized("ios.outing.askButton")');
+    expect(ask).toMatch(/Image\(systemName: "mic"\)[\s\S]*\.accessibilityLabel\(appLocalized\("ios\.outing\.askButton"\)\)/);
+    expect(ask).not.toContain('Text(appLocalized("ios.outing.askButton"))');
     // 시트 버튼이 사라지면 미확정 라벨 분기·통지도 함께 없다.
     expect(readFileSync(MODEL, "utf8")).not.toContain("announceOriginPending");
   });
 
-  it("종료는 제목 줄 오른쪽 끝의 「종료」 하나다 — 줄은 나들이, 접기, 종료 순(위원장 판정 2026-11-16 ⑨)", () => {
+  it("종료는 맨 아래 줄 가운데의 「나들이 종료」 하나다 — 제목 줄은 나들이, 접기뿐(위원장 판정 2026-11-17)", () => {
     const sheet = readFileSync(SHEET, "utf8");
-    expect(sheet).toMatch(/\} trailing: \{\s*GuideMinimizeButton\(action: onMinimize\)\s*stopButton\s*\}/);
+    expect(sheet).toMatch(/\} trailing: \{\s*GuideMinimizeButton\(action: onMinimize\)\s*\}/);
     expect(sheet.split("model.stopByUser()").length - 1).toBe(1);
     const stop = sheet.slice(sheet.indexOf("private var stopButton"), sheet.indexOf("/// 「말로 묻기」(E82 V14)"));
+    expect(stop).toContain("model.stopByUser()");
     expect(stop).toContain('appLocalized("ios.outing.stop")');
-    expect(stop).toContain(".frame(minWidth: 44, minHeight: 44)");
+    const ko = JSON.parse(readFileSync(join(IOS, "i18n/ios-extra/ko.json"), "utf8"));
+    expect(ko.ios.outing.stop).toBe("나들이 종료");
   });
 
   it("「둘러보기」는 내 주변 탭의 둘러보기를 지금 위치로 연다 — 나들이 전용 조망은 없다(위원장 판정 2026-11-16 ⑤)", () => {
@@ -334,6 +345,13 @@ describe("나들이 시트 배치(E54)", () => {
     expect(history).toContain("model.history.answerEntries");
     expect(history).toContain("outingPassedShownCount(");
     expect(history).toContain("outingPassedRevealMore(&passedWindow");
+    // 「지나온 곳」은 최신이 아래다(위원장 판정 2026-11-17): 끝 쪽 창을 보이고 「더 보기」는 줄들의 위, 제목에 순서 병기가 없다.
+    expect(history).toContain("ForEach(passed.suffix(shown))");
+    expect(history.indexOf('Button(appLocalized("actions.showMore"))')).toBeLessThan(history.indexOf("ForEach(passed.suffix(shown))"));
+    for (const lang of ["ko", "en", "ja", "fr", "es", "it"]) {
+      const heading = JSON.parse(readFileSync(join(IOS, `i18n/ios-extra/${lang}.json`), "utf8")).ios.outing.historyHeading;
+      expect(heading).not.toMatch(/[(（]/);
+    }
     expect(sheet).toMatch(/\.onChange\(of: model\.history\.entries\.map\(\\\.id\)\) \{\s*historyNow = Date\(\)\.timeIntervalSince1970\s*\}/);
   });
 });

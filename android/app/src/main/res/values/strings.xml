@@ -351,7 +351,7 @@
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
     <string name="android_outing_historyBeside">옆</string>
     <string name="android_outing_historyEmpty">아직 지나온 곳이 없습니다</string>
-    <string name="android_outing_historyHeading">지나온 곳 (최신순)</string>
+    <string name="android_outing_historyHeading">지나온 곳</string>
     <string name="android_outing_historyJustNow">방금</string>
     <string name="android_outing_historyLeft">왼쪽</string>
     <string name="android_outing_historyMinutesAgo">%1$s분 전</string>
@@ -396,7 +396,7 @@
     <string name="android_outing_roadEntered">%1$s에 들어섰습니다</string>
     <string name="android_outing_start">나들이 시작</string>
     <string name="android_outing_started">나들이 시작</string>
-    <string name="android_outing_stop">종료</string>
+    <string name="android_outing_stop">나들이 종료</string>
     <string name="android_outing_surroundingsFailed">주변 정보 없음</string>
     <string name="android_outing_surroundingsLoading">주변 확인 중</string>
     <string name="android_outing_walked">걸은 거리 %1$s</string>

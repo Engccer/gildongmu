@@ -362,7 +362,7 @@
     "outing": {
       "heading": "お散歩",
       "start": "お散歩を開始",
-      "stop": "終了",
+      "stop": "お散歩を終了",
       "endedByUser": "お散歩を終了しました。",
       "returnToOrigin": "出発地点へ",
       "originPending": "出発地点を確認中",
@@ -428,7 +428,7 @@
       },
       "started": "お散歩を開始しました",
       "ended": "お散歩を終了しました",
-      "historyHeading": "通ったところ（新しい順）",
+      "historyHeading": "通ったところ",
       "historyEmpty": "まだ通ったところはありません",
       "askedHeading": "質問したこと",
       "historyLeft": "左",

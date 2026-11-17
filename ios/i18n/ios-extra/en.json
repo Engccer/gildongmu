@@ -362,7 +362,7 @@
     "outing": {
       "heading": "Stroll",
       "start": "Start stroll",
-      "stop": "End",
+      "stop": "End stroll",
       "endedByUser": "Stroll ended.",
       "returnToOrigin": "Back to start",
       "originPending": "Setting start point",
@@ -428,7 +428,7 @@
       },
       "started": "Stroll started",
       "ended": "Stroll ended",
-      "historyHeading": "Passed places (newest first)",
+      "historyHeading": "Passed places",
       "historyEmpty": "Nothing passed yet",
       "askedHeading": "Your questions",
       "historyLeft": "left",

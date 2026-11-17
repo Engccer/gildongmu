@@ -362,7 +362,7 @@
     "outing": {
       "heading": "Passeggiata",
       "start": "Inizia passeggiata",
-      "stop": "Termina",
+      "stop": "Termina la passeggiata",
       "endedByUser": "Passeggiata terminata.",
       "returnToOrigin": "Torna al punto di partenza",
       "originPending": "Rilevamento del punto di partenza",
@@ -428,7 +428,7 @@
       },
       "started": "Passeggiata iniziata",
       "ended": "Passeggiata terminata",
-      "historyHeading": "Luoghi superati (più recenti prima)",
+      "historyHeading": "Luoghi superati",
       "historyEmpty": "Ancora nessun luogo superato",
       "askedHeading": "Le tue domande",
       "historyLeft": "sinistra",

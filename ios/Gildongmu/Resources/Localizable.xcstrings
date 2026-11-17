@@ -27856,37 +27856,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지나온 곳 (최신순)"
+            "value": "지나온 곳"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passed places (newest first)"
+            "value": "Passed places"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lugares por los que pasaste (más recientes primero)"
+            "value": "Lugares por los que pasaste"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lieux passés (plus récents d’abord)"
+            "value": "Lieux passés"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Luoghi superati (più recenti prima)"
+            "value": "Luoghi superati"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "通ったところ（新しい順）"
+            "value": "通ったところ"
           }
         }
       }
@@ -29656,37 +29656,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "종료"
+            "value": "나들이 종료"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "End"
+            "value": "End stroll"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminar"
+            "value": "Terminar el paseo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminer"
+            "value": "Terminer la balade"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Termina"
+            "value": "Termina la passeggiata"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "終了"
+            "value": "お散歩を終了"
           }
         }
       }

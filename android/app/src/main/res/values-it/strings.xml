@@ -266,7 +266,7 @@
     <string name="android_outing_headingUnknown">Verifica della direzione</string>
     <string name="android_outing_historyBeside">accanto</string>
     <string name="android_outing_historyEmpty">Ancora nessun luogo superato</string>
-    <string name="android_outing_historyHeading">Luoghi superati (più recenti prima)</string>
+    <string name="android_outing_historyHeading">Luoghi superati</string>
     <string name="android_outing_historyJustNow">adesso</string>
     <string name="android_outing_historyLeft">sinistra</string>
     <string name="android_outing_historyMinutesAgo">%1$s min fa</string>
@@ -311,7 +311,7 @@
     <string name="android_outing_roadEntered">Ora su %1$s</string>
     <string name="android_outing_start">Inizia passeggiata</string>
     <string name="android_outing_started">Passeggiata iniziata</string>
-    <string name="android_outing_stop">Termina</string>
+    <string name="android_outing_stop">Termina la passeggiata</string>
     <string name="android_outing_surroundingsFailed">Nessuna informazione sui dintorni</string>
     <string name="android_outing_surroundingsLoading">Verifica dei dintorni</string>
     <string name="android_outing_walked">Percorsi %1$s</string>

@@ -362,7 +362,7 @@
     "outing": {
       "heading": "Paseo",
       "start": "Iniciar paseo",
-      "stop": "Terminar",
+      "stop": "Terminar el paseo",
       "endedByUser": "Paseo terminado.",
       "returnToOrigin": "Volver al inicio",
       "originPending": "Fijando el punto de inicio",
@@ -428,7 +428,7 @@
       },
       "started": "Paseo iniciado",
       "ended": "Paseo terminado",
-      "historyHeading": "Lugares por los que pasaste (más recientes primero)",
+      "historyHeading": "Lugares por los que pasaste",
       "historyEmpty": "Aún no has pasado por ningún lugar",
       "askedHeading": "Tus preguntas",
       "historyLeft": "izquierda",
