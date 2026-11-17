@@ -348,7 +348,7 @@ describe("나들이 시트 배치(E54)", () => {
     // 화면 순서(최신이 끝)와 최신에서 센 순번의 변환은 Kit이 한다(뷰에서 직접 빼지 않는다, Kit 테스트가 잠근다).
     expect(history).toContain("outingPassedFromNewest(ids:");
     expect(history).toContain("outingPassedRowID(ids:");
-    expect(history).not.toMatch(/passed\.count - 1 -/);
+    expect(history).not.toMatch(/count\s*-\s*1\s*-/);
     // 「지나온 곳」은 최신이 아래다(위원장 판정 2026-11-17): 끝 쪽 창을 보이고 「더 보기」는 줄들의 위, 제목에 순서 병기가 없다.
     expect(history).toContain("ForEach(passed.suffix(shown))");
     expect(history.indexOf('Button(appLocalized("actions.showMore"))')).toBeLessThan(history.indexOf("ForEach(passed.suffix(shown))"));

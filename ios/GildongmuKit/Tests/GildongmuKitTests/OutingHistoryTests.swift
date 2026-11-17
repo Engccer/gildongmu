@@ -163,7 +163,7 @@ struct OutingHistoryTests {
         var window = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
         let first = outingPassedRevealMore(&window, shown: 20, total: ids.count)
         #expect(first.flatMap { outingPassedRowID(ids: ids, fromNewest: $0) } == 100)
-        // 45줄 연속 더 보기: 첫 착지는 종전 맨 윗줄(25번째 자리)의 바로 위, 둘째는 그 위 20줄을 건너뛴 자리.
+        // 45줄 연속 더 보기: 첫 착지는 종전 맨 윗줄(인덱스 25)의 바로 위, 둘째는 그 위 20줄을 건너뛴 자리.
         let long = Array(0..<45)
         var w2 = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
         #expect(outingPassedRevealMore(&w2, shown: 20, total: 45).flatMap { outingPassedRowID(ids: long, fromNewest: $0) } == 24)
