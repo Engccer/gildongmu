@@ -262,7 +262,7 @@
     <string name="android_outing_dir_w">西</string>
     <string name="android_outing_ended">お散歩を終了しました</string>
     <string name="android_outing_endedByUser">お散歩を終了しました。</string>
-    <string name="android_outing_guideWalkToHere">ここまで徒歩案内</string>
+    <string name="android_outing_guideWalkToHere">ここまでの徒歩案内</string>
     <string name="android_outing_heading">お散歩</string>
     <string name="android_outing_headingUnknown">進行方向を確認中</string>
     <string name="android_outing_historyBeside">そば</string>

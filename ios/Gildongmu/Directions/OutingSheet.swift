@@ -37,6 +37,7 @@ struct OutingSheet: View {
     /// 「지나온 곳」에서 VoiceOver 커서가 머문 줄(기록 순번) — 더 보기의 착지 대상이고, 새 줄이 아래에 들어와도 이 줄은 창 밖으로
     /// 밀려나지 않는다(`outingPassedShownCount`).
     @AccessibilityFocusState private var focusedPassedID: Int?
+    @Environment(\.openURL) private var openURL
     /// 체중 입력 권유(도보 종료 화면과 같은 저장 키·같은 판정, E31).
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
@@ -275,7 +276,9 @@ struct OutingSheet: View {
         if case .place(let place, _, _) = entry.content {
             Text(historyLine(entry, now: now))
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    PlaceCallButton(phone: place.phone)
+                    if let telURL = placeTelURL(place.phone) {
+                        Button(appLocalized("ios.place.call")) { openURL(telURL) }
+                    }
                     Button(appLocalized("ios.outing.guideWalkToHere")) {
                         onHandOver(destination(place), .guide(.walk(accessible: false, waypoint: nil)))
                     }

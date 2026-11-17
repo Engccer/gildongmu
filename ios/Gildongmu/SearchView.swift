@@ -488,6 +488,7 @@ struct PlaceRowActions: ViewModifier {
     /// 장소 채팅 진입(sheet 상태를 가진 화면만 넘긴다). nil이면 동작 미노출(채팅 안 재진입 순환 방지).
     let onAskAbout: (() -> Void)?
     let style: Style
+    @Environment(\.openURL) private var openURL
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -536,7 +537,12 @@ struct PlaceRowActions: ViewModifier {
         }
     }
 
-    private var callButton: some View { PlaceCallButton(phone: place.phone) }
+    @ViewBuilder
+    private var callButton: some View {
+        if let telURL = placeTelURL(place.phone) {
+            Button(appLocalized("ios.place.call")) { openURL(telURL) }
+        }
+    }
 
     @ViewBuilder
     private var askButton: some View {
@@ -546,17 +552,11 @@ struct PlaceRowActions: ViewModifier {
     }
 }
 
-/// 장소 줄의 「전화 걸기」 — 번호가 없으면 버튼이 없다(죽은 동작 금지). 장소 행 묶음과 나들이 「지나온 곳」 줄이 같이 쓴다.
-struct PlaceCallButton: View {
-    let phone: String?
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        if let phone, !phone.isEmpty,
-           let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
-            Button(appLocalized("ios.place.call")) { openURL(telURL) }
-        }
-    }
+/// 장소 줄 「전화 걸기」의 `tel:` 주소 — 번호가 없거나 비었으면 nil이고 호출부는 버튼을 세우지 않는다(죽은 동작 금지).
+/// 장소 행 묶음과 나들이 「지나온 곳」 줄이 같이 쓴다.
+func placeTelURL(_ phone: String?) -> URL? {
+    guard let phone, !phone.isEmpty else { return nil }
+    return URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))")
 }
 
 extension View {

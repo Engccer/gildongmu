@@ -523,7 +523,7 @@ final class OutingModel {
     }
 
     /// 안내로 넘기기 직전(`GuideSession.handOverOuting`, E82 V13): 세션을 끝내고 종료 화면을 치운다. 「출발점으로」는
-    /// 종료 화면에서, 기록 줄의 「도보 안내 시작」은 세션 중에 온다.
+    /// 종료 화면에서, 기록 줄의 「여기까지 도보 안내」은 세션 중에 온다.
     func endForHandover() {
         if isTracking { guideDiagLog("outingEnd reason=handover") }
         silenceForegroundDeviceSpeech()

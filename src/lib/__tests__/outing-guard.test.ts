@@ -337,7 +337,7 @@ describe("나들이 시트 배치(E54)", () => {
   it("지나온 곳 가게 줄의 동작은 전화 걸기 → 여기까지 도보 안내이고 길찾기 진입·물어보기가 없다(위원장 판정 2026-11-18)", () => {
     const sheet = readFileSync(SHEET, "utf8");
     const row = sheet.slice(sheet.indexOf("private func historyRow"), sheet.indexOf("private func historyLine"));
-    const call = row.indexOf("PlaceCallButton(phone: place.phone)");
+    const call = row.indexOf("if let telURL = placeTelURL(place.phone)");
     const walk = row.indexOf('Button(appLocalized("ios.outing.guideWalkToHere"))');
     expect(call).toBeGreaterThan(-1);
     expect(walk).toBeGreaterThan(call);
@@ -347,6 +347,12 @@ describe("나들이 시트 배치(E54)", () => {
     // 세션 위에서는 시트 뒤 탭을 건드리는 길찾기 프리필과 장소 채팅을 내지 않는다(둘러보기 `AroundHost.session`과 같은 판정).
     expect(row).not.toContain("placeRowSwipeActions");
     expect(row).not.toContain("DirectionsPrefill");
+    expect(row).not.toContain("directions.toHere");
+    expect(row).not.toMatch(/askAbout|chatPlace/);
+    // 답 아래 버튼은 채팅 답 버튼과 같은 이름을 그대로 쓴다(줄 동작만 「여기까지 도보 안내」).
+    const answer = sheet.slice(sheet.indexOf("private func answerButtons"), sheet.indexOf("private func transitStart"));
+    expect(answer.split('appLocalized("beacon.guideStartWalk")').length - 1).toBe(2);
+    expect(answer).not.toContain("ios.outing.guideWalkToHere");
     // 전화번호는 기록에 실린다(기록을 적는 두 자리 모두).
     const model = readFileSync(join(IOS, "Gildongmu/Directions/OutingModel.swift"), "utf8");
     expect(model.split("lng: p.lng, phone: p.phone)").length - 1).toBe(2);

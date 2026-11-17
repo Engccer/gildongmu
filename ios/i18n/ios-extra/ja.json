@@ -439,7 +439,7 @@
       "historyMinutesAgo": "{minutes}分前",
       "askButton": "声で質問",
       "askHint": "押したまま話してください。指を離すと質問します。",
-      "guideWalkToHere": "ここまで徒歩案内",
+      "guideWalkToHere": "ここまでの徒歩案内",
       "askNoAnswer": "回答を受け取れませんでした。",
       "askCutOff": "回答が途中で切れました。",
       "askNoSpeech": "質問を聞き取れませんでした。",
