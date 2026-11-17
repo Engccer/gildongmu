@@ -151,8 +151,8 @@ struct OutingSheet: View {
         }
     }
 
-    /// 맨 아래 고정 줄(위원장 판정 2026-11-17 — 종료를 제목 줄 끝으로 올렸던 11-16 판을 실사용 뒤 되돌렸다). 같은 폭의 세 칸:
-    /// 왼쪽 칸 앞 끝에 「말로 묻기」, 가운데에 「나들이 종료」, 오른쪽 칸은 가운데를 맞추는 빈 칸이다. 읽기 순서는 보이는 순서대로
+    /// 맨 아래 고정 줄(위원장 판정 2026-11-17 — 종료를 제목 줄 끝으로 올렸던 11-16 판을 실사용 뒤 되돌렸다). 세 칸:
+    /// 왼쪽 칸 앞 끝에 「말로 묻기」, 가운데에 「나들이 종료」, 오른쪽 칸은 가운데를 맞추는 빈 칸이다(양쪽 칸이 같은 폭). 읽기 순서는 보이는 순서대로
     /// 말로 묻기 → 나들이 종료이고, 「말로 묻기」에서 위로 쓸면 곧바로 방금 받은 답이다.
     private var bottomBar: some View {
         HStack(spacing: 12) {
@@ -217,19 +217,16 @@ struct OutingSheet: View {
         let passed = model.history.passedEntries
         let shown = outingPassedShownCount(
             windowCount: passedWindow.visibleCount, total: passed.count,
-            // 최신에서 센 순번(목록은 최신이 맨 끝이다)
-            focusedIndex: focusedPassedID.flatMap { id in
-                passed.firstIndex { $0.id == id }.map { passed.count - 1 - $0 }
-            })
+            focusedIndex: outingPassedFromNewest(ids: passed.map(\.id), focusedID: focusedPassedID))
         return Section {
             if passed.isEmpty {
                 Text(appLocalized("ios.outing.historyEmpty"))
             } else {
                 if passed.count > shown {
                     Button(appLocalized("actions.showMore")) {
-                        guard let fromNewest = outingPassedRevealMore(&passedWindow, shown: shown, total: passed.count)
+                        guard let fromNewest = outingPassedRevealMore(&passedWindow, shown: shown, total: passed.count),
+                            let id = outingPassedRowID(ids: passed.map(\.id), fromNewest: fromNewest)
                         else { return }
-                        let id = passed[passed.count - 1 - fromNewest].id
                         proxy.scrollTo(passedRowID(id), anchor: .center)   // 가시화 후 포커스(내 주변 더 보기와 같은 순서)
                         DispatchQueue.main.async { focusedPassedID = id }
                     }

@@ -151,4 +151,24 @@ struct OutingHistoryTests {
         #expect(outingPassedRevealMore(&window, shown: 22, total: 50) == 22)
         #expect(window.visibleCount == 40)
     }
+
+    @Test("화면 순서(최신이 끝)와 최신에서 센 순번을 잇는다: 커서 줄의 순번, 더 보기가 착지할 줄")
+    func passedNewestIndexMapping() {
+        let ids = Array(100..<121)   // 21줄, 화면 맨 위가 100(가장 오래됨), 맨 아래가 120(최신)
+        #expect(outingPassedFromNewest(ids: ids, focusedID: 120) == 0)
+        #expect(outingPassedFromNewest(ids: ids, focusedID: 100) == 20)
+        #expect(outingPassedFromNewest(ids: ids, focusedID: nil) == nil)
+        #expect(outingPassedFromNewest(ids: ids, focusedID: 7) == nil)
+        // 21줄에서 더 보기: 보이던 최신 20줄(101~120)의 맨 윗줄 바로 위 줄(100)에 선다.
+        var window = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
+        let first = outingPassedRevealMore(&window, shown: 20, total: ids.count)
+        #expect(first.flatMap { outingPassedRowID(ids: ids, fromNewest: $0) } == 100)
+        // 45줄 연속 더 보기: 첫 착지는 종전 맨 윗줄(25번째 자리)의 바로 위, 둘째는 그 위 20줄을 건너뛴 자리.
+        let long = Array(0..<45)
+        var w2 = RevealWindow(initialVisible: OutingHistory.passedRevealStep, revealStep: OutingHistory.passedRevealStep)
+        #expect(outingPassedRevealMore(&w2, shown: 20, total: 45).flatMap { outingPassedRowID(ids: long, fromNewest: $0) } == 24)
+        #expect(outingPassedRevealMore(&w2, shown: 40, total: 45).flatMap { outingPassedRowID(ids: long, fromNewest: $0) } == 4)
+        #expect(outingPassedRowID(ids: long, fromNewest: 45) == nil)
+        #expect(outingPassedRowID(ids: [], fromNewest: 0) == nil)
+    }
 }

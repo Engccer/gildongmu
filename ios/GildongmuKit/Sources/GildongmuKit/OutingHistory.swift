@@ -3,7 +3,7 @@ import Foundation
 // 나들이 기록(E82 V10~V12, spec 2026-11-14-e82-vergilius-v1-design.md §3.2).
 //
 // 안내가 **끝까지 말한** 문장과, 말하지 못하고 지나온 가게, 말로 물은 답을 세션 메모리에 둔다. 화면은 이 기록 하나를 두
-// 묶음으로 나눠 그린다: 「지나온 곳」(답이 아닌 줄, 최신이 위)과 「물어본 것」(답, 최신이 아래). 문장은 화면이 자기 언어로
+// 묶음으로 나눠 그린다: 「지나온 곳」(답이 아닌 줄)과 「물어본 것」(답), 둘 다 최신이 아래다. 문장은 화면이 자기 언어로
 // 조립한다(여기에는 재료만 있다). 질문 재료(「방금 말한 것」)는 두 묶음을 가르지 않은 시간 순서 그대로 읽는다.
 // 세션이 끝나면 지운다. ⚠ 가게 이름·좌표와 답의 글이 들어 있으므로 디스크 로그에는 `logSummary`(종류별 건수)만 쓴다.
 
@@ -136,4 +136,17 @@ public func outingPassedRevealMore(_ window: inout RevealWindow, shown: Int, tot
         guard window.revealMore(totalCount: total) != nil else { break }
     }
     return shown
+}
+
+/// 「지나온 곳」의 줄 id 목록(화면 순서 — 오래된 것이 앞, 최신이 끝)에서 그 줄이 **최신에서 몇 번째인가**(최신 줄이 0).
+/// 커서가 목록 밖이면 nil. `outingPassedShownCount`의 `focusedIndex`에 넣는 값이다.
+public func outingPassedFromNewest(ids: [Int], focusedID: Int?) -> Int? {
+    guard let focusedID, let index = ids.firstIndex(of: focusedID) else { return nil }
+    return ids.count - 1 - index
+}
+
+/// 최신에서 센 순번(`outingPassedRevealMore`가 돌려준 값)의 줄 id — 「더 보기」가 커서를 옮길 줄이다. 범위 밖이면 nil.
+public func outingPassedRowID(ids: [Int], fromNewest: Int) -> Int? {
+    let index = ids.count - 1 - fromNewest
+    return ids.indices.contains(index) ? ids[index] : nil
 }
