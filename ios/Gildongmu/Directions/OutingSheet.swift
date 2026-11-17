@@ -176,7 +176,10 @@ struct OutingSheet: View {
     /// (「안내 종료」가 아니다), 왼쪽 끝의 「말로 묻기」와 한 칸 떨어뜨린다.
     private var stopButton: some View {
         Button { model.stopByUser() } label: {
+            // 양옆 칸이 폭을 똑같이 나눠 가지면 이름이 두 줄로 접힌다 — 이름은 제 폭을 먼저 받는다.
             Text(appLocalized("ios.outing.stop"))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(minHeight: 44)
         }
     }
