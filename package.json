@@ -23,7 +23,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",
     "lucide-react": "^1.18.0",
-    "next": "^16.4.3",
+    "next": "^16.4.6",
     "next-intl": "^4.13.0",
     "proj4": "^2.20.9",
     "react": "^19.3.1",
