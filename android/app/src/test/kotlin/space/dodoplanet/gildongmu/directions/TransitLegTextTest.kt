@@ -5,6 +5,7 @@ import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.kitLocalized
 import space.dodoplanet.gildongmu.kit.models.QuickExit
 import space.dodoplanet.gildongmu.kit.models.QuickExitDoor
+import space.dodoplanet.gildongmu.kit.models.TransitLane
 import space.dodoplanet.gildongmu.kit.models.TransitLegExit
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
@@ -139,5 +140,13 @@ class TransitLegTextTest {
         assertEquals("가장 빠른 경로", transitAlternativeName(route(listOf("fastest"), null), ko))
         assertEquals("대안 경로 2", transitAlternativeName(route(null, 2), ko))
         assertEquals("대안 경로 1", transitAlternativeName(route(listOf("unknownAxis"), null), ko))
+    }
+
+    @Test fun `버스 노선 집합은 구간 줄 노선 이름을 쉼표로 잇는다(E76)`() {
+        val bus = TransitRouteLeg(
+            mode = "bus", lineName = "370", fromName = "강동역", toName = "천호역", stationCount = 3, minutes = 7,
+            lanes = listOf(TransitLane("370"), TransitLane("371")),
+        )
+        assertEquals("370, 371번 버스, 강동역에서 승차, 천호역에서 하차, 3 정거장, 7분 소요", lines(listOf(bus)).single().visual)
     }
 }

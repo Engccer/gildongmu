@@ -185,6 +185,15 @@ class RouteServiceTest {
         assertFalse(t.lastQuery().hasName("includeStops"))
     }
 
+    /** E76: 버스 노선 집합은 늘 받는다(iOS `RouteService.transit`·`transitModeRequery` 동형). */
+    @Test fun transitAlwaysRequestsLanes() = runTest {
+        val (svc, t) = service(nullResult)
+        svc.transit(37.5, 127.0, 37.6, 127.1, lang = "ko")
+        assertTrue(t.lastQuery().has("lanes", "1"))
+        svc.transitModeRequery(37.5, 127.0, 37.6, 127.1, TransitModeAxis.busOnly, lang = "ko")
+        assertTrue(t.lastQuery().has("lanes", "1"))
+    }
+
     /** 404 게이트는 여기서 흡수하지 않고 그대로 throw(게이트 판정은 DirectionsOutcomeClassifier). */
     @Test fun routeServiceWalkThrowsBadStatusOn404() = runTest {
         val (svc, _) = service(HttpResponse(404, """{"error":"도보 길찾기는 API 키 등록 후 사용할 수 있습니다."}"""))

@@ -12,6 +12,7 @@ import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.transitAlightStationName
+import space.dodoplanet.gildongmu.kit.transitBriefingLineName
 import space.dodoplanet.gildongmu.kit.transitBriefingName
 import space.dodoplanet.gildongmu.kit.transitLegUsesEnglish
 
@@ -106,7 +107,8 @@ fun transitLegText(
     }
     // 노선 이름은 영어 모드에서도 `lineNameEn` 그대로(병기 없음). ⚠ 공백뿐인 값은 없음 — ODsay `busNo` 결측 `" "`가
     // "번 버스"로 낭독된 iOS 실사고. 승하차역과 같은 부재 판정(원문 보존).
-    val lineName = transitBriefingName(if (names is LegNames.English) leg.lineNameEn ?: leg.lineName else leg.lineName)
+    // 버스 노선 집합(E76)이면 「370, 371」(:kit `transitBriefingLineName`).
+    val lineName = transitBriefingName(transitBriefingLineName(leg, english = names is LegNames.English))
     val lineText = lineName?.let { if (leg.mode == "bus") strings.get("route.transit.busNo", it) else it }
     return joinText(
         lineText,

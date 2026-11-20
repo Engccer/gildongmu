@@ -79,6 +79,7 @@ fun transitLegUsesEnglish(leg: TransitRouteLeg, lang: DataLocale): Boolean {
         return transitBriefingName(leg.toName) == null || transitBriefingName(leg.toNameEn) != null
     }
     return transitBriefingName(leg.lineNameEn) != null &&
+        (leg.lanes?.all { transitBriefingName(it.lineNameEn) != null } ?: true) &&
         (transitBriefingName(leg.fromName) == null || transitBriefingName(leg.fromNameEn) != null) &&
         (transitBriefingName(leg.toName) == null || transitBriefingName(leg.toNameEn) != null)
 }
@@ -88,4 +89,19 @@ fun transitAlightStationName(leg: TransitRouteLeg, lang: DataLocale): String {
     val en = transitBriefingName(leg.toNameEn)
     if (transitLegUsesEnglish(leg, lang) && en != null) return en
     return transitBriefingName(leg.toName) ?: ""
+}
+
+/**
+ * 브리핑 노선 이름(E76): 노선 집합이 둘 이상이면 「370, 371」, 아니면 leg 자신의 이름. 영어는 집합 전부에 영문이 있을 때만 영문이다
+ * (한 줄 안에서 언어를 섞지 않는다). Kit `transitBriefingLineName` 미러. 빈값 판정은 호출부가 `transitBriefingName`으로 한다.
+ */
+fun transitBriefingLineName(leg: TransitRouteLeg, english: Boolean): String? {
+    val lanes = leg.lanes
+    if (lanes != null && lanes.size >= 2) {
+        if (english && lanes.all { transitBriefingName(it.lineNameEn) != null }) {
+            return lanes.mapNotNull { it.lineNameEn }.joinToString(", ")
+        }
+        return lanes.joinToString(", ") { it.lineName }
+    }
+    return if (english) leg.lineNameEn ?: leg.lineName else leg.lineName
 }

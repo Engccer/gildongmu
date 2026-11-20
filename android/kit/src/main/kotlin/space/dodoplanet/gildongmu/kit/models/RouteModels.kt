@@ -95,6 +95,18 @@ data class TransitLegStop(
 )
 
 /**
+ * 버스 노선 집합의 한 노선(E76, 옵트인 `lanes=1`). 웹 `TransitLane`·Kit `TransitLane` 미러. 첫 항목은 leg 자신이다.
+ * ⚠ `lineName`은 `lang=en`에서도 한국어(조인 키), 영문은 `lineNameEn`(표시 전용).
+ */
+@Serializable
+data class TransitLane(
+    val lineName: String,
+    val lineNameEn: String? = null,
+    val serviceRouteId: String? = null,
+    val serviceCityCode: Int? = null,
+)
+
+/**
  * 경로 구간 하나. mode "walk"/"bus"/"subway". walk leg는 lineName·fromName·stationCount가 전부 null이고,
  * toName·distanceMeters만 가질 수 있다. ⚠ `lang=en` 응답에서도 `lineName`·`fromName`·`toName`은
  * **한국어**다(조인 키). 영문은 `*En`(additive) — 표시 전용.
@@ -132,6 +144,8 @@ data class TransitRouteLeg(
     val expressStopIds: List<String>? = null,
     /** 승차·하차 출구 번호(E25) — 지하철 leg·`includeStops=1`에만. */
     val exit: TransitLegExit? = null,
+    /** 같은 정류장에서 같은 하차 정류장으로 가는 버스 노선 집합(E76, `lanes=1`). 둘 이상일 때 브리핑이 「370, 371」로 쓴다. */
+    val lanes: List<TransitLane>? = null,
 )
 
 /** 지하철 leg의 승차(`board`)·하차(`alight`) 출구 번호(E25). 서버가 없는 쪽 키를 빼므로 각각 옵셔널. */

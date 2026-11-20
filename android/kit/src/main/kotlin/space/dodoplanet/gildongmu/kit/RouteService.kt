@@ -60,7 +60,8 @@ class RouteService(val client: APIClient) {
         includeStops: Boolean = false,
         lang: String,
     ): TransitRouteResult? {
-        val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
+        // 버스 노선 집합(E76)은 늘 받는다(iOS 동형) — 브리핑 노선 이름이 「370, 371」이 된다.
+        val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng), "lanes" to "1")
         if (includeStops) query.add("includeStops" to "1")
         if (lang != "ko") query.add("lang" to lang)
         return client.get<TransitRouteEnvelope>("/api/route/transit", query).result
@@ -78,7 +79,7 @@ class RouteService(val client: APIClient) {
         lang: String,
     ): TransitRouteResult? {
         val query = arrayListOf(
-            "origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng), "includeStops" to "1",
+            "origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng), "lanes" to "1", "includeStops" to "1",
         )
         if (lang != "ko") query.add("lang" to lang)
         query.add("pathType" to axis.pathType)

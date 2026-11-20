@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.kit
 import kotlinx.serialization.Serializable
 import space.dodoplanet.gildongmu.kit.models.QuickExit
 import space.dodoplanet.gildongmu.kit.models.QuickExitDoor
+import space.dodoplanet.gildongmu.kit.models.TransitLane
 import space.dodoplanet.gildongmu.kit.models.TransitLegExit
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import kotlin.test.Test
@@ -221,5 +222,30 @@ class TransitExitLinesTest {
             )
             assertEquals(c.expected, transitLegUsesEnglish(leg, if (c.english) DataLocale.en else DataLocale.ko), c.id)
         }
+    }
+
+    // 버스 노선 집합(E76) — Kit `TransitGuideTests`의 `transitBriefingLineName` 단언 미러.
+
+    @Test fun `노선 집합이 둘 이상이면 브리핑 노선 이름이 쉼표로 이어진다`() {
+        val json = """{"mode":"bus","lineName":"271","lineNameEn":"271","fromName":"승차","toName":"하차","minutes":8,"lanes":[{"lineName":"271","lineNameEn":"271","serviceRouteId":"R1","serviceCityCode":1000},{"lineName":"273","serviceRouteId":"R2","serviceCityCode":1000}]}"""
+        val leg = KitJson.decodeFromString(TransitRouteLeg.serializer(), json)
+        assertEquals(listOf("R1", "R2"), leg.lanes?.map { it.serviceRouteId })
+        assertEquals("271, 273", transitBriefingLineName(leg, english = false))
+        // 영문이 하나라도 없으면 한국어 집합이고, 구간 줄도 영어 자격을 잃는다(한 줄 안에서 언어를 섞지 않는다).
+        assertEquals("271, 273", transitBriefingLineName(leg, english = true))
+        assertFalse(transitLegUsesEnglish(leg.copy(fromNameEn = "A", toNameEn = "B"), DataLocale.en))
+    }
+
+    @Test fun `노선 집합 전부에 영문이 있으면 영어 이름으로 잇는다`() {
+        val leg = bus().copy(lineNameEn = "370", lanes = listOf(TransitLane("370", "370"), TransitLane("371", "371")))
+        assertEquals("370, 371", transitBriefingLineName(leg, english = true))
+        assertTrue(transitLegUsesEnglish(leg.copy(fromNameEn = "A", toNameEn = "B"), DataLocale.en))
+    }
+
+    @Test fun `노선이 하나뿐이거나 집합이 없으면 leg 자신의 이름이다`() {
+        assertEquals("370", transitBriefingLineName(bus().copy(lanes = listOf(TransitLane("370"))), english = false))
+        assertEquals("370", transitBriefingLineName(bus(), english = false))
+        assertEquals("Line 9", transitBriefingLineName(subway().copy(lineNameEn = "Line 9"), english = true))
+        assertEquals("수도권 9호선", transitBriefingLineName(subway(), english = true))
     }
 }
