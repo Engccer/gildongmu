@@ -214,10 +214,12 @@ class TransitSheetPhaseTest {
         assertTrue(sheet.contains("nav.onOpenPlace(place, false, returnTo, stationLineHint)"))
     }
 
-    @Test fun `국면 버튼 표식과 단계 경계 — 세 버튼 testTag, 인계는 모델 전이 뒤 단계 6 표식`() {
+    @Test fun `국면 버튼 표식과 인계 배선 — 세 버튼 testTag, 인계는 모델 전이가 참일 때만`() {
         for (button in listOf("boardSelected", "reselect", "advance")) assertTrue(rows.contains("TransitPhaseButton.$button.tag"), button)
-        assertTrue(rows.contains("c.model.advanceIntoWalkHandoff()"))
-        assertEquals(2, Regex("// 단계 6: GuideSession.acceptWalkHandoff").findAll(rows).count(), "다음 구간 인계와 복구 걷기, 두 자리")
+        // 다음 구간 인계는 전이가 실제로 인계를 남겼을 때만 세션을 연다(iOS `if model.advanceIntoWalkHandoff() { onWalkHandoff?() }`).
+        assertTrue(Regex("""if \(c\.model\.advanceIntoWalkHandoff\(\)\) \{\s*GuideDiag\.log\([^)]*\)\s*GuideSession\.acceptWalkHandoff\(\)""").containsMatchIn(rows))
+        assertEquals(2, Regex("""GuideSession\.acceptWalkHandoff\(\)""").findAll(rows).count(), "다음 구간 인계와 복구 걷기, 두 자리")
+        assertFalse(rows.contains("WALK_HANDOFF_AVAILABLE"))
         assertTrue(rows.contains("RecoveryControls(c, leg)"))
         // 질문 화면 컨트롤은 렌더 조건(`exists`)을 지나고 착지 부착은 transitLandingRow 한 자리다 — focusRequester 직접 부착 없음.
         for (control in listOf("waitingLabel", "expressPrompt", "expressBlocked", "reboardPrompt")) {

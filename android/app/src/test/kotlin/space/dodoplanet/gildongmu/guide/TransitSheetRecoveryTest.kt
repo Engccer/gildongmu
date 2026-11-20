@@ -88,7 +88,7 @@ class TransitSheetRecoveryTest {
         assertFalse(rows.contains("c.model.announceExternal("))
     }
 
-    @Test fun `5-D·5-E 표식이 남지 않고 단계 6 표식은 둘`() {
+    @Test fun `5-D·5-E 표식이 남지 않는다`() {
         val files = guideUi.parentFile.walkTopDown().filter { it.extension == "kt" }.toList()
         val left = files.filter { f -> f.readText().let { it.contains("// 5-" + "D:") || it.contains("// 5-" + "E:") } }.map { it.name }
         assertEquals(emptyList(), left)

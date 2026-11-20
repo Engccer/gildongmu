@@ -33,6 +33,7 @@ import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DisclosureRow
 import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.guide.GuideDiag
+import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.TransitAboardStep
 import space.dodoplanet.gildongmu.guide.TransitGuideModel
 import space.dodoplanet.gildongmu.guide.TransitGuideTextRenderer
@@ -76,11 +77,9 @@ class TransitRowsCtx(
     val openRecoverySearch: () -> Unit,
 )
 
-/** 이 단계에서 말미 도보 인계가 가능한가(iOS `onWalkHandoff != nil`). 단계 6이 `GuideSession.acceptWalkHandoff`를 배선하기 전에도 모델의 전이 가드(`pendingWalkHandoff`)가 안전하다. */
-private const val WALK_HANDOFF_AVAILABLE = true
-
+/** 말미 도보 인계 판정 — 인계 수락(`GuideSession.acceptWalkHandoff`)은 세션이 늘 들고 있다(iOS `onWalkHandoff`는 세션 시작 뒤 항상 non-nil). */
 private fun TransitRowsCtx.handoffNow(): Boolean =
-    transitHandoffNow(model.journeyNextIsWalk, model.isOnFinalLeg, model.finalLegWalkMinutes, WALK_HANDOFF_AVAILABLE)
+    transitHandoffNow(model.journeyNextIsWalk, model.isOnFinalLeg, model.finalLegWalkMinutes, walkHandoffAvailable = true)
 
 @Composable
 private fun SheetButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -263,7 +262,8 @@ private fun RecoveryControls(c: TransitRowsCtx, leg: TransitGuideLeg) {
     }
     if (controls.walk) {
         SheetButton(c.strings.get("android.transitGuide.recoveryWalk"), Modifier.testTag("transit-recovery-walk")) {
-            // 단계 6: GuideSession.acceptWalkHandoff
+            // 인계 값 없이 들어가 출구가 실리지 않는다(iOS `onWalkHandoff?()` 동형).
+            GuideSession.acceptWalkHandoff()
         }
     }
 }
@@ -280,7 +280,7 @@ private fun advanceOrHandoff(c: TransitRowsCtx, handoffNow: Boolean) {
     if (handoffNow) {
         if (c.model.advanceIntoWalkHandoff()) {
             GuideDiag.log("transit walkHandoff requested")
-            // 단계 6: GuideSession.acceptWalkHandoff
+            GuideSession.acceptWalkHandoff()
         }
     } else {
         c.model.advance()

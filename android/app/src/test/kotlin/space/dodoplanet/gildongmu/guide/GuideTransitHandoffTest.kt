@@ -210,6 +210,22 @@ class GuideTransitHandoffTest {
         assertEquals(1, w.speaker.texts.count { it.contains(exitLine) }, w.speaker.texts.toString())
     }
 
+    @Test fun `하차 인계의 출구 문장은 시작음의 1회 소리 경고와 한 통지로 나간다`() = joint { w, t ->
+        val here = w.fix(0.0)
+        val via = stops("천호", "강동", "올림픽공원") + TransitLegStop(name = "여의도", lat = here.lat, lng = here.lng)
+        t.model.start(route(subwayLeg("천호", "여의도", via = via, exit = TransitLegExit(alight = "3"))), "여의도역", t.dest, accessible = false)
+        settle()
+        t.model.boardAlready(express = null)
+        assertTrue(t.model.advanceIntoWalkHandoff())
+        w.tones.isSilenced = true
+        GuideSession.acceptWalkHandoff()
+        settle()
+        after(610)
+        settle()
+        val warning = w.catalog.get("android.beacon.soundUnavailable")
+        assertTrue(w.speaker.texts.any { it.contains("3번 출구로 나가세요.") && it.contains(warning) }, w.speaker.texts.toString())
+    }
+
     @Test fun `재시작은 승차 전 도보 연결을 다시 건다`() = joint { w, t ->
         w.perms.location = LocationPermission.Coarse
         GuideSession.startTransit(t.request())

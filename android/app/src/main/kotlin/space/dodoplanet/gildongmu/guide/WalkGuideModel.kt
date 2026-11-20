@@ -662,11 +662,19 @@ class WalkGuideModel(
         if (!isTracking) return  // 서비스 시작 실패 콜백이 동기로 왔으면(백그라운드 시작 거부·테스트) 이미 접혔다
         // ⑨ 오디오 — 승격은 첫 톤보다 먼저.
         tones.beginSession()
-        playTone(BeaconTone.start)   // 미디어 볼륨 0 판정은 playTone 안에서 1회
+        val statusBeforeTone = statusText
+        playTone(BeaconTone.start)   // 미디어 볼륨 0·무음 판정은 playTone 안에서 1회(경고 문장은 상태 행에도 싣는다)
+        val toneWarning = statusText.takeIf { it != statusBeforeTone }
         // 출구 인계(E84)면 시작 직후 출구 문장을 단독으로 말한다(iOS 동형). 버려지면(억제·백그라운드) 첫 시작류 통지가 접두로 다시 싣는다(`withExitLead`).
+        // 방금 난 소리 경고와는 한 통지로 합친다(iOS 동형 — 지연 창구는 한 칸이고 최신이 이겨, 따로 내면 1회 경고를 잃는다).
         val exitSentence = if (kind == GuideSessionKind.walk) exitLead?.let { strings.get("guide.exitLeadStart", it.exit) } else null
         exitLeadNotice = exitSentence?.let { ExitLeadNotice(it, clock()) }
-        if (exitSentence != null) announce(exitSentence, speechClass = GuideSpeechClass.actionable, onDropped = { exitLeadNotice?.dropped = true })
+        if (exitSentence != null) {
+            announce(
+                toneWarning?.let { "$exitSentence $it" } ?: exitSentence, speechClass = GuideSpeechClass.actionable,
+                onDropped = { exitLeadNotice?.dropped = true },
+            )
+        }
         // ⑩ 워치독·경로 조회 대기.
         startWatchdog()
         awaitingRoute = true
