@@ -687,3 +687,10 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 자동차는 별도 모델이 아니라 `WalkGuideModel`의 `sessionKind = car` 세션이다(iOS `BeaconModel` 동형). 임계는 `tuning`(수단에서 유도, 운전자 프로파일 없음)이 데이터로 가르고, 문장·조회 대상이 갈리는 행동만 iOS `sessionKind == .car` 분기를 같은 자리·같은 조건으로 옮긴다. ⚠ 걸음 센서는 `stop()` 뒤에도 마지막 값(`steps.liveSample`)을 남긴다. 자동차 세션이 그 값을 읽으면 앞 도보 세션의 걸음이 자동차 종료 화면에 걸음 요약으로 샌다. 자동차는 표본을 null로 둔다. 수단은 `stop()`이 도보로 되돌리므로 종료 화면의 수단(`arrivalSessionKind`)은 `stop()` **앞**에서 캡처한다.
 
+### Compose는 사용자 지정 액션을 라벨로 골라 실행한다
+
+⚠ **Compose는 사용자 지정 액션을 라벨로 골라 실행한다** — 접근성 서비스가 액션 id로 실행을 요청해도 Compose는 그 id의 라벨과 같은 첫 액션의 람다를 부른다. 한 줄에 같은 라벨이 둘이면(한눈에 보기 문장 하나가 같은 역을 두 번 말할 때 「○○ 상세 보기」 둘) 둘째 대상에는 닿지 않는다(B21 ⑥, 2026-11-21 코드 리뷰). 대상 목록을 액션으로 바꿀 때 `distinctBy { it.label }`로 거른다.
+
+### `clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다
+
+⚠ **`clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다** — 한 노드의 시맨틱 수식어는 사슬 안쪽(뒤)부터 바깥쪽으로 접히고, 지우는 수식어를 만나면 그때까지 모은 것을 버린다. 그래서 `clickable`처럼 앞에 붙은 것은 살고 `.mergedRow(...).semantics { customActions = … }`·`.headingText()`처럼 뒤에 붙은 것은 사라진다(`RecentRow`는 액션을 같은 블록 안에 둔다). A77(한소네 영어 병기 줄 두 번 출력)을 `mergedRow` 한 곳에서 `clearAndSetSemantics`로 고치지 못한 이유가 이것이다 — 낭독 이름 + 뒤 시맨틱 자리가 `SearchRows.kt`·`NearbyKindScreen.kt`·`a11y/Lines.kt`·`directions/RouteRows.kt`에 있다(2026-11-21).
