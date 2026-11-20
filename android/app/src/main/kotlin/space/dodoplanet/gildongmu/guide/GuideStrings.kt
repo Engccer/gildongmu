@@ -160,6 +160,16 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.crossingRemainingUnderpass" -> R.string.guide_crossingRemainingUnderpass
     "android.guide.destChanged" -> R.string.android_guide_destChanged
     "android.guide.destChangedFetching" -> R.string.android_guide_destChangedFetching
+    "android.guide.destChangedNoName" -> R.string.android_guide_destChangedNoName
+    "android.transitGuide.altRefetching" -> R.string.android_transitGuide_altRefetching
+    "android.transitGuide.destChangeError" -> R.string.android_transitGuide_destChangeError
+    "android.transitGuide.destChangeLoading" -> R.string.android_transitGuide_destChangeLoading
+    "android.transitGuide.destChangeRefetched" -> R.string.android_transitGuide_destChangeRefetched
+    "android.transitGuide.recoveryNoGuidable" -> R.string.android_transitGuide_recoveryNoGuidable
+    "android.transitGuide.recoveryNoLocation" -> R.string.android_transitGuide_recoveryNoLocation
+    "android.transitGuide.recoveryNoRoute" -> R.string.android_transitGuide_recoveryNoRoute
+    "android.transitGuide.routeSwitched" -> R.string.android_transitGuide_routeSwitched
+    "transitGuide.reboardStationPrompt" -> R.string.transitGuide_reboardStationPrompt
     "android.guide.waypointKept" -> R.string.android_guide_waypointKept
     "android.guide.waypointSet" -> R.string.android_guide_waypointSet
     "android.guide.waypointRemoved" -> R.string.android_guide_waypointRemoved

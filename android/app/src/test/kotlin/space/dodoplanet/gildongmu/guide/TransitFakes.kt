@@ -16,10 +16,14 @@ import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.HttpTransport
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
+import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.TransitPositionService
 import space.dodoplanet.gildongmu.kit.TransitTrackService
+import kotlinx.serialization.json.Json
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
+import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
+import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.TransitRouteSummary
 
@@ -40,6 +44,12 @@ class TransitGuideHarness(
     val store = InMemoryKeyValueStore()
     /** 도보 모델의 「시작 대기」(`GuideSession.isActive`의 한 갈래) 흉내. */
     var walkStarting = false
+    /** 위치 포트(3-2): 호출마다 `force` 값을 기록한다. `coordinateFails`가 켜져 있으면 예외로 끝난다(iOS `LocationService.currentCoordinate`의 throw). */
+    val coordinateCalls = mutableListOf<Boolean>()
+    var coordinateFails = false
+    var coordinate = NearbyCoord(37.5400, 127.1200)
+    /** 시트 최소화 여부 포트(3-2, iOS `GuideSession.isMinimized`). */
+    var minimized = false
     /** 켜면 다음 추적 호출이 HTTP 실패로 끝난다(`TransitTrackPoll.Failed`). */
     var failNextTrack = false
     val seenUrls = mutableListOf<String>()
@@ -85,6 +95,12 @@ class TransitGuideHarness(
         env = env,
         coordinator = coordinator,
         isSessionActive = { coordinator.isActive || walkStarting },
+        currentCoordinate = { force ->
+            coordinateCalls += force
+            if (coordinateFails) error("no fix")
+            coordinate
+        },
+        isMinimized = { minimized },
         store = store,
         scope = CoroutineScope(job + dispatcher),
         clock = now,
@@ -92,6 +108,16 @@ class TransitGuideHarness(
         io = dispatcher,
     )
     val dest = BeaconDest(37.5265, 126.9246)
+
+    /** 경로 조회(`/api/route/transit`) 응답을 큐에 넣는다 — null 결과는 「경로 없음」, `status`가 500이면 조회 실패(3-state). */
+    fun queueRoute(result: TransitRoute?, status: Int = 200, delayMs: Long = 0, alternatives: List<TransitRoute> = emptyList()) {
+        val body = Json.encodeToString(
+            TransitRouteEnvelope.serializer(),
+            TransitRouteEnvelope(result?.let { TransitRouteResult(recommended = it, alternatives = alternatives, totalCandidates = 1 + alternatives.size) }),
+        )
+        queuePath("/api/route/transit", PathReply(status, body, delayMs))
+    }
+    val routeCalls: List<String> get() = seenUrls.filter { it.contains("/api/route/transit") }
     fun close() { job.cancel() }
 
     fun subwayRoute(): TransitRoute = TransitRoute(

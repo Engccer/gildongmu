@@ -206,4 +206,9 @@ class GuideSourceGuardTest {
         assertTrue(idle.contains("(lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters"), idle)
         assertTrue(idle.contains("sessionIdleStationaryElapsed(now - progressRef, presumedArrivalCanFire)"), idle)
     }
+
+    @Test fun `⑮ TransitGuideModel_kt에 단계 3 표식이 남지 않는다`() {
+        val src = guide.resolve("TransitGuideModel.kt").readText()
+        assertEquals(0, Regex("단계 3:").findAll(src).count(), "단계 3 표식 잔여")
+    }
 }

@@ -45,7 +45,15 @@ import space.dodoplanet.gildongmu.kit.transitTransferWalkTarget
 import space.dodoplanet.gildongmu.kit.transitTransferWalkMeters
 import space.dodoplanet.gildongmu.kit.transitExpressSkipsAlightLine
 import space.dodoplanet.gildongmu.kit.subwayIdForOdsayLine
+import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.TransitOverview
+import space.dodoplanet.gildongmu.kit.TransitOverviewHere
+import space.dodoplanet.gildongmu.kit.TransitRecoveryOrigin
+import space.dodoplanet.gildongmu.kit.transitPrewalkTarget
+import space.dodoplanet.gildongmu.kit.transitRecoveryOffered
+import space.dodoplanet.gildongmu.kit.transitRecoveryOrigin
+import space.dodoplanet.gildongmu.kit.transitRecoveryRoute
+import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.TransitPhase
 import space.dodoplanet.gildongmu.kit.TransitPositionService
 import space.dodoplanet.gildongmu.kit.TransitPrewalkTarget
@@ -179,8 +187,8 @@ data class TransitTransferWalkHandoff(
  * - 백그라운드에서도 폴한다(E36). 하는 일은 복귀 낭독과 복귀 즉폴이다.
  * - 세션 단일성: `GuideSessionCoordinator`(도보·자동차와 상호 배제).
  *
- * 단계 2-1(수명·폴·유휴·통지)까지 옮겼다. 단계 3 몫(승차 중 현재역 E35·버스 정류장 E48·재기준 E76·잘못 내림 복구 E78·목적지 전환·다른 경로)은
- * `// 단계 3: <iOS 함수 이름>` 표식으로 자리만 남겼고(grep으로 전수 회수), 서비스·세션 배선은 `// 단계 4:` 표식이다. 사용자 동작(2-2)은 이 파일 「사용자 액션」 절이다.
+ * 단계 2-1(수명·폴·유휴·통지)까지 옮겼다. 단계 3 몫(승차 중 현재역 E35·버스 정류장 E48·재기준 E76·잘못 내림 복구 E78·목적지 전환·다른 경로)까지 옮겼다(표식 0은 소스 가드가
+ * 잠근다). 서비스·세션 배선은 `// 단계 4:` 표식이다. 사용자 동작(2-2)은 이 파일 「사용자 액션」 절이다.
  *
  * ⚠ 동기화가 없다 — 메인 스레드에서만 부른다(`scope`도 메인, `DeferredAnnouncer` 계약). 시계는 둘이다: `clock`(단조 초 — 유휴·`DeferredAnnouncer`·계측)과
  * `wallClockMs`(벽시계 epoch ms — 서버 도착 시각·떠난 열차 보존 180초, iOS `nowMs()`·`Date()` 자리).
@@ -200,6 +208,10 @@ class TransitGuideModel(
     private val coordinator: GuideSessionCoordinator,
     /** 거부 판정용 「다른 안내가 있는가」(iOS `GuideSession.isActive` = 코디네이터 점유 ∨ 도보 `starting`). `GuideSession`이 `{ isActive }`를 넘긴다(단계 4). ⚠ 기본값 없음(안전 인자). */
     private val isSessionActive: () -> Boolean,
+    /** iOS `LocationService.shared.currentCoordinate(force:)` 자리 — 안드로이드 `location/LocationStore.currentCoordinate`가 대응한다(실패는 예외). 단계 4에서 `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
+    private val currentCoordinate: suspend (force: Boolean) -> NearbyCoord,
+    /** iOS `GuideSession.shared.isMinimized` 자리 — 복구 결과 문장을 통지로 낼지(시트가 최소화돼 착지가 없을 때). 단계 4에서 `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
+    private val isMinimized: () -> Boolean,
     private val store: KeyValueStore,
     private val scope: CoroutineScope,
     private val clock: () -> Double,
@@ -425,7 +437,29 @@ class TransitGuideModel(
     private var soundDegradedHapticFired = false
     /** 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비. */
     private var refreshAnnounce = false
-    // 단계 3: destChangeToken · altRoutesToken — 목적지 전환·다른 경로 조회의 latest-wins 토큰
+    // ── 목적지 전환·다른 경로·잘못 내림 복구(단계 3-2) — 관찰 값은 `ui`, 토큰·세대는 비공개 ──
+    private var pendingRecovery: PendingRecovery?
+        get() = _ui.value.pendingRecovery
+        set(v) = mutate { copy(pendingRecovery = v) }
+    private var recoveryWithdrawnSeq: Int
+        get() = _ui.value.recoveryWithdrawnSeq
+        set(v) = mutate { copy(recoveryWithdrawnSeq = v) }
+    private var recoveryOutcome: RecoveryOutcome?
+        get() = _ui.value.recoveryOutcome
+        set(v) = mutate { copy(recoveryOutcome = v) }
+    private var pendingDestChange: PendingDestChange?
+        get() = _ui.value.pendingDestChange
+        set(v) = mutate { copy(pendingDestChange = v) }
+    private var pendingAltRoutes: PendingAltRoutes?
+        get() = _ui.value.pendingAltRoutes
+        set(v) = mutate { copy(pendingAltRoutes = v) }
+    private var recoveryToken = 0
+    private var destChangeToken = 0
+    private var altRoutesToken = 0
+    /** 지하철 구간에서 고른 역 좌표 — 조회 실패의 「다시 시도」가 같은 역으로 다시 조회한다. 버스는 매번 새 측위라 null. */
+    private var recoveryRetryOrigin: NearbyCoord? = null
+    /** 경로 세대 — 세션 시작·경로 교체마다 오른다(복구 커밋 가드의 「누른 시점의 경로 그대로」 축). */
+    private var routeGen = 0
     private var aboardDirection: String?
         get() = _ui.value.aboardDirection
         set(v) = mutate { copy(aboardDirection = v) }
@@ -458,8 +492,6 @@ class TransitGuideModel(
                 announce(dropped.text, speechClass = dropped.speechClass)
             }
         }
-
-    // 단계 3: routeService — 목적지 전환·다른 경로·잘못 내림 복구 재조회(생성자 `routes`)
 
     // MARK: - 세션 수명
 
@@ -518,7 +550,7 @@ class TransitGuideModel(
         guideRoute: TransitGuideRoute, startLeg: Int, token: Int, destinationLabel: String, dest: BeaconDest, accessible: Boolean,
     ) {
         sessionToken = token
-        // 단계 3: routeGen
+        routeGen += 1
         seq = 0
         retained.clear()
         reanchor = null
@@ -640,7 +672,12 @@ class TransitGuideModel(
                 reboardPickerActive = false,
             )
         }
-        // 단계 3: destChangeToken · pendingDestChange · altRoutesToken · pendingAltRoutes · invalidateRecovery
+        // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
+        destChangeToken += 1
+        pendingDestChange = null
+        altRoutesToken += 1
+        pendingAltRoutes = null
+        invalidateRecovery()
         outputSuppressed = false
         onJourneyRideCompleted = null
         journeyNextIsWalk = null
@@ -737,7 +774,7 @@ class TransitGuideModel(
      * 못했습니다.")에는 "탑승 변경을 눌러 주세요"가 없다 — 억제 해제 복구(`droppedWhileSuppressed`)와 같은 근거(memory once-only-warning-delivery-contract).
      */
     private fun returnStatusText(): String {
-        // 단계 3: recoveryStatusText — 잘못 내림 복구 중엔 복구 상태만(E78 §8-5)
+        pendingRecovery?.let { return recoveryStatusText(it) }
         val s = state ?: return ""
         val leg = currentLeg ?: return ""
         // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
@@ -901,8 +938,7 @@ class TransitGuideModel(
         refreshBusStopMark(now)
         // A69: 표시 전용 계약의 의도된 예외 하나 — 통지만 내고 리듀서 입력(dispatch)으로 흘러가지 않는다. 잘못 내림 복구 중엔 판정째 건너뛴다(E78 §5-1) — 장부를 세운 채
         // 말만 막으면 복구 취소 뒤에도 영영 말하지 않는다.
-        // 단계 3: pendingRecovery — `if (pendingRecovery == null)` 가드(잘못 내림 복구 E78, 다음 묶음)
-        run {
+        if (pendingRecovery == null) {
             val notice = transitBusAlightNoticeStep(busAlightNotice, s, leg, result, deviceFix, now)
             busAlightNotice = notice.notice
             if (notice.speak) announceAlightReached(leg = leg, legIndex = s.legIndex, phaseGen = s.phaseGen)
@@ -1139,7 +1175,7 @@ class TransitGuideModel(
      * 자체를 바꾼다(`changeBoarding(stopIndex)`, 단계 3).
      */
     fun beginReboard() {
-        // 단계 3: invalidateRecovery — 복구 중이었으면 폴을 즉시 다시 돌린다(`if (invalidateRecovery()) restartPollLoop(immediate = true)`)
+        if (invalidateRecovery()) restartPollLoop(immediate = true)
         touchUserAction()
         // 승차 중의 새 [탑승 변경]은 새 원본을 잡는다 — 옛 원본이 남아 있으면 안 된다.
         if (state?.phase != TransitPhase.waiting) reanchor = null
@@ -1438,6 +1474,546 @@ class TransitGuideModel(
         TransitWaitingEmptyReason.unavailable -> strings.get("transitGuide.noCandidatesUnavailable")
     }
 
+    // MARK: - 잘못 내림 복구 「여기서 다시 길찾기」(E78 spec 2026-11-07 §3·§5·§8, iOS 줄 1246)
+
+    /** 「여기서 다시 길찾기」를 세우는가(Kit 판정 — 승차 중·도착 뒤, 여정 단계 밖). 여정 중인가는 여정 훅이 배선돼 있는가로 본다(iOS `GuideSession.journey != nil` 자리). */
+    val recoveryOffered: Boolean
+        get() {
+            val s = state ?: return false
+            return transitRecoveryOffered(phase = s.phase, untrackable = s.signal == TransitSignal.untrackable, inJourney = onJourneyStopped != null)
+        }
+
+    /** 버튼. 버스는 곧장 새 측위·조회, 지하철은 역부터 묻는다(Q3). 조회 중 다시 누르면 같은 문장만 다시 말한다(E74 규칙). */
+    fun beginRecovery() {
+        startRecovery(announcesLoading = true)
+    }
+
+    /**
+     * `announcesLoading`: 버스 갈래의 조회 중 `.high` 통지를 낼까 — 버튼이 그대로 남는 첫 누름은 통지가 유일한 응답이고, 「다시 시도」는 그 행이 사라져 시트가 조회 중
+     * 행으로 착지하므로 통지를 겹치지 않는다(헌장 §5, 접근성 감사 M1). ⚠ 기본값 없음.
+     */
+    private fun startRecovery(announcesLoading: Boolean) {
+        val leg = currentLeg
+        if (leg == null || !recoveryOffered) return
+        val pending = pendingRecovery
+        if (pending != null) {
+            if (pending.phase == PendingRecovery.Phase.loading) {
+                announceNow(strings.get("android.transitGuide.destChangeLoading"), highPriority = true)
+            }
+            return
+        }
+        // 유휴 재개 문장(「안내를 재개합니다. {옛 상태}」)은 내지 않는다 — 옛 안내를 틀렸다고 선언한 자리다. 슬롯이 끝나면 폴이 주기 0·유휴 게이트를 지나 다시 선다(§8-4).
+        noteUserAction()
+        idlePaused = false
+        reboardPickerActive = false
+        recoveryOutcome = null
+        recoveryRetryOrigin = null
+        recoveryToken += 1
+        quietForRecovery()
+        updateKeepAlive()  // 유휴 정지 중 누름이면 꺼져 있던 스트림을 다시 켠다(코드 리뷰 NIT-2)
+        val origin = transitRecoveryOrigin(leg)
+        GuideDiag.log { "transit recovery begin phase=${state?.phase?.rawValue ?: "-"} leg=${state?.legIndex ?: -1} origin=$origin" }
+        when (origin) {
+            TransitRecoveryOrigin.askStation -> {
+                pendingRecovery = PendingRecovery(token = recoveryToken, routeGen = routeGen, phase = PendingRecovery.Phase.pickStation)
+                scheduleRecoveryPickTimeout(token = recoveryToken, afterSeconds = null)
+            }
+            TransitRecoveryOrigin.deviceFix -> {
+                pendingRecovery = PendingRecovery(token = recoveryToken, routeGen = routeGen, phase = PendingRecovery.Phase.loading)
+                // 버튼이 그대로 남아 커서가 움직이지 않는다 — 통지가 유일한 응답이다(.high).
+                if (announcesLoading) announceNow(strings.get("android.transitGuide.destChangeLoading"), highPriority = true)
+                val token = recoveryToken
+                scope.launch { runRecovery(token = token, origin = null) }
+            }
+        }
+    }
+
+    /** 지하철 역 고르기 응답 — 이번 구간 경유역 순번. */
+    fun recoverFrom(stationAt: Int) {
+        val leg = currentLeg ?: return
+        val stop = leg.viaStops.getOrNull(stationAt) ?: return
+        GuideDiag.log { "transit recovery station source=list index=$stationAt" }
+        startRecoveryFetch(NearbyCoord(stop.lat, stop.lng))
+    }
+
+    /** 「목록에 없는 역 찾기」 검색 응답(하차역을 지나친 경우, §5-2). */
+    fun recoverFrom(searchedStationLat: Double, searchedStationLng: Double) {
+        GuideDiag.log { "transit recovery station source=search" }
+        startRecoveryFetch(NearbyCoord(searchedStationLat, searchedStationLng))
+    }
+
+    private fun startRecoveryFetch(origin: NearbyCoord) {
+        val pending = pendingRecovery
+        if (pending == null || pending.phase != PendingRecovery.Phase.pickStation) return
+        noteUserAction()
+        pendingRecovery = pending.copy(phase = PendingRecovery.Phase.loading)
+        recoveryRetryOrigin = origin
+        scope.launch { runRecovery(token = pending.token, origin = origin) }
+    }
+
+    /**
+     * 역 질문을 연 채 잊힌 세션의 안전망(코드 리뷰 MAJOR-1): 슬롯이 있는 동안 폴이 없어 유휴 판정(`enterIdleIfDue`, 폴 루프 안)이 돌지 않는다 — 유휴 상한이 지나도록 역을
+     * 고르지 않으면 질문을 거두고 폴을 다시 세운다. 시한의 축은 누른 시각이 아니라 마지막 조작(`lastUserActionAt`, 유휴 판정과 같은 시계)이다(재검토 MINOR-A). 닿으면 폴 재개를
+     * 거치지 않고 곧장 유휴 정지로 간다. 검색 시트(받아쓰기 억제 중)가 열려 있으면 미룬다 — 거두면 그 시트에서 고른 역이 조용히 버려진다.
+     */
+    private fun scheduleRecoveryPickTimeout(token: Int, afterSeconds: Double?) {
+        val limitSeconds = transitIdlePollLimitMs(currentLeg?.minutes) / 1000
+        val wait = afterSeconds ?: limitSeconds
+        scope.launch {
+            delay((wait * 1000).toLong())
+            val pending = pendingRecovery
+            if (!isTracking || pending == null || pending.token != token || pending.phase != PendingRecovery.Phase.pickStation) return@launch
+            val remaining = limitSeconds - (clock() - lastUserActionAt)
+            // 검색 시트 미룸은 전경에서만 — 백그라운드에선 그 시트에 입력이 일어날 수 없고, 미루면 안전망이 무기한 꺼진다(재재검토 MAJOR-B).
+            if (remaining > 0 || (outputSuppressed && isForeground)) {
+                scheduleRecoveryPickTimeout(token = token, afterSeconds = maxOf(remaining, 60.0))
+                return@launch
+            }
+            GuideDiag.log { "transit recovery pickTimeout" }
+            pendingRecovery = null
+            recoveryWithdrawnSeq += 1
+            // 주기 0 국면(확정 도착·비관측 riding)은 원래 유휴 정지가 없다 — 멈출 폴이 없으니 「안내를 멈추었습니다」는 사실이 아니다. 질문만 조용히 거둔다(재재검토 MINOR-D).
+            val s = state
+            if (s != null && transitPollIntervalMs(s) <= 0) return@launch
+            if (!enterIdleIfDue()) restartPollLoop(immediate = true)
+        }
+    }
+
+    /** 역 고르기 취소 — 옛 문장을 재생하지 않고 즉폴로 현재 상태를 다시 판정한다(§8-5). */
+    fun cancelRecovery() {
+        if (pendingRecovery == null) return
+        noteUserAction()
+        GuideDiag.log { "transit recovery cancel" }
+        pendingRecovery = null
+        restartPollLoop(immediate = true)
+    }
+
+    /** 결과 행의 「다시 시도」 — 지하철은 같은 역으로, 버스는 새 측위부터(누름당 ODsay 1회). */
+    fun retryRecovery() {
+        if (recoveryOutcome != RecoveryOutcome.noLocation && recoveryOutcome != RecoveryOutcome.fetchFailed) return
+        val origin = recoveryRetryOrigin
+        if (origin == null || !recoveryOffered) {
+            startRecovery(announcesLoading = false)
+            return
+        }
+        noteUserAction()
+        idlePaused = false
+        recoveryOutcome = null
+        recoveryToken += 1
+        quietForRecovery()
+        updateKeepAlive()
+        pendingRecovery = PendingRecovery(token = recoveryToken, routeGen = routeGen, phase = PendingRecovery.Phase.loading)
+        // 「다시 시도」 행이 사라지고 상태 행이 조회 중으로 바뀐다 — 착지는 시트(상태 행), 통지는 내지 않는다.
+        GuideDiag.log { "transit recovery retry origin=station" }
+        val token = recoveryToken
+        scope.launch { runRecovery(token = token, origin = origin) }
+    }
+
+    /**
+     * 사용자 조작이 복구를 이긴다(§8-3) — 토큰을 무효화하고 슬롯·결과를 비운다. 반환 = 진행 중 슬롯이 있었는가(폴을 멈춘 채였다). 폴 재개는 호출부가 한다(대개 바로 뒤
+     * `restartPollLoop`).
+     */
+    private fun invalidateRecovery(): Boolean {
+        val wasPending = pendingRecovery != null
+        if (wasPending) GuideDiag.log { "transit recovery invalidated" }
+        recoveryToken += 1
+        pendingRecovery = null
+        recoveryOutcome = null
+        recoveryRetryOrigin = null
+        return wasPending
+    }
+
+    /**
+     * 복구 진입 때 옛 세션의 자동 통지 장부를 무효화한다(§8-5) — 폴 정지, 보류 슬롯·기기 음성 칸, 복귀 상환 표식, 억제 중 버린 문장, 보류한 `neverSeen` 경고. 이미 「틀렸다」고
+     * 선언한 안내가 새 안내와 섞이지 않게.
+     */
+    private fun quietForRecovery() {
+        pollJob?.cancel()
+        pollJob = null
+        deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
+        missedAnnouncement = false
+        droppedWhileSuppressed = null
+        neverSeenPending = null
+    }
+
+    /** 출발점 → 최종 목적지 재조회 → 안내 가능한 첫 경로로 자동 채택(Q4 나). `origin`이 null이면 새 측위(`force = true`). */
+    private suspend fun runRecovery(token: Int, origin: NearbyCoord?) {
+        val d = dest
+        if (d == null) {
+            finishRecovery(token = token, outcome = RecoveryOutcome.fetchFailed)
+            return
+        }
+        val start: NearbyCoord = origin ?: try {
+            currentCoordinate(true)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            finishRecovery(token = token, outcome = RecoveryOutcome.noLocation)
+            return
+        }
+        if (pendingRecovery?.token != token || !isTracking) return
+        try {
+            val result = fetchTransitCandidates(origin = start, dest = d)
+            if (pendingRecovery?.token != token || !isTracking) return
+            if (result == null) {
+                finishRecovery(token = token, outcome = RecoveryOutcome.noRoute)
+                return
+            }
+            val picked = transitRecoveryRoute(result)
+            if (picked == null) {
+                finishRecovery(token = token, outcome = RecoveryOutcome.noGuidable)
+                return
+            }
+            commitRecovery(picked, token = token)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            finishRecovery(token = token, outcome = RecoveryOutcome.fetchFailed)
+        }
+    }
+
+    /** 채택 없이 끝난 자기 슬롯을 비우고 결과 행을 세운다. 폴은 주기 0·유휴 게이트를 지나 다시 선다(§8-4). */
+    private fun finishRecovery(token: Int, outcome: RecoveryOutcome) {
+        if (pendingRecovery?.token != token || !isTracking) return
+        pendingRecovery = null
+        recoveryOutcome = outcome
+        GuideDiag.log { "transit recovery outcome=$outcome" }
+        // 결과 문장의 정본은 시트의 결과 행 착지다(백그라운드면 시트가 이월해 복귀 때 착지한다). 시트가 최소화돼 있으면 콘텐츠 뷰가 파괴돼 착지가 없다 — 같은 문장을 자동 통지
+        // 창구로 낸다(백그라운드는 E53 채널 술어가 기기 음성/버림을 가르고, 버리면 복귀 때 현재 상태를 말한다 — 결과 행은 시트를 다시 열면 그대로 있다). 시트가 떠 있을 때 둘 다
+        // 내면 착지 낭독과 겹친다. ⚠ 모델이 최소화를 읽는 유일한 자리(코디네이터 머리 주석의 예외, 코드 리뷰 MINOR-2·재검토 MINOR-C).
+        if (isMinimized()) {
+            announce(recoveryOutcomeText(outcome), highPriority = true, speechClass = GuideSpeechClass.actionable)
+        }
+        // 문장이 나가는 조건 = 진동 조건(결과 행 착지가 문장이다).
+        when (outcome) {
+            RecoveryOutcome.noLocation, RecoveryOutcome.fetchFailed -> resultHaptic(ResultHapticKind.failure)
+            RecoveryOutcome.noRoute, RecoveryOutcome.noGuidable -> resultHaptic(ResultHapticKind.attention)
+        }
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * 커밋(§3.3·§8-1): ① 토큰 최신 ② 추적 중 ③ 누른 시점의 경로 세대 그대로일 때만. 국면 세대·구간 번호 변화로는 버리지 않는다 — 누름 자체가 「옛 세션의 위치 판단이 틀렸다」는
+     * 선언이다. 새 경로의 첫 승차 지점이 걸어가야 하는 곳이면 승차 전 도보부터(§5-5).
+     */
+    private fun commitRecovery(newRoute: TransitRoute, token: Int) {
+        val pending = pendingRecovery
+        val d = dest
+        val guideRoute = buildTransitGuideRoute(newRoute)
+        if (pending == null || pending.token != token || !isTracking || pending.routeGen != routeGen || d == null || guideRoute == null) {
+            // 실질 도달 불가(경쟁 커밋은 `invalidateRecovery`가 토큰부터 무효화한다)지만, 닿으면 조회 중 행이 말없이 사라지지 않게 결과로 수렴한다(접근성 감사 N4). 변환 실패는 조회
+            // 실패가 아니라 안내 불가다(「다시 시도」가 같은 결과를 다시 받는다).
+            GuideDiag.log { "transit recovery dropped reason=guard" }
+            finishRecovery(token = token, outcome = if (guideRoute == null) RecoveryOutcome.noGuidable else RecoveryOutcome.fetchFailed)
+            return
+        }
+        // 슬롯을 먼저 비운다 — 경로 교체가 부르는 폴 재개가 복구 게이트에 막히지 않게.
+        pendingRecovery = null
+        recoveryRetryOrigin = null
+        val target = transitPrewalkTarget(guideRoute)
+        val handoffHook = onTransferWalk
+        // ⚠ iOS와 다르게 훅이 없으면 인계하지 않고 경로 교체로 간다(`completeOrAdvance`와 같은 판단 — 훅 없는 모델이 안내를 삼키지 않게. 단계 6이 훅을 배선한다).
+        if (target != null && handoffHook != null) {
+            // 대중교통보다 도보가 먼저 세션을 갖는다(§8-1): 이 모델은 인계에서 정지음 없이 끝나고, 걸어서 닿으면 새 경로 0번 구간 대기부터 다시 연다(`startAfterPrewalk`). 대기
+            // 착지·시작 통지를 먼저 내지 않는다.
+            GuideDiag.log { "transit recovery adopted route=${newRoute.routeKey} prewalk=1 minutes=${target.minutes}" }
+            // 경로가 바뀌었다 — 옛 승차 전 도보가 남긴 실패 줄의 재시작은 옛 경로를 잇는다(A68 판정 2, `changeRoute`와 같은 자리).
+            onPassedPrewalk?.invoke()
+            resultHaptic(ResultHapticKind.success)
+            handoffHook(
+                TransitTransferWalkHandoff(
+                    route = guideRoute, legIndex = 0, target = target, destinationLabel = destinationLabel, dest = d, accessible = accessible,
+                    lead = strings.get("android.transitGuide.routeSwitched"),
+                ),
+            )
+            return
+        }
+        val phaseBefore = state?.phase
+        if (!changeRoute(newRoute, destinationLabel = destinationLabel, dest = d, announcement = RouteChangeAnnouncement.routeSwitched)) {
+            recoveryOutcome = RecoveryOutcome.noGuidable
+            resultHaptic(ResultHapticKind.attention)
+            restartPollLoop(immediate = true)
+            return
+        }
+        GuideDiag.log { "transit recovery adopted route=${newRoute.routeKey} prewalk=0" }
+        // 추적 불가 구간(대기 국면 고정)에서 채택하면 waiting → waiting이라 `changeRoute`가 순번을 올리지 않는다 — 그런데 버튼·조회 중 행이 사라지고(새 경로는 추적 가능) 착지를
+        // 세운 핸들러도 없다(비동기 조회의 끝). 전이 착지(대기 라벨)를 여기서 소유한다(재검토 4차 MAJOR-K).
+        if (state?.phase == phaseBefore) userTransitionSeq += 1
+        resultHaptic(ResultHapticKind.success)
+    }
+
+    /** 결과 행 문장 — 시트 `recoveryStatusText`와 같은 키(최소화 중 통지용). */
+    private fun recoveryOutcomeText(outcome: RecoveryOutcome): String = when (outcome) {
+        RecoveryOutcome.noLocation -> strings.get("android.transitGuide.recoveryNoLocation")
+        RecoveryOutcome.fetchFailed -> strings.get("android.transitGuide.destChangeError")
+        RecoveryOutcome.noRoute -> strings.get("android.transitGuide.recoveryNoRoute")
+        RecoveryOutcome.noGuidable -> strings.get("android.transitGuide.recoveryNoGuidable")
+    }
+
+    /** 복구 중 복귀 낭독의 문장 — 옛 안내 상태가 아니라 복구 상태만 말한다(§8-5). */
+    private fun recoveryStatusText(pending: PendingRecovery): String = when (pending.phase) {
+        PendingRecovery.Phase.pickStation -> strings.get("transitGuide.reboardStationPrompt")
+        PendingRecovery.Phase.loading -> strings.get("android.transitGuide.destChangeLoading")
+    }
+
+    // MARK: - 목적지 전환(스펙 2026-08-12 §4, iOS 줄 1547)
+
+    /** 1단(목적지 선택): 아직 아무것도 확정하지 않는다 — 사이드 채널로 현재 위치 → 새 목적지 대중교통 경로를 조회해 후보 목록만 준비한다(폼·세션 불변). */
+    fun prepareDestinationChange(dest: BeaconDest, label: String, labelRoman: String?) {
+        if (!isTracking) return
+        if (invalidateRecovery()) restartPollLoop(immediate = true)
+        destChangeToken += 1
+        val token = destChangeToken
+        pendingDestChange = PendingDestChange(dest = dest, label = label, labelRoman = labelRoman, phase = DestChangePhase.Loading, fetchedAt = null)
+        scope.launch { fetchDestChangeCandidates(token = token) }
+    }
+
+    private suspend fun fetchDestChangeCandidates(token: Int) {
+        val pending = pendingDestChange ?: return
+        try {
+            val origin = currentCoordinate(false)
+            if (token != destChangeToken || !isTracking) return
+            val result = fetchTransitCandidates(origin = origin, dest = pending.dest)
+            if (token != destChangeToken || !isTracking) return
+            // 3-state: 경로 없음 ≠ 조회 실패.
+            pendingDestChange = pendingDestChange?.let {
+                if (result != null) it.copy(phase = DestChangePhase.Loaded(result), fetchedAt = nowMs()) else it.copy(phase = DestChangePhase.Empty)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (token != destChangeToken || !isTracking) return
+            pendingDestChange = pendingDestChange?.copy(phase = DestChangePhase.Failed)
+        }
+    }
+
+    /** 후보 조회 공용(목적지 전환·조망 대안). `includeStops`: 안내용 승차·하차 정류소 데이터원(§4.1 — 브리핑 조회 동형). */
+    private suspend fun fetchTransitCandidates(origin: NearbyCoord, dest: BeaconDest): TransitRouteResult? =
+        withContext(io) {
+            routes.transit(
+                originLat = origin.lat, originLng = origin.lng, destLat = dest.lat, destLng = dest.lng,
+                includeStops = true, lang = dataLocale().rawValue,
+            )
+        }
+
+    // MARK: 조망 「다른 경로」(E15-1 spec §5)
+
+    /** 조망에서 「다른 경로 보기」(또는 실패 행의 「{승차역} 기준으로 조회」). 반환 토큰은 호출부(하위 시트)가 취소·커밋에 되돌려준다 — 자기 요청만 건드리게. */
+    fun prepareAltRoutes(declaredBoardStop: Boolean): Int? {
+        val s = state
+        if (s == null || !isTracking) return null
+        if (invalidateRecovery()) restartPollLoop(immediate = true)
+        altRoutesToken += 1
+        val token = altRoutesToken
+        pendingAltRoutes = PendingAltRoutes(
+            token = token, phaseGen = s.phaseGen, legIndex = s.legIndex, origin = null, phase = AltRoutesPhase.Loading, fetchedAt = null,
+        )
+        scope.launch { fetchAltRoutes(token = token, declaredBoardStop = declaredBoardStop) }
+        return token
+    }
+
+    private class AltOrigin(val coord: NearbyCoord, val evidence: AltOriginEvidence)
+
+    /**
+     * 출발점 정책(§5.3): GPS → 신선한 추적 관측의 현재역 좌표 → 실패(noLocation). 승차역은 앱이 추정하지 않고 사용자 선언(`declaredBoardStop`)일 때만 쓴다 — 승차 전은 도보 중일
+     * 수 있어 「지금 여기」를 찍지 않는 §3 규칙 3의 조회판.
+     */
+    private suspend fun resolveAltOrigin(declaredBoardStop: Boolean): AltOrigin? {
+        val leg = currentLeg ?: return null
+        val phase = state?.phase
+        val board = leg.boardStop
+        if (declaredBoardStop && board != null && (phase == TransitPhase.waiting || phase == TransitPhase.boarding)) {
+            return AltOrigin(NearbyCoord(board.lat, board.lng), AltOriginEvidence.BoardStopDeclared)
+        }
+        try {
+            val fix = currentCoordinate(false)
+            return AltOrigin(NearbyCoord(fix.lat, fix.lng), AltOriginEvidence.Gps)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 측위 실패 — 현재역 폴백으로.
+        }
+        val here = overview?.here
+        if (here is TransitOverviewHere.Station) {
+            val stop = leg.viaStops.getOrNull(here.stopIndex)
+            if (stop != null) return AltOrigin(NearbyCoord(stop.lat, stop.lng), AltOriginEvidence.Station(here.stopIndex))
+        }
+        return null
+    }
+
+    private suspend fun fetchAltRoutes(token: Int, declaredBoardStop: Boolean) {
+        val d = dest
+        if (d == null) {
+            // 세션 불변식(비옵셔널 시작 인자)이라 도달하지 않지만, 조용한 loading 방치 금지.
+            if (token == altRoutesToken) pendingAltRoutes = pendingAltRoutes?.copy(phase = AltRoutesPhase.Failed(AltFailReason.fetch))
+            return
+        }
+        val resolved = resolveAltOrigin(declaredBoardStop)
+        if (resolved == null) {
+            if (token != altRoutesToken || !isTracking) return
+            pendingAltRoutes = pendingAltRoutes?.copy(phase = AltRoutesPhase.Failed(AltFailReason.noLocation))
+            resultHaptic(ResultHapticKind.failure)
+            return
+        }
+        if (token != altRoutesToken || !isTracking) return
+        pendingAltRoutes = pendingAltRoutes?.copy(origin = resolved.evidence)
+        try {
+            val result = fetchTransitCandidates(origin = resolved.coord, dest = d)
+            if (token != altRoutesToken || !isTracking) return
+            // 결과 진동(E30 확장): 시트가 착지로만 알리는 전이라 진동이 결과 종류를 먼저 말한다.
+            if (result != null) {
+                pendingAltRoutes = pendingAltRoutes?.copy(phase = AltRoutesPhase.Loaded(result), fetchedAt = nowMs())
+                resultHaptic(ResultHapticKind.success)
+            } else {
+                pendingAltRoutes = pendingAltRoutes?.copy(phase = AltRoutesPhase.Empty)
+                resultHaptic(ResultHapticKind.attention)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (token != altRoutesToken || !isTracking) return
+            pendingAltRoutes = pendingAltRoutes?.copy(phase = AltRoutesPhase.Failed(AltFailReason.fetch))
+            resultHaptic(ResultHapticKind.failure)
+        }
+    }
+
+    /** 캡처한 토큰이 현재 슬롯과 같을 때만 폐기 — 지연된 dismiss가 새 요청을 지우지 않게. */
+    fun cancelAltRoutes(token: Int) {
+        if (pendingAltRoutes?.token != token) return
+        altRoutesToken += 1
+        pendingAltRoutes = null
+    }
+
+    /** 전환(§5.4). 주 가드는 **근거 변화**(국면 세대·구간·앵커역), 시간(120초)은 보조. 둘 중 하나라도 걸리면 같은 근거 정책으로 재조회(`refetching`). */
+    fun commitAltRoute(route: TransitRoute, token: Int): AltRouteCommit {
+        val s = state
+        if (!isTracking || s == null) return AltRouteCommit.sessionEnded
+        val pending = pendingAltRoutes
+        if (pending == null || pending.token != token || pending.phase !is AltRoutesPhase.Loaded) return AltRouteCommit.sessionEnded
+        val here = overview?.here
+        val hereNow: Int? = if (here is TransitOverviewHere.Station) here.stopIndex else null
+        val origin = pending.origin
+        val evidenceChanged = if (origin is AltOriginEvidence.Station) hereNow != origin.stopIndex else false
+        val fetchedAt = pending.fetchedAt
+        val stale = fetchedAt?.let { (nowMs() - it) / 1000 > DEST_CHANGE_STALE_SECONDS } ?: true
+        if (pending.phaseGen != s.phaseGen || pending.legIndex != s.legIndex || evidenceChanged || stale) {
+            val declared = pending.origin is AltOriginEvidence.BoardStopDeclared
+            // 재조회 사유는 이 통지가 유일한 전달 경로(활성화한 버튼이 사라진다, 헌장 §6). 사유가 넷(근거 변화·국면·구간·시간)이라 「위치가 바뀌어」가 거짓일 수 있다 — 중립 문구(감사 M1).
+            announceNow(strings.get("android.transitGuide.altRefetching"), highPriority = true)
+            altRoutesToken += 1
+            val next = altRoutesToken
+            pendingAltRoutes = PendingAltRoutes(
+                token = next, phaseGen = s.phaseGen, legIndex = s.legIndex, origin = null, phase = AltRoutesPhase.Loading, fetchedAt = null,
+            )
+            scope.launch { fetchAltRoutes(token = next, declaredBoardStop = declared) }
+            return AltRouteCommit.refetching
+        }
+        val d = dest ?: return AltRouteCommit.sessionEnded
+        if (!changeRoute(route, destinationLabel = destinationLabel, dest = d, announcement = RouteChangeAnnouncement.routeSwitched)) {
+            return AltRouteCommit.invalidCandidate
+        }
+        altRoutesToken += 1
+        pendingAltRoutes = null
+        return AltRouteCommit.committed
+    }
+
+    /** 2단(후보 선택) = 확정(§4.1·§4.3). false = 확정 불발(세션 사망·stale 재조회) — 호출부는 폼 동기화를 하지 않는다. */
+    fun commitDestinationChange(route: TransitRoute): Boolean {
+        val pending = pendingDestChange
+        if (!isTracking || pending == null || pending.phase !is DestChangePhase.Loaded) return false
+        // stale 후보 가드(§4.2): 조회 후 문턱 경과면 그 후보로 확정하지 않고 재조회 — 이동 중 지나친 정류장을 첫 승차 지점으로 확정하는 경로 차단.
+        val fetchedAt = pending.fetchedAt
+        if (fetchedAt != null && (nowMs() - fetchedAt) / 1000 > DEST_CHANGE_STALE_SECONDS) {
+            destChangeToken += 1
+            val token = destChangeToken
+            pendingDestChange = pending.copy(phase = DestChangePhase.Loading, fetchedAt = null)
+            // .high(리뷰 MINOR): 활성화한 후보 버튼이 사라지고 로딩 행 착지 낭독이 뒤따른다 — 재조회 사유는 이 통지가 유일한 전달 경로다(헌장 §6).
+            announceNow(strings.get("android.transitGuide.destChangeRefetched"), highPriority = true)
+            scope.launch { fetchDestChangeCandidates(token = token) }
+            return false
+        }
+        if (!changeRoute(route, destinationLabel = pending.label, dest = pending.dest, announcement = RouteChangeAnnouncement.destinationChanged)) return false
+        pendingDestChange = null
+        return true
+    }
+
+    /** 취소 = 전체 무효(§4.1): 세션·폼·최근 목록 모두 옛 목적지 그대로. */
+    fun cancelDestinationChange() {
+        destChangeToken += 1
+        pendingDestChange = null
+    }
+
+    /** 전환 통지의 종류 — 커밋 검증을 통과한 시점에 값으로 넘긴다(전역 pending을 되읽지 않는다, 설계 리뷰 A7). */
+    private enum class RouteChangeAnnouncement { destinationChanged, routeSwitched }
+
+    /**
+     * 세션 연속 경로 교체(§4.3). `pollJob` 취소가 곧 세대 경계다 — 루프의 취소·`state` 재조회 가드가 옛 응답 커밋을 이미 막는다(별도 세대 카운터 불요, 스펙 「최소 보강」).
+     * `state`는 이 동기 함수 안에서만 갈아끼워 null을 스치지 않는다(시트 presentation이 `state != null`에 묶여 있다).
+     */
+    private fun changeRoute(transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest, announcement: RouteChangeAnnouncement): Boolean {
+        val guideRoute = buildTransitGuideRoute(transitRoute) ?: return false
+        invalidateRecovery()  // 경쟁 커밋(목적지 바꾸기·다른 경로 전환)이 복구를 이긴다 — 폴은 아래 `restartPollLoop`가 다시 세운다(§8-4)
+        routeGen += 1
+        // 경로·목적지가 바뀌었다 — 승차 전 도보가 남긴 실패 줄의 재시작은 옛 경로·옛 목적지를 잇는다(A68 판정 2).
+        onPassedPrewalk?.invoke()
+        touchUserAction()  // 목적지 변경·경로 교체는 사용자 조작(유휴 정지 축 — 없으면 유휴 뒤 이 경로가 폴을 못 되살린다)
+        pollJob?.cancel()
+        pollJob = null
+        pendingWalkHandoff = null  // 옛 목적지의 핸드오프 제안 무효
+        aboardStep = null  // 새 경로의 대기 국면은 처음부터
+        aboardDirection = null  // 옛 경로에서 고른 방향은 새 경로에 닿지 않는다
+        aboardStartLandingPending = false
+        boardingManualAvailable = false
+        // 같은 목적지의 경로 전환이면 메뉴 쪽 목적지 후보는 낡았다(출발점이 바뀌었다).
+        destChangeToken += 1
+        pendingDestChange = null
+        this.route = guideRoute
+        this.destinationLabel = destinationLabel
+        this.dest = dest
+        seq = 0
+        retained.clear()
+        tagoResolved.clear()
+        tagoUnsupported.clear()
+        waitingLive = emptyList()
+        waitingDeparted = emptyList()
+        waitingReason = null
+        refreshAnnounce = false
+        expressBlockedNote = null  // 옛 경로의 하차역 이름이 든 문장(코드 리뷰 #4)
+        ridingPosition = null  // 새 경로는 phaseGen 0부터 — 옛 결박이 되살아나지 않게(E35)
+        clearBusStop()  // 같은 이유(E48)
+        busAlightNotice = null  // 새 경로의 구간 번호는 옛 경로와 무관하다(A69)
+        neverSeenPending = null
+        toneState = TransitToneState.initial
+        lastPollStartAt = null
+        plannedIntervalMs = null
+        deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
+        val previousPhase = state?.phase
+        sessionStartLeg = 0  // 새 경로는 0번 구간부터다 — 환승 도보 뒤 재개 세션의 시작 구간이 남으면 「탔다」를 놓친다(E73 D8)
+        state = initTransitGuide(route = guideRoute, now = nowMs())
+        // 경로 전환도 사용자 입력(후보 버튼이 사라진다, A47) — dispatch 밖이라 여기서 순번을 올린다. 국면이 그대로(대기 → 대기)면 올리지 않는다: 그때 착지는 누른 버튼의 핸들러가
+        // 이미 세웠다(상태 문장).
+        if (state?.phase != previousPhase) userTransitionSeq += 1
+        val first = guideRoute.legs[0]
+        // 목적지가 같은 경로 전환에 「목적지가 바뀌었다」를 말하면 거짓이다 — 종류별 첫 문장.
+        val lead = when (announcement) {
+            RouteChangeAnnouncement.destinationChanged ->
+                spokenDestinationName?.let { strings.get("android.guide.destChanged", it) } ?: strings.get("android.guide.destChangedNoName")
+            RouteChangeAnnouncement.routeSwitched -> strings.get("android.transitGuide.routeSwitched")
+        }
+        val parts = mutableListOf(
+            lead,
+            strings.get("transitGuide.started", guideRoute.legs.size),
+            waitContextText(first, isCurrentLeg = true),
+        )
+        if (first.trackMode == null) parts += strings.get("transitGuide.untrackable")
+        // 활성화 응답(후보 버튼이 사라지는 전이) — .high(헌장 §6).
+        announceNow(parts.joinToString(" "), highPriority = true)
+        restartPollLoop(immediate = true)
+        return true
+    }
+
     /**
      * 진행 상황(공개 동작 — iOS 줄 1815). 사용자 조작이라 `touchUserAction`을 지나고, 상태 문장 한 통지를 **즉시 창구**로 낸다.
      */
@@ -1547,7 +2123,8 @@ class TransitGuideModel(
     private fun restartPollLoop(immediate: Boolean) {
         pollJob?.cancel()
         val s = state ?: return
-        // 단계 3: pendingRecovery — 잘못 내림 복구 중엔 예약하지 않는다(E78 §5-1, 즉폴 포함)
+        // 잘못 내림 복구 중엔 예약하지 않는다(E78 §5-1, 즉폴 포함) — 슬롯이 끝나는 자리가 다시 부른다(§8-4).
+        if (pendingRecovery != null) return
         // 유휴 정지 중엔 예약하지 않는다 — 어떤 조작·전경 복귀(`touchUserAction`)가 풀며 다시 부른다.
         if (idlePaused) return
         val interval = transitPollIntervalMs(s)
@@ -1855,7 +2432,9 @@ class TransitGuideModel(
         // 재지 않게).
         val userAction = input !is TransitGuideInput.Poll
         if (userAction) noteUserAction()
-        // 단계 3: invalidateRecovery — 사용자 조작(다음 구간·탑승 변경·차량 선택·이미 탔어요·하차 선언)이 복구를 이긴다(§8-3). 폴 재개는 상태 대입 뒤(코드 리뷰 NIT-1)
+        // 사용자 조작(다음 구간·탑승 변경·차량 선택·이미 탔어요·하차 선언)이 복구를 이긴다(§8-3). 폴 재개는 상태 대입 뒤(아래) — 전이 전 상태로 주기를 재면 주기 0 전이(riding → arrived)에서
+        // 옛 주기로 즉폴이 나간다(코드 리뷰 NIT-1).
+        val recoveryWasPending = userAction && invalidateRecovery()
         val result = transitGuideStep(state = state, input = input, route = route, now = nowMs())
         // A47: 사용자 입력이 국면을 바꿨다(누른 버튼이 사라진다) — 시트가 이 순번의 변화로 착지를 가른다. 국면 쌍으로 추정하면 boarding→riding 선언과 관측
         // 승격이 같은 쌍이라 한쪽을 반드시 틀린다.
@@ -1864,7 +2443,12 @@ class TransitGuideModel(
         }
         this.state = result.state
         if (userAction) resumeIfIdle()
-        // 단계 3: recoveryOutcome · recoveryRetryOrigin — 자동 전이가 지나간 결과 행은 낡았다(spec 리뷰 NIT-3)
+        if (recoveryWasPending) restartPollLoop(immediate = true)
+        // 자동 전이(국면·구간)가 지나간 결과 행은 낡았다 — 새 국면에 옛 「다시 시도」가 붙어 읽히지 않게 거둔다(spec 리뷰 NIT-3).
+        if (recoveryOutcome != null && (result.state.phase != state.phase || result.state.legIndex != state.legIndex)) {
+            recoveryOutcome = null
+            recoveryRetryOrigin = null
+        }
         updateKeepAlive()
         if (result.event is TransitGuideEvent.NeverSeen) {
             // A36 ① 판정 재료(spec §4.6·§7): 상한에 닿은 조회 수와 그 시점 잔여(대본 §5-3이 이 문자열을 읽는다).
@@ -2365,5 +2949,7 @@ class TransitGuideModel(
     private companion object {
         /** 대기 목록에서 사라진 열차를 남겨 두는 시간(A74, iOS `retainSeconds`). */
         const val retainSeconds = 180.0
+        /** 목적지 전환·다른 경로 후보가 낡았다고 보는 경과(초, iOS `destChangeStaleSeconds`). */
+        const val DEST_CHANGE_STALE_SECONDS = 120.0
     }
 }
