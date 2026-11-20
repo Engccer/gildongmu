@@ -15,13 +15,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -39,7 +37,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
-import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.pinnedMoves
 import space.dodoplanet.gildongmu.a11y.reorderCustomActions
@@ -56,13 +53,10 @@ import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.guide.GuideSession
-import space.dodoplanet.gildongmu.guide.ui.WalkGuideNotice
-import space.dodoplanet.gildongmu.guide.ui.WalkGuideNoticeSheet
-import space.dodoplanet.gildongmu.guide.ui.land
 import space.dodoplanet.gildongmu.guide.ui.carGuideStartSlot
+import space.dodoplanet.gildongmu.guide.ui.transitGuideStartSlot
 import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
 import space.dodoplanet.gildongmu.kit.joinText
-import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
@@ -110,26 +104,10 @@ fun DirectionsScreen(
     BackHandler(enabled = picker != null) { vm.closePicker() }
     // 화면 이탈(탭 전환·역 상세 push·재생성)은 진행 중 수단 재조회를 끊는다 — 돌아왔을 때 늦은 결과의 착지가 커서를 빼앗지 않게(E50 §4.3).
     DisposableEffect(vm) { onDispose { vm.onScreenExit() } }
-    // 도보 안내 1회성 공지(iOS `DirectionsTabView` `.task`): 진입마다 판정하고, 확인을 누르기 전까지는 다음 진입에 다시 뜬다.
-    val context = LocalContext.current
-    val notice = remember(context) { WalkGuideNotice(SharedPreferencesStore(context)) }
-    var noticeOpen by remember { mutableStateOf(false) }
-    // 시트 창이 닫히면 확인 버튼(포커스를 쥔 요소)이 창째 사라진다 — 폼 첫 필드로 착지시킨다(헌장 §5, 한 번 닫을 때 한 번).
-    var noticeClosed by remember { mutableIntStateOf(0) }
-    LaunchedEffect(notice) { if (!notice.isConfirmed()) noticeOpen = true }
-    LaunchedEffect(noticeClosed) { if (noticeClosed > 0) land(formState.fromFocus, "공지 닫힘 뒤 출발지") }
     val p = picker
-    // 바깥 값과 OR — 안내 시트가 떠 있는 동안 `AppRoot`가 참을 공급한다(M4b 후속 ②). 자기 값으로 덮으면 시트 뒤에서 앱 통지를 집는다.
-    CompositionLocalProvider(LocalModalOpen provides (noticeOpen || LocalModalOpen.current)) {
-        Box(Modifier.fillMaxSize()) {
-            if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker, titleOverride = null, stationsOnly = false)
-        }
+    Box(Modifier.fillMaxSize()) {
+        if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker, titleOverride = null, stationsOnly = false)
     }
-    // 저장은 확인만 한다 — 닫기(뒤로·바깥 탭)는 저장하지 않아 다음 진입에 다시 뜬다(iOS 계약, 소스 가드).
-    if (noticeOpen) WalkGuideNoticeSheet(
-        onConfirm = { notice.confirm(); noticeOpen = false; noticeClosed++ },
-        onDismiss = { noticeOpen = false; noticeClosed++ },
-    )
 }
 
 /** 역 상세 복귀 착지 키 접두(E45) — 뒤는 그 브리핑 줄의 태그. */
@@ -376,6 +354,8 @@ private fun DirectionsForm(
                                 axes = outcome.result.knownRequeryAxes, states = s.transitRequery, found = s.requeriedRoutes,
                                 onRequery = vm::requery, focus = { key -> ui.requeryFocus.getOrPut(key) { FocusRequester() } },
                             ),
+                            // 대중교통 안내 시작(M5) — 경로 펼침 본문 첫 항목(iOS 동형). 수동 위치 고지는 iOS처럼 대중교통 시작에 내지 않는다.
+                            guideStart = transitGuideStartSlot(s),
                         )
                         // outcome의 브리핑은 첫 줄과 같은 응답이다(분류가 첫 줄로 한다) — 줄 목록을 그린다(E42).
                         is DirectionsModeOutcome.Walk -> WalkOutcomeRows(

@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.guide
 
+import space.dodoplanet.gildongmu.guide.ui.transitStartFailureShown
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -245,6 +246,26 @@ class GuideTransitHandoffTest {
         settle()
         after(610)
         assertTrue(t.model.isTracking, "도착하면 다시 대중교통으로 잇는다")
+    }
+
+    @Test fun `승차 전 도보 시작 실패는 그 경로의 대중교통 시작 버튼 아래에만 실패 행을 세운다`() = joint { w, t ->
+        w.perms.location = LocationPermission.Coarse
+        val request = t.request()
+        GuideSession.startTransit(request)
+        settle()
+        val key = request.route.routeKey
+        assertEquals(key, GuideSession.transitStartRouteKey.value)
+        val ui = w.model.ui.value
+        assertTrue(ui.status.isFailure)
+        assertTrue(transitStartFailureShown(ui, GuideSession.transitStartRouteKey.value, key))
+        assertFalse(transitStartFailureShown(ui, GuideSession.transitStartRouteKey.value, key + "-other"), "다른 경로 버튼 아래엔 없다")
+        after(9_000)
+        t.model.stop(playStopTone = false)
+        // 도보 공개 시작은 표식을 지운다 — 그 도보의 실패가 대중교통 버튼 아래로 가지 않게.
+        GuideSession.startWalk(WalkStartRequest(t.dest, "목적지", accessible = false, variant = null, line = null, alternate = null, waypoint = null, exitLead = null))
+        settle()
+        assertNull(GuideSession.transitStartRouteKey.value)
+        assertFalse(transitStartFailureShown(w.model.ui.value, GuideSession.transitStartRouteKey.value, key))
     }
 
     @Test fun `탔다 신호는 승차 전 도보 재시작 줄을 거둔다`() = joint { w, t ->

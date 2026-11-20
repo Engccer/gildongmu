@@ -16,6 +16,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.audio.AndroidAudioFocusPort
 import space.dodoplanet.gildongmu.audio.AndroidSoundPort
@@ -154,6 +157,13 @@ object GuideSession {
     val isActive: Boolean get() = coordinator.isActive || (::walk.isInitialized && walk.ui.value.starting)
 
     /**
+     * 길찾기 대중교통 시작 버튼이 마지막으로 연 경로(`TransitRoute.routeKey`, iOS 화면 상태 `lastGuideStart = .transitAlt(routeKey)`의 안드로이드 자리) — 그 시작이
+     * 연 승차 전 도보가 실패하면 시작 실패 행을 그 경로 버튼 아래에 세운다. 도보·자동차의 공개 시작이 지운다.
+     */
+    private val _transitStartRouteKey = MutableStateFlow<String?>(null)
+    val transitStartRouteKey: StateFlow<String?> = _transitStartRouteKey.asStateFlow()
+
+    /**
      * 띄울 시트(M5 §6-7, iOS `screen` 동형): 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 하차 인계
      * 신호가 남아 있으면 `transit`. 띠바·`hasScreen`·`reopenAfterNestedScreen`이 이 값을 본다.
      */
@@ -288,12 +298,14 @@ object GuideSession {
     /** 도보 안내 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
     fun startWalk(request: WalkStartRequest) {
         if (!isAttached || refuseIfActive()) return
+        _transitStartRouteKey.value = null
         beginBeacon(request)
     }
 
     /** 자동차 안내 시작 진입점(M5) — 도보와 같은 거부 판정·같은 본문. 길찾기 자동차 결과의 「자동차 안내 시작」만 부른다. */
     fun startCar(request: CarStartRequest) {
         if (!isAttached || refuseIfActive()) return
+        _transitStartRouteKey.value = null
         beginBeacon(request)
     }
 
@@ -391,6 +403,7 @@ object GuideSession {
     /** 대중교통 안내 시작 진입점(M5 §6-6). ① 거부 통지 ② 본문. 진입점(길찾기 대중교통 줄의 시작 버튼)은 다음 단계가 단다. */
     fun startTransit(request: TransitStartRequest) {
         if (!isAttached || !hasTransit || refuseIfActive()) return
+        _transitStartRouteKey.value = request.route.routeKey
         beginTransit(request)
     }
 

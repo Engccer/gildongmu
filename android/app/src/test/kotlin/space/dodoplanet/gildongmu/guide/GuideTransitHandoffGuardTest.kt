@@ -25,8 +25,16 @@ class GuideTransitHandoffGuardTest {
     private fun callersOutsideSession(pattern: Regex): List<String> =
         allSources.filter { it.name != "GuideSession.kt" && pattern.containsMatchIn(code(it.readText())) }.map { it.name }
 
-    @Test fun `① startTransit 호출부는 아직 0(진입점은 다음 단계)`() {
-        assertEquals(emptyList(), callersOutsideSession(Regex("""\bstartTransit\(""")))
+    @Test fun `① startTransit 호출부는 길찾기 대중교통 시작 버튼 하나`() {
+        assertEquals(listOf("TransitGuideStartButton.kt"), callersOutsideSession(Regex("""\bstartTransit\(""")))
+        // 시작 게이트(iOS `transitGuideStartable`)를 지난 경로에만 버튼이 선다 — 도보 전용 경로의 죽은 버튼 차단.
+        val button = guide.resolve("ui/TransitGuideStartButton.kt").readText()
+        assertTrue(button.contains("if (buildTransitGuideRoute(route) != null) TransitGuideStartButton("), "시작 게이트")
+        // 진입점이 열렸으니 두 모델 훅이 배선돼 있어야 한다(⑥) — 비어 있으면 `completeOrAdvance`가 환승 도보를 건너뛴다.
+        assertTrue(body("private fun wireTransitHooks(").contains("model.onTransferWalk = ::transitTransferWalk"))
+        // 시작 실패 행 표식: 대중교통 시작만 세우고 도보·자동차 공개 시작은 지운다(거부 판정 뒤).
+        assertTrue(body("fun startTransit(").let { it.indexOf("refuseIfActive()") < it.indexOf("_transitStartRouteKey.value = request.route.routeKey") })
+        for (fn in listOf("fun startWalk(", "fun startCar(")) assertTrue(body(fn).contains("_transitStartRouteKey.value = null"), fn)
         assertEquals(1, Regex("""\bstartTransit\(""").findAll(code(session)).count(), "정의 한 곳뿐")
         assertTrue(body("fun startTransit(").contains("refuseIfActive()"), "공개 시작은 거부 판정을 먼저 지난다")
     }

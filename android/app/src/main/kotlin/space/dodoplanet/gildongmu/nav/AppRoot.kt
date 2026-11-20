@@ -12,7 +12,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import space.dodoplanet.gildongmu.guide.ui.ReleaseNotice
+import space.dodoplanet.gildongmu.guide.ui.ReleaseNoticeSheet
+import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -109,6 +116,17 @@ fun AppRoot(factories: AppFactories) {
         navController.refreshTab(tab)
     }
 
+    // 2.0 공지(iOS `GildongmuApp` `.task`): 앱을 열면 바로, 어느 탭이든. 미확인이면 열고, 저장은 확인만 한다 — 닫기는 저장하지 않아 다음 실행에 다시 뜬다.
+    val context = LocalContext.current
+    val releaseNotice = remember(context) { ReleaseNotice(SharedPreferencesStore(context)) }
+    var releaseNoticeOpen by rememberSaveable { mutableStateOf(false) }
+    // 판정은 프로세스 수명 1회(iOS `.task`가 `.id` 재생성 밖이라 언어 전환에 다시 돌지 않는 것과 같다) — 닫은 공지가 언어 전환의 액티비티 재생성에 다시 뜨지 않게.
+    LaunchedEffect(releaseNotice) {
+        if (ReleaseNotice.judgedThisProcess) return@LaunchedEffect
+        ReleaseNotice.judgedThisProcess = true
+        if (!releaseNotice.isConfirmed()) releaseNoticeOpen = true
+    }
+
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
         Scaffold(
             bottomBar = {
@@ -137,11 +155,11 @@ fun AppRoot(factories: AppFactories) {
             },
         ) { padding ->
             // 안내 시트가 펼쳐진 동안 탭 화면은 앱 통지를 집지 않는다 — 통지는 시트를 접은 뒤 밑 화면이 읽는다(M4b 후속 ②). 탭 화면 안의
-            // 공급(다이얼로그·공지 시트)은 이 값과 OR한다(가드 `GuideSheetModalGuardTest`).
+            // 공급(다이얼로그)은 이 값과 OR한다(가드 `GuideSheetModalGuardTest`).
             // 장소 줄 동작(B21)의 길찾기·물어보기 길 — 줄을 그리는 화면마다 배선하지 않고 여기서 한 번 공급한다.
             val placeRowNav = remember(navController) { PlaceRowNav(navController::openDirections) { navController.openChat(it) } }
             CompositionLocalProvider(LocalPlaceRowNav provides placeRowNav) {
-            CompositionLocalProvider(LocalModalOpen provides guideSheetShowing()) {
+            CompositionLocalProvider(LocalModalOpen provides (guideSheetShowing() || releaseNoticeOpen)) {
             NavHost(
                 navController = navController,
                 startDestination = AppTab.initial(experimental).route(),
@@ -234,5 +252,9 @@ fun AppRoot(factories: AppFactories) {
             }
             }
         }
+        if (releaseNoticeOpen) ReleaseNoticeSheet(
+            onConfirm = { releaseNotice.confirm(); releaseNoticeOpen = false },
+            onDismiss = { releaseNoticeOpen = false },
+        )
     }
 }

@@ -36,6 +36,7 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.carNewJamUnnamed" -> R.string.guide_carNewJamUnnamed
     "beacon.carHeading" -> R.string.beacon_carHeading
     "beacon.guideStartCar" -> R.string.beacon_guideStartCar
+    "beacon.guideStartTransitAlt" -> R.string.beacon_guideStartTransitAlt
     "guide.carStart" -> R.string.guide_carStart
     "guide.farNotice" -> R.string.guide_farNotice
     "guide.carOffRouteBehind" -> R.string.guide_carOffRouteBehind

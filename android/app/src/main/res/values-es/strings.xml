@@ -116,15 +116,6 @@
     <string name="android_common_unavailableHere_seoulOnly">Disponible solo en Seúl</string>
     <string name="android_dataSources_walkHealth">Los pasos vienen del sensor de pasos; las calorías son una estimación según distancia y peso</string>
     <string name="android_directions_searching">Buscando</string>
-    <string name="android_directions_walkNotice_body1">Ahora, al consultar una ruta en la pestaña Cómo llegar, la sección a pie muestra el botón \"Iniciar guía a pie\". Púlsalo para comenzar la guía en tiempo real. Durante la guía, la pantalla muestra la distancia restante hasta tu destino, la distancia que queda del tramo actual y la siguiente indicación. La guía sigue funcionando en segundo plano aunque la pantalla esté bloqueada.</string>
-    <string name="android_directions_walkNotice_body2">La guía se basa en datos de mapas de APIs externas y en el GPS, por lo que puede diferir de la situación real.</string>
-    <string name="android_directions_walkNotice_body3">Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información complementaria y pruébala primero en caminos que ya conozcas.</string>
-    <string name="android_directions_walkNotice_body4">La guía en tiempo real de transporte público y coche está en preparación.</string>
-    <string name="android_directions_walkNotice_confirm">Aceptar</string>
-    <string name="android_directions_walkNotice_head1">Novedades</string>
-    <string name="android_directions_walkNotice_head2">A tener en cuenta</string>
-    <string name="android_directions_walkNotice_intro">¡Gracias por usar Gildongmu!</string>
-    <string name="android_directions_walkNotice_title">Llega la guía a pie.</string>
     <string name="android_guide_adoptAlternative">Cambiar la guía a esta ruta</string>
     <string name="android_guide_altPreviewFailed">No se pudo cargar la ruta alternativa</string>
     <string name="android_guide_altPreviewLoading">Buscando ruta alternativa</string>
@@ -338,7 +329,7 @@
     <string name="android_releaseNotice_head1">Qué hay de nuevo</string>
     <string name="android_releaseNotice_head2">Ten en cuenta</string>
     <string name="android_releaseNotice_intro">Ahora recibe guía en tiempo real también cuando usas el transporte público o viajas en coche.</string>
-    <string name="android_releaseNotice_title">¡Gildongmu se ha actualizado a la versión 2.0!</string>
+    <string name="android_releaseNotice_title">¡Gildongmu se ha actualizado!</string>
     <string name="android_reorder_down">Bajar</string>
     <string name="android_reorder_moved">Ahora en la posición %1$s</string>
     <string name="android_reorder_toTop">Mover al principio</string>

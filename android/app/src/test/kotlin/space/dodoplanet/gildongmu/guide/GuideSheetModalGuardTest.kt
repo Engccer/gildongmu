@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * 안내 시트가 펼쳐진 동안 밑 탭 화면의 상태 줄은 앱 통지를 집지 않는다(M4b 후속 ②, 설계 리뷰 #1). 시트는 자기 윈도라 밑 탭 화면도 RESUMED로 남고,
  * 그 `StatusLine`이 통지를 집으면 시트 뒤에서 읽힌다. 차단은 `LocalModalOpen` 한 축이고, 탭 화면 안의 공급이 자기 값으로 **덮으면** 차단이 풀리므로
- * (길찾기 공지 시트·설정 다이얼로그) 공급은 전부 상수 참이거나 바깥 값과 OR해야 한다. `StatusLine`이 그 값을 보고 claim을 미루는 동작은
+ * (설정 다이얼로그) 공급은 전부 상수 참이거나 바깥 값과 OR해야 한다. `StatusLine`이 그 값을 보고 claim을 미루는 동작은
  * 기기 레인 `StatusLineA11yTest`가 잠근다.
  */
 class GuideSheetModalGuardTest {
@@ -16,7 +16,7 @@ class GuideSheetModalGuardTest {
 
     @Test fun `AppRoot가 탭 화면 전체를 시트 표시 신호로 감싼다`() {
         val root = pkg.resolve("nav/AppRoot.kt").readText()
-        assertTrue(Regex("""CompositionLocalProvider\(LocalModalOpen provides guideSheetShowing\(\)\) \{\s*NavHost\(""").containsMatchIn(root), "NavHost 바로 바깥이어야 한다")
+        assertTrue(Regex("""CompositionLocalProvider\(LocalModalOpen provides \(guideSheetShowing\(\) \|\| releaseNoticeOpen\)\) \{\s*NavHost\(""").containsMatchIn(root), "NavHost 바로 바깥이어야 한다")
         val signal = pkg.resolve("guide/ui/GuideBottomBar.kt").readText().substringAfter("fun guideSheetShowing(): Boolean {").substringBefore("\n}\n")
         // 시트 선택은 호스트와 같은 규칙(`guideScreenKind` — 도보·대중교통 두 모델, M5 §6-7).
         assertTrue(signal.contains("guideScreenKind(ui.value, transitUi.value) != null && !GuideSession.isMinimized"), signal)
@@ -31,7 +31,7 @@ class GuideSheetModalGuardTest {
             Regex("""LocalModalOpen provides (.+?)\) \{""").findAll(file.readText()).forEach { m ->
                 seen++
                 val value = m.groupValues[1].trim()
-                val ok = value == "true" || value == "guideSheetShowing()" || value.contains("|| LocalModalOpen.current")
+                val ok = value == "true" || value == "(guideSheetShowing() || releaseNoticeOpen)" || value.contains("|| LocalModalOpen.current")
                 if (!ok) offenders += "${file.name}: $value"
             }
         }

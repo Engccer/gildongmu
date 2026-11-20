@@ -158,6 +158,8 @@ fun TransitOutcomeRows(
     stationEntry: BriefingStationEntry?,
     /** 수단 재조회(E50): 찾은 경로·축별 상태·버튼 동작·착지 요청자(키 = [requeryFocusKey]). */
     requery: TransitRequeryRowsState,
+    /** 대중교통 안내 시작 슬롯(M5) — 펼침 본문 첫 항목, 인자는 그 경로와 항목 이름(버튼 라벨이 싣는다). 도착 좌표가 없으면 null. 기본값 없음. */
+    guideStart: (@Composable (route: TransitRoute, name: String) -> Unit)?,
 ) {
     val requeriedKeys = requery.found.map { it.routeKey }.toSet()
     for (entry in transitRouteEntries(result, requery.found, strings)) {
@@ -166,6 +168,8 @@ fun TransitOutcomeRows(
         val label = joinText(entry.name, transitSummaryText(entry.route.summary, lang, strings))
         val landing = if (key in requeriedKeys) Modifier.landingTarget(requery.focus(requeryRouteFocusKey(key))) else Modifier
         DisclosureRow(label = label, tag = "transit-$key", expanded = expanded, onToggle = { onToggle(key) }, strings = strings, modifier = landing) {
+            // 안내 시작은 경로에 귀속된다(iOS 같은 자리) — 세션 UI는 별도 시트라 펼침을 접어도 세션이 죽지 않는다.
+            guideStart?.invoke(entry.route, entry.name)
             val legs = entry.route.legs
             for (index in legs.indices) {
                 val line = transitLegLine(legs, index, destinationName, destinationRoman, lang, dataLocale, strings)
