@@ -657,6 +657,8 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 **안내 시트 안의 다단 화면은 같은 시트의 페이지 전환이고, 스택 화면은 시트를 접고 push한 뒤 그 엔트리 id가 빠지면 재개한다**(M4b, `GuidePlaceNav.kt` — 타입 조회로 판정하지 말 것). 시트 안 재사용 `StatusLine`은 `LocalModalOpen`으로 감싸고, 밑 탭 화면은 `AppRoot`가 시트 표시 중 공급하므로 **화면 안에서 `LocalModalOpen`을 공급할 때는 바깥 값과 OR한다**(자기 값으로 덮으면 시트 뒤에서 앱 통지를 집는다, `GuideSheetModalGuardTest`). → `android/README.md` §3 화면 관용구
 
+⚠ **스택 화면을 여는 동안 시트는 컴포지션에서 빠진다**(`GuideBottomBar`의 `if (showsSheet)`). iOS 안내 시트의 장소 상세는 중첩 시트라 부모 상태가 살아 있고 시스템이 누른 줄로 커서를 되돌리지만, 안드로이드는 돌아온 시트가 새 컴포지션이다. 그래서 `remember` 상태(펼친 목록 등)가 초기값으로 돌아가고, 그 상태가 세우던 줄이 없으면 복귀 착지는 요청자를 못 찾아 제목으로 떨어진다(2026-11-21 대중교통 시트 경유역 행, 리뷰 검출). 돌아와 앉을 줄을 세우는 상태는 push 시점에 세션 쪽 메모(`TransitSheetReturnMemo`, 도보 시트는 `GuideSession.sceneLookup`)에 적고, 돌아온 첫 컴포지션의 초기값으로 복원한다. 그 줄은 대개 화면 밖이라 복귀 착지는 들인 뒤 포커스를 준다(`landRevealed`).
+
 ### Compose 1.12의 접근성 초점 이벤트엔 노드 이름이 없다
 
 ⚠ **Compose 1.12의 접근성 초점 이벤트엔 노드 이름이 없다** — 커서가 앉은 노드는 이벤트 시점에 노드 제공자의 `findFocus`로 얻어 리소스 id(`testTag` + 조상 `testTagsAsResourceId`)로 가린다(`guide/ui/A11yFocusObserver.kt`). 낭독 문장으로 가르면 늘 빈 문자열이다. 입력 초점 이동(한소네 키보드)은 이벤트가 오지 않는다. → `android/README.md` §3
