@@ -27,4 +27,11 @@ class GuideInfoBandTest {
         // 띠는 줄을 더하지 않는다 — 병합 노드 하나(Box)에 글자 하나.
         assertTrue(sheet.contains("Box(Modifier.layoutId(band).fillMaxWidth().mergedRow(tag, focus = focus)"))
     }
+
+    /** 띠에 넘기는 최소 높이는 몫이 작아도 줄 하한 48dp를 지킨다(`da12b53d`) — 최소 제약이 0보다 크면 `mergedRow`의 하한이 꺼진다. */
+    @Test fun `띠의 최소 높이는 남은 높이의 몫이되 48dp 아래로 내려가지 않는다`() {
+        val column = sheet.substringAfter("private fun InfoBandColumn(").substringBefore("\n}\n")
+        assertTrue(column.contains("val total = (viewport - fixed.sumOf { it?.height ?: 0 }).coerceAtLeast(0)"), "남은 높이 = 보이는 높이 - 고정 줄")
+        assertTrue(column.contains("m.measure(loose.copy(minHeight = maxOf(total * infoBandWeight(bands[i]!!, present) / 4, 48.dp.roundToPx())))"), "몫과 48dp 하한")
+    }
 }
