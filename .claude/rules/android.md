@@ -28,3 +28,5 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **자기 키를 바꾸는 `LaunchedEffect`는 일을 하기 전에 취소된다**: 1회 신호는 일을 마친 뒤 끈다. → PATTERNS
 - **탭 전체 리셋은 시작 탭의 저장 스택부터 복원해 지운다**(`resetAllTabs`, `clearBackStack(시작 탭)` 금지). → PATTERNS
 - ⚠ **전역 1회 신호(바로가기 액션)는 받은 액티비티만 꺼낸다**: 지워지는 옛 `AppRoot`가 먼저 가져간다(`AppSession.take(owner)`). → PATTERNS
+- ⚠ **바로가기·안내 알림은 태스크의 기준 인텐트를 바꾼다**: `MainActivity`는 `singleTop`이고(아니면 런처 아이콘 복귀가 화면을 쌓는다), 최근 앱 재실행은 그 인텐트에 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`를 붙여 오므로 액션으로 받지 않는다. → PATTERNS
+- ⚠ **이미 입력 포커스를 쥔 노드에 다시 `requestFocus()`해도 커서는 따라오지 않는다**: 비우고 접근성 이벤트 묶음 간격을 기다린 뒤 준다(`MovedRowLanding`). → PATTERNS
