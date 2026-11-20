@@ -55,6 +55,8 @@
 
 - 판정 요청 둘(`and-rows` 22:43, `and-route` 22:45)이 같은 건이다: 영어 등 한국어가 아닌 화면에서 한글 병기 때문에 낭독용 이름이 화면 글자와 다른 줄. 위원장에게 묻기 전에 `and-rows`(`a11y/A11y.kt` 소유)가 한소네 영어 화면 출력을 관측하고, 두 번 실리면 자식 글자의 시맨틱을 숨겨 낭독용 이름만 한 번 내는 방법을 검토한다(채택 조건: 누르기·작업 메뉴·착지 보존을 테스트로 확인, 한국어 화면 불변, 실기기 한 번 출력). 조건을 못 맞추면 그대로 두고 통합한 뒤 코디네이터가 위원장에게 묻는다. 회신 원문은 `~/gildongmu-wt/and-rows-reports/coordinator-202611202258.md`.
 
+- 위원장 판정(2026-11-20, `and-common` 판정 요청 2건): ①탭 루트 「새로고침」은 「설정」 앞에 따로 둔 버튼으로 확정(메뉴로 묶지 않는다) ②정보 출처 걸음·칼로리 문장은 「걸음 수는 걸음 센서 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다」(「이 기기의」를 뺀다).
+
 **공용 생성물·문서**: `res/values*/strings.xml`·`gildongmu-kit-strings.json`·`arg-order.json`은 rebase 뒤 생성 스크립트로 다시 만든다(손 편집 금지). `messages/*.json`은 고치지 않는다(안드로이드 전용 문안은 `android/i18n/android-extra/`). `android/kit/mirrors/*.json`은 자기 항목만. `CHANGELOG.md`·`docs/BACKLOG.md`·`PROGRESS.md`·`android/README.md`·`.claude/rules/android.md`는 자기 항목·자기 절만 고치고 rebase 뒤 `comm -23`으로 소실을 대조한다. `CLAUDE.md`를 고쳤으면 통합 보고에 적는다(형제 `AGENTS.md`는 코디네이터가 다시 만든다). 서버·웹·iOS(`src/**`·`ios/**`·`packages/**`)와 공유 fixture는 읽기만 한다.
 
 ## §3 git 격리·게이트
@@ -93,3 +95,4 @@ main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gild
 
 | 세션 | 통합 SHA | 시각 | 자진 신고 | 남은 판정 |
 |---|---|---|---|---|
+| `and-route` | `9358346a` | 2026-11-20 23시대 | `K/TransitExitLines.kt`(노선 이름 조립, 착수 보고로 신고) | 영어 화면 대중교통 구간 줄의 낭독 이름(`and-rows`의 관측 뒤). 실기기 미확인: 정체 줄·노선 집합 줄 실물(해당 경로 필요), TalkBack 띠 빈 곳 짚기. 한소네 `hansone-smoke.py`·`hansone-and-route.py` 종료 0. 리뷰 서브에이전트 둘은 `claude-opus-5-5`로 실행됨(전사 확인) |
