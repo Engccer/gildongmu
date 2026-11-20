@@ -49,6 +49,10 @@ describe("E90 안내 시트의 목적지에 전화 걸기", () => {
     for (const [file, count] of Object.entries(sites)) {
       expect(read(file).match(/noteDestinationPhone\(place\)/g)?.length ?? 0, file).toBe(count);
     }
+    // 정문 승격(A11): 안내 제목이 정문 이름·좌표가 되므로 고른 장소의 번호를 그 열쇠로도 적는다.
+    expect(read("Directions/DirectionsTabView.swift")).toMatch(
+      /if let promoted, case \.place\(let label, _, _, _\) = to \{\s+noteDestinationPhone\(\s+label: promoted\.label, lat: promoted\.lat, lng: promoted\.lng,/,
+    );
     expect(read("Chat/RouteStartChatCardView.swift").match(/destination\.notePhone\(\)/g)?.length).toBe(2);
     expect(read("Chat/JourneyChatCardView.swift").match(/^\s+notePhone\(\)$/gm)?.length).toBe(2);
   });

@@ -198,6 +198,9 @@ func noteDestinationPhone(label: String, lat: Double, lng: Double, phone: String
     PlacePhoneBook().note(label: label, lat: lat, lng: lng, phone: phone)
 }
 
+/// 역은 적지 않는다 — 역의 번호는 운영사 대표번호이고, 그것을 대표번호라고 밝히는 역 상세(E44)는 안내 시트의
+/// 목적지 상세(분류 없는 최소 `Place`)에서 열리지 않는다.
 func noteDestinationPhone(_ place: Place) {
+    guard stationLayoutKind(place) == nil else { return }
     noteDestinationPhone(label: place.name, lat: place.lat, lng: place.lng, phone: place.phone)
 }

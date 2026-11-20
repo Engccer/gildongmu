@@ -947,6 +947,12 @@ final class DirectionsModel {
         // ⚠ `dest`는 **let**이어야 한다 — 아래 `async let` 3수단이 캡처하므로 가변이면
         // Swift 동시성이 data race로 거부한다(빌드 실패로 드러났다).
         let promoted = entrance.map { (label: $0.name, lat: $0.lat, lng: $0.lng) }
+        // 정문으로 승격하면 안내 제목의 이름·좌표가 정문 것이 된다 — 고른 장소의 전화번호를 그 열쇠로도 적는다(E90).
+        if let promoted, case .place(let label, _, _, _) = to {
+            noteDestinationPhone(
+                label: promoted.label, lat: promoted.lat, lng: promoted.lng,
+                phone: guideDestinationPhone(dest: BeaconDest(lat: queried.lat, lng: queried.lng), label: label))
+        }
         let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
 
         // 3수단 병렬. 도보의 ko 전용 게이트는 E16 축3으로 사라졌다 — 서버가 en 문장을 만든다.
