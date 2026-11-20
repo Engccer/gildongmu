@@ -55,16 +55,23 @@ object AppSession {
     }
 
     /** 인텐트 진입. 진입 자체가 리셋이므로 같은 전경 전환의 유휴 판정을 무효화한다(iOS `consumeLaunchAction`의 `backgroundedAt = nil`). */
-    fun offer(intentAction: String?) {
+    // 액션을 받은 액티비티. 앱이 떠 있을 때 바로가기는 옛 액티비티를 지우고 새로 여는데(NEW_TASK|CLEAR_TASK), 지워지는 옛
+    // `AppRoot`도 같은 전역 흐름을 보고 있어 먼저 꺼내 가면 새 화면은 처음 탭으로 뜬다(한소네 실측 2026-11-21). 받은 쪽만 꺼낸다.
+    private var pendingOwner: Any? = null
+
+    fun offer(intentAction: String?, owner: Any) {
         val action = actionFor(intentAction) ?: return
         backgroundedAt = null
+        pendingOwner = owner
         _pending.value = action
     }
 
     /** `AppRoot`가 보류 액션을 꺼낸다. 직전 음성 검색의 잔존 신호는 액션과 무관하게 지운다(유령 마이크 시작 차단). */
-    fun take(): LaunchAction? {
+    fun take(owner: Any): LaunchAction? {
         val action = _pending.value ?: return null
+        if (owner !== pendingOwner) return null
         _pending.value = null
+        pendingOwner = null
         voiceStartRequested.value = action == LaunchAction.voiceSearch
         return action
     }
@@ -99,6 +106,7 @@ object AppSession {
     /** 테스트 전용. */
     internal fun resetForTest() {
         _pending.value = null
+        pendingOwner = null
         voiceStartRequested.value = false
         backgroundedAt = null
         _resetPending.value = false

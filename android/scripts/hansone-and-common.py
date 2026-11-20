@@ -224,7 +224,8 @@ def check_shortcuts() -> None:
     launch(f"{PACKAGE}.action.NEARBY")
     if not app_on_top():
         return record("FAIL", "바로가기 「내 주변」 실행", focus())
-    line = find("내 주변", first="prev", limit=8)
+    # 「내 주변」 글자는 어느 화면에나 있는 탭 버튼에도 있으므로 내 주변 화면에만 있는 「둘러보기」로 판정한다.
+    line = find("둘러보기", first="next", limit=8)
     record("PASS" if line else "FAIL", "바로가기 「내 주변」 → 내 주변 화면", line or "")
     if prepared and find("채팅 탭", first="prev", limit=20):
         enter(3)
@@ -237,7 +238,8 @@ def check_shortcuts() -> None:
     out = [norm(o) for o in h7.lcd(since)]
     seen_lines.extend(out)
     # 녹음 중에는 낭독이 없다(라벨이 상태 신호). 커서를 옮겨 버튼 라벨을 직접 읽는다.
-    line = next((o for o in out if "받아쓰기 중지" in o), None) or find("받아쓰기 중지", first="prev", limit=10)
+    # 실행 직후 커서는 화면 맨 위다(녹음 시작이 낭독을 끊어 착지 낭독도 없다). 위에서부터 다음으로 찾는다.
+    line = next((o for o in out if "받아쓰기 중지" in o), None) or find("받아쓰기 중지", first="next", limit=10)
     if line:
         record("PASS", "바로가기 「음성 검색」 → 받아쓰기 켜짐(라벨 중지)", line)
         if find("받아쓰기 중지", first="prev", limit=4):

@@ -18,15 +18,23 @@ class AppSessionTest {
     @AfterTest fun clean() = AppSession.resetForTest()
 
     @Test fun `바로가기 액션은 1칸 보류되고 꺼내면 비며 음성 검색만 마이크 신호를 세운다`() {
-        AppSession.offer("android.intent.action.MAIN")
+        AppSession.offer("android.intent.action.MAIN", owner)
         assertNull(AppSession.pending.value) // 일반 실행은 액션이 아니다
-        AppSession.offer(AppSession.ACTION_VOICE_SEARCH)
-        assertEquals(LaunchAction.voiceSearch, AppSession.take())
-        assertNull(AppSession.take()) // 멱등 — 재구성 때 다시 돌아도 리셋은 한 번
+        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, owner)
+        assertEquals(LaunchAction.voiceSearch, AppSession.take(owner))
+        assertNull(AppSession.take(owner)) // 멱등 — 재구성 때 다시 돌아도 리셋은 한 번
         assertTrue(AppSession.voiceStartRequested.value)
-        AppSession.offer(AppSession.ACTION_NEARBY)
-        assertEquals(LaunchAction.nearby, AppSession.take())
+        AppSession.offer(AppSession.ACTION_NEARBY, owner)
+        assertEquals(LaunchAction.nearby, AppSession.take(owner))
         assertFalse(AppSession.voiceStartRequested.value) // 직전 음성 검색의 잔존 신호는 지운다(유령 마이크 차단)
+    }
+
+    @Test fun `액션은 받은 액티비티만 꺼낸다 — 지워지는 옛 화면이 먼저 가져가지 않는다`() {
+        val old = Any()
+        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, owner)
+        assertNull(AppSession.take(old))
+        assertFalse(AppSession.voiceStartRequested.value)
+        assertEquals(LaunchAction.voiceSearch, AppSession.take(owner))
     }
 
     @Test fun `유휴 리셋은 10분 초과 복귀에서만, 실시간 안내 중이면 하지 않는다`() {
@@ -55,7 +63,7 @@ class AppSessionTest {
 
     @Test fun `바로가기 진입은 같은 전경 전환의 유휴 판정을 무효화한다`() {
         AppSession.onBackground(0.0)
-        AppSession.offer(AppSession.ACTION_NEARBY)
+        AppSession.offer(AppSession.ACTION_NEARBY, owner)
         assertFalse(AppSession.onForeground(IdleReset.interval * 2, guideActive = false))
     }
 
@@ -85,6 +93,8 @@ class AppSessionTest {
         }
         assertTrue(res.resolve("main/AndroidManifest.xml").readText().contains("android:resource=\"@xml/shortcuts\""))
     }
+
+    private val owner = Any()
 
     private companion object {
         const val ANDROID = "http://schemas.android.com/apk/res/android"

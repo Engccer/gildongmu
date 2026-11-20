@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 앱 바로가기(B22 ④): 정적 바로가기는 새 태스크로 이 액티비티를 다시 만든다. 구성 변경 재생성은 같은 인텐트를 다시 들고 오므로 첫 생성만 받는다.
-        if (savedInstanceState == null) AppSession.offer(intent?.action)
+        if (savedInstanceState == null) AppSession.offer(intent?.action, this)
         else AppSession.restoreBackgroundedAt(savedInstanceState.getDouble(BACKGROUNDED_AT_KEY, Double.NaN).takeIf { !it.isNaN() })
         // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).
         val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        AppSession.offer(intent.action)
+        AppSession.offer(intent.action, this)
     }
 
     override fun onDestroy() {

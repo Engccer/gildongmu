@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.nav
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -81,8 +82,9 @@ fun AppRoot(factories: AppFactories) {
     // 앱 바로가기 진입(B22 ④, iOS `consumeLaunchAction`): 진입 자체가 세션 리셋 — 모든 탭을 초기 상태로 되돌리고 목적 탭을 연다.
     // 음성 검색은 `AppSession.voiceStartRequested`를 세워 새로 선 검색 화면이 받아쓰기를 시작한다.
     val pendingLaunch by AppSession.pending.collectAsState()
+    val launchOwner = LocalActivity.current
     LaunchedEffect(pendingLaunch) {
-        val action = AppSession.take() ?: return@LaunchedEffect
+        val action = AppSession.take(launchOwner ?: return@LaunchedEffect) ?: return@LaunchedEffect
         val target = when (action) {
             LaunchAction.voiceSearch -> AppTab.search
             LaunchAction.nearby -> AppTab.nearby
