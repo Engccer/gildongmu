@@ -70,7 +70,7 @@ object GuideSession {
 
 ### 2-6. 오디오 채널
 
-포커스 하나·톤 재생기 하나·TTS 하나(`GuideSession.attach`가 조립, M4 §5-2 #16). 자동차는 같은 모델이라 그대로 쓴다. 기기 음성 대기 칸(`DeviceSpeechQueue`)은 지금 `WalkGuideModel` 안에 있다 — iOS는 「세 모델 공유 칸」이므로 대중교통 세션이 칸을 `GuideSession`으로 올려 두 모델에 주입한다(자동차 세션은 옮기지 않는다: 소비자가 하나일 때 공유 구조를 미리 만들지 않는다).
+포커스 하나·톤 재생기 하나·TTS 하나(`GuideSession.attach`가 조립, M4 §5-2 #16). 자동차는 같은 모델이라 그대로 쓴다. 기기 음성 대기 칸(`DeviceSpeechQueue`)은 모델마다 하나다(지금 `WalkGuideModel` 안). ⚠ 2026-11-21 정정: 종전 「iOS는 세 모델 공유 칸」은 틀렸다 — iOS는 모델마다 `GuideSpeechOutput.makeDeviceQueue`로 자기 칸을 만들고 TTS 재생기 하나를 공유하며, 끊김 관찰자를 칸마다 등록한다(`TtsPlayer.observeGuidanceInterruption`이 목록). 대중교통 세션의 처방은 §6-5.
 
 ## 3. `and-m5-transit`이 받을 경계
 
@@ -80,7 +80,7 @@ object GuideSession {
 | 세션 점유 | `:kit` `GuideSessionCoordinator`(claim·release, 메인 전용) | 대중교통 모델도 같은 코디네이터에서 claim한다 |
 | 전경 서비스 | `GuideForegroundService`가 `GuideSession.walk`에 직결돼 있다: fix·위치 꺼짐·알림 문장, **알림 「안내 종료」(`ACTION_STOP` → `walk.stopByUser()`)**, **`startForeground` 실패(`walk.onServiceStartFailed`)** | 다섯 경로를 모두 활성 세션 소유자로 보내는 한 지점을 서비스에 더한다. 시작 실패는 그 시작을 요청한 세션 세대에만 전달한다(인계 직후 늦게 온 실패가 새 세션을 접지 않게). 대중교통 keep-alive(E36·A46)도 이 서비스다 |
 | 시트·띠바 | `GuideBottomBar` → `GuideSheet`(도보·자동차) | `GuideScreenKind`와 대중교통 시트를 더한다 |
-| 오디오 | `GuideSession.attach`의 포커스·톤·TTS | 대중교통 모델에 같은 인스턴스를 주입하고 `DeviceSpeechQueue`를 `GuideSession`으로 올린다(§2-6) |
+| 오디오 | `GuideSession.attach`의 포커스·톤·TTS | 대중교통 모델에 같은 인스턴스를 주입하고, 대기 칸은 모델마다 두되 TTS 콜백을 토큰으로 발행 모델에 보낸다(§6-5) |
 | 억제 소유자 집합 | `GuideSession.setOutputSuppressed`가 `walk.outputSuppressed`만 만진다 | 두 모델에 함께 건다 |
 | 도보 인계 받기 | `WalkStartRequest`(기본값 없음). 출구 인계(E84 `exitLead`)는 아직 없다 | `WalkStartRequest`에 `exitLead`를 더하고(기본값 없음) 출구 대기 창을 이식한다 |
 | 전화 걸기 E90 | 도보·자동차 시트 제목 메뉴 첫 항목(기존) | 대중교통 시트 제목 메뉴에 같은 번호부(`AppConfig.placePhoneBook`)로 |
@@ -188,7 +188,7 @@ object GuideSession {
 
 - **`guide/TransitGuideModel.kt` 한 클래스**(iOS `TransitGuideModel.swift` 1:1, 함수 이름·순서 동일). 도보 모델과 나누는 이유는 iOS와 같다(§2-1): 상태 기계가 리듀서 `transitGuideStep`이고 fix 파이프라인이 없다. 파일을 기능별로 쪼개지 않는다 — iOS와 줄 단위로 대조하는 것이 이식의 유일한 검증 수단이다(`WalkGuideModel.kt`와 같은 판단).
 - **관찰 상태는 `ui: StateFlow<TransitGuideUiState>` 하나**(도보 `WalkGuideUiState` 동형). iOS `@Observable`이 뷰에 내보내는 값(`state`·`route`·`waitingLive`·`waitingDeparted`·`waitingReason`·`pendingWalkHandoff`·`pendingDestChange`·`pendingAltRoutes`·`pendingRecovery`·`ridingPosition`·`busStopMark`·`boardOverrideIndex`·`reboardPickerActive`·`aboardStep`·`expressBlockedNote`·`idlePaused` 등)만 담고, `@ObservationIgnored`인 것(폴 작업·장부·세대·캐시)은 모델의 비공개 필드다. 시트의 파생 값(iOS 계산 속성 `overview`·`viaStopHereIndex`·`currentLeg`·`isOnFinalLeg`·`finalLegWalkMinutes`)은 모델의 공개 함수로 둔다.
-- **포트**(전부 생성자 주입, 기본값 없음): `routes: RouteService`(목적지 전환·다른 경로·잘못 내림 복구 재조회), `track: TransitTrackService`, `position: TransitPositionService`, `strings`, `dataLocale`, `controller: GuideForegroundController`(§6-4), `permissions: GuidePermissions`(keep-alive 판정은 현재 권한만 읽고 요청하지 않는다 — iOS 「대중교통 시작은 권한 요청 지점이 아니다」), `tones`, `speaker`, `deviceSpeech: DeviceSpeechQueue`, `haptics`, `env: GuideEnvironment`, `coordinator`, `scope`, `clock`. 같은 포트 인스턴스를 두 모델이 공유한다(§6-5).
+- **포트**(전부 생성자 주입, 기본값 없음): `routes: RouteService`(목적지 전환·다른 경로·잘못 내림 복구 재조회), `track: TransitTrackService`, `position: TransitPositionService`, `strings`, `dataLocale`, `controller: GuideForegroundController`(§6-4), `permissions: GuidePermissions`(keep-alive 판정은 현재 권한만 읽고 요청하지 않는다 — iOS 「대중교통 시작은 권한 요청 지점이 아니다」), `tones`, `speaker`, `haptics`, `env: GuideEnvironment`, `coordinator`, `scope`, `clock`. 같은 포트 인스턴스를 두 모델이 공유한다(§6-5). 기기 음성 대기 칸(`DeviceSpeechQueue`)은 모델이 자기 것을 만든다(iOS 동형).
 - **문장 렌더러**: `guide/TransitGuideTextRenderer.kt`(iOS `TransitGuideTextRenderer.swift` 미러) — Kit `TransitGuideText`의 구조화 줄을 앱 문자열로 조립한다. 언어 판정 `transitGuideIsEn`은 iOS와 같은 술어(데이터 로케일이 en)를 앱 함수로 둔다.
 - **세션 점유**: `coordinator.claim(stop = { stop() })`(iOS 동형). 모델 입구 둘(`start`·`startAfterPrewalk`)은 `GuideSession.isActive`면 거부 통지(`guide.alreadyActive`)를 내고 돌아간다 — iOS가 모델 입구에서도 거부하는 것과 같다(외부 시작은 `GuideSession`이 먼저 걸러 여기까지 오지 않는다).
 
@@ -228,24 +228,26 @@ interface GuideServiceOwner {
     fun handleProviderDisabled()
     fun stopFromNotification()                               // 알림 「안내 종료」 = 시트의 안내 종료와 같은 함수
     fun onServiceStartFailed(generation: Int, error: Throwable)
+    val serviceGeneration: Int?                              // 이 모델이 지금 쥔 서비스 요청의 세대(없으면 null)
 }
 enum class GuideLocationProfile { beacon, keepAlive, keepAliveBus }
 ```
 
 - **소유자 선택**: `serviceOwner()` = 도보 모델이 시작 중이거나 추적 중이면 도보, 아니면 대중교통이 추적 중이면 대중교통, 아니면 null(서비스는 `stopSelf`). 매 콜백 시점에 조회하고 인스턴스를 붙들지 않는다(종전 규칙 유지). 둘이 동시에 추적하는 순간은 코디네이터 점유가 막는다(인계는 앞 모델 `stop()`이 뒤 모델 `claim`보다 먼저).
-- **시작 실패의 세대**: `GuideForegroundController.start(generation: Int)`. 세대는 `GuideSession.nextServiceGeneration()`이 하나씩 올려 주고, 요청한 모델이 자기 값을 든다. 서비스는 인텐트 extra로 받은 세대를 실패와 함께 `GuideSession.onServiceStartFailed(generation, e)`로 돌려주고, 세션은 **그 세대를 든 모델에만** 넘긴다(인계 직후 늦게 온 앞 세션의 실패가 새 세션을 접지 않게). 이미 떠 있는 서비스의 재사용(`service start reused`)은 실패가 없다.
+- **세대는 다섯 경로 전부에 붙는다**(설계 리뷰 반영): `GuideForegroundController.start(generation: Int)`. 세대는 `GuideSession.nextServiceGeneration()`이 하나씩 올려 주고, 요청한 모델이 `serviceGeneration`으로 든다(정지하면 null). 서비스는 받은 세대를 지금 세대로 들고(재사용 시작이면 새 세대로 바꾸고 알림·프로파일 구독을 새 소유자로 다시 건다), fix·위치 꺼짐·스트림 열기 실패·알림 「안내 종료」 인텐트(PendingIntent extra에 발급 당시 세대)·`startForeground` 실패를 모두 세대와 함께 `GuideSession`에 넘긴다. 세션은 `serviceOwner()?.serviceGeneration == 세대`일 때만 전달하고, 아니면 로그 한 줄로 버린다 — 인계 직후 앞 세션의 늦은 이벤트가 새 세션을 끝내지 않게.
+- **동기 시작 거부**: Android 12+는 백그라운드에서 `startForegroundService` 호출 자체가 예외(`ForegroundServiceStartNotAllowedException`, Android 14+ 위치 타입은 `SecurityException`)로 거부된다 — 서비스 안의 실패 콜백까지 가지 않는다. 컨트롤러가 이 예외를 잡아 같은 세대의 시작 실패로 넘긴다(도보는 세션 실패, 대중교통은 아래 keep-alive 규칙).
 - **도보·자동차**: 지금 동작 그대로(프로파일 `beacon` = 1초·고정밀, 실패 = 세션 실패 `onServiceStartFailed`).
 - **대중교통 keep-alive**(E36·A46·E48, iOS `updateKeepAlive`): (boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 유휴 아님 ∧ **위치 권한이 이미 있음**이면 서비스를 켜고, 아니면 끈다. 권한이 없으면 열지 않고 세션당 로그 한 줄(`keepAlive denied`) — 권한 창을 띄우지 않는다. 프로파일은 버스 승차 중 정류장 표식이 적용될 때(`transitBusStopApplies`) `keepAliveBus`(고정밀·1초·거리 필터 없음, iOS 10m급·필터 없음), 그 밖 `keepAlive`(`QUALITY_LOW_POWER`·간격 60초·최소 거리 500m, iOS 1km급·500m). 서비스는 프로파일이 바뀌면 스트림을 다시 연다. **시작 실패는 세션을 끝내지 않는다**(iOS `startKeepAliveUpdates`가 false를 돌려주는 것과 같은 자리): 로그 한 줄, keep-alive 꺼진 채 계속(전경 폴은 돈다).
-- **wake lock**: 대중교통 keep-alive도 서비스 수명 wake lock을 든다(폴 코루틴이 절전에서 멎지 않게 — iOS에선 keep-alive 위치 갱신이 앱을 깨워 둔다). 대기 국면(waiting)에 화면을 끄면 iOS처럼 폴이 멎을 수 있다 — iOS 정본 동작이고 복귀 즉폴이 갚는다.
-- **백그라운드 시작 제한**: Android 12+는 백그라운드에서 전경 서비스를 시작할 수 없다. keep-alive를 켜는 전이(대기 → boarding)는 사용자 선택(전경)이라 걸리지 않고, riding은 boarding에서 이미 켜진 서비스를 프로파일만 바꾼다(A46). 그 밖 경로에서 실패하면 위 「시작 실패」 규칙을 탄다.
+- **wake lock**: 대중교통 keep-alive도 서비스 수명 wake lock을 든다(폴 코루틴이 절전에서 멎지 않게 — iOS에선 keep-alive 위치 갱신이 앱을 깨워 둔다). 대기 국면(waiting)에 화면을 끄면 iOS처럼 폴이 멎을 수 있다 — iOS 정본 동작이고 복귀 즉폴이 갚는다. ⚠ boarding·riding에서도 관측 공백은 생길 수 있다: Doze(정지한 채 화면이 꺼진 기기)는 wake lock을 무시하고 네트워크를 막는다. 새 동작을 더하지 않고(iOS도 같은 백그라운드 제약이 있고 3-state 신호가 공백을 「모름」으로 말한다) 실승차 판정 항목으로 남긴다: 화면을 끈 채 승차해 도착·하차 문장이 제때 나는가, 늦었으면 복귀 낭독이 마지막 관측 시각을 정직하게 말하는가(BACKLOG §2, 진입점 단계가 행을 만든다).
+- **원함과 가동을 가른다**(설계 리뷰 반영): 모델은 `keepAliveWanted`(iOS `updateKeepAlive`의 판정)와 `keepAliveRunning`(서비스가 실제로 떴는가)을 따로 든다. keep-alive를 켜는 흔한 전이(대기 → boarding)는 사용자 선택(전경)이라 걸리지 않고, riding은 boarding에서 켜진 서비스의 프로파일만 바꾼다(A46). 그러나 리듀서가 추정 도착(arrived)에서 재관측으로 riding에 돌아오는 전이는 화면이 잠긴 채 일어날 수 있고, 그때는 서비스가 이미 꺼져 다시 켜야 한다 — 백그라운드라 거부되면 원함은 남고 가동은 거짓이며, **전경 복귀(`setForeground(true)`)가 원함을 다시 판정해 켠다**. JVM 테스트에 「잠금 중 추정 도착 → 재관측 → 시작 거부 → 복귀 시 가동」을 넣는다.
 - **keep-alive fix**: 대중교통의 `handleServiceFix`는 버스 정류장 판정(`transitBusStopStep`)과 하차 정류장 한 마디(A69)만 먹는다(iOS `ingestKeepAliveFix`, 리듀서 입력이 아니다).
 - **알림**: 제목은 대중교통 시트 제목 문자열, 본문은 띠바 문장(`guideBandSummary`)이다. 알림 「안내 종료」는 시트의 「안내 종료」와 같은 함수(정지음 + 정지 문장).
 
 ### 6-5. 오디오·억제
 
 - 포커스·톤 재생기·TTS·진동은 `GuideSession.attach`가 한 벌 만들어 두 모델에 주입한다(§2-6). **의도된 iOS 차이**: iOS 대중교통은 톤 재생기를 따로 든다(`BeaconTonePlayer(label: "transit")`). 안드로이드는 재생기 하나(M4 §5-2 #16)이고 세션이 동시에 둘 돌지 않으므로 iOS의 「소유권 이전(`.ownershipTransferred`)」 장치는 필요 없다. 인계 순서(앞 세션 정지음 → 600ms → 뒤 세션 시작음)는 같은 재생기에서 그대로 난다.
-- **`DeviceSpeechQueue` 승격**: 지금 `WalkGuideModel` 안의 인스턴스를 `GuideSession.attach`로 올려 두 모델에 주입한다(iOS 「세 모델 공유 칸」). TTS 포트의 단일 콜백 둘(`speaker.onInterrupted`, `TtsGuideSpeaker(onPendingDropped)`)은 `GuideSession`이 받아 칸과 **현재 소유자**(`serviceOwner()`와 같은 선택, 정지 뒤면 마지막 소유자)로 보낸다 — 지금처럼 `walk`에 직결하면 대중교통 문장의 버림이 도보 모델의 `missedAnnouncement`를 세운다.
-- 세션 경계(`beginSession`·`stop`)마다 `deviceSpeech.reset()`(E53 §4.2 ⑤) — 공유 칸이라 뒤 세션의 시작이 앞 세션의 대기 문장을 버리는 것이 iOS와 같은 동작이다.
+- **기기 음성 대기 칸은 모델마다 하나**(iOS 동형, §2-6 정정): 대중교통 모델이 자기 `DeviceSpeechQueue`를 만든다. 전경 복귀의 인계(`handOver()`)는 각 모델이 **자기 칸에서만** 꺼내므로 다른 모델의 문장을 가져가지 않는다(설계 리뷰 반영 — 공유 칸이었다면 먼저 복귀한 모델이 남의 문장을 비웠다). 세션 경계마다 `deviceSpeech.reset()`(E53 §4.2 ⑤)은 자기 칸만 비운다.
+- **TTS 콜백은 토큰으로 발행 모델에 간다**: TTS 포트의 콜백 둘(`speaker.onInterrupted(token, reason)`, `TtsGuideSpeaker(onPendingDropped)`)은 지금 `walk`에 직결된 단일 콜백이다. `GuideSession`이 한 번 받아 **두 모델 모두에** 넘기고, 각 모델은 자기가 발행한 토큰일 때만 반응한다(iOS 관찰자 목록 동형 — 칸이 `isSpeakingToken`으로 자기 토큰을 가린다). `onPendingDropped`는 보류 문장의 토큰을 실어 보내도록 바꾼다(지금 인자 없음) — 승차 전 도보 시작 문장(대중교통이 냄)의 초기화 실패 버림이 곧 시작한 도보 모델의 `missedAnnouncement`를 세우지 않게.
 - **억제 소유자 집합**: `setOutputSuppressed(active, owner)`가 두 모델의 `outputSuppressed`를 함께 건다. 이전 값(`suppressionPrior`)은 모델마다 따로 든다. 대중교통의 `outputSuppressed` 해제는 iOS처럼 억제 중 버린 마지막 문장(`droppedWhileSuppressed`)을 한 번 다시 낸다(버스 하차 한 마디는 제외, iOS 설계 리뷰 2차).
 
 ### 6-6. 시작과 도보 인계 (`GuideSession`, iOS `GuideSession` 대중교통 절단면)
@@ -270,7 +272,7 @@ object GuideSession {
 - **도보 모델 쪽 신설**: `enum class BeaconEndReason { arrived, startFailed, userStopped, locationLost, ended }`와 `onSessionEnd` 훅(정지 경로마다 사유를 한 번), `markPrewalk`·`clearPrewalk`(승차 전 도보 표식 — 시작 문장·정지 꼬리 문장 「대중교통 안내도 종료했습니다」(환승)·다리 문장(A67 시작 실패 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)이 이 표식을 읽는다). 문장은 iOS `BeaconModel`의 해당 자리 키 그대로.
 - **하차 인계(E34·E84)**: 마지막 구간 시트의 「남은 도보 안내 시작」 → `transit.advanceIntoWalkHandoff()`가 참이면 `acceptWalkHandoff()`: 인계 값에서 출구(`transitValidExitNo(exitAlight)`)와 하차역 좌표로 `ExitLead`를 **`stop()` 전에** 읽고 → `transit.stop()` → `clearWalkHandoff()` → 600ms 뒤 공개 `startWalk(WalkStartRequest(…, exitLead))`(대중교통이 이미 끝나 거부 판정을 그대로 지난다 — iOS `startBeacon` 동형. §3 표의 「하차 인계는 `beginBeacon`」은 이것으로 고친다). 잘못 내림 복구의 「걸어가기」는 인계 값 없이 들어와 출구가 실리지 않는다(iOS 동형).
 - **환승 도보(E73)**: `transitTransferWalk(handoff)` → `transit.stopForTransferWalk()`(정지음 없음) → 600ms 뒤 점유가 없으면 `launchPrewalk(isTransfer = true, lead = handoff.lead)` + `beginBeacon`, 점유가 있으면 버린다(로그 `transferWalk abandoned`).
-- **600ms 대기 작업은 `prewalkJob` 한 칸**이고 모든 시작 진입(`beginBeacon`·`beginTransit`)이 `cancelPrewalk()`로 함께 취소한다(iOS `prewalkTask`). 하차 인계의 대기는 `walkHandoffJob` 따로(iOS 동형).
+- **600ms 대기 작업은 `prewalkJob` 한 칸**이고 외부 시작 진입이 `cancelPrewalk()`로 함께 취소한다(iOS `prewalkTask`). ⚠ **연결이 스스로 연 도보 시작은 취소하지 않는다**(설계 리뷰 반영, iOS `launchingPrewalk`): `launchPrewalk`가 `launchingPrewalk = true` 아래에서 `beginBeacon`을 부르고, `beginBeacon`은 `if (!launchingPrewalk) { retirePrewalkRestart(); cancelPrewalk() }`다 — 이 예외가 없으면 방금 세운 컨텍스트를 지워 `endPrewalk(id)`가 도착을 버리고 역에서 안내가 끊긴다. JVM 테스트는 실제 `beginBeacon`을 지나 도착 600ms 뒤 지정 구간이 열리는지(승차 전 도보·환승 도보 둘) 본다. 하차 인계의 대기는 `walkHandoffJob` 따로(iOS 동형).
 - **출구 대기(E84)**: `WalkStartRequest.exitLead: ExitLead?`(기본값 없음, `ExitLead(exit, stationLat, stationLng)`). 도보 모델이 출구 문장 `guide.exitLeadStart`를 첫 시작류 통지 앞에 한 번 싣고(`exitLeadPrefixNeeded`), Kit `ExitHold` 창을 연다 — 창 동안 fix 게이트와 잊힌 세션 안전망 두절 임계(`GuideTuning.sessionIdleNoFixExitHoldSeconds`)를 iOS `BeaconModel`의 `openExitHold`·`exitHold` 자리 그대로 따른다. 자동차·다른 도보 시작 호출부는 `exitLead = null`을 명시한다. `restart()`는 `lastStartRequest`의 출구를 그대로 다시 쓴다(iOS `exitHold?.lead`).
 - **재시작(A13·A68)**: 길찾기 실패 줄의 [정확한 위치 허용]은 `walk.restart()` 직접 호출(지금 `WalkGuideStartButton.kt`)을 `GuideSession.restartBeacon()`으로 바꾼다 — 직전 시작이 승차 전 도보였으면 연결을 다시 걸어 도착 뒤 대중교통으로 잇는다. `retirePrewalkRestart`의 거두는 자리는 iOS 그대로(승차 전 도보가 아닌 시작·대중교통이 그 계획을 지나감).
 - **소스 가드**(`GuideSourceGuardTest` ①-2를 넓힌다): `startTransit(` 호출부는 대중교통 시작 버튼 파일 하나, `beginBeacon(` 호출부는 `GuideSession.kt` 안의 공개 시작 함수 둘·승차 전 도보·환승 도보·`restartBeacon` 자리, `startWalk(`은 기존 둘에 하차 인계 하나, `transit.start(`·`startAfterPrewalk(` 호출부는 `GuideSession.kt` 하나, `walk.restart()` 호출부는 `GuideSession.kt` 하나.
@@ -286,7 +288,7 @@ object GuideSession {
 ### 6-8. 검증
 
 - `:kit`: 단계 1 이식 파일마다 Swift 테스트 미러 + 공유 fixture 전 케이스(`exit-hold-cases`·`transit-riding-position-cases`·`transit-bus-stop-cases` 등).
-- 앱 JVM(페이크 레인 — `WalkGuideModelTest`·`CarGuideModelTest` 선례, 도착 정보·위치 조회는 페이크 서비스, 시계는 가짜 시계): 모델 단계는 iOS `TransitGuideModel`의 각 공개 함수가 낸 발화 목록·국면·폴 예약을 본다(시작 문장, 대기 → 탑승 → 승차 → 도착 → 다음 구간, 완료와 `pendingWalkHandoff`, 유휴 정지·재개, 백그라운드 톤 허용 집합, 떠난 열차 180초, 취소 가드가 옛 폴 결과를 버림). 경계 단계는 서비스 소유자 선택·세대 거름·keep-alive 켜고 끔·프로파일 전환·억제 집합·`deviceSpeech` 공유. 인계 단계는 승차 전 도보 도착 → 600ms → 대중교통 시작 구간, 시작 실패 → 통지 대기 → 대중교통, 환승 도보, 하차 인계의 출구 실림, 재시작이 연결을 다시 거는 것.
+- 앱 JVM(페이크 레인 — `WalkGuideModelTest`·`CarGuideModelTest` 선례, 도착 정보·위치 조회는 페이크 서비스, 시계는 가짜 시계): 모델 단계는 iOS `TransitGuideModel`의 각 공개 함수가 낸 발화 목록·국면·폴 예약을 본다(시작 문장, 대기 → 탑승 → 승차 → 도착 → 다음 구간, 완료와 `pendingWalkHandoff`, 유휴 정지·재개, 백그라운드 톤 허용 집합, 떠난 열차 180초, 취소 가드가 옛 폴 결과를 버림). 경계 단계는 서비스 소유자 선택·다섯 경로의 세대 거름(인계 직후 앞 세션의 위치 꺼짐·알림 종료가 새 세션을 끝내지 않음)·동기 시작 거부·keep-alive 원함과 가동의 분리와 복귀 재시도·프로파일 전환·억제 집합·TTS 콜백의 토큰 라우팅·두 모델이 붙은 상태에서 도보·대중교통 각각의 잠금 해제 낭독. 인계 단계는 승차 전 도보 도착 → 600ms → 대중교통 시작 구간, 시작 실패 → 통지 대기 → 대중교통, 환승 도보, 하차 인계의 출구 실림, 재시작이 연결을 다시 거는 것.
 - 소스 가드: §6-6 호출부 표, 서비스 콜백이 `GuideSession.walk`를 직접 부르지 않음(`serviceOwner()`만).
 - 실기기(한소네 7, 실내): 시작 진입점 단계에서 처음 닿는다 — 대중교통 결과 줄 펼침의 시작 버튼, 시트 제목·상태 문장 착지, 차량 선택 목록, 제목 메뉴 전화 걸기가 다이얼 화면을 여는 것까지, 안내 종료. 실승차가 필요한 항목(도착 관측·승차 중 현재역·하차 인계·출구 대기·환승 도보·잘못 내림 복구·백그라운드 폴)은 BACKLOG §2 실승차 판정 행으로 남긴다.
 
@@ -306,3 +308,14 @@ object GuideSession {
 
 - 단계마다 `origin/main`에 통합한다. 문맥이 크게 불어나면 그 단계에서 끊고 통합 보고 인계 절에 남은 단계를 적는다.
 - 단계 2·3은 iOS 한 파일을 두 번에 나눠 옮기므로, 단계 2는 단계 3 몫의 필드·분기를 **빈 자리 없이 비워 두지 않는다**: iOS 함수가 단계 3 기능을 부르는 자리는 단계 2에서 그 호출을 빼고 `// 단계 3: <iOS 함수 이름>` 한 줄을 남긴다(단계 3이 grep으로 전수 회수). 이 표식은 단계 3 통합 때 0이어야 한다(소스 가드).
+
+### 6-10. 설계 리뷰 판정 (codex adversarial-review 1회, 2026-11-21)
+
+| 지적 | 판정 | 반영 |
+|---|---|---|
+| 모든 `beginBeacon`이 `cancelPrewalk()`를 부르면 승차 전 도보가 자기 연결을 지운다 | 수용(iOS `launchingPrewalk` 예외 누락) | §6-6 600ms 항목 |
+| 세대가 시작 실패에만 붙어 앞 세션의 늦은 위치 꺼짐·알림 종료가 새 세션을 끝낸다 | 수용 | §6-4 세대 다섯 경로 |
+| 잠금 중 추정 도착 → riding 복귀에서 서비스 재시작이 동기 예외로 거부된다 | 수용 | §6-4 동기 시작 거부·원함과 가동 분리 |
+| 공유 대기 칸이면 먼저 복귀한 모델이 남의 문장을 꺼낸다 | 수용 — 처방은 iOS 사실(모델마다 칸)로 | §2-6 정정, §6-5 |
+| 토큰 없는 보류 버림이 다음 모델에 기록된다 | 수용 | §6-5 토큰 라우팅 |
+| Doze에선 boarding·riding도 폴이 멎는다 | 부분 수용 — 서술을 고치고 실승차 판정 항목으로 남긴다. 새 상태 표시는 iOS 정본에 없어 더하지 않는다 | §6-4 wake lock 항목 |
