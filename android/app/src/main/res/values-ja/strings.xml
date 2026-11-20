@@ -114,6 +114,7 @@
     <string name="android_common_refresh">更新</string>
     <string name="android_common_unavailableHere_noBusData">この地域はバス停の情報が提供されていません</string>
     <string name="android_common_unavailableHere_seoulOnly">ソウル地域でのみご利用いただけます</string>
+    <string name="android_dataSources_walkHealth">歩数はこの端末の歩数センサーの実測、カロリーは歩いた距離と体重から計算した推定値です</string>
     <string name="android_directions_searching">照会中</string>
     <string name="android_directions_walkNotice_body1">経路タブでルートを検索すると、徒歩セクションに「徒歩案内を開始」ボタンが表示されるようになりました。ボタンを押すとリアルタイム案内が始まります。案内中は、目的地までの残り距離、現在区間の残り距離、次の案内などを画面ですぐに確認できます。案内中は画面をロックしてもバックグラウンドで動作します。</string>
     <string name="android_directions_walkNotice_body2">案内はAPIが提供する地図データとGPSに基づいています。そのため、実際の状況とは異なる場合があります。</string>

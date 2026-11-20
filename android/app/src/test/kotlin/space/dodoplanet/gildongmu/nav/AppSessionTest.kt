@@ -35,11 +35,12 @@ class AppSessionTest {
         assertFalse(AppSession.onForeground(IdleReset.interval, guideActive = false)) // 경계는 제외
         AppSession.onBackground(0.0)
         assertTrue(AppSession.onForeground(IdleReset.interval + 1, guideActive = false))
-        assertEquals(1, AppSession.resetRequests.value)
+        assertTrue(AppSession.takeReset())
+        assertFalse(AppSession.takeReset()) // 1회 소비 — 액티비티 재생성이 옛 요청을 다시 실행하지 않는다
         AppSession.onBackground(0.0)
         assertFalse(AppSession.onForeground(IdleReset.interval + 1, guideActive = true)) // 안내 중 복귀는 유휴가 아니다
         assertFalse(AppSession.onForeground(IdleReset.interval * 3, guideActive = false)) // 복귀가 기록을 지웠다
-        assertEquals(1, AppSession.resetRequests.value)
+        assertFalse(AppSession.resetPending.value)
     }
 
     @Test fun `바로가기 진입은 같은 전경 전환의 유휴 판정을 무효화한다`() {
@@ -48,11 +49,15 @@ class AppSessionTest {
         assertFalse(AppSession.onForeground(IdleReset.interval * 2, guideActive = false))
     }
 
-    @Test fun `새로고침 요청은 세대를 올린다`() {
+    @Test fun `새로고침은 1회 소비되고 새 탭 루트의 착지 신호를 한 번 남긴다`() {
+        assertFalse(AppSession.takeRefresh())
+        assertFalse(AppSession.takeRefreshLanding())
         AppSession.refreshCurrentTab()
-        AppSession.refreshCurrentTab()
-        assertEquals(2, AppSession.refreshRequests.value)
-        assertEquals(0, AppSession.resetRequests.value) // 새로고침은 현재 탭만 — 전체 리셋과 다른 신호
+        assertFalse(AppSession.resetPending.value) // 새로고침은 현재 탭만 — 전체 리셋과 다른 신호
+        assertTrue(AppSession.takeRefresh())
+        assertFalse(AppSession.takeRefresh())
+        assertTrue(AppSession.takeRefreshLanding())
+        assertFalse(AppSession.takeRefreshLanding())
     }
 
     /** 정식·실험 바로가기 XML: 액션은 `AppSession` 상수와 같고, 패키지는 각 구성의 applicationId다(실험판 `.dev`). */

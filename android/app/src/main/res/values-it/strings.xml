@@ -114,6 +114,7 @@
     <string name="android_common_refresh">Aggiorna</string>
     <string name="android_common_unavailableHere_noBusData">I dati delle fermate degli autobus non sono disponibili in questa zona</string>
     <string name="android_common_unavailableHere_seoulOnly">Disponibile solo a Seul</string>
+    <string name="android_dataSources_walkHealth">I passi vengono dal sensore di passi di questo dispositivo; le calorie sono una stima da distanza e peso</string>
     <string name="android_directions_searching">Ricerca in corso</string>
     <string name="android_directions_walkNotice_body1">Ora, quando cerchi un percorso nella scheda Indicazioni, la sezione a piedi mostra il pulsante \"Avvia guida a piedi\". Toccalo per avviare la guida in tempo reale. Durante la guida, lo schermo mostra la distanza rimanente fino alla destinazione, la distanza che resta del tratto corrente e la prossima indicazione. La guida continua a funzionare in background anche con lo schermo bloccato.</string>
     <string name="android_directions_walkNotice_body2">La guida si basa sui dati cartografici di API esterne e sul GPS, quindi può differire dalla situazione reale.</string>

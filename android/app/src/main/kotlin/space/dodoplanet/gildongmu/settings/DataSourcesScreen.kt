@@ -43,7 +43,7 @@ private val SOURCE_IDS = listOf(
     R.string.chat_source_kric, R.string.chat_source_korail, R.string.chat_source_seoulmetro, R.string.chat_source_perplexity,
 )
 
-/** 정보 출처(spec §14-4, iOS `DataSourcesView` 미러): 출처 16행 + OSM 라이선스 문장 + 링크 2(실패는 로컬 통지 `noAppToOpen`). `walkHealth` 행은 M4. */
+/** 정보 출처(spec §14-4, iOS `DataSourcesView` 미러): 출처 16행 + 걸음·칼로리 방법 고지(B27 ④) + OSM 라이선스 문장 + 링크 2(실패는 로컬 통지 `noAppToOpen`). */
 @Composable
 fun DataSourcesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -60,6 +60,8 @@ fun DataSourcesScreen(onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
             StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1)
             SOURCE_IDS.forEachIndexed { i, id -> Text(stringResource(id), Modifier.fillMaxWidth().mergedRow("source-$i").padding(vertical = 8.dp)) }
+            // 도보 종료 요약의 걸음·칼로리 방법 고지(iOS `dataSources.walkHealth`, spec 2026-08-17 §7): 실측과 추정을 가른다. 문장은 안드로이드 판(걸음 센서).
+            Text(stringResource(R.string.android_dataSources_walkHealth), Modifier.fillMaxWidth().mergedRow("walk-health").padding(vertical = 8.dp))
             Text(stringResource(R.string.dataSources_osmLicense), Modifier.fillMaxWidth().mergedRow("osm-license").padding(vertical = 8.dp))
             Button(onClick = { open(Intent(Intent.ACTION_VIEW, Uri.parse(OSM_COPYRIGHT_URL))) }, modifier = Modifier.tapTarget().testTag("osm-link")) { Text(stringResource(R.string.dataSources_osmLink)) }
             // ODbL 1.0 §4.6 사본 제공 고지 — 문의처가 있어야 이행이 성립하므로 메일 링크(설정의 문제 신고와 같은 주소)

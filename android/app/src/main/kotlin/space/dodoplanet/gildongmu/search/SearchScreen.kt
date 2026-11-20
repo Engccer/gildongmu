@@ -51,6 +51,10 @@ import space.dodoplanet.gildongmu.chat.DictationControls
 import space.dodoplanet.gildongmu.chat.dictationNoticeText
 import space.dodoplanet.gildongmu.chat.rememberDictation
 import space.dodoplanet.gildongmu.nav.AppSession
+import space.dodoplanet.gildongmu.location.CurrentAddressStore
+import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
+import space.dodoplanet.gildongmu.location.LocationBarRow
+import space.dodoplanet.gildongmu.location.ManualLocationStore
 import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
 import space.dodoplanet.gildongmu.settings.SettingsAction
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -81,14 +85,20 @@ fun SearchScreen(
     onOpenSettings: () -> Unit = {},
     takeReturn: () -> String? = { null },
     onPickLocation: () -> Unit = {},
+    location: Pair<CurrentAddressStore, ManualLocationStore>? = null,
 ) {
     val settingsFocus = remember { FocusRequester() }
     val dictationFocus = remember { FocusRequester() }
-    // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1; 결과 행 슬롯과 별개 — 결과 없는 첫 진입에서도 살아 있다)
+    val barFocus = remember { FocusRequester() }
+    // pop 복귀 → 누른 버튼(spec §14-1): 상단 바 설정 또는 위치 표시줄(B27 ③ 위치 지정 복귀). 결과 행 슬롯과 별개 — 결과 없는 첫 진입에서도 살아 있다.
     LaunchedEffect(Unit) {
-        if (takeReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        val requester = when (takeReturn()) {
+            SETTINGS_RETURN_KEY -> settingsFocus
+            LOCATION_BAR_KEY -> barFocus
+            else -> return@LaunchedEffect
+        }
         withFrameNanos { }
-        runCatching { settingsFocus.requestFocus() }.onFailure { Log.w("SearchScreen", "설정 복귀 착지 실패", it) }
+        runCatching { requester.requestFocus() }.onFailure { Log.w("SearchScreen", "복귀 착지 실패", it) }
     }
     val s by vm.state.collectAsState()
     val res = LocalContext.current.resources
@@ -184,6 +194,9 @@ fun SearchScreen(
                     onAutoStartConsumed = { AppSession.voiceStartRequested.value = false },
                 )
             }
+
+            // 위치 표시줄(B27 ③, iOS `SearchView`의 `LocationBarView` 섹션): 검색의 거리 정렬 기준(유효 위치)을 밝히고 누르면 위치 지정.
+            if (location != null) LocationBarRow(location.first, location.second, onPickLocation, barFocus)
 
             StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
 

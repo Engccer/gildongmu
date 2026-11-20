@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
@@ -39,6 +40,7 @@ import space.dodoplanet.gildongmu.nearby.NearbyServices
 import space.dodoplanet.gildongmu.location.LocationPermission
 import space.dodoplanet.gildongmu.nav.AppFactories
 import space.dodoplanet.gildongmu.nav.AppSession
+import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.nav.AppRoot
 import space.dodoplanet.gildongmu.nearby.busRouteStopsFactory
 import space.dodoplanet.gildongmu.nearby.nearbyFactory
@@ -70,6 +72,16 @@ class MainActivity : ComponentActivity() {
         // 수동 위치 이동 판정 트리거 ①②(spec §13-2·판정 34): 앱 시작 겸 전경 복귀 = ON_START(단일 액티비티). 재생성 과발화는 판정의 30초 디바운스가 막는다.
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) lifecycleScope.launch { AppConfig.manualLocationJudge.run() }
+        })
+        // 유휴 리셋(B27 ②, iOS scenePhase 갈래): 10분 넘게 백그라운드였다 돌아오면 모든 탭을 초기 상태로 — 실시간 안내 중이면 하지 않는다.
+        // 시계는 잠자기를 포함하는 단조 시계(`elapsedRealtime`)다 — 벽시계는 사용자가 시각을 바꾸면 뛴다.
+        lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            val now = SystemClock.elapsedRealtime() / 1000.0
+            when (event) {
+                Lifecycle.Event.ON_STOP -> if (!isChangingConfigurations) AppSession.onBackground(now)
+                Lifecycle.Event.ON_START -> AppSession.onForeground(now, guideActive = GuideSession.isActive)
+                else -> Unit
+            }
         })
         // ⚠ Activity를 캡처하지 않는다 — ViewModel은 구성 변경을 넘어 살아 첫 Activity를 붙들면 누수다.
         // 문자열·언어는 **호출 시점**에 `AppConfig.localizedApp()`에서 읽는다(spec §14-2 — 앱 컨텍스트의 `Resources`를 캡처하면 언어 변경 뒤 옛 언어로 굳는다).

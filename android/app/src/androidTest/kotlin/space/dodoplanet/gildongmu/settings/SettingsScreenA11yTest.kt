@@ -130,6 +130,7 @@ class SettingsScreenA11yTest {
         rule.onNodeWithTag("title").assertIsFocused()
         rule.onNodeWithTag("source-0").assertIsDisplayed()
         rule.onNodeWithTag("source-15").assertIsDisplayed()
+        rule.onNodeWithTag("walk-health").assertExists() // B27 ④ 걸음·칼로리 방법 고지(화면 밖일 수 있어 존재만)
         rule.onNodeWithTag("osm-link").assertIsDisplayed()
         rule.onNodeWithTag("osm-copy").assertIsDisplayed()
         rule.onRoot().tryPerformAccessibilityChecks()

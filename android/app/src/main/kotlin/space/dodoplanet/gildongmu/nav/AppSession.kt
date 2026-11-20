@@ -17,7 +17,7 @@ enum class LaunchAction { voiceSearch, nearby }
  *   음성 검색은 `voiceStartRequested`를 세우고 재생성된 검색 화면이 내리면서 받아쓰기를 시작한다 — `pending`과 나눈 이유는 iOS와 같다
  *   (재구성 때 소비가 다시 돌아도 `pending`은 이미 비어 리셋이 멱등이다).
  * - 유휴 리셋(B27 ②, iOS `GildongmuApp` scenePhase 갈래): 백그라운드 진입 시각을 적고, 복귀 때 10분(`IdleReset.interval`)을 넘었고
- *   실시간 안내가 살아 있지 않으면 `resetRequests`를 올린다. 안내 중 복귀는 "유휴"가 아니다(iOS `!guideSession.isOccupied`).
+ *   실시간 안내가 살아 있지 않으면 `resetPending`을 세운다. 안내 중 복귀는 "유휴"가 아니다(iOS `!guideSession.isOccupied`).
  * - 탭 새로고침(B27 ①): 화면의 새로고침 버튼이 `refreshCurrentTab`을 부르고 `AppRoot`가 현재 탭만 초기화한다.
  */
 object AppSession {
@@ -30,11 +30,15 @@ object AppSession {
     /** 재생성된 검색 화면이 내리며 받아쓰기를 시작하는 1회 신호. */
     val voiceStartRequested = MutableStateFlow(false)
 
-    private val _resetRequests = MutableStateFlow(0)
-    val resetRequests: StateFlow<Int> = _resetRequests.asStateFlow()
+    // 리셋·새로고침은 1회 소비 깃발이다 — 세대 카운터면 액티비티 재생성(회전)으로 새로 선 `AppRoot`가 옛 요청을 다시 실행한다.
+    private val _resetPending = MutableStateFlow(false)
+    val resetPending: StateFlow<Boolean> = _resetPending.asStateFlow()
 
-    private val _refreshRequests = MutableStateFlow(0)
-    val refreshRequests: StateFlow<Int> = _refreshRequests.asStateFlow()
+    private val _refreshPending = MutableStateFlow(false)
+    val refreshPending: StateFlow<Boolean> = _refreshPending.asStateFlow()
+
+    /** 새로고침 뒤 새로 선 탭 루트가 「새로고침」 버튼에 착지하는 1회 신호(누른 버튼이 화면째 사라져 커서가 떨어지므로, 헌장 §5 복원). */
+    private var refreshLandingPending = false
 
     /** 백그라운드 진입 시각(초). null = 기록 없음. */
     internal var backgroundedAt: Double? = null
@@ -68,21 +72,33 @@ object AppSession {
     fun onForeground(now: Double, guideActive: Boolean): Boolean {
         val reset = IdleReset.shouldReset(backgroundedAt, now) && !guideActive
         backgroundedAt = null
-        if (reset) _resetRequests.value += 1
+        if (reset) _resetPending.value = true
         return reset
     }
 
+    fun takeReset(): Boolean = _resetPending.value.also { _resetPending.value = false }
+
     fun refreshCurrentTab() {
-        _refreshRequests.value += 1
+        _refreshPending.value = true
     }
+
+    fun takeRefresh(): Boolean {
+        if (!_refreshPending.value) return false
+        _refreshPending.value = false
+        refreshLandingPending = true
+        return true
+    }
+
+    fun takeRefreshLanding(): Boolean = refreshLandingPending.also { refreshLandingPending = false }
 
     /** 테스트 전용. */
     internal fun resetForTest() {
         _pending.value = null
         voiceStartRequested.value = false
         backgroundedAt = null
-        _resetRequests.value = 0
-        _refreshRequests.value = 0
+        _resetPending.value = false
+        _refreshPending.value = false
+        refreshLandingPending = false
     }
 }
 

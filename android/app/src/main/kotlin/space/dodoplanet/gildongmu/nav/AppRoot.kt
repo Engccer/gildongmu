@@ -22,6 +22,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import space.dodoplanet.gildongmu.directions.DirectionsPrefillStore
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.LocalResultHaptics
@@ -88,6 +89,23 @@ fun AppRoot(factories: AppFactories) {
         }
         navController.resetAllTabs(tabs, AppTab.initial(experimental), target)
     }
+    // 유휴 리셋(B27 ②, iOS `resetSession`): 모든 탭 초기화 → 시작 탭. 남은 길찾기 프리필도 버린다(지난 도착지가 되살아나지 않게).
+    val resetPending by AppSession.resetPending.collectAsState()
+    LaunchedEffect(resetPending) {
+        if (!AppSession.takeReset()) return@LaunchedEffect
+        DirectionsPrefillStore.pending.value?.let(DirectionsPrefillStore::take)
+        val initial = AppTab.initial(experimental)
+        navController.resetAllTabs(tabs, initial, initial)
+    }
+    // 탭 새로고침(B27 ①, iOS `refreshCurrentTab`): 현재 탭만 초기 상태로, 탭 이동 없음.
+    val refreshPending by AppSession.refreshPending.collectAsState()
+    LaunchedEffect(refreshPending) {
+        if (!AppSession.takeRefresh()) return@LaunchedEffect
+        val destination = navController.currentBackStackEntry?.destination ?: return@LaunchedEffect
+        val tab = tabs.firstOrNull { tab -> destination.hierarchy.any { it.hasRoute(tab.route()::class) } } ?: return@LaunchedEffect
+        if (tab == AppTab.directions) DirectionsPrefillStore.pending.value?.let(DirectionsPrefillStore::take)
+        navController.refreshTab(tab)
+    }
 
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
         Scaffold(
@@ -136,6 +154,7 @@ fun AppRoot(factories: AppFactories) {
                         onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } },
                         takeReturn = rf.slot::take,
                         onPickLocation = { rf.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
+                        location = factories.currentAddress to factories.manualLocation,
                     )
                 }
                 composable<DirectionsRoute> { entry ->

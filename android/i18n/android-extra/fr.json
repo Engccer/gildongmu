@@ -92,6 +92,9 @@
     "settings": {
       "resultHapticsFooter": "Les résultats de Recherche et À proximité sont aussi signalés par une vibration. Ne vibre que lorsque l'écran est allumé et que le retour haptique de l'appareil est activé.",
       "backgroundSpeechFooter": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, même écran éteint ou pendant l'utilisation d'une autre app."
+    },
+    "dataSources": {
+      "walkHealth": "Les pas viennent du capteur de pas de cet appareil ; les calories sont une estimation d'après la distance et le poids"
     }
   },
   "search": {

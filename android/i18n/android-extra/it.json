@@ -92,6 +92,9 @@
     "settings": {
       "resultHapticsFooter": "I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo.",
       "backgroundSpeechFooter": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un'altra app."
+    },
+    "dataSources": {
+      "walkHealth": "I passi vengono dal sensore di passi di questo dispositivo; le calorie sono una stima da distanza e peso"
     }
   },
   "search": {
