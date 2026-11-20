@@ -574,7 +574,7 @@ class WalkGuideModelTest {
         assertEquals("", h.model.ui.value.statusText)
         assertNull(h.model.ui.value.liveTopText)
         h.model.setForeground(false); h.speaker.spoken.clear()
-        h.model.onSpeechDropped()          // 상환 장부만 선 상태
+        h.model.onSpeechDropped(h.speaker.token)          // 상환 장부만 선 상태(이 모델이 마지막으로 게시한 토큰)
         h.model.setForeground(true)
         assertEquals(emptyList(), h.speaker.spoken)
     }

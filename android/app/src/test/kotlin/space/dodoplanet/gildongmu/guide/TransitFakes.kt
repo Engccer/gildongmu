@@ -32,15 +32,17 @@ class TransitGuideHarness(
     private val dispatcher: TestDispatcher,
     /** 추적 응답 큐: 호출마다 하나씩 꺼내 쓰고 비면 `empty`. 값은 (본문, 지연 ms). */
     val trackReplies: ArrayDeque<Pair<String, Long>> = ArrayDeque(),
+    /** 도보 하네스와 포트를 공유할 때(M5 §6-5 — 앱은 한 벌을 두 모델에 주입한다). null이면 자기 페이크. */
+    shared: GuideTestHarness? = null,
 ) {
     val catalog = CatalogStrings("ko")
-    val controller = FakeController()
-    val perms = FakePermissions()
-    val tones = FakeTones()
-    val speaker = FakeSpeaker()
-    val haptics = FakeHaptics()
-    val env = FakeEnv()
-    val coordinator = GuideSessionCoordinator()
+    val controller = shared?.controller ?: FakeController()
+    val perms = shared?.perms ?: FakePermissions()
+    val tones = shared?.tones ?: FakeTones()
+    val speaker = shared?.speaker ?: FakeSpeaker()
+    val haptics = shared?.haptics ?: FakeHaptics()
+    val env = shared?.env ?: FakeEnv()
+    val coordinator = shared?.coordinator ?: GuideSessionCoordinator()
     val store = InMemoryKeyValueStore()
     /** 도보 모델의 「시작 대기」(`GuideSession.isActive`의 한 갈래) 흉내. */
     var walkStarting = false
@@ -89,7 +91,7 @@ class TransitGuideHarness(
         dataLocale = { DataLocale.ko },
         controller = controller,
         permissions = perms,
-        tones = tones.also { it.clock = now },
+        tones = if (shared == null) tones.also { it.clock = now } else tones,
         speaker = speaker,
         haptics = haptics,
         env = env,
@@ -106,7 +108,7 @@ class TransitGuideHarness(
         clock = now,
         wallClockMs = { now() * 1000.0 },
         io = dispatcher,
-    )
+    ).also { if (shared == null) controller.model = it }
     val dest = BeaconDest(37.5265, 126.9246)
 
     /** 경로 조회(`/api/route/transit`) 응답을 큐에 넣는다 — null 결과는 「경로 없음」, `status`가 500이면 조회 실패(3-state). */

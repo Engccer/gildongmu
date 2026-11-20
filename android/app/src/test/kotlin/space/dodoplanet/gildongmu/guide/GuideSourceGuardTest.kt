@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.guide
 import space.dodoplanet.gildongmu.kit.Fixtures
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -109,11 +110,17 @@ class GuideSourceGuardTest {
         val callers = allSources.filter { it.name != "TtsGuideSpeaker.kt" && Regex("""speaker\.speak\(""").containsMatchIn(it.readText()) }.map { it.name }
         assertEquals(listOf("TransitGuideModel.kt", "WalkGuideModel.kt"), callers.sorted())
         val model = guide.resolve("WalkGuideModel.kt").readText()
+        // 플랫폼 TTS 게시는 모델마다 토큰을 기록하는 한 자리(`speakTracked`, M5 §6-5 — 보류 버림이 발행 모델에만 간다)를 지난다.
+        for (name in listOf("WalkGuideModel.kt", "TransitGuideModel.kt")) {
+            val src = guide.resolve(name).readText()
+            assertEquals(1, Regex("""speaker\.speak\(""").findAll(src).count(), "$name: speaker.speak는 speakTracked 한 자리")
+            assertTrue(src.contains("speaker.speak(text, highPriority)?.also { lastSpeechToken = it }"), name)
+        }
         val queue = model.substringAfter("private val deviceSpeech = DeviceSpeechQueue(").substringBefore("\n    )")
-        assertEquals(2, Regex("""speaker\.speak\(""").findAll(queue).count(), "대기 칸의 발화·전경 게시 둘")
+        assertEquals(2, Regex("""speakTracked\(""").findAll(queue).count(), "대기 칸의 발화·전경 게시 둘")
         val postBody = model.substringAfter("private fun post(").substringBefore("\n    }\n")
-        assertEquals(1, Regex("""speaker\.speak\(""").findAll(postBody).count(), "전경 직접 발화 한 자리")
-        assertEquals(3, Regex("""speaker\.speak\(""").findAll(model).count(), "post와 대기 칸 밖의 직접 발화 금지")
+        assertEquals(1, Regex("""speakTracked\(""").findAll(postBody).count(), "전경 직접 발화 한 자리")
+        assertEquals(4, Regex("""speakTracked\(""").findAll(model).count(), "정의 하나 + post와 대기 칸 밖의 직접 발화 금지")
         assertTrue(postBody.contains("val channel = speechChannel(speechClass)") && postBody.contains("deviceSpeech.submit("), postBody)
         // 전경 복귀는 인계를 상환과 한 문장으로(iOS 동형) — 합본이 버려지면 인계 문장의 장부도 되살린다.
         val ret = model.substringAfter("fun setForeground(foreground: Boolean) {").substringBefore("\n    }\n")
@@ -212,5 +219,19 @@ class GuideSourceGuardTest {
     @Test fun `⑮ TransitGuideModel_kt에 단계 3 표식이 남지 않는다`() {
         val src = guide.resolve("TransitGuideModel.kt").readText()
         assertEquals(0, Regex("단계 3:").findAll(src).count(), "단계 3 표식 잔여")
+    }
+
+    @Test fun `⑯ 단계 4 — 표식 0, 서비스는 GuideSession_walk를 직접 부르지 않고 세대를 싣는다, 대중교통 톤에 리터럴 true 0`() {
+        val transit = guide.resolve("TransitGuideModel.kt").readText()
+        assertEquals(0, Regex("단계 4:").findAll(transit).count(), "단계 4 표식 잔여")
+        val service = guide.resolve("GuideForegroundService.kt").readText()
+        assertFalse(service.contains("GuideSession.walk"), "서비스의 다섯 경로는 serviceOwner()만 지난다(M5 §6-4)")
+        for (route in listOf("GuideSession.serviceFix(", "GuideSession.serviceProviderDisabled(", "GuideSession.serviceStopFromNotification(", "GuideSession.serviceStartFailed(")) {
+            assertTrue(service.contains(route), route)
+        }
+        val session = guide.resolve("GuideSession.kt").readText()
+        assertTrue(session.contains("owner.serviceGeneration != generation"), "세대 대조 한 자리")
+        // E79 백그라운드 톤 허용은 Kit 한 판정 — 리터럴 true로 우회하지 않는다(iOS `transit-background-guards.test.ts`의 안드로이드 판).
+        assertEquals(0, Regex("""allowedInBackground\s*=\s*true""").findAll(transit).count())
     }
 }

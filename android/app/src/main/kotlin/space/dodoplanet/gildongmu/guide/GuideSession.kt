@@ -33,9 +33,14 @@ import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyService
 import space.dodoplanet.gildongmu.kit.RouteService
+import space.dodoplanet.gildongmu.kit.TransitPositionService
+import space.dodoplanet.gildongmu.kit.TransitTrackService
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import java.util.Collections
 import java.util.IdentityHashMap
+
+/** 띄울 안내 시트(M5 §6-7, iOS `GuideSession.screen` 동형) — 도보·자동차 `GuideSheet` 또는 대중교통 시트. 한 호스트가 고른다. */
+enum class GuideScreenKind { beacon, transit }
 
 /**
  * 안내 세션 앱 수명 싱글턴(iOS `GuideSession.shared` 미러, spec §3-1). 세션은 화면이 아니라 앱이 소유한다 — 시트를 내리는
@@ -44,12 +49,19 @@ import java.util.IdentityHashMap
  * `attach`는 멱등이다(리뷰 N3-1). 도보 안내는 정식 기능이라 빌드 구성 게이트가 없다(E43 우선순위 4, iOS 2026-08-15 졸업 동형).
  * 공개 시작 함수는 수단마다 하나다(`startWalk`·`startCar`, M5 spec §2-2). 소스 가드가 호출부를 잠근다: `startWalk(`은
  * `WalkGuideStartButton.kt`와 이 파일의 자동차 도착 뒤 인계, `startCar(`는 `CarGuideStartButton.kt`.
+ *
+ * 모델은 둘이다(M5 §6): 도보·자동차 `walk`와 대중교통 `transit`. 둘은 포커스·톤 재생기·TTS·진동·전경 서비스 컨트롤러 한 벌을 공유하고(§6-5), 서비스의
+ * 다섯 경로는 `serviceOwner()` 한 지점이 세대를 대조해 고른 소유자에게 간다(§6-4). 둘이 동시에 추적하는 순간은 코디네이터 점유가 막는다.
  */
 object GuideSession {
     var coordinator = GuideSessionCoordinator()
         private set
     lateinit var walk: WalkGuideModel
         private set
+    /** 대중교통 모델(M5 §6). `attach`가 도보와 함께 조립한다 — 테스트가 갈아 끼우거나 비울 수 있게 `lateinit`이 아니라 칸이다. */
+    private var transitModel: TransitGuideModel? = null
+    val transit: TransitGuideModel get() = checkNotNull(transitModel) { "GuideSession.attach 전" }
+    private val hasTransit: Boolean get() = transitModel != null
 
     /** 시트가 내려가 띠바가 세션을 대표한다. */
     var isMinimized by mutableStateOf(false)
@@ -73,7 +85,7 @@ object GuideSession {
 
     /** 중첩 화면(장소 상세)이 스택에서 빠졌다 — 안내 화면이 남아 있으면 시트를 다시 연다. 없으면(그 사이 종료·소거) 착지 표식도 버린다. */
     fun reopenAfterNestedScreen() {
-        if (::walk.isInitialized && walk.ui.value.hasScreen) { isMinimized = false; return }
+        if (hasScreen) { isMinimized = false; return }
         // 그 사이 세션이 끝났다(알림 "안내 종료"·안전망) — 재개하지 않는 갈래도 두 표식을 지운다. 남기면 다음 세션의 첫 띠바 착지가 건너뛰어지고
         // 시트 첫 진입이 없는 행 키를 찾는다.
         pendingSheetReturn = null
@@ -112,7 +124,46 @@ object GuideSession {
     val isAttached: Boolean get() = ::walk.isInitialized
 
     val isActive: Boolean get() = coordinator.isActive || (::walk.isInitialized && walk.ui.value.starting)
-    val hasScreen: Boolean get() = ::walk.isInitialized && walk.ui.value.hasScreen
+
+    /**
+     * 띄울 시트(M5 §6-7, iOS `screen` 동형): 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 하차 인계
+     * 신호가 남아 있으면 `transit`. 띠바·`hasScreen`·`reopenAfterNestedScreen`이 이 값을 본다.
+     */
+    val screen: GuideScreenKind?
+        get() = when {
+            ::walk.isInitialized && walk.ui.value.hasScreen -> GuideScreenKind.beacon
+            hasTransit && transit.ui.value.let { it.isTracking || it.pendingWalkHandoff != null } -> GuideScreenKind.transit
+            else -> null
+        }
+    val hasScreen: Boolean get() = screen != null
+
+    // ── 전경 서비스 소유자(M5 §6-4) ──
+
+    /**
+     * 서비스가 말을 거는 세션 — 도보 모델이 시작 중이거나 추적 중이면 도보, 아니면 대중교통이 추적 중이면 대중교통, 아니면 null(서비스는 스스로 내린다).
+     * 매 콜백 시점에 조회하고 인스턴스를 붙들지 않는다.
+     */
+    fun serviceOwner(): GuideServiceOwner? = when {
+        !::walk.isInitialized -> null
+        walk.ui.value.starting || walk.isTracking -> walk
+        hasTransit && transit.isTracking -> transit
+        else -> null
+    }
+
+    /** 세대가 지금 소유자의 것일 때만 그 소유자 — 아니면 로그 한 줄로 버린다(인계 직후 앞 세션의 늦은 이벤트가 새 세션을 끝내지 않게). */
+    private fun ownerFor(generation: Int, event: String): GuideServiceOwner? {
+        val owner = serviceOwner()
+        if (owner == null || owner.serviceGeneration != generation) {
+            GuideDiag.log("service $event dropped gen=$generation owner=${owner?.serviceGeneration}")
+            return null
+        }
+        return owner
+    }
+
+    fun serviceFix(generation: Int, fix: GuideFixPayload) { ownerFor(generation, "fix")?.handleServiceFix(fix) }
+    fun serviceProviderDisabled(generation: Int) { ownerFor(generation, "providerDisabled")?.handleProviderDisabled() }
+    fun serviceStopFromNotification(generation: Int) { ownerFor(generation, "notificationStop")?.stopFromNotification() }
+    fun serviceStartFailed(generation: Int, error: Throwable) { ownerFor(generation, "startFailed")?.onServiceStartFailed(generation, error) }
 
     /** 세션 환경(전경 판정 입력·화면 상태). `permissions`는 `GuideBottomBar`가 런처를 붙인다(Task 5). */
     lateinit var permissions: GuidePermissionsImpl
@@ -138,15 +189,24 @@ object GuideSession {
         val vibrator = AndroidVibrator(context)
         // 문장·언어는 호출 시점에 앱 언어 리소스에서(M2 spec §14-2 — 앱 수명 싱글턴이 `Resources`를 캡처하면 언어 변경 뒤 옛 언어로 굳는다).
         val res: () -> Resources = { AppConfig.localizedApp().resources }
+        val strings = guideStrings(res)
+        val dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(res())) ?: DataLocale.ko }
+        // 두 모델이 공유하는 한 벌(M5 §6-5): 컨트롤러(세대 발급) · 톤 재생기 · TTS · 진동.
+        val controller = AndroidGuideController(context, onStartFailed = ::serviceStartFailed)
+        val tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock)
+        // 보류 문장 버림은 토큰을 싣고 두 모델에 간다 — 그 토큰을 게시한 모델만 상환 표식을 세운다(§6-5).
+        val speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(res()) }, onPendingDropped = ::speechDropped)
+        val haptics = ResultHaptic(vibrator, store) // 결과 진동도 설정 스위치 뒤(iOS 동형)
+        val routes = RouteService(AppConfig.apiClient)
         walk = WalkGuideModel(
-            routes = RouteService(AppConfig.apiClient),
-            strings = guideStrings(res),
-            dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(res())) ?: DataLocale.ko },
-            controller = AndroidGuideController(context),
+            routes = routes,
+            strings = strings,
+            dataLocale = dataLocale,
+            controller = controller,
             permissions = permissions,
-            tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock),
-            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(res()) }, onPendingDropped = { walk.onSpeechDropped() }),
-            haptics = ResultHaptic(vibrator, store), // 결과 진동도 설정 스위치 뒤(iOS 동형)
+            tones = tones,
+            speaker = speaker,
+            haptics = haptics,
             steps = AndroidStepCounter(context, main),
             env = env,
             coordinator = coordinator,
@@ -154,6 +214,44 @@ object GuideSession {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
             clock = clock,
         )
+        transitModel = TransitGuideModel(
+            routes = routes,
+            track = TransitTrackService(AppConfig.apiClient),
+            position = TransitPositionService(AppConfig.apiClient),
+            strings = strings,
+            dataLocale = dataLocale,
+            controller = controller,
+            permissions = permissions,
+            tones = tones,
+            speaker = speaker,
+            haptics = haptics,
+            env = env,
+            coordinator = coordinator,
+            isSessionActive = { isActive },
+            // 실시간 안내는 실좌표다(수동 위치를 지나지 않는다 — `EffectiveLocation` 머리 주석, iOS `LocationService.currentCoordinate(force:)`).
+            currentCoordinate = { force -> AppConfig.locationStore.currentCoordinate(force = force) },
+            isMinimized = { isMinimized },
+            store = store,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+            clock = clock,
+            wallClockMs = { System.currentTimeMillis().toDouble() },
+            io = Dispatchers.IO,
+        )
+        routeSpeechInterruptions(speaker)
+    }
+
+    /** TTS 보류 문장 버림(초기화 실패·언어 미지원)을 두 모델에 넘긴다 — 그 토큰을 게시한 모델만 상환 표식을 세운다(M5 §6-5). */
+    fun speechDropped(token: Int) {
+        walk.onSpeechDropped(token)
+        if (hasTransit) transit.onSpeechDropped(token)
+    }
+
+    /** TTS 끊김 콜백 한 칸을 두 모델에 함께 넘긴다 — 각 모델의 대기 칸이 자기 토큰만 반응한다(M5 §6-5, iOS 관찰자 목록 동형). */
+    private fun routeSpeechInterruptions(speaker: GuideSpeaker) {
+        speaker.onInterrupted = { token, reason ->
+            walk.speechInterrupted(token, reason)
+            if (hasTransit) transit.speechInterrupted(token, reason)
+        }
     }
 
     /** 도보 안내 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
@@ -197,24 +295,33 @@ object GuideSession {
         walk.requestStart(request)
     }
 
-    // ── 억제 소유자 집합(§5-5) — 동일성(iOS ObjectIdentifier), equals 기반 HashSet 금지 ──
+    // ── 억제 소유자 집합(§5-5) — 동일성(iOS ObjectIdentifier), equals 기반 HashSet 금지. 두 모델에 함께 걸고 이전 값은 모델마다 든다(M5 §6-5) ──
     private val suppressionOwners: MutableSet<Any> = Collections.newSetFromMap(IdentityHashMap())
     private var suppressionPrior: Boolean? = null
+    private var transitSuppressionPrior: Boolean? = null
 
     fun setOutputSuppressed(active: Boolean, owner: Any) {
         if (!::walk.isInitialized) return  // attach(첫 `GuideBottomBar` 컴포지션) 전 — lateinit 예외 차단
         if (active) {
             val wasEmpty = suppressionOwners.isEmpty()
             suppressionOwners += owner
-            if (wasEmpty) suppressionPrior = walk.outputSuppressed
+            if (wasEmpty) {
+                suppressionPrior = walk.outputSuppressed
+                transitSuppressionPrior = if (hasTransit) transit.outputSuppressed else null
+            }
             // 세션 경계가 억제를 풀었어도(§5-5) 소유자가 남아 있는 한 새 소유자·재요청은 억제를 다시 세운다(리뷰 MAJOR).
             walk.outputSuppressed = true
+            if (hasTransit) transit.outputSuppressed = true
         } else {
             suppressionOwners -= owner
             if (suppressionOwners.isNotEmpty()) return
             val prior = suppressionPrior ?: return
             suppressionPrior = null
             walk.outputSuppressed = prior && walk.outputSuppressed
+            val transitPrior = transitSuppressionPrior
+            transitSuppressionPrior = null
+            // 해제는 이전 값 ∧ 현재 값(guidance 규칙) — 대중교통의 해제가 억제 중 버린 마지막 문장을 한 번 다시 낸다(setter).
+            if (hasTransit && transitPrior != null) transit.outputSuppressed = transitPrior && transit.outputSuppressed
         }
     }
 
@@ -225,16 +332,20 @@ object GuideSession {
         inForeground = foreground
         environment?.foreground = foreground
         walk.setForeground(foreground)
-        if (foreground && wasBackground && walk.ui.value.hasScreen) {
+        if (hasTransit) transit.setForeground(foreground)
+        if (foreground && wasBackground && hasScreen) {
             if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1
         }
     }
 
     /** 테스트 전용 — 페이크 포트로 조립한다(`attach`와 같은 멱등 규칙은 없다: 테스트가 매번 새로 끼운다). */
-    internal fun attachForTest(model: WalkGuideModel, coordinator: GuideSessionCoordinator) {
+    internal fun attachForTest(model: WalkGuideModel, coordinator: GuideSessionCoordinator, transit: TransitGuideModel? = null, speaker: GuideSpeaker? = null) {
         walk = model
+        transitModel = transit
         this.coordinator = coordinator
         suppressionOwners.clear()
         suppressionPrior = null
+        transitSuppressionPrior = null
+        speaker?.let { routeSpeechInterruptions(it) }
     }
 }

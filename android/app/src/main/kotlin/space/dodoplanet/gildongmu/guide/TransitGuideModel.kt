@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -188,7 +189,7 @@ data class TransitTransferWalkHandoff(
  * - 세션 단일성: `GuideSessionCoordinator`(도보·자동차와 상호 배제).
  *
  * 단계 2-1(수명·폴·유휴·통지)까지 옮겼다. 단계 3 몫(승차 중 현재역 E35·버스 정류장 E48·재기준 E76·잘못 내림 복구 E78·목적지 전환·다른 경로)까지 옮겼다(표식 0은 소스 가드가
- * 잠근다). 서비스·세션 배선은 `// 단계 4:` 표식이다. 사용자 동작(2-2)은 이 파일 「사용자 액션」 절이다.
+ * 잠근다). 서비스·세션 배선(단계 4)은 `GuideSession`이 조립한다(전경 서비스 소유자 `GuideServiceOwner`, M5 §6-4). 사용자 동작(2-2)은 이 파일 「사용자 액션」 절이다.
  *
  * ⚠ 동기화가 없다 — 메인 스레드에서만 부른다(`scope`도 메인, `DeferredAnnouncer` 계약). 시계는 둘이다: `clock`(단조 초 — 유휴·`DeferredAnnouncer`·계측)과
  * `wallClockMs`(벽시계 epoch ms — 서버 도착 시각·떠난 열차 보존 180초, iOS `nowMs()`·`Date()` 자리).
@@ -206,18 +207,18 @@ class TransitGuideModel(
     private val haptics: GuideHaptics,
     private val env: GuideEnvironment,
     private val coordinator: GuideSessionCoordinator,
-    /** 거부 판정용 「다른 안내가 있는가」(iOS `GuideSession.isActive` = 코디네이터 점유 ∨ 도보 `starting`). `GuideSession`이 `{ isActive }`를 넘긴다(단계 4). ⚠ 기본값 없음(안전 인자). */
+    /** 거부 판정용 「다른 안내가 있는가」(iOS `GuideSession.isActive` = 코디네이터 점유 ∨ 도보 `starting`). `GuideSession`이 `{ isActive }`를 넘긴다. ⚠ 기본값 없음(안전 인자). */
     private val isSessionActive: () -> Boolean,
-    /** iOS `LocationService.shared.currentCoordinate(force:)` 자리 — 안드로이드 `location/LocationStore.currentCoordinate`가 대응한다(실패는 예외). 단계 4에서 `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
+    /** iOS `LocationService.shared.currentCoordinate(force:)` 자리 — 안드로이드 `location/LocationStore.currentCoordinate`가 대응한다(실패는 예외). `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
     private val currentCoordinate: suspend (force: Boolean) -> NearbyCoord,
-    /** iOS `GuideSession.shared.isMinimized` 자리 — 복구 결과 문장을 통지로 낼지(시트가 최소화돼 착지가 없을 때). 단계 4에서 `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
+    /** iOS `GuideSession.shared.isMinimized` 자리 — 복구 결과 문장을 통지로 낼지(시트가 최소화돼 착지가 없을 때). `GuideSession`이 넘긴다. ⚠ 기본값 없음. */
     private val isMinimized: () -> Boolean,
     private val store: KeyValueStore,
     private val scope: CoroutineScope,
     private val clock: () -> Double,
     private val wallClockMs: () -> Double,
     private val io: CoroutineDispatcher,
-) {
+) : GuideServiceOwner {
     private val _ui = MutableStateFlow(TransitGuideUiState())
     val ui: StateFlow<TransitGuideUiState> = _ui.asStateFlow()
     private inline fun mutate(f: TransitGuideUiState.() -> TransitGuideUiState) = _ui.update { it.f() }
@@ -319,10 +320,56 @@ class TransitGuideModel(
      */
     var onTransferWalk: ((TransitTransferWalkHandoff) -> Unit)? = null
 
-    // ── keep-alive 판정 값(서비스는 단계 4) ──
+    // ── keep-alive: 원함과 가동(M5 §6-4 — 설계 리뷰 반영) ──
     private val _keepAliveWanted = MutableStateFlow<GuideLocationProfile?>(null)
-    /** 대중교통 keep-alive 위치 스트림을 원하는가와 그 프로파일(null = 필요 없다). 판정만 하고 서비스를 켜고 끄는 것은 단계 4다. */
+    /** 대중교통 keep-alive 위치 스트림을 원하는가와 그 프로파일(null = 필요 없다) — iOS `updateKeepAlive`의 판정. 서비스는 이 값을 프로파일로 읽는다. */
     val keepAliveWanted: StateFlow<GuideLocationProfile?> = _keepAliveWanted.asStateFlow()
+
+    /**
+     * 지금 쥔 서비스 요청의 세대 = keep-alive 가동(서비스가 실제로 떴는가). 원함이 있는데 이 값이 null이면 시작이 거부된 것이다(잠금 중 추정 도착 → 재관측
+     * riding 복귀의 백그라운드 시작 거부) — 전경 복귀가 원함을 다시 판정해 켠다.
+     */
+    override var serviceGeneration: Int? = null
+        private set
+    val keepAliveRunning: Boolean get() = serviceGeneration != null
+
+    override val locationProfile: StateFlow<GuideLocationProfile?> get() = keepAliveWanted
+
+    /** 알림 (제목, 본문) — 제목은 시트 제목(`beacon.transitHeading` + 목적지), 본문은 띠바 문장(iOS `GildongmuApp` 띠바 대중교통 갈래). */
+    override fun notificationText(strings: Strings): Pair<String, String>? =
+        ui.value.takeIf { it.isTracking }?.let { transitNotificationTitleText(it, strings) to transitBandSummaryText(it, strings) }
+
+    override val notificationChanges: Flow<*> get() = ui
+
+    /** keep-alive 스트림의 위치 꺼짐 — 세션을 끝내지 않는다(iOS keep-alive 갱신도 끊길 뿐이다. 전경 폴은 돈다). */
+    override fun handleProviderDisabled() {
+        GuideDiag.log { "transit keepAlive providerDisabled" }
+    }
+
+    /** 알림 「안내 종료」 = 시트의 「안내 종료」(iOS `transit.stop(playStopTone: true)`). */
+    override fun stopFromNotification() = stop(playStopTone = true)
+
+    /** keep-alive 시작 거부(서비스 안 `startForeground` 실패·백그라운드 동기 거부) — 세션을 끝내지 않고 로그 한 줄, 원함은 남는다(iOS `startKeepAliveUpdates` false 자리). */
+    override fun onServiceStartFailed(generation: Int, error: Throwable) {
+        if (generation != serviceGeneration) {
+            GuideDiag.log { "transit keepAlive startFailed stale gen=$generation current=$serviceGeneration" }
+            return
+        }
+        serviceGeneration = null
+        GuideDiag.log { "transit keepAlive startFailed ${error::class.simpleName}" }
+    }
+
+    /** 원함이 있고 가동이 없으면 서비스를 켠다(동기 거부면 같은 호출 안에서 `onServiceStartFailed`가 가동을 되돌린다). */
+    private fun startKeepAliveService() {
+        val generation = controller.nextGeneration()
+        serviceGeneration = generation
+        controller.start(generation)
+    }
+
+    private fun stopKeepAliveService() {
+        serviceGeneration?.let { controller.stop(it) }
+        serviceGeneration = null
+    }
 
     /**
      * 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 null.
@@ -381,8 +428,8 @@ class TransitGuideModel(
 
     /**
      * 기기 음성 대기 한 칸(E53 spec §4.2) — 모델마다 자기 칸을 만든다(iOS 동형, M5 §6-5). 백그라운드 ∧ 토글 켬의 행동 문장만 여기로 온다. 도보 모델과 같은 안드로이드
-     * 매핑이다(`voiceOver` 채널 = 전경 직접 발화라 늘 들린다). ⚠ `speaker.onInterrupted`에 대입하지 않는다 — 그 칸은 도보 모델이 쥐고 있어 덮으면 도보가
-     * 망가진다. 끊김 통지는 `speechInterrupted(token, reason)`가 자기 칸으로 넘긴다(토큰 라우팅은 단계 4).
+     * 매핑이다(`voiceOver` 채널 = 전경 직접 발화라 늘 들린다). ⚠ `speaker.onInterrupted`에 대입하지 않는다 — `GuideSession`이 그 칸을 두 모델
+     * 팬아웃으로 든다. 끊김 통지는 `speechInterrupted(token, reason)`가 자기 칸으로 넘긴다(칸이 자기 토큰만 반응한다).
      */
     private val deviceSpeech = DeviceSpeechQueue(
         scope = scope,
@@ -393,10 +440,16 @@ class TransitGuideModel(
         isSuppressed = { outputSuppressed },
         toneEndsAt = { tones.toneEndsAt },
         route = ::speechChannel,
-        speak = { speaker.speak(it, highPriority = false) },
+        speak = { speakTracked(it, highPriority = false) },
         stopSpeaking = { speaker.stop() },
-        postVoiceOver = { text, high -> speaker.speak(text, high) != null },
+        postVoiceOver = { text, high -> speakTracked(text, high) != null },
     )
+
+    /** 이 모델이 마지막으로 게시한 발화 토큰 — 보류 문장 버림(`onSpeechDropped`)이 이 모델의 것인지 가른다(M5 §6-5). */
+    private var lastSpeechToken: Int? = null
+
+    private fun speakTracked(text: String, highPriority: Boolean): Int? =
+        speaker.speak(text, highPriority)?.also { lastSpeechToken = it }
 
     /** 직전 폴 시작의 단조 시각(초) — `pollStart sinceLast=` 계측(A16 미확정 ②). */
     private var lastPollStartAt: Double? = null
@@ -638,9 +691,9 @@ class TransitGuideModel(
         tones.endSession()
         if (_keepAliveWanted.value != null) {
             _keepAliveWanted.value = null
-            // 단계 4: controller — keep-alive 서비스를 끈다
             GuideDiag.log { "transit keepAlive stop reason=sessionEnd" }
         }
+        stopKeepAliveService()
         ridingPosition = null
         clearBusStop()
         busAlightNotice = null
@@ -763,7 +816,8 @@ class TransitGuideModel(
                 restartPollLoop(immediate = true)
             }
             missedAnnouncement = false
-            // 단계 4: controller — 원함(keepAliveWanted)을 다시 판정해 서비스를 켠다(잠금 중 추정 도착 → 재관측 복귀 뒤 시작 거부 재시도)
+            // 원함을 다시 판정해 가동이 없으면 켠다(잠금 중 추정 도착 → 재관측 riding 복귀의 백그라운드 시작 거부를 갚는다, M5 §6-4).
+            if (_keepAliveWanted.value != null && !keepAliveRunning) startKeepAliveService()
         } finally {
             if (handed.isNotEmpty()) announce(handed.joinToString(" "), highPriority = true, speechClass = GuideSpeechClass.actionable)
         }
@@ -854,7 +908,7 @@ class TransitGuideModel(
     /**
      * (boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 유휴 아님이면 keep-alive 스트림을 원하고, 아니면 끈다. 권한이 **이미 있을 때만** 원한다 — 요청하지 않고, 없으면 로그 한
      * 줄(세션당 1회) — 권한 팝업을 새로 띄우지 않는다. boarding을 넣은 것은 A46(위원장 판정 2026-09-23): 고른 차량을 기다리다 화면을 끄면 앱이 잠들어 도착 관측
-     * (`boarded(observed)`)을 놓쳤다. 안드로이드는 판정만 `keepAliveWanted`로 내보내고 서비스를 켜고 끄는 것은 단계 4다(원함과 가동 분리, M5 §6-4).
+     * (`boarded(observed)`)을 놓쳤다. 안드로이드는 원함(`keepAliveWanted`)과 가동(`serviceGeneration`)을 가른다(M5 §6-4 — 시작 거부는 원함을 남기고 전경 복귀가 다시 켠다).
      */
     private fun updateKeepAlive() {
         val s = state
@@ -868,6 +922,7 @@ class TransitGuideModel(
             val profile = if (busRiding) GuideLocationProfile.keepAliveBus else GuideLocationProfile.keepAlive
             val current = _keepAliveWanted.value
             if (current != null) {
+                // 프로파일 전환은 원함만 바꾼다 — 서비스가 `locationProfile`을 보고 스트림을 다시 연다(A46: boarding에서 켠 서비스를 riding에서 올린다).
                 if (current != profile) {
                     _keepAliveWanted.value = profile
                     GuideDiag.log { "transit keepAlive profile=${if (busRiding) "bus" else "default"}" }
@@ -876,16 +931,17 @@ class TransitGuideModel(
             }
             if (permissions.currentLocation() != LocationPermission.None) {
                 _keepAliveWanted.value = profile
-                // 단계 4: controller — 서비스를 켠다(실패는 세션을 끝내지 않고 로그 한 줄, 전경 폴은 돈다). 서비스의 fix는 `handleServiceFix`로 흘린다(iOS `keepAliveFixSink`).
+                // 실패는 세션을 끝내지 않고 로그 한 줄, 전경 폴은 돈다(`onServiceStartFailed`). 서비스의 fix는 `handleServiceFix`로 흐른다(iOS `keepAliveFixSink`).
                 GuideDiag.log { "transit keepAlive start profile=${if (busRiding) "bus" else "default"}" }
+                startKeepAliveService()
             } else if (!keepAliveDeniedLogged) {
                 keepAliveDeniedLogged = true
                 GuideDiag.log { "transit keepAlive denied" }
             }
         } else if (_keepAliveWanted.value != null) {
             _keepAliveWanted.value = null
-            // 단계 4: controller — 서비스를 끈다
             GuideDiag.log { "transit keepAlive stop reason=${if (idlePaused) "idle" else "phase"}" }
+            stopKeepAliveService()
         }
     }
 
@@ -919,9 +975,9 @@ class TransitGuideModel(
 
     /**
      * keep-alive 서비스의 위치 fix 한 건(E48 §4.3, iOS `keepAliveFixSink` → `ingestKeepAliveFix`). 판정은 Kit, 여기는 반영·계측만 — 리듀서 입력이 아니다.
-     * 서비스를 켜고 이 입구에 연결하는 것은 단계 4(`GuideSession`)다.
+     * 서비스는 `GuideSession.serviceOwner()`가 이 모델을 고를 때 세대가 맞는 fix만 여기로 보낸다.
      */
-    fun handleServiceFix(fix: GuideFixPayload) {
+    override fun handleServiceFix(fix: GuideFixPayload) {
         ingestKeepAliveFix(fix)
     }
 
@@ -2539,7 +2595,7 @@ class TransitGuideModel(
     private fun handle(event: TransitGuideEvent) {
         val profile = transitEventProfile(event)
         // 백그라운드 톤 허용 집합은 Kit `transitToneAllowedInBackground` 하나가 가른다(E79 위원장 판정 2026-11-07 — 승차 중 사다리·임박·도착과 첫 관측, 경고음 제외).
-        // 이 파일엔 리터럴 `true`가 없다(소스 가드 `transit-background-guards.test.ts`의 안드로이드 판은 단계 4).
+        // 이 파일엔 리터럴 `true`가 없다(소스 가드 `GuideSourceGuardTest`, iOS `transit-background-guards.test.ts`의 안드로이드 판).
         val allowedInBackground = transitToneAllowedInBackground(TransitBackgroundToneSource.Event(event))
         when (profile.tone) {
             TransitGuideTone.start -> playTone(BeaconTone.start, allowedInBackground)
@@ -2907,7 +2963,7 @@ class TransitGuideModel(
         if (!env.isForeground()) GuideDiag.log { "transit bgSpeech channel=${channel.rawValue} class=${speechClass.rawValue} text=$message" }
         return when (channel) {
             GuideSpeechChannel.voiceOver -> {
-                val ok = speaker.speak(spokenUnits(message), highPriority) != null
+                val ok = speakTracked(spokenUnits(message), highPriority) != null
                 // 포커스를 못 잡거나 엔진이 없으면 게시하지 못한 것이다 — 복귀 상환이 갚고 호출부 `onDropped`가 latch를 푼다(도보 모델 동형).
                 if (!ok) missedAnnouncement = true
                 ok
@@ -2932,15 +2988,17 @@ class TransitGuideModel(
     }
 
     /**
-     * TTS 끊김 통지를 자기 칸으로 넘긴다. ⚠ `speaker.onInterrupted`에 직접 대입하지 않는다 — 그 칸은 지금 도보 모델이 쥐고 있다. 두 모델로의 토큰 라우팅은
-     * 단계 4(`GuideSession`)가 한다(M5 §6-5).
+     * TTS 끊김 통지를 자기 칸으로 넘긴다. `GuideSession.attach`가 TTS의 끊김 콜백 한 칸을 두 모델에 함께 넘긴다(M5 §6-5) —
+     * 이 칸이 자기 토큰만 반응한다.
      */
     fun speechInterrupted(token: Int, reason: DeviceSpeechDrop) {
         deviceSpeech.speechInterrupted(token, reason)
     }
 
     /** TTS 초기화 전에 보류된 문장이 초기화 실패·언어 미지원으로 버려졌다 — 전경 복귀 상환이 현재 상태를 다시 낸다(도보 모델 동형). */
-    fun onSpeechDropped() {
+    fun onSpeechDropped(token: Int) {
+        // 다른 모델이 게시한 보류 문장의 버림은 이 모델의 상환이 아니다(M5 §6-5).
+        if (token != lastSpeechToken) return
         missedAnnouncement = true
     }
 

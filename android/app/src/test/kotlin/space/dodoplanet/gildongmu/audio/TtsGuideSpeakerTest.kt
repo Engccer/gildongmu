@@ -137,20 +137,22 @@ class TtsGuideSpeakerTest {
 
     @Test fun `보류 문장이 초기화 실패·언어 미지원으로 버려지면 onPendingDropped가 불린다`() {
         var dropped = 0
+        var droppedToken: Int? = null
         val t1 = FakeTts()
-        val s1 = TtsGuideSpeaker(t1, focus, store, { "ko" }, onPendingDropped = { dropped++ })
+        val s1 = TtsGuideSpeaker(t1, focus, store, { "ko" }, onPendingDropped = { t -> dropped++; droppedToken = t })
         assertEquals(1, s1.speak("a", false))
         t1.onReady!!(false)
         assertEquals(1, dropped)
+        assertEquals(1, droppedToken, "버린 보류 문장의 토큰을 싣는다 — 그 토큰을 게시한 모델만 상환 장부를 세운다(M5 §6-5)")
         val t2 = FakeTts().also { it.languageOk = false }
-        val s2 = TtsGuideSpeaker(t2, focus, store, { "ko" }, onPendingDropped = { dropped++ })
+        val s2 = TtsGuideSpeaker(t2, focus, store, { "ko" }, onPendingDropped = { _ -> dropped++ })
         s2.speak("b", false)
         t2.onReady!!(true)
         assertEquals(2, dropped)
         assertEquals(emptyList(), t2.spoken)
         // 보류가 없으면 부르지 않는다.
         val t3 = FakeTts()
-        TtsGuideSpeaker(t3, focus, store, { "ko" }, onPendingDropped = { dropped++ }).prepare()
+        TtsGuideSpeaker(t3, focus, store, { "ko" }, onPendingDropped = { _ -> dropped++ }).prepare()
         t3.onReady!!(false)
         assertEquals(2, dropped)
     }

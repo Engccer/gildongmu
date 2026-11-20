@@ -193,6 +193,53 @@ class TransitGuideRidingTest {
         assertNull(h.model.keepAliveWanted.value, "arrived는 keep-alive를 원하지 않는다")
     }
 
+    // ── 단계 4: keep-alive 서비스 원함과 가동(M5 §6-4) ──
+
+    @Test fun `keep-alive 서비스는 원함이 서면 켜고 프로파일 전환은 다시 켜지 않으며 원함이 지면 끈다`() = transitTest(dispatcher) { h ->
+        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false)
+        settle()
+        assertEquals(0, h.controller.starts, "대기 국면은 서비스가 필요 없다")
+        h.model.boardApprox()
+        settle()
+        assertEquals(1, h.controller.starts, "boarding이 keep-alive를 켠다(A46)")
+        assertTrue(h.model.keepAliveRunning)
+        assertEquals(h.controller.current, h.model.serviceGeneration)
+        val generation = h.model.serviceGeneration
+        h.model.confirmBoarded()
+        settle()
+        assertEquals(GuideLocationProfile.keepAliveBus, h.model.locationProfile.value, "버스 riding은 프로파일만 올린다 — 서비스가 스트림을 다시 연다")
+        assertEquals(1, h.controller.starts, "프로파일 전환은 서비스를 다시 켜지 않는다")
+        assertEquals(generation, h.model.serviceGeneration)
+        h.model.declareArrived()
+        assertNull(h.model.serviceGeneration)
+        assertEquals(1, h.controller.stops, "원함이 지면 그 세대를 내린다")
+        assertNull(h.controller.current)
+    }
+
+    @Test fun `keep-alive 시작 거부는 세션을 끝내지 않고 원함을 남기며 전경 복귀가 다시 켠다`() = transitTest(dispatcher) { h ->
+        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false)
+        settle()
+        // 화면이 잠긴 채 원함이 서는 전이(설계 리뷰 — 잠금 중 추정 도착 → 재관측 riding 복귀)의 기제: 백그라운드 시작이 동기로 거부된다.
+        h.model.setForeground(false)
+        h.env.foreground = false
+        h.controller.failOnStart = IllegalStateException("ForegroundServiceStartNotAllowed")
+        h.model.boardApprox()
+        settle()
+        assertTrue(h.model.ui.value.isTracking, "시작 거부는 세션을 끝내지 않는다(iOS startKeepAliveUpdates false 자리)")
+        assertNotNull(h.model.keepAliveWanted.value, "원함은 남는다")
+        assertFalse(h.model.keepAliveRunning, "가동은 거짓")
+        assertEquals(1, h.controller.starts)
+        // 늦게 온 앞 세대의 실패는 지금 가동을 접지 않는다.
+        h.controller.failOnStart = null
+        h.env.foreground = true
+        h.model.setForeground(true)
+        settle()
+        assertTrue(h.model.keepAliveRunning, "전경 복귀가 원함을 다시 판정해 켠다")
+        assertEquals(2, h.controller.starts)
+        h.model.onServiceStartFailed(h.controller.startedGenerations.first(), IllegalStateException("late"))
+        assertTrue(h.model.keepAliveRunning, "앞 세대의 늦은 실패는 버린다")
+    }
+
     @Test fun `지하철 승차 중은 일반 keep-alive이고 세션 종료가 끈다`() = transitTest(dispatcher) { h ->
         boardAndRide(h)
         assertEquals(GuideLocationProfile.keepAlive, h.model.keepAliveWanted.value)

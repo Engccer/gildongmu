@@ -1,5 +1,8 @@
 package space.dodoplanet.gildongmu.guide
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.DeviceSpeechDrop
 import space.dodoplanet.gildongmu.location.LocationPermission
@@ -8,10 +11,46 @@ import space.dodoplanet.gildongmu.location.LocationPermission
 // (`GuideForegroundService`·`GuideTonePlayer`·`GuideSpeaker`·`ResultHaptic`·`AndroidStepCounter`)이며 JVM 테스트는 페이크를 쓴다.
 // 판정은 전부 :kit 순수 함수이고 여기는 "실제로 하는 곳"과의 경계다(D5).
 
-/** 전경 서비스 손잡이. 시작 실패는 여기서 던져지지 않는다 — 서비스 안에서 잡아 `WalkGuideModel.onServiceStartFailed`로 되부른다(§4-1). */
+/**
+ * 전경 서비스 손잡이(두 모델이 한 인스턴스를 공유한다). 시작 실패는 여기서 던져지지 않는다 — 서비스 안의 `startForeground` 실패와 Android 12+의 동기
+ * 시작 거부(`startForegroundService` 예외)를 모두 같은 세대의 `GuideServiceOwner.onServiceStartFailed`로 되부른다(M4 §4-1, M5 §6-4).
+ *
+ * 세대(M5 §6-4): 모델은 시작마다 [nextGeneration]으로 세대를 받아 `serviceGeneration`으로 들고 [start]에 넘긴다. 서비스의 다섯 경로(fix·위치 꺼짐·알림 문장·
+ * 알림 「안내 종료」·시작 실패)는 그 세대를 싣고 돌아오고 `GuideSession`이 지금 소유자의 세대와 같을 때만 전달한다 — 인계 직후 앞 세션의 늦은 이벤트가 새
+ * 세션을 끝내지 않게. 발급을 공유 인스턴스 하나에 둔 것은 두 모델이 한 단조 수열을 쓰게 하려는 것이다(spec은 `GuideSession.nextServiceGeneration`).
+ */
 interface GuideForegroundController {
-    fun start()
-    fun stop()
+    fun nextGeneration(): Int
+    fun start(generation: Int)
+
+    /** 그 세대의 서비스를 내린다. 서비스가 이미 더 새 세대로 넘어갔으면 아무것도 하지 않는다(앞 세션의 늦은 정지가 새 세션의 서비스를 내리지 않게). */
+    fun stop(generation: Int)
+}
+
+/**
+ * 전경 서비스가 말을 거는 세션 쪽(M5 §6-4) — 도보·자동차(`WalkGuideModel`)와 대중교통(`TransitGuideModel`)이 구현한다. 서비스는 소유자를 붙들지 않고
+ * 매 콜백 시점에 `GuideSession.serviceOwner()`로 고른다.
+ */
+interface GuideServiceOwner {
+    /** 서비스가 열 위치 스트림의 모양. null = 서비스가 필요 없다. 바뀌면 서비스가 스트림을 다시 연다. */
+    val locationProfile: StateFlow<GuideLocationProfile?>
+
+    /** 지금 상태의 알림 (제목, 본문). 알림을 낼 상태가 아니면(추적 아님) null. 서비스는 [notificationChanges]마다 다시 읽고 `distinctUntilChanged`만 한다. */
+    fun notificationText(strings: Strings): Pair<String, String>?
+
+    /** 알림 문장이 바뀔 수 있는 상태 변화 신호(관찰 상태 그대로). */
+    val notificationChanges: Flow<*>
+    fun handleServiceFix(fix: GuideFixPayload)
+    fun handleProviderDisabled()
+
+    /** 알림 「안내 종료」 = 시트의 안내 종료와 같은 함수(정지음 + 정지 문장). */
+    fun stopFromNotification()
+
+    /** 이 소유자의 그 세대 시작이 거부됐다. 세대가 지금 든 세대와 다르면 무시한다. */
+    fun onServiceStartFailed(generation: Int, error: Throwable)
+
+    /** 이 모델이 지금 쥔 서비스 요청의 세대(없으면 null). */
+    val serviceGeneration: Int?
 }
 
 /**

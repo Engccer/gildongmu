@@ -29,14 +29,34 @@ import space.dodoplanet.gildongmu.location.LocationPermission
 class FakeController : GuideForegroundController {
     var starts = 0
     var stops = 0
-    /** start()가 이 예외로 실패한 것처럼 콜백을 되부른다(서비스 안 `startForeground` 실패 모양). */
+    /** 발급한 세대 수(두 모델이 한 인스턴스를 공유하면 한 수열). */
+    var issued = 0
+        private set
+    /** 지금 떠 있는 세대(`AndroidGuideController`와 같은 규칙 — 다른 세대의 정지는 무시). */
+    var current: Int? = null
+        private set
+    val startedGenerations = mutableListOf<Int>()
+    /** start()가 이 예외로 실패한 것처럼 콜백을 **동기로** 되부른다(서비스 안 `startForeground` 실패·Android 12+ 백그라운드 동기 거부 모양). */
     var failOnStart: Throwable? = null
-    lateinit var model: WalkGuideModel
-    override fun start() {
+    /** 실패를 되돌려 줄 소유자(테스트가 모델을 끼운다). */
+    lateinit var model: GuideServiceOwner
+    /** 두 모델이 붙은 조립에선 앱처럼 `GuideSession.serviceStartFailed`로 보낸다(세대 대조를 지난다). */
+    var route: ((Int, Throwable) -> Unit)? = null
+    override fun nextGeneration(): Int = ++issued
+    override fun start(generation: Int) {
         starts++
-        failOnStart?.let { model.onServiceStartFailed(it) }
+        startedGenerations += generation
+        current = generation
+        failOnStart?.let {
+            current = null
+            route?.invoke(generation, it) ?: model.onServiceStartFailed(generation, it)
+        }
     }
-    override fun stop() { stops++ }
+    override fun stop(generation: Int) {
+        if (generation != current) return
+        current = null
+        stops++
+    }
 }
 
 class FakePermissions(

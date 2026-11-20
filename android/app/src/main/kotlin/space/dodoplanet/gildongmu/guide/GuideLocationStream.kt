@@ -24,7 +24,7 @@ class GuideLocationStream(context: Context) {
 
     /** 스트림을 연다. provider가 하나도 없으면 false(호출부가 제공자 꺼짐과 같은 경로로 접는다). */
     @SuppressLint("MissingPermission") // 권한은 WalkGuideModel.start ②가 먼저 판정하고 startForeground가 그 뒤다
-    fun open(onFix: (GuideFixPayload) -> Unit, onProviderDisabled: () -> Unit): Boolean {
+    fun open(profile: GuideLocationProfile, onFix: (GuideFixPayload) -> Unit, onProviderDisabled: () -> Unit): Boolean {
         val manager = manager ?: return false
         val provider = when {
             manager.hasProvider(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
@@ -37,13 +37,24 @@ class GuideLocationStream(context: Context) {
             override fun onProviderEnabled(p: String) = Unit // 세션은 이미 끝났다(§4-2)
         }
         listener = l
-        GuideDiag.log("stream provider=$provider")
-        val request = LocationRequest.Builder(1_000L)
+        GuideDiag.log("stream provider=$provider profile=$profile")
+        manager.requestLocationUpdates(provider, locationRequest(profile), app.mainExecutor, l)
+        return true
+    }
+
+    /**
+     * 프로파일별 요청(M5 §6-4). `beacon`·`keepAliveBus` = 1초·고정밀·거리 필터 없음(도보·자동차, 버스 승차 중 정류장 표식 E48 — iOS 10m급·필터 없음),
+     * `keepAlive` = 프로세스 유지용 저전력 60초·500m(iOS 1km급·500m). 데드밴드가 이미 필터라 고정밀 프로파일은 거리 필터를 끈다.
+     */
+    private fun locationRequest(profile: GuideLocationProfile): LocationRequest = when (profile) {
+        GuideLocationProfile.beacon, GuideLocationProfile.keepAliveBus -> LocationRequest.Builder(1_000L)
             .setQuality(LocationRequest.QUALITY_HIGH_ACCURACY)
             .setMinUpdateDistanceMeters(0f)
             .build()
-        manager.requestLocationUpdates(provider, request, app.mainExecutor, l)
-        return true
+        GuideLocationProfile.keepAlive -> LocationRequest.Builder(60_000L)
+            .setQuality(LocationRequest.QUALITY_LOW_POWER)
+            .setMinUpdateDistanceMeters(500f)
+            .build()
     }
 
     fun close() {

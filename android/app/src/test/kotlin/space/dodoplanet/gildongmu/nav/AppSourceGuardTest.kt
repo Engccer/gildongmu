@@ -126,7 +126,8 @@ class AppSourceGuardTest {
     /** spec 판정 38 — 앱 층의 좌표 진입점은 `EffectiveLocation`뿐. 화면·ViewModel이 GPS 스토어를 직접 잡으면 그 화면만 수동 위치를 무시하고 화면으로 반증되지 않는다. */
     @Test fun `location 밖에서 LocationStore를 직접 잡지 않는다(수신자 기준)`() {
         // 자리가 아니라 역할로 면제한다 — `location/` 안이라도 화면·ViewModel이 새로 들어오면 목록에 근거와 함께 올려야 한다.
-        val allowed = setOf("AppConfig.kt", "LocationStore.kt", "EffectiveLocation.kt", "ManualLocationJudge.kt", "CurrentAddressStore.kt", "ManualLocationPickerViewModel.kt")
+        // `GuideSession.kt`: 실시간 안내(대중교통 현재 위치·잘못 내림 복구)는 실좌표다 — 수동 위치를 지나지 않는다(`EffectiveLocation` 머리 주석, M5 §6-1).
+        val allowed = setOf("AppConfig.kt", "LocationStore.kt", "EffectiveLocation.kt", "ManualLocationJudge.kt", "CurrentAddressStore.kt", "ManualLocationPickerViewModel.kt", "GuideSession.kt")
         val coordinateCalls = listOf("currentCoordinate", "gpsCoordinateForRanking", "coordinateForDisplay", "currentFix")
         // 화이트리스트 노후화 방지: `LocationStore`의 공개 suspend 함수 전수와 같아야 한다(새 좌표 함수가 목록 갱신 없이 들어오면 여기서 빨갛다).
         val declared = Regex("""^\s{4}suspend fun (\w+)\(""", RegexOption.MULTILINE).findAll(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/location/LocationStore.kt").readText()).map { it.groupValues[1] }.toSet()

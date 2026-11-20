@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -156,7 +157,7 @@ class WalkGuideModel(
     private val scope: CoroutineScope,
     private val clock: () -> Double,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) {
+) : GuideServiceOwner {
     private val text = GuideText(strings)
     /** 수단에서 유도한다(iOS `tuning` getter). 운전자 프로파일(`carDriver`)은 실험판 전용이라 두지 않는다(듣는 사람은 동승자 고정). */
     private val tuning: GuideTuning get() = if (sessionKind == GuideSessionKind.car) GuideTuning.car else GuideTuning.walk
@@ -229,6 +230,25 @@ class WalkGuideModel(
         set(v) { if (_ui.value.currentRoadText != v) mutate { copy(currentRoadText = v) } }
 
     val isTracking: Boolean get() = status == GuideStatus.tracking
+
+    // ── 전경 서비스 소유자(M5 §6-4) — 서비스는 매 콜백 시점에 `GuideSession.serviceOwner()`로 이 모델을 고른다 ──
+
+    /** 도보·자동차는 늘 1초·고정밀 스트림이다(서비스가 이 모델을 소유자로 고를 때만 읽는다). */
+    override val locationProfile: StateFlow<GuideLocationProfile?> = MutableStateFlow(GuideLocationProfile.beacon)
+
+    /** 지금 쥔 서비스 요청의 세대 — 시작 ⑧에서 받고 `stop()` ⑦에서 놓는다. */
+    override var serviceGeneration: Int? = null
+        private set
+
+    /** 알림 (제목, 본문) — 추적 중일 때만 낸다(매 fix 갱신 금지는 서비스의 `distinctUntilChanged`). */
+    override fun notificationText(strings: Strings): Pair<String, String>? =
+        if (!isTracking) null else ui.value.let { notificationTitleText(it, strings) to notificationBodyText(it, strings) }
+
+    override val notificationChanges: Flow<*> get() = ui
+
+    override fun handleServiceFix(fix: GuideFixPayload) = handleFix(fix)
+
+    override fun stopFromNotification() = stopByUser()
 
     /** androidTest 전용 — 시트·띠바를 특정 상태로 띄운다(세션은 시작하지 않는다). 프로덕션 호출 0(소스 가드). */
     @androidx.annotation.VisibleForTesting
@@ -447,10 +467,22 @@ class WalkGuideModel(
         isSuppressed = { outputSuppressed },
         toneEndsAt = { tones.toneEndsAt },
         route = ::speechChannel,
-        speak = { speaker.speak(it, highPriority = false) },
+        speak = { speakTracked(it, highPriority = false) },
         stopSpeaking = { speaker.stop() },
-        postVoiceOver = { text, high -> speaker.speak(text, high) != null },
+        postVoiceOver = { text, high -> speakTracked(text, high) != null },
+        // 단독 조립(테스트)의 기본 배선. 앱 조립은 `GuideSession.attach`가 이 칸을 두 모델 팬아웃으로 덮는다(M5 §6-5 — 칸이 자기 토큰만 가린다).
     ).also { queue -> speaker.onInterrupted = { token, reason -> queue.speechInterrupted(token, reason) } }
+
+    /** 이 모델이 마지막으로 게시한 발화 토큰 — 보류 문장 버림(`onSpeechDropped`)이 이 모델의 것인지 가른다(M5 §6-5). */
+    private var lastSpeechToken: Int? = null
+
+    private fun speakTracked(text: String, highPriority: Boolean): Int? =
+        speaker.speak(text, highPriority)?.also { lastSpeechToken = it }
+
+    /** TTS 끊김 통지를 자기 칸으로(`GuideSession`이 두 모델에 함께 넘긴다 — 칸이 자기 토큰만 반응한다). */
+    fun speechInterrupted(token: Int, reason: DeviceSpeechDrop) {
+        deviceSpeech.speechInterrupted(token, reason)
+    }
 
     // ─────────────────────────── 시작 (§3-2) ───────────────────────────
 
@@ -550,8 +582,10 @@ class WalkGuideModel(
         // ⑦
         GuideDiag.log(if (kind == GuideSessionKind.car) "session kind=car listener=passenger" else "session kind=walk")
         // ⑧ 전경 서비스 — 시작 실패는 서비스 안에서 잡혀 `onServiceStartFailed`로 돌아온다(§4-1).
-        controller.start()
-        if (!isTracking) return  // 서비스 시작 실패 콜백이 동기로 왔으면(테스트·즉시 실패) 이미 접혔다
+        val generation = controller.nextGeneration()
+        serviceGeneration = generation
+        controller.start(generation)
+        if (!isTracking) return  // 서비스 시작 실패 콜백이 동기로 왔으면(백그라운드 시작 거부·테스트) 이미 접혔다
         // ⑨ 오디오 — 승격은 첫 톤보다 먼저.
         tones.beginSession()
         playTone(BeaconTone.start)   // 미디어 볼륨 0 판정은 playTone 안에서 1회
@@ -569,7 +603,12 @@ class WalkGuideModel(
      * 전경 서비스가 `startForeground` 실패를 되부른다(§4-1). 세션이 시작되지 않은 것으로 접는다 — 위치 문제와 문장을 가른다(3-state).
      * `stop()`을 지나지 않으므로 토큰·상태를 여기서 직접 되돌린다.
      */
-    fun onServiceStartFailed(error: Throwable) {
+    override fun onServiceStartFailed(generation: Int, error: Throwable) {
+        if (generation != serviceGeneration) {
+            // 앞 세션(또는 인계 전 대중교통)의 늦은 실패 — 지금 세션을 접지 않는다(M5 §6-4).
+            GuideDiag.log("serviceStartFailed stale gen=$generation current=$serviceGeneration")
+            return
+        }
         GuideDiag.log("serviceStartFailed ${error::class.simpleName}: ${error.message}")
         val wasTracking = isTracking
         stop(playStopTone = false)
@@ -609,7 +648,8 @@ class WalkGuideModel(
         sessionToken = null
         startJob?.cancel(); startJob = null; starting = false     // ⑤
         watchdogJob?.cancel(); watchdogJob = null                 // ⑥
-        controller.stop()                                         // ⑦ 서비스·스트림·wake lock
+        serviceGeneration?.let { controller.stop(it) }            // ⑦ 서비스·스트림·wake lock(자기 세대만)
+        serviceGeneration = null
         steps.stop()                                              // ⑧ 값은 남긴다
         if (playStopTone && status == GuideStatus.tracking) playTone(BeaconTone.stop)  // ⑩
         tones.endSession()                                        // ⑪ 정지 톤 뒤
@@ -812,7 +852,7 @@ class WalkGuideModel(
     }
 
     /** 위치 제공자 꺼짐(스트림 콜백, §3-3) — 세션을 끝내고 실패 상태를 남긴다. */
-    fun handleProviderDisabled() {
+    override fun handleProviderDisabled() {
         if (!isTracking) return
         GuideDiag.log("providerDisabled")
         stopLeavingSummary(playStopTone = false, text = strings.get("beacon.weak"))
@@ -2571,7 +2611,7 @@ class WalkGuideModel(
             spoken = strings.get("android.guide.focusDenied") + " " + spoken
         }
         if (channel == GuideSpeechChannel.voiceOver) {
-            val ok = speaker.speak(spoken, highPriority) != null
+            val ok = speakTracked(spoken, highPriority) != null
             syncTtsUnavailable()
             if (!ok) {
                 // 장부 복원 — "지우고, 못 내면 되돌린다"(다른 장부와 같은 계약).
@@ -2593,7 +2633,12 @@ class WalkGuideModel(
     }
 
     /** TTS 초기화 전에 보류된 문장이 초기화 실패·언어 미지원으로 버려졌다 — 전경 복귀 상환이 현재 상태를 다시 낸다. */
-    fun onSpeechDropped() { missedAnnouncement = true; syncTtsUnavailable() }
+    fun onSpeechDropped(token: Int) {
+        // 다른 모델이 게시한 보류 문장(예: 승차 전 도보 시작 문장은 대중교통이 낸다)의 버림은 이 모델의 상환이 아니다(M5 §6-5).
+        if (token != lastSpeechToken) return
+        missedAnnouncement = true
+        syncTtsUnavailable()
+    }
 
     private fun syncTtsUnavailable() {
         val unavailable = speaker.isUnavailable

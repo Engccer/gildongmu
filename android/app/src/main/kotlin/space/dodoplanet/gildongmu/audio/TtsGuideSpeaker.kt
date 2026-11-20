@@ -39,8 +39,8 @@ class TtsGuideSpeaker(
     private val focus: GuideAudioFocus,
     private val store: KeyValueStore,
     private val language: () -> String,
-    /** 초기화 실패·언어 미지원으로 보류 문장을 버릴 때(호출부가 상환 장부를 세운다). */
-    private val onPendingDropped: () -> Unit = {},
+    /** 초기화 실패·언어 미지원으로 보류 문장을 버릴 때 — 그 문장의 토큰을 싣는다(그 토큰을 게시한 모델만 상환 장부를 세운다, M5 §6-5). */
+    private val onPendingDropped: (token: Int) -> Unit = {},
 ) : GuideSpeaker {
     private var ready = false
     private var preparing = false
@@ -77,8 +77,10 @@ class TtsGuideSpeaker(
         pending = null
         val token = pendingToken
         pendingToken = null
-        onPendingDropped()
-        token?.let { onInterrupted?.invoke(it, DeviceSpeechDrop.undelivered) }
+        token?.let {
+            onPendingDropped(it)
+            onInterrupted?.invoke(it, DeviceSpeechDrop.undelivered)
+        }
     }
 
     override fun prepare() {

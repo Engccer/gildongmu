@@ -31,6 +31,7 @@ fun guideStrings(res: () -> Resources): Strings = Strings { key, args ->
 @StringRes
 internal fun guideStringId(key: String): Int? = when (key) {
     "beacon.walkHeading" -> R.string.beacon_walkHeading
+    "beacon.transitHeading" -> R.string.beacon_transitHeading
     "guide.carNewJam" -> R.string.guide_carNewJam
     "guide.carNewJamUnnamed" -> R.string.guide_carNewJamUnnamed
     "beacon.carHeading" -> R.string.beacon_carHeading
@@ -208,6 +209,14 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.band.remaining" -> R.string.guide_band_remaining
     "guide.band.starting" -> R.string.guide_band_starting
     "guide.band.arrived" -> R.string.guide_band_arrived
+    "guide.band.transitWaiting" -> R.string.guide_band_transitWaiting
+    "guide.band.transitRiding" -> R.string.guide_band_transitRiding
+    "guide.band.transitRidingNoCount" -> R.string.guide_band_transitRidingNoCount
+    "guide.band.transitRidingBusUnconfirmed" -> R.string.guide_band_transitRidingBusUnconfirmed
+    "guide.band.transitRidingBusUnconfirmedNoCount" -> R.string.guide_band_transitRidingBusUnconfirmedNoCount
+    "guide.band.transitArrived" -> R.string.guide_band_transitArrived
+    "guide.band.transitDestChangePending" -> R.string.guide_band_transitDestChangePending
+    "guide.band.transitDestChangeFailed" -> R.string.guide_band_transitDestChangeFailed
     "guide.band.ended" -> R.string.guide_band_ended
     "guide.periodicStraight" -> R.string.guide_periodicStraight
     "guide.periodicStraightNoName" -> R.string.guide_periodicStraightNoName
