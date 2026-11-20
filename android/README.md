@@ -80,7 +80,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 
 두 화면 읽기 프로그램은 같은 화면을 다르게 읽는다(한소네는 낭독용 이름과 화면 글자를 이어 붙인다, BACKLOG A75). 한쪽 결과로 다른 쪽을 대신하지 않는다.
 
-- **한소네 7 점자 흐름**: `H7_SCRIPTS=<h7.py 폴더> python3 android/scripts/hansone-smoke.py [검색어]`. 점자 키를 주입하고 점자·화면 출력 기록으로 검색 → 장소 상세 → 길찾기 → 도보 안내 → 제목 메뉴 → 안내 종료를 판정한다. 키 주입 도구 `h7.py`는 저장소 밖에 있다. 한소네가 터미널 모드(화면 읽기 프로그램의 점자 단말)이면 종료 코드 2로 거절한다. 출력이 키보다 한 박자 늦어 키 사이 대기는 1.8초다(1.0초는 한 칸 어긋난 줄을 읽는다). 한소네에는 `uiautomator dump`·`android layout`을 쓰지 않는다. ⚠ 단계별 조작은 2026-11-20에 손으로 확인했고, 대본을 처음부터 끝까지 한 번에 돌린 적은 아직 없다.
+- **한소네 7 점자 흐름**: `H7_SCRIPTS=<h7.py 폴더> python3 android/scripts/hansone-smoke.py [검색어]`. 점자 키를 주입하고 점자·화면 출력 기록으로 검색 → 장소 상세 → 길찾기 → 도보 안내 → 제목 메뉴 → 안내 종료를 판정한다. 키 주입 도구 `h7.py`는 저장소 밖에 있다. 한소네가 터미널 모드(화면 읽기 프로그램의 점자 단말)이면 종료 코드 2로 거절한다. 출력이 키보다 한 박자 늦어 키 사이 대기는 1.8초다(1.0초는 한 칸 어긋난 줄을 읽는다). 한소네에는 `uiautomator dump`·`android layout`을 쓰지 않는다. 전 구간 실행은 5분쯤 걸리고(2026-11-20 두 번 통과), 중간에 끊겨 안내가 남았으면 `--cleanup`으로 끝낸다. adb 서버가 뜨다 죽는 날은 `adb shell true`가 성공할 때까지 되풀이한 뒤 같은 명령 줄에서 이어 실행한다.
 - **가상 기기 톡백 낭독**: `python3 android/scripts/talkback-speech.py on|tab [횟수]|since <초>`. 톡백이 음성 합성기로 넘긴 문장을 logcat에서 읽는다. 준비는 한 번이다.
   1. `sdkmanager "emulator" "system-images;android-35;google_apis_playstore;arm64-v8a"`, `avdmanager create avd -n gildongmu-talkback -k <그 이미지> -d pixel_7`, `emulator -avd gildongmu-talkback -no-window -no-audio`. Play 스토어 이미지에 톡백이 들어 있다.
   2. 톡백 설정 → 고급 설정 → 개발자 설정 → Log output level을 VERBOSE로 바꾼다(루트가 없어 화면에서만 바뀐다. 톡백을 끈 채 `uiautomator dump`로 좌표를 읽어 누른다).

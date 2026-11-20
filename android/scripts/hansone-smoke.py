@@ -80,8 +80,23 @@ def enter(wait: float) -> list[str]:
     return press("8", wait=wait, label="ENTER")
 
 
+def focus() -> str:
+    """지금 초점 창. 창이 바뀌는 순간과 adb 서버가 다시 뜨는 순간에는 「?」가 오므로 몇 번 다시 읽는다."""
+    for _ in range(4):
+        value = h7.focus()
+        if value != "?":
+            return value
+        time.sleep(1.0)
+    return "?"
+
+
 def in_app() -> bool:
-    return PACKAGE in h7.focus()
+    return PACKAGE in focus()
+
+
+def app_on_top() -> bool:
+    """앱의 메뉴(팝업 창)가 초점을 쥐고 있어도 앱이 맨 앞이면 참이다."""
+    return PACKAGE in h7.sh("dumpsys activity activities | grep topResumedActivity")
 
 
 def dismiss_system_dialogs() -> None:
@@ -89,19 +104,19 @@ def dismiss_system_dialogs() -> None:
     for _ in range(3):
         if in_app():
             return
-        focus = h7.focus()
+        window = focus()
         if find("허용 안함", limit=6):
             enter(6)
-            record("INFO", "시스템 창을 「허용 안함」으로 넘김", focus)
+            record("INFO", "시스템 창을 「허용 안함」으로 넘김", window)
         else:
             press("f4", wait=3, label="ESC")
-            record("INFO", "시스템 창을 ESC로 닫음", focus)
+            record("INFO", "시스템 창을 ESC로 닫음", window)
 
 
 def run(query: str) -> None:
     h7.launch(f"{PACKAGE}/.MainActivity", wait=5)
     if not in_app():
-        return record("FAIL", "앱 실행", h7.focus())
+        return record("FAIL", "앱 실행", focus())
     record("PASS", "앱 실행")
 
     if not find("검색 탭", first="prev"):
@@ -145,17 +160,22 @@ def run(query: str) -> None:
         return record("FAIL", "경로 조회 뒤 「안내 시작」")
     record("PASS", "경로 조회", line[:60])
 
-    out = enter(10)
+    started = h7.now()
+    enter(10)
     dismiss_system_dialogs()
     if not in_app():
-        return record("FAIL", "안내 시작 뒤 앱 복귀", h7.focus())
-    landed = next((o for o in out if "남은 거리" in o), None)
+        return record("FAIL", "안내 시작 뒤 앱 복귀", focus())
+    time.sleep(6)  # 첫 착지는 경로 조회와 안내 음성이 끝난 뒤에 앉는다
+    out = [norm(o) for o in h7.lcd(started)]
+    landed = next((o for o in reversed(out) if "남은 거리" in o), None)
     if landed:
         record("PASS", "안내 시트 첫 착지", landed[:60])
-    elif find("남은 거리", limit=8):
-        record("WARN", "안내 시트는 열렸으나 커서가 「남은 거리」에 앉지 않음", " / ".join(out)[-80:])
     else:
-        return record("FAIL", "안내 시트 열림")
+        # 착지 출력이 기록에 없을 때: 바로 다음 줄을 적어 둔다(「남은 거리」 다음 줄이면 출력 없이 앉은 것이다).
+        after = current(press("space 4", label="착지 다음 줄"))
+        if not find("남은 거리", first="prev", limit=8):
+            return record("FAIL", "안내 시트 열림")
+        record("WARN", "안내 시트는 열렸으나 「남은 거리」 착지 출력이 없음", f"다음 줄: {after[:50]}")
 
     if not find("도보 안내", first="prev"):
         return record("FAIL", "안내 시트 제목 찾기")
@@ -172,20 +192,24 @@ def run(query: str) -> None:
 
 
 def cleanup() -> None:
+    if not app_on_top():
+        return record("WARN", "마무리 건너뜀(앱이 맨 앞이 아님)", focus())
     if not in_app():
-        return
-    if find("안내 종료", limit=16):
+        press("f4", wait=3, label="ESC")  # 열린 메뉴 닫기
+    ended = find("안내 종료", limit=16)
+    if ended:
         enter(6)
     press("space z", wait=3, label="앱 닫기")
-    record("PASS" if not in_app() else "WARN", "안내 종료와 앱 닫기", h7.focus())
+    closed = not app_on_top()
+    record("PASS" if ended and closed else "WARN", "안내 종료와 앱 닫기", f"종료 단추 {'찾음' if ended else '못 찾음'}, {focus()}")
 
 
 def main() -> int:
-    focus = h7.focus()
-    if focus == "?":
+    window = focus()
+    if window == "?":
         print("adb로 한소네를 찾지 못했습니다.")
         return 2
-    if TERMINAL_MODE in focus:
+    if TERMINAL_MODE in window:
         print("한소네가 터미널 모드입니다. 화면 읽기 프로그램 연결을 끊은 뒤 다시 실행하세요.")
         return 2
     if PACKAGE not in h7.sh("pm", "list", "packages", PACKAGE):
@@ -193,7 +217,8 @@ def main() -> int:
         return 2
 
     try:
-        run(sys.argv[1] if len(sys.argv) > 1 else "길동 치킨")
+        if sys.argv[1:] != ["--cleanup"]:  # --cleanup: 중간에 끊긴 실행이 남긴 안내만 끝낸다
+            run(sys.argv[1] if len(sys.argv) > 1 else "길동 치킨")
     finally:
         cleanup()
 
