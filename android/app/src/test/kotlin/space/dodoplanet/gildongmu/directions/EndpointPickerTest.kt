@@ -27,6 +27,7 @@ import kotlin.test.assertTrue
 class EndpointPickerTest {
     private val dispatcher = StandardTestDispatcher()
     private val selected = ArrayList<Pair<DirectionsEndpoint, DirectionsFieldTarget>>()
+    private val noted = ArrayList<space.dodoplanet.gildongmu.kit.models.Place>()
 
     private class Transport(val places: String) : HttpTransport {
         val urls = ArrayList<String>()
@@ -43,13 +44,13 @@ class EndpointPickerTest {
 
     private fun picker(scope: TestScope, transport: Transport = Transport(onePlace), ranking: suspend () -> NearbyCoord? = { NearbyCoord(37.5, 127.1) }): EndpointPicker {
         val client = APIClient("https://example.test", transport)
-        return EndpointPicker(SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), CatalogStrings("ko"), dispatcher, scope, { "ko" }, ranking, closesOnSelect = true) { e, t -> selected += e to t }
+        return EndpointPicker(SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), CatalogStrings("ko"), dispatcher, scope, { "ko" }, ranking, closesOnSelect = true, noteDestinationPhone = noted::add) { e, t -> selected += e to t }
     }
 
     @Test fun `open은 스코프별 최근 목록을 io에서 싣고 manualLocation은 도착지 스코프`() = runTest(dispatcher) {
         val store = RecentSearchStore(InMemoryKeyValueStore())
         store.recordEndpoint(RecentEndpoint("집", 37.5, 127.1), RecentEndpointScope.to)
-        val p = EndpointPicker(SearchService(APIClient("https://example.test", Transport(onePlace))), store, CatalogStrings("ko"), dispatcher, this, { "ko" }, { null }, closesOnSelect = true) { _, _ -> }
+        val p = EndpointPicker(SearchService(APIClient("https://example.test", Transport(onePlace))), store, CatalogStrings("ko"), dispatcher, this, { "ko" }, { null }, closesOnSelect = true, noteDestinationPhone = {}) { _, _ -> }
         p.open(DirectionsFieldTarget.manualLocation); testScheduler.advanceUntilIdle()
         assertEquals(listOf("집"), p.state.value!!.recentEndpoints.map { it.label })
         assertEquals(RecentEndpointScope.to, DirectionsFieldTarget.manualLocation.recentScope)
@@ -83,7 +84,7 @@ class EndpointPickerTest {
     }
 
     @Test fun `closesOnSelect=false면 확정 뒤에도 열려 있고(지정 화면) 진행 중 검색은 취소된다`() = runTest(dispatcher) {
-        val p = EndpointPicker(SearchService(APIClient("https://example.test", Transport(onePlace))), RecentSearchStore(InMemoryKeyValueStore()), CatalogStrings("ko"), dispatcher, this, { "ko" }, { null }, closesOnSelect = false) { e, t -> selected += e to t }
+        val p = EndpointPicker(SearchService(APIClient("https://example.test", Transport(onePlace))), RecentSearchStore(InMemoryKeyValueStore()), CatalogStrings("ko"), dispatcher, this, { "ko" }, { null }, closesOnSelect = false, noteDestinationPhone = {}) { e, t -> selected += e to t }
         p.open(DirectionsFieldTarget.manualLocation); p.state.value!!.queryState.setTextAndPlaceCursorAtEnd("강동"); p.submitCandidates()
         p.selectCurrent(); testScheduler.advanceUntilIdle()
         assertEquals(1, selected.size); assertEquals(DirectionsFieldTarget.manualLocation, p.state.value!!.target)
@@ -95,6 +96,14 @@ class EndpointPickerTest {
         val p = picker(this); p.open(DirectionsFieldTarget.manualLocation)
         p.postNotice("현재 위치 확인 중"); assertEquals(1, p.state.value!!.notice.seq); assertEquals("현재 위치 확인 중", p.state.value!!.notice.text)
         p.postNotice("현재 위치 확인 중"); assertEquals(2, p.state.value!!.notice.seq)
+    }
+
+    @Test fun `selectPlace는 목적지 전화번호부에 적는 자리를 부른다(E90)`() = runTest(dispatcher) {
+        val p = picker(this)
+        p.open(DirectionsFieldTarget.to)
+        val place = space.dodoplanet.gildongmu.kit.models.Place(id = "k1", name = "강동역", category = "", address = "", roadAddress = "", lat = 37.53, lng = 127.13, phone = "02-1")
+        p.selectPlace(place)
+        assertEquals(listOf(place), noted)
     }
 
     @Test fun `selectPlace는 nameRoman을 싣고 닫는다`() = runTest(dispatcher) {

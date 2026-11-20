@@ -66,8 +66,10 @@
     },
     {
       "swift": "PlacePhoneBook.swift",
-      "status": "pending",
-      "note": "E90 안내 시트의 목적지에 전화 걸기(iOS 선행, 2026-11-20). 안드로이드 안내 시트 제목 메뉴에 전화 걸기를 넣을 때 함께 이식한다(BACKLOG §4 B20). `guideDestinationPlace`의 `phone` 인자도 그때 맞춘다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlacePhoneBook.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/PlacePhoneBookTest.kt",
+      "note": "E90 안내 시트의 목적지에 전화 걸기(iOS 선행, 2026-11-20). 저장은 `KeyValueStore`(JSON). `guideDestinationPlace`의 `phone` 인자도 함께 맞췄다."
     },
     {
       "swift": "DictationTrigger.swift",

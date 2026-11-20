@@ -130,6 +130,7 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.guide.waypointKept" -> R.string.android_guide_waypointKept
     "android.guide.waypointSet" -> R.string.android_guide_waypointSet
     "android.guide.waypointRemoved" -> R.string.android_guide_waypointRemoved
+    "android.place.call" -> R.string.android_place_call
     "android.guide.destMenuDetail" -> R.string.android_guide_destMenuDetail
     "android.guide.destMenuChange" -> R.string.android_guide_destMenuChange
     "android.guide.waypointChange" -> R.string.android_guide_waypointChange

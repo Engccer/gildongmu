@@ -8,8 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.directions.noteDestination
 import space.dodoplanet.gildongmu.guide.GuideFormSync
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.kit.BeaconDest
@@ -55,7 +57,11 @@ fun GuideHereButtons(place: Place) {
         Button(
             onClick = {
                 when (action) {
-                    GuideHereAction.changeDest -> if (GuideSession.walk.changeDestination(dest, place.name)) GuideFormSync.post(endpoint)
+                    GuideHereAction.changeDest -> {
+                        // 안내 제목의 이름·좌표가 이 장소가 되므로 번호를 먼저 적는다(E90, iOS `noteDestinationPhone(place)`).
+                        AppConfig.placePhoneBook.noteDestination(place)
+                        if (GuideSession.walk.changeDestination(dest, place.name)) GuideFormSync.post(endpoint)
+                    }
                     GuideHereAction.addWaypoint, GuideHereAction.changeWaypoint ->
                         if (GuideSession.walk.setWaypoint(dest, place.name)) GuideFormSync.postWaypoint(endpoint)
                 }

@@ -37,6 +37,8 @@ class EndpointPicker(
     private val ranking: suspend () -> NearbyCoord?,
     /** 확정 뒤 화면을 닫는가 — 길찾기는 폼으로 돌아가고(true), 수동 지정은 측위 통지를 이 화면에서 내야 하므로 호스트가 pop할 때까지 연다(false). */
     private val closesOnSelect: Boolean,
+    /** 장소 후보를 고를 때 그 번호를 목적지 전화번호부에 적는 자리(E90). 목적지가 아닌 화면(수동 위치 지정)은 `{}`를 명시한다 — 기본값이 없다. */
+    private val noteDestinationPhone: (Place) -> Unit,
     private val onSelect: (DirectionsEndpoint, DirectionsFieldTarget) -> Unit,
 ) {
     private val _state = MutableStateFlow<EndpointSearchState?>(null)
@@ -92,7 +94,10 @@ class EndpointPicker(
         }
     }
 
-    fun selectPlace(place: Place) = select(DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman))
+    fun selectPlace(place: Place) {
+        noteDestinationPhone(place)
+        select(DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman))
+    }
 
     /** 최근 장소 행 활성화 = 재검색 없이 즉시 확정(기록은 `onSelect` 쪽 — 이중 기록 금지). */
     fun selectRecentEndpoint(endpoint: RecentEndpoint) = select(DirectionsEndpoint.Place(endpoint.label, endpoint.lat, endpoint.lng, endpoint.labelRoman))

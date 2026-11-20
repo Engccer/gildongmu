@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.PlacePhoneBook
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.AndroidLocationSource
@@ -65,6 +66,9 @@ object AppConfig {
 
     /** 수동 위치 런타임 정본(spec §13-1) — `GildongmuApplication`이 IO에서 `hydrate()`를 띄운다. */
     val manualLocationStore: ManualLocationStore by lazy { ManualLocationStore(SharedPreferencesStore(app)) }
+
+    /** 안내 목적지 전화번호부(E90) — 목적지를 고르는 자리가 적고 안내 시트가 찾는다. 앱 전역 한 곳(iOS `PlacePhoneBook()`의 UserDefaults 동형). */
+    val placePhoneBook: PlacePhoneBook by lazy { PlacePhoneBook(SharedPreferencesStore(app)) }
 
     /** 이동 판정(트리거: `MainActivity` ON_START·force 조회). 자동 해제 통지는 앱 통지 큐로. */
     val manualLocationJudge: ManualLocationJudge by lazy {

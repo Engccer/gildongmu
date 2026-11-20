@@ -48,6 +48,7 @@ import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
+import space.dodoplanet.gildongmu.directions.noteDestination
 import space.dodoplanet.gildongmu.guide.ui.GuideHereButtons
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
@@ -192,7 +193,11 @@ fun PlaceDetailScreen(
                         Triple(DirectionsPrefillRole.from, R.string.directions_fromHere, "directionsFrom"),
                     )) {
                         Button(
-                            onClick = { nav.onOpenDirections(DirectionsPrefill(role, place.name, place.lat, place.lng, place.nameRoman)) },
+                            onClick = {
+                                // 「여기까지」만 목적지다 — 번호를 안내 목적지 전화번호부에 적는다(E90).
+                                if (role == DirectionsPrefillRole.to) AppConfig.placePhoneBook.noteDestination(place)
+                                nav.onOpenDirections(DirectionsPrefill(role, place.name, place.lat, place.lng, place.nameRoman))
+                            },
                             Modifier.tapTarget().testTag(tag),
                         ) { Text(stringResource(label)) }
                     }

@@ -19,6 +19,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.PlacePhoneBook
 import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.DeviceFixtures
 import space.dodoplanet.gildongmu.R
@@ -65,7 +66,7 @@ class DirectionsScreenA11yTest {
         val res = rule.activity.applicationContext.resources
         val vm = DirectionsViewModel(
             RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), SeoulLocator,
-            { "ko" }, resourceStrings(res), SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false },
+            { "ko" }, resourceStrings(res), SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false },
         )
         vm.setEndpoint(space.dodoplanet.gildongmu.kit.DirectionsEndpoint.Place("강남역", 37.4979, 127.0276), DirectionsFieldTarget.to)
         rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
@@ -102,7 +103,7 @@ class DirectionsScreenA11yTest {
         val res = rule.activity.applicationContext.resources
         val vm = DirectionsViewModel(
             RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), SeoulLocator,
-            { "ko" }, resourceStrings(res), SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false },
+            { "ko" }, resourceStrings(res), SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false },
         )
         rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
         rule.enableAccessibilityChecks()

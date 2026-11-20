@@ -31,6 +31,7 @@ fun directionsViewModelFactory(context: Context): ViewModelProvider.Factory {
                 dataLocale = { AppLocale.dataLocale(res()) },
                 strings = resourceStrings(res),
                 savedState = createSavedStateHandle(),
+                phoneBook = AppConfig.placePhoneBook,
                 manual = { AppConfig.manualLocationStore.current.value },
                 verdict = { AppConfig.manualLocationStore.verdict.value },
                 staleChanges = AppConfig.effectiveLocation.staleChanges,

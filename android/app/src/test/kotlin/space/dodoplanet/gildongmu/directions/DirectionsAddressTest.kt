@@ -49,7 +49,7 @@ class DirectionsAddressTest {
                 override fun staleFix(): StaleFix? = null
                 override fun storedCoordinate(): NearbyCoord? = null
                 override suspend fun requestPreciseLocation() = false
-            }, { language }, CatalogStrings("ko"), SavedStateHandle(),
+            }, { language }, CatalogStrings("ko"), SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()),
             prefill = MutableStateFlow(null), io = dispatcher,
         )
         fun run() = dispatcher.scheduler.runCurrent()

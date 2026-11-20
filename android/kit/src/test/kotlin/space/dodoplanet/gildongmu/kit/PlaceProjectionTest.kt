@@ -172,8 +172,9 @@ class PlaceProjectionTest {
     }
 
     @Test fun guideDestinationPlaceKeepsCoordsAndLabelWithEmptyCategory() {
-        val place = guideDestinationPlace(BeaconDest(lat = 37.5547, lng = 126.9707), label = "오아시스마켓")
+        val place = guideDestinationPlace(BeaconDest(lat = 37.5547, lng = 126.9707), label = "오아시스마켓", phone = "02-123-4567")
         assertEquals("오아시스마켓", place.name)
+        assertEquals("02-123-4567", place.phone)
         assertEquals(37.5547, place.lat); assertEquals(126.9707, place.lng)
         // category 빈 문자열 고정 — 라벨만으로 역 프롬프트 버킷을 판정하지 않는다.
         assertEquals("", place.category)

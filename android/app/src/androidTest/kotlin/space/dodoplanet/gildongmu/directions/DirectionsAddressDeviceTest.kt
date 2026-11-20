@@ -46,7 +46,7 @@ class DirectionsAddressDeviceTest {
                 override fun staleFix(): StaleFix? = null
                 override fun storedCoordinate(): NearbyCoord? = null
                 override suspend fun requestPreciseLocation() = false
-            }, { language }, resourceStrings(rule.activity.resources), SavedStateHandle(),
+            }, { language }, resourceStrings(rule.activity.resources), SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()),
             prefill = MutableStateFlow(null), io = kotlinx.coroutines.Dispatchers.Main.immediate,
         )
         fun show() = rule.setContent { MaterialTheme { DirectionsScreen(vm) } }

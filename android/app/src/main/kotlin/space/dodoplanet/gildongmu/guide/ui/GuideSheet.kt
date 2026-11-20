@@ -62,6 +62,9 @@ import space.dodoplanet.gildongmu.directions.DirectionsFieldTarget
 import space.dodoplanet.gildongmu.directions.EndpointPicker
 import space.dodoplanet.gildongmu.directions.EndpointSearchContent
 import space.dodoplanet.gildongmu.directions.Strings
+import space.dodoplanet.gildongmu.directions.guideDestinationPhone
+import space.dodoplanet.gildongmu.directions.noteDestination
+import space.dodoplanet.gildongmu.place.dial
 import space.dodoplanet.gildongmu.directions.resourceStrings
 import space.dodoplanet.gildongmu.guide.GuideDiag
 import space.dodoplanet.gildongmu.guide.GuideFormSync
@@ -115,13 +118,16 @@ private sealed interface GuidePage {
     data class Search(val target: DirectionsFieldTarget) : GuidePage
 }
 
-/** 제목 메뉴 항목(iOS `GuideTitleMenu` — 장소 상세 → 목적지 바꾸기). 순서가 읽기 순서다(순수 함수로 잠근다). */
+/** 제목 메뉴 항목(iOS `GuideTitleMenu` — 전화 걸기 → 장소 상세 → 목적지 바꾸기). 순서가 읽기 순서다(순수 함수로 잠근다). */
 enum class GuideTitleMenuItem(val key: String, val tag: String) {
+    call("android.place.call", "guide-menu-call"),
     detail("android.guide.destMenuDetail", "guide-menu-detail"),
     change("android.guide.destMenuChange", "guide-menu-change"),
 }
 
-fun guideTitleMenuItems(): List<GuideTitleMenuItem> = listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change)
+/** 「전화 걸기」(E90)는 목적지 전화번호를 알 때만 서고 언제나 첫 항목이다 — 번호를 모르면 항목이 없다(죽은 항목 금지). */
+fun guideTitleMenuItems(destinationPhone: String?): List<GuideTitleMenuItem> =
+    listOfNotNull(GuideTitleMenuItem.call.takeIf { !destinationPhone.isNullOrEmpty() }, GuideTitleMenuItem.detail, GuideTitleMenuItem.change)
 
 /**
  * 행이 지금 렌더되는가 — 렌더 조건의 **정본**이다(행 렌더와 착지 판정이 같은 함수를 읽는다, iOS `rowExists`의 사본 문제를 구조로 막는다). 종료
@@ -142,6 +148,9 @@ fun sheetRowExists(ui: WalkGuideUiState, row: SheetRow): Boolean {
 @Composable
 private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
     val meters = strings.get("android.unit.spokenMeters")
+    val context = LocalContext.current
+    // 목적지 전화번호(E90) — 전화번호부가 제목의 이름·좌표로 안다. 세션 통로를 타지 않는다.
+    val destinationPhone = remember(ui.dest, ui.destinationLabel) { AppConfig.placePhoneBook.guideDestinationPhone(ui.dest, ui.destinationLabel) }
     val titleFocus = remember { FocusRequester() }
     val progressFocus = remember { FocusRequester() }
     val rowFocus = remember { SheetRow.infoRows.associateWith { FocusRequester() } }
@@ -270,10 +279,16 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                     GuideTitleMenu(
                         title = joinText(strings.get("beacon.walkHeading"), ui.destinationLabel),
                         strings = strings,
+                        items = guideTitleMenuItems(destinationPhone),
                         focus = titleFocus,
                         onSelect = { item ->
                             when (item) {
-                                GuideTitleMenuItem.detail -> ui.dest?.let { nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel), false, GUIDE_TITLE_RETURN) }
+                                GuideTitleMenuItem.call -> destinationPhone?.let { phone ->
+                                    // 장소 상세 전화 줄과 같은 창구(다이얼러). 메뉴가 닫혔으니 커서를 제목으로 되돌린다(받는 앱이 없을 때도 같다).
+                                    context.dial(phone)
+                                    landTitleSeq++
+                                }
+                                GuideTitleMenuItem.detail -> ui.dest?.let { nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN) }
                                 GuideTitleMenuItem.change -> page = GuidePage.Search(DirectionsFieldTarget.to)
                             }
                         },
@@ -352,7 +367,7 @@ private fun InfoRow(text: String, row: SheetRow, meters: String, focus: Map<Shee
  * 제목으로 되돌린다(팝업이 닫힌 뒤 커서가 어디로 갈지 시스템에 맡기지 않는다). 착지 requester는 clickable의 focusable 앞.
  */
 @Composable
-private fun GuideTitleMenu(title: String, strings: Strings, focus: FocusRequester, onSelect: (GuideTitleMenuItem) -> Unit, onDismissWithoutChoice: () -> Unit) {
+private fun GuideTitleMenu(title: String, strings: Strings, items: List<GuideTitleMenuItem>, focus: FocusRequester, onSelect: (GuideTitleMenuItem) -> Unit, onDismissWithoutChoice: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val firstItemFocus = remember { FocusRequester() }
     // 메뉴가 열리면 첫 항목에 착지한다 — 팝업 윈도로 커서를 옮기는 것은 TalkBack 관례이지 보장이 아니다(설계 리뷰 #10).
@@ -370,7 +385,7 @@ private fun GuideTitleMenu(title: String, strings: Strings, focus: FocusRequeste
         style = MaterialTheme.typography.titleMedium,
     )
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false; onDismissWithoutChoice() }) {
-        guideTitleMenuItems().forEachIndexed { i, item ->
+        items.forEachIndexed { i, item ->
             DropdownMenuItem(
                 text = { Text(strings.get(item.key)) },
                 onClick = { expanded = false; onSelect(item) },
@@ -466,6 +481,7 @@ private fun SearchPage(target: DirectionsFieldTarget, onDone: (committed: String
             dataLocale = { AppLocale.dataLocale(res) },
             ranking = { null },   // 근접 가중치일 뿐 — 세션 fix는 모델 밖으로 내지 않는다
             closesOnSelect = true,
+            noteDestinationPhone = AppConfig.placePhoneBook::noteDestination,
         ) { endpoint, field -> onDone(commitGuideEndpoint(endpoint, field)) }
     }
     val state by picker.state.collectAsState()

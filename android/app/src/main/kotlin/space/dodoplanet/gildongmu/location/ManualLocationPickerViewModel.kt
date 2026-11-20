@@ -51,7 +51,7 @@ class ManualLocationPickerViewModel(
     private val location: LocationStore,
     private val now: () -> Double,
 ) : ViewModel() {
-    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking, closesOnSelect = false) { endpoint, _ -> commit(endpoint) }
+    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking, closesOnSelect = false, noteDestinationPhone = {}) { endpoint, _ -> commit(endpoint) }
 
     private val _done = MutableStateFlow(false)
     /** 지정·해제가 끝났다(`set`/`clear` 뒤). 화면이 읽어 pop한다. */

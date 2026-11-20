@@ -15,9 +15,12 @@ class GuideSessionEditsGuardTest {
     private val pkg = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu")
     private val sheet = pkg.resolve("guide/ui/GuideSheet.kt").readText()
 
-    @Test fun `제목 메뉴 순서 — 장소 상세 → 목적지 바꾸기(iOS GuideTitleMenu)`() {
-        assertEquals(listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems())
-        assertEquals(listOf("android.guide.destMenuDetail", "android.guide.destMenuChange"), guideTitleMenuItems().map { it.key })
+    @Test fun `제목 메뉴 순서 — 전화 걸기(번호를 알 때만) → 장소 상세 → 목적지 바꾸기(iOS GuideTitleMenu)`() {
+        assertEquals(listOf(GuideTitleMenuItem.call, GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems("02-123-4567"))
+        assertEquals(listOf("android.place.call", "android.guide.destMenuDetail", "android.guide.destMenuChange"), guideTitleMenuItems("02-123-4567").map { it.key })
+        // 번호를 모르면 항목이 없다(죽은 항목 금지) — null도 빈 문자열도.
+        assertEquals(listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems(null))
+        assertEquals(listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems(""))
     }
 
     @Test fun `검색 페이지 — 억제는 onDispose에서 풀고, 앱 통지를 집지 않는다`() {
@@ -47,7 +50,7 @@ class GuideSessionEditsGuardTest {
         assertTrue(!code.contains("getBackStackEntry<PlaceDetailRoute>"), "다른 탭의 상세를 잡아 오판한다")
         assertTrue(code.contains("GuideSession.reopenAfterNestedScreen()"))
         // 목적지 상세는 길찾기 진입을 숨긴다(이미 그곳으로 안내 중), 주변 확인 행의 상세는 iOS처럼 보인다.
-        assertTrue(sheet.contains("nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel), false, GUIDE_TITLE_RETURN)"))
+        assertTrue(sheet.contains("nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN)"))
         assertEquals(2, Regex("""nav\.onOpenPlace\(place, true, key\)""").findAll(sheet).count())
     }
 

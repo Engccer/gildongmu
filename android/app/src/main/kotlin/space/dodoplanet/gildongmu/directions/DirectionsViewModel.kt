@@ -25,6 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.APIError
+import space.dodoplanet.gildongmu.kit.BeaconDest
+import space.dodoplanet.gildongmu.kit.PlacePhoneBook
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
 import space.dodoplanet.gildongmu.kit.DirectionsAddressState
@@ -151,6 +153,8 @@ class DirectionsViewModel(
     private val dataLocale: () -> String,
     private val strings: Strings,
     private val savedState: SavedStateHandle,
+    /** 안내 목적지 전화번호부(E90) — 끝점 검색 선택과 정문 승격이 적는다. 기본값이 없다. */
+    private val phoneBook: PlacePhoneBook,
     prefill: StateFlow<DirectionsPrefill?> = DirectionsPrefillStore.pending,
     private val takePrefill: (DirectionsPrefill) -> Boolean = DirectionsPrefillStore::take,
     private val io: CoroutineDispatcher = Dispatchers.IO,
@@ -410,6 +414,11 @@ class DirectionsViewModel(
             val entrance = withContext(io) { search.destinationEntrance(to.label, queried.lat, queried.lng, origin.lat, origin.lng) }
             currentCoroutineContext().ensureActive()
             if (entrance != null) promoted = PromotedDestination(entrance.name, entrance.lat, entrance.lng)
+        }
+        // 정문으로 승격하면 안내 제목의 이름·좌표가 정문 것이 된다 — 고른 장소의 전화번호를 그 열쇠로도 적는다(E90).
+        if (promoted != null && to is DirectionsEndpoint.Place) {
+            phoneBook.guideDestinationPhone(BeaconDest(queried.lat, queried.lng), to.label)
+                ?.let { phoneBook.note(promoted.label, promoted.lat, promoted.lng, it) }
         }
         val dest = promoted?.let { NearbyCoord(it.lat, it.lng) } ?: queried
 
@@ -859,7 +868,7 @@ class DirectionsViewModel(
     // ── 끝점 검색(EndpointPicker 합성, spec §13-3·판정 32) ────────────────────
 
     /** 후보·최근 목록·통지는 `EndpointPicker`; 확정의 의미(필드 확정·재측위·착지)는 아래 `onSelect`가 정한다. */
-    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }, closesOnSelect = true) { endpoint, target ->
+    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }, closesOnSelect = true, noteDestinationPhone = phoneBook::noteDestination) { endpoint, target ->
         setEndpoint(endpoint, target)
         // "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침(F-B) — from에서만(지정 화면의 되돌리기는 이 부수효과가 없다).
         if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current) refreshCurrentLocation()

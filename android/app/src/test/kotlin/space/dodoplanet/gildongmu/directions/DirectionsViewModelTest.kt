@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.PlacePhoneBook
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
 import space.dodoplanet.gildongmu.kit.ManualFix
 import space.dodoplanet.gildongmu.kit.ManualLocation
@@ -136,6 +137,7 @@ class DirectionsViewModelTest {
         store: RecentSearchStore = RecentSearchStore(InMemoryKeyValueStore()),
         lang: String = "ko",
         saved: SavedStateHandle = SavedStateHandle(),
+        phoneBook: PlacePhoneBook = PlacePhoneBook(InMemoryKeyValueStore()),
         prefill: MutableStateFlow<DirectionsPrefill?> = MutableStateFlow(null),
         timeout: Long = 15_000,
         manual: () -> ManualLocation? = { null },
@@ -144,7 +146,7 @@ class DirectionsViewModelTest {
     ): DirectionsViewModel {
         val client = APIClient("https://example.test", routes)
         return DirectionsViewModel(
-            RouteService(client), SearchService(client), store, locator, { lang }, ko, saved,
+            RouteService(client), SearchService(client), store, locator, { lang }, ko, saved, phoneBook,
             prefill = prefill, takePrefill = { prefill.compareAndSet(it, null) }, io = dispatcher, queryTimeoutMs = timeout, manual = manual,
             // 앱 싱글턴(`GuideFormSync`)을 쓰지 않는다 — 테스트끼리 게시가 새지 않게.
             guideFormPending = kotlinx.coroutines.flow.merge(guideDest, guideVia),
@@ -326,7 +328,7 @@ class DirectionsViewModelTest {
         val loc = FakeLocator({ seoul }, display = seoul)
         val client = APIClient("https://example.test", Routes(reverse = reverse))
         val m = DirectionsViewModel(
-            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(),
+            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()),
             prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, staleChanges = flow,
         )
         m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.advanceUntilIdle()
@@ -485,6 +487,22 @@ class DirectionsViewModelTest {
         // 취소된 조회가 가드를 남기지 않는다 — 새 조회가 돈다.
         m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
         assertEquals(DirectionsPhase.Settled(3), m.state.value.phase)
+    }
+
+    @Test fun `출입구 승격 - 고른 장소의 번호를 정문 이름·좌표로도 적는다(E90)`() = runTest(dispatcher) {
+        val promotedBody = """{"entrance":{"name":"강남역 2번 출구","lat":37.4990,"lng":127.0280,"meters":120}}"""
+        val book = PlacePhoneBook(InMemoryKeyValueStore())
+        book.note(gangnam.label, gangnam.lat, gangnam.lng, "02-111-2222")
+        val m = vm(Routes(transit = transitBody, walk = walkBody, car = carBody, entrance = promotedBody), phoneBook = book)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("02-111-2222", book.phone("강남역 2번 출구", 37.4990, 127.0280))
+        // 번호를 모르는 장소면 정문 열쇠도 적지 않는다.
+        val empty = PlacePhoneBook(InMemoryKeyValueStore())
+        val m2 = vm(Routes(transit = transitBody, walk = walkBody, car = carBody, entrance = promotedBody), phoneBook = empty)
+        m2.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m2.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertNull(empty.phone("강남역 2번 출구", 37.4990, 127.0280))
     }
 
     @Test fun `출입구 승격 - 세 수단 dest가 승격 좌표, 실패·부재는 원좌표, en은 미호출`() = runTest(dispatcher) {
@@ -778,7 +796,7 @@ class DirectionsViewModelTest {
         }
         val client = APIClient("https://example.test", slow)
         val loc = FakeLocator({ seoul }, display = seoul)
-        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
         m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.runCurrent()
         m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.runCurrent()
         dispatcher.scheduler.advanceUntilIdle()
@@ -789,7 +807,7 @@ class DirectionsViewModelTest {
         val client = APIClient("https://example.test", allOk())
         var manual: ManualLocation? = ManualLocation(1, "길동역", "Gildong Station", 37.5, 127.1, ManualFix(37.5, 127.1, 20.0, 1.0), 1.0)
         var verdict: ManualVerdict? = null
-        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { "ko" }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, manual = { manual }, verdict = { verdict })
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { "ko" }, ko, SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, manual = { manual }, verdict = { verdict })
         m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.advanceUntilIdle()
         assertEquals("출발지, 지정한 위치, 길동역", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
         verdict = ManualVerdict.undecidable
@@ -944,7 +962,7 @@ class DirectionsViewModelTest {
         var lang = "en"
         val r = requeryRoutes()
         val client = APIClient("https://example.test", r)
-        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { lang }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { lang }, ko, SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
         m.setEndpoint(gangnam, DirectionsFieldTarget.to)
         m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
         lang = "ko"
