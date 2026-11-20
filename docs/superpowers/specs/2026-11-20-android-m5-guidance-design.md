@@ -50,7 +50,7 @@ object GuideSession {
 }
 ```
 
-- 두 시작 함수는 같은 본문(`beginBeacon`)을 지난다: 거부 게이트(`isActive`면 `guide.alreadyActive`) → 직전 실패 행 소거·착지 표식 초기화·주변 확인 소거 → 프리로드 → `walk.requestStart(request)`. 거부 게이트를 함수마다 복제하지 않는다(iOS `refuseIfActive` 한 곳).
+- 공개 시작 함수(`startWalk`·`startCar`, 대중교통 세션의 `startTransit`)는 첫 줄에서 거부 판정 하나(`refuseIfActive()`: `isActive`면 `guide.alreadyActive`, iOS 동형)를 공유하고, 통과하면 거부 판정이 없는 비공개 본문 `beginBeacon(request)`(직전 실패 행 소거·착지 표식 초기화·주변 확인 소거 → 프리로드 → `walk.requestStart(request)`)을 부른다. 대중교통 세션이 여는 내부 인계(승차 전 도보·하차 인계)는 `beginBeacon`을 직접 부른다 — 대중교통 세션이 아직 활성이라 거부 판정을 지나면 인계가 막힌다. 자동차 도착 뒤 도보 인계는 자동차 세션이 이미 끝난 뒤라 iOS처럼 공개 `startWalk`를 지난다(§4-8).
 - `WalkGuideModel.requestStart(request: BeaconStartRequest)` 하나가 받고 `lastStartRequest: BeaconStartRequest?`가 재시작(`restart()` — 정밀 위치 허용 뒤 복구)에 그대로 쓰인다. **자동차 세션이 재시작 뒤 도보가 되는 A13 동형 결함**을 타입이 막는다(요청 자체가 수단을 든다). `sessionKind`는 요청 타입에서 유도하고 따로 넘기지 않는다.
 - `CarStartRequest`에는 `labelRoman`이 없다: 안드로이드 `WalkStartRequest`도 아직 라틴 표기 축(A55)이 없고 자동차는 ko 데이터에서만 시작한다(`canStartCarGuide`). 대중교통·영문 축을 더할 때 둘에 함께 더한다.
 - **소스 가드**(`GuideSourceGuardTest`, iOS `guidance-gate-drift.test.ts` 정신): `startWalk(` 호출부는 `WalkGuideStartButton.kt`와 `GuideSession.acceptCarWalkHandoff`(자동차 도착 뒤 도보 인계 — §4-8) 둘, `startCar(` 호출부는 `CarGuideStartButton.kt` 하나, `walk.requestStart(` 호출부는 `GuideSession.kt` 하나로 잠근다. 대중교통 세션은 `startTransit(`을 같은 식으로 더한다.
@@ -76,9 +76,9 @@ object GuideSession {
 
 | 자리 | 자동차 세션이 남기는 모양 | 대중교통 세션이 할 일 |
 |---|---|---|
-| 시작 진입점 | `GuideSession.beginBeacon`(거부 게이트 한 곳) · `startWalk`·`startCar` | `startTransit(TransitStartRequest)`를 같은 거부 게이트 뒤에 더한다. 승차 전 도보·하차 인계처럼 대중교통이 도보를 여는 내부 인계는 거부 게이트 없는 `beginBeacon` 경로(iOS `beginBeacon` 동형)로 열고, 그 호출부를 소스 가드에 더한다 |
+| 시작 진입점 | `GuideSession.refuseIfActive()`(거부 판정 한 곳) → 비공개 `beginBeacon`(판정 없음) · `startWalk`·`startCar` | `startTransit(TransitStartRequest)`도 `refuseIfActive()`를 먼저 부른다. 승차 전 도보·하차 인계처럼 대중교통이 도보를 여는 내부 인계는 `beginBeacon`을 직접 부르고 그 호출부를 소스 가드에 더한다. 모델 안의 `coordinator.claim`은 따로 기존 점유자를 거부하므로, 인계는 앞 모델의 `release`(그 모델 `stop()`)가 뒤 모델의 `claim`보다 먼저임을 순서로 보장한다(iOS 하차 인계의 600ms 지연 자리) |
 | 세션 점유 | `:kit` `GuideSessionCoordinator`(claim·release, 메인 전용) | 대중교통 모델도 같은 코디네이터에서 claim한다 |
-| 전경 서비스 | `GuideForegroundService`가 `GuideSession.walk`로 fix·위치 꺼짐·알림 문장을 보낸다 | 활성 모델로 보내는 한 지점(`GuideSession.activeFixSink` 류)을 서비스에 더한다. 대중교통 keep-alive(E36·A46)도 이 서비스다 |
+| 전경 서비스 | `GuideForegroundService`가 `GuideSession.walk`에 직결돼 있다: fix·위치 꺼짐·알림 문장, **알림 「안내 종료」(`ACTION_STOP` → `walk.stopByUser()`)**, **`startForeground` 실패(`walk.onServiceStartFailed`)** | 다섯 경로를 모두 활성 세션 소유자로 보내는 한 지점을 서비스에 더한다. 시작 실패는 그 시작을 요청한 세션 세대에만 전달한다(인계 직후 늦게 온 실패가 새 세션을 접지 않게). 대중교통 keep-alive(E36·A46)도 이 서비스다 |
 | 시트·띠바 | `GuideBottomBar` → `GuideSheet`(도보·자동차) | `GuideScreenKind`와 대중교통 시트를 더한다 |
 | 오디오 | `GuideSession.attach`의 포커스·톤·TTS | 대중교통 모델에 같은 인스턴스를 주입하고 `DeviceSpeechQueue`를 `GuideSession`으로 올린다(§2-6) |
 | 억제 소유자 집합 | `GuideSession.setOutputSuppressed`가 `walk.outputSuppressed`만 만진다 | 두 모델에 함께 건다 |
@@ -125,9 +125,9 @@ object GuideSession {
 
 ### 4-5. 주행 중 재조회와 새 정체 (E80, B17 주행 중 몫)
 
-- 6분(`carEtaIntervalSeconds` 360) 주기, 세션당 10회(`carEtaCallCap`, 시작 조회 포함), 상세 모드·이탈 아님에서만. 원점은 위치 스토어가 아니라 **세션의 마지막 fix**다(안드로이드 위치 스토어엔 TTL이 없고 안내 스트림이 이미 1초마다 신선한 좌표를 준다 — iOS `currentCoordinate()`가 같은 신선도를 얻는 수단이다. 마지막 fix가 `freshFixSeconds`보다 낡았으면 이번 회차를 건너뛰고 횟수를 세지 않는다).
+- 6분(`carEtaIntervalSeconds` 360) 주기, 세션당 10회(`carEtaCallCap`, 시작 조회 포함), 상세 모드·이탈 아님에서만. 횟수는 조회 전에 센다(iOS 동형 — 원점을 못 얻은 회차도 한 회). 원점은 위치 스토어가 아니라 **세션의 마지막 수용 fix**이고, iOS `currentCoordinate()`의 추적 중 재사용 게이트와 같은 술어 `canReuseCachedFix(정확도, 나이)`(정확도 ≤ 30m·나이 ≤ 60초, 나이는 **측정 시각** 기준)를 지나야 한다 — 그래서 모델은 마지막 fix의 정확도와 측정 시각을 좌표와 함께 둔다. 지나지 못하면 이번 회차는 조용히 직전 ETA를 유지한다(낡음 판정은 `etaUpdatedAt`이 맡는다).
 - 응답 커밋 가드: 조회 토큰·추적 중·상세·목적지 동일·소요 > 0. 그러면 ETA 갱신 → 남은 거리 행 갱신 → `announceNewCarJam`.
-- `announceNewCarJam` 호출부 규칙 넷(iOS·웹 동형): ① `provider == "tmap"`인 응답의 정체만 ② 아는 정체가 null(기준선 없음)이면 이번 정보를 말없이 기준선으로 ③ 응답 시점에 이탈이면 말하지 않는다 ④ 보류 통지(`deferredAnnouncer.hasPending`)·기기 음성 대기 칸·**TTS가 말하는 중**(`speaker.isSpeaking`)이면 밀어내지 않고 건너뛴다 — 안드로이드 전경 발화는 앞 문장을 끊으므로(README §3 안내 음성 채널) 말하는 중 판정이 iOS보다 더 필요하다. 판정은 `newCarJamsAhead(polyline, totalMeters, d, known, fresh)`, 알릴 하나만 아는 정체에 더하고, 통지가 버려지면(`onDropped`) 되돌린다. 문장 `guide.carNewJam`(도로 이름 있음)·`guide.carNewJamUnnamed`, 분류 `actionable`.
+- `announceNewCarJam` 호출부 규칙 넷(iOS·웹 동형, **이 순서로 검사한다**): ① `provider == "tmap"`이고 정체 정보가 있는 응답만 ② 응답 시점에 이탈이면 아무것도 바꾸지 않는다(기준선 채택도 하지 않는다 — 이탈 중 받은 정체가 복귀 뒤 경로의 기준선으로 굳지 않게) ③ 아는 정체가 null(기준선 없음)이면 이번 정보를 말없이 기준선으로 ④ 보류 통지(`deferredAnnouncer.hasPending`)·기기 음성 대기 칸·**TTS가 말하는 중**(`speaker.isSpeaking`)이면 밀어내지 않고 건너뛴다 — 안드로이드 전경 발화는 앞 문장을 끊으므로(README §3 안내 음성 채널) 말하는 중 판정이 iOS보다 더 필요하다. 판정은 `newCarJamsAhead(polyline, totalMeters, d, known, fresh)`, 알릴 하나만 아는 정체에 더하고, 통지가 버려지면(`onDropped`) 되돌린다. 문장 `guide.carNewJam`(도로 이름 있음)·`guide.carNewJamUnnamed`, 분류 `actionable`.
 - 진행 상황 문장: ETA가 `carEtaStaleSeconds`(420) 넘게 낡았으면 `guide.etaStale` 병기(3-state — 낡은 값을 지금 값처럼 말하지 않는다).
 - 남은 시간: 자동차는 ETA 카운트다운이고 경유지 목표엔 없다(null — 날조 금지).
 
@@ -168,3 +168,14 @@ object GuideSession {
 - 앱 JVM(`WalkGuideModelTest` 페이크 레인 — 위치 fix를 직접 넣고 TTS·톤 페이크의 발화 목록을 본다): 자동차 시작이 `routes.car(includeGeometry, traffic)`를 부르고 카카오·기하 없음이면 간략 강등 / 임박 문장이 지점·방면을 싣고 `action` 없으면 침묵 / 현재 도로 행이 링크 경계에서 바뀌고 이름 없는 링크면 사라짐 / ETA 재조회 6분·10회 캡·이탈 동결 / 새 정체 규칙 넷과 되돌림 / 도착 40m·정지에서 종료 화면 + 도보 인계 버튼 → 도보 세션 시작 / 재시작(`restart`)이 자동차로 다시 시작(A13) / 잊힌 세션 900초.
 - 소스 가드(`GuideSourceGuardTest`): 시작 호출부(§2-2), 자동차 정숙 시간 기록 두 자리, `routes.car(` 안내 호출이 `traffic = true`와 `includeGeometry = true`를 싣는다.
 - 실기기(한소네 7, 실내): 길찾기 자동차 결과에 「자동차 안내 시작」이 헤딩 바로 뒤에 들리는가, 누르면 시트 제목이 「자동차 안내」로 열리고 시작 문장이 들리는가, 제목 메뉴의 전화 걸기가 다이얼 화면을 여는가, 안내 종료. 주행이 필요한 항목(임박·현재 도로·정체·도착 인계)은 실주행 판정으로 BACKLOG §2에 남긴다.
+
+## 5. 설계 리뷰 판정 (codex adversarial-review 1회, 2026-11-20)
+
+| 지적 | 판정 | 반영 |
+|---|---|---|
+| 자동차 ETA 재조회 원점이 나이만 보면 정확도 나쁜 좌표로 조회한다 | 수용(iOS `currentCoordinate()` 추적 중 재사용 게이트와 어긋난 사실) | §4-5 `canReuseCachedFix`·측정 시각 |
+| 거부 판정을 `beginBeacon` 안에 두면 내부 인계가 같은 함수로 거부 없이 지날 수 없다(모순) | 수용 | §2-2·§3: 공개 함수의 `refuseIfActive()` + 판정 없는 `beginBeacon` |
+| 전경 서비스의 알림 종료·시작 실패가 도보 모델에 직결돼 있는데 경계 표에 없다 | 수용(대중교통 경계 누락) | §3 전경 서비스 행 |
+| 새 정체 규칙의 검사 순서가 이탈 전에 기준선을 채택한다 | 수용(iOS 순서와 다른 서술) | §4-5 순서 명시 |
+| 도보 인계 실패 시 종료 화면이 먼저 사라져 실패 문장·복구 버튼 자리가 없다 | 기각 — iOS `acceptCarWalkHandoff`와 같은 순서이고, 인계 직전 자동차 세션이 정밀 위치 권한·위치 켬을 방금 충족했다(실패 문장은 낭독·진동으로 나간다) | — |
+| 경로 재획득(목적지·경유지 변경)마다 ETA 횟수가 1로 돌아간다 | 기각 — iOS `fetchGuideRoute`가 같은 자리에서 같은 값을 쓴다(사용자가 연 재획득만 늘린다, 미러 우선) | — |
