@@ -54,7 +54,7 @@ class PlaceRowActionsTest {
         assertTrue(read("nearby/NearbyKindScreen.kt").contains("if (askAbout != null) placeRowActions(place)"))
         assertTrue(read("nearby/SceneSection.kt").contains("if (onAskAbout != null) placeRowActions(place)"))
         // 안내 시트 「주변 확인」은 줄 동작이 없다(시트 위 길찾기 진입은 안내를 덮는다).
-        assertTrue(read("nearby/SceneSection.kt").contains("showPlace = true, requesterFor, onAskAbout = null"))
+        assertTrue(read("nearby/SceneSection.kt").contains("showPlace = true, requesterFor, bringFor, onAskAbout = null"))
         // 주소 결과 줄(검색·채팅 공용)은 행이 스스로 복사 셋을 단다.
         assertTrue(read("search/SearchRows.kt").contains("val actions = addressCopyActions(address)"))
     }

@@ -2,6 +2,8 @@ package space.dodoplanet.gildongmu.nearby
 
 import android.util.Log
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -77,7 +79,7 @@ fun SceneAutoSection(
         payload.sceneFailed || scene == null -> BodyLine(stringResource(R.string.surroundings_error), "scene-error")
         scene.total == 0 -> BodyLine(stringResource(R.string.surroundings_empty), "scene-empty")
         // 위치 문장은 없다 — 부모의 위치 문장이 같은 내용을 이미 말한다(중복 낭독 금지).
-        else -> SceneGroups(scene, windows, showPlace = false, requesterFor, onAskAbout, onOpenPlace) { bucket, total ->
+        else -> SceneGroups(scene, windows, showPlace = false, requesterFor, bringFor = null, onAskAbout, onOpenPlace) { bucket, total ->
             vm.revealMoreInGroup(bucket, total) { i -> sceneItemKey(bucket, i) }
         }
     }
@@ -93,6 +95,7 @@ private fun SceneGroups(
     windows: Map<String, Int>,
     showPlace: Boolean,
     requesterFor: (String) -> FocusRequester,
+    bringFor: ((String) -> BringIntoViewRequester)?,
     onAskAbout: ((Place, returnKey: String) -> Unit)?,
     onOpenPlace: (Place, returnKey: String) -> Unit,
     onRevealMore: (bucket: String, total: Int) -> Unit,
@@ -122,6 +125,7 @@ private fun SceneGroups(
                 visual,
                 Modifier
                     .fillMaxWidth()
+                    .then(if (bringFor != null) Modifier.bringIntoViewRequester(bringFor(key)) else Modifier)
                     .landingTarget(requesterFor(key))
                     .clickable(role = Role.Button) { onOpenPlace(place, key) }
                     .testTag(key)
@@ -234,7 +238,7 @@ private fun sceneTerminalMessageId(phase: NearbyLoadPhase<SurroundingsScene>, re
  * 닫기 = 트리거 착지(닫기 자신도 사라지는 전이). 라이브 리전 없음. 착지 requester는 호스트가 준다(장소 상세에서 돌아온 행 착지도 호스트 몫).
  */
 @Composable
-fun SceneButtonSection(lookup: SceneLookup, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place, returnKey: String) -> Unit) {
+fun SceneButtonSection(lookup: SceneLookup, requesterFor: (String) -> FocusRequester, bringFor: ((String) -> BringIntoViewRequester)?, onOpenPlace: (Place, returnKey: String) -> Unit) {
     val phase by lookup.phase.collectAsState()
     val busy by lookup.busy.collectAsState()
     val refreshFailed by lookup.refreshFailed.collectAsState()
@@ -291,7 +295,7 @@ fun SceneButtonSection(lookup: SceneLookup, requesterFor: (String) -> FocusReque
             modifier = Modifier.fillMaxWidth().tapTarget().testTag("scene-close"),
         ) { Text(stringResource(R.string.actions_close)) }
         // 버튼형(안내 시트 「주변 확인」)은 줄 동작이 없다 — 시트 위 길찾기 진입은 안내를 덮는다(iOS 기본 nil).
-        SceneGroups(loaded.payload, windows, showPlace = true, requesterFor, onAskAbout = null, onOpenPlace) { bucket, total -> lookup.revealMore(bucket, total) }
+        SceneGroups(loaded.payload, windows, showPlace = true, requesterFor, bringFor, onAskAbout = null, onOpenPlace) { bucket, total -> lookup.revealMore(bucket, total) }
     }
 }
 

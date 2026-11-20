@@ -100,4 +100,47 @@ class TransitSheetRecoveryTest {
             assertFalse(f.contains("spoken ="))
         }
     }
+
+    private val appRoot = guideUi.parentFile.parentFile
+    private val overviewSrc = guideUi.resolve("TransitOverviewPage.kt").readText()
+    private val endpointSrc = appRoot.resolve("directions/EndpointSearchContent.kt").readText()
+
+    @Test fun `리뷰 반영 소스 가드 1 — 차량 후보 행과 조망 행은 식별자 키로 감싼다`() {
+        assertTrue(rows.contains("key(id) { CandidateRow("))
+        assertTrue(overviewSrc.contains("key(row.id)"))
+    }
+
+    @Test fun `리뷰 반영 소스 가드 2 — 경유역 펼침을 push 메모에 적고 같은 구간일 때만 복원한다`() {
+        assertTrue(sheet.contains("var viaExpandedLegAtPush: Int? = null"))
+        assertTrue(sheet.contains("TransitSheetReturnMemo.viaExpandedLegAtPush = if (viaExpanded) model.ui.value.state?.legIndex else null"))
+        assertTrue(sheet.contains("it != null && it == ui.state?.legIndex"))
+        // 복원 초기값은 효과가 메모를 비우기 전(첫 컴포지션)에 읽는다.
+        assertTrue(sheet.indexOf("var viaExpanded by remember") < sheet.indexOf("TransitSheetReturnMemo.viaExpandedLegAtPush = null"))
+    }
+
+    @Test fun `리뷰 반영 소스 가드 3 — 화면 밖일 수 있는 복귀 착지 세 곳은 들이기를 기다린 뒤 포커스를 준다`() {
+        assertTrue(sheet.contains("landRevealed(returnBring.bringFor(RECOVERY_FIND_TAG)"))
+        assertTrue(sheet.contains("landRevealed(returnBring.bringFor(back), it,"))
+        assertTrue(overviewSrc.contains("landRevealed(altBring, altFocus,"))
+        assertTrue(overviewSrc.contains("bringIntoViewRequester(altBring)"))
+        assertTrue(rows.contains("bringIntoViewRequester(c.returnBring.bringFor(key))"))
+        assertTrue(rows.contains("bringIntoViewRequester(c.returnBring.bringFor(RECOVERY_FIND_TAG))"))
+        assertTrue(sheet.contains("bringFor = { k -> c.returnBring.bringFor(k) }"))
+        assertTrue(guideUi.resolve("GuideLanding.kt").readText().contains("bring.bringIntoView()"))
+    }
+
+    @Test fun `리뷰 반영 소스 가드 4 — 복구 페이지만 역 전용 검색을 켠다`() {
+        assertTrue(endpointSrc.contains("titleOverride: String?, stationsOnly: Boolean)"))
+        assertTrue(endpointSrc.contains("if (!stationsOnly) when (p.target)"))
+        assertTrue(endpointSrc.contains("if (!stationsOnly && !p.hasSearched && p.recentEndpoints.isNotEmpty())"))
+        assertTrue(endpointSrc.contains("if (!stationsOnly) p.addresses.forEachIndexed"))
+        assertTrue(sheet.contains("recoveryStationSearch\"), stationsOnly = true)"))
+        assertTrue(sheet.contains("it.placesOnly = true"))  // 후보 수 통지도 장소만 센다
+        assertTrue(sheet.contains("titleOverride = null, stationsOnly = false)"))
+        for (f in listOf("guide/ui/GuideSheet.kt", "directions/DirectionsScreen.kt", "location/ManualLocationPickerScreen.kt")) {
+            val t = appRoot.resolve(f).readText()
+            assertTrue(t.contains("stationsOnly = false"), f)
+            assertFalse(t.contains("stationsOnly = true"), f)
+        }
+    }
 }

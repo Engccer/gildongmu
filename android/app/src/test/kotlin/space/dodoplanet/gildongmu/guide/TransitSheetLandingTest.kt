@@ -96,6 +96,36 @@ class TransitSheetLandingTest {
         assertTrue(h.last.contains("reason=userMoved"), h.last)
     }
 
+    @Test fun `시스템 배치를 기다리던 요청을 대신하는 새 요청은 그 기대를 물려받아 첫 이동을 사용자 이동으로 세지 않는다`() = runTest {
+        val h = H(this)
+        h.settled = false
+        h.landing.land(TransitSheetControl.status, "overviewClose", expectsSystemPlacement = true)
+        advanceTimeBy(500); runCurrent()
+        assertTrue(h.landing.awaitingSystemPlacement, "첫 이동 전에는 시스템 배치를 기다린다")
+        val inherits = h.landing.awaitingSystemPlacement
+        h.landing.cancel()
+        h.landing.land(TransitSheetControl.status, "transition", expectsSystemPlacement = inherits)
+        advanceTimeBy(100); runCurrent()
+        h.landing.onA11yFocus("guide-title")        // 페이지 교체의 시스템 배치
+        h.settled = true
+        advanceUntilIdle()
+        assertEquals(listOf(TransitSheetControl.status), h.focused)
+        assertFalse(h.logs.any { it.contains("reason=userMoved") }, h.logs.toString())
+    }
+
+    @Test fun `기대 없는 새 요청은 같은 첫 이동에 사용자 이동으로 끝난다 — 이미 이동을 본 요청은 기다리지 않는다`() = runTest {
+        val h = H(this)
+        h.settled = false
+        h.landing.land(TransitSheetControl.status, "x", expectsSystemPlacement = false)
+        advanceTimeBy(100); runCurrent()
+        assertFalse(h.landing.awaitingSystemPlacement)
+        h.landing.onA11yFocus("guide-title")
+        h.settled = true
+        advanceUntilIdle()
+        assertEquals(emptyList(), h.focused)
+        assertTrue(h.last.contains("reason=userMoved"), h.last)
+    }
+
     @Test fun `배경에서 온 요청은 이월되고 전경 복귀가 한 번만 소비한다`() = runTest {
         val h = H(this)
         h.foreground = false

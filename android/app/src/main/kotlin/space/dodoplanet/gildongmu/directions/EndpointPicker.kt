@@ -45,6 +45,9 @@ class EndpointPicker(
     private val noteDestinationPhone: (Place) -> Unit,
     private val onSelect: (DirectionsEndpoint, DirectionsFieldTarget) -> Unit,
 ) {
+    /** 장소 후보만 받는가(잘못 내림 복구의 역 검색, `EndpointSearchContent`의 `stationsOnly`와 짝) — 주소 후보를 버려 후보 수 통지가 보이는 줄 수와 같다. */
+    var placesOnly = false
+
     private val _state = MutableStateFlow<EndpointSearchState?>(null)
     val state: StateFlow<EndpointSearchState?> = _state.asStateFlow()
 
@@ -95,7 +98,7 @@ class EndpointPicker(
             val outcome = withContext(io) { search.search(trimmed, coord?.lat, coord?.lng, lang, includeWeb = false) }
             currentCoroutineContext().ensureActive()
             val places = outcome.places.items.take(CANDIDATE_LIMIT)
-            val addresses = outcome.addresses.items.take(CANDIDATE_LIMIT)
+            val addresses = if (placesOnly) emptyList() else outcome.addresses.items.take(CANDIDATE_LIMIT)
             val count = places.size + addresses.size
             // 3-state: "0건"과 "조회 실패"(양쪽 다 실패)를 뭉개지 않는다.
             val message = when {

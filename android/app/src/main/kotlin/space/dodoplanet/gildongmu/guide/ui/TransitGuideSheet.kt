@@ -152,6 +152,8 @@ private sealed interface OverviewFollowUp {
  */
 private object TransitSheetReturnMemo {
     var keyAtPush: TransitPhaseKey? = null
+    /** push 시점에 경유역 목록이 펼쳐져 있던 구간(`legIndex`) — 돌아온 시트가 같은 구간일 때만 목록을 펼친 채 세운다(경유역 행 복귀 착지가 설 자리). */
+    var viaExpandedLegAtPush: Int? = null
 }
 
 /** iOS `onChange(of:)` — 컴포지션 진입 값은 건너뛰고 값이 바뀔 때만 (이전, 새 값)으로 부른다. */
@@ -178,9 +180,12 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     val targets = remember { TransitLandingTargets() }
     /** 장소 상세에서 돌아올 줄의 요청자(5-B 경유역 행 등) — 키는 그 줄의 `mergedRow` 표식. */
     val returnFocus = remember { mutableMapOf<String, FocusRequester>() }
+    /** `returnFocus`와 같은 키의 들이기 요청자 — 화면 밖일 수 있는 복귀 줄(경유역·주변 확인·복구 역 찾기)이 단다. */
+    val returnBring = remember { mutableMapOf<String, BringIntoViewRequester>() }
     var page by remember { mutableStateOf(TransitPage.tracking) }
     // 경유역 목록 펼침(§14.1) — 구간이 바뀌면 접는다(다음 구간의 목록은 다른 목록).
-    var viaExpanded by remember { mutableStateOf(false) }
+    // 장소 상세 push는 시트 컴포지션을 지우므로, 경유역 행에서 연 상세에서 돌아오면 그 구간의 펼침을 복원한다(첫 컴포지션에 행이 서야 진입 착지가 요청자를 찾는다).
+    var viaExpanded by remember { mutableStateOf(TransitSheetReturnMemo.viaExpandedLegAtPush.let { it != null && it == ui.state?.legIndex }) }
     // 급행 확인 질문 표시(spec 2026-09-02 §6) — 「이미 탔어요」 뒤, 급행 집합이 있는 노선만. 연 국면 세대에 묶인다.
     var expressPromptActive by remember { mutableStateOf(false) }
     var pendingFollowUp by remember { mutableStateOf<OverviewFollowUp?>(null) }
@@ -225,6 +230,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     // 장소 상세(스택 화면) — 시트를 접고 push, 돌아오면 `returnTo` 줄에 착지(iOS 표준 중첩 시트 + 시스템 커서 복원). 길찾기 진입 버튼은 숨긴다.
     val openPlace: (Place, String, String?) -> Unit = { place, returnTo, stationLineHint ->
         TransitSheetReturnMemo.keyAtPush = model.ui.value.let { TransitPhaseKey(it.state?.phase, it.userTransitionSeq) }
+        TransitSheetReturnMemo.viaExpandedLegAtPush = if (viaExpanded) model.ui.value.state?.legIndex else null
         nav.onOpenPlace(place, false, returnTo, stationLineHint)
     }
     // iOS `showDestinationDetail` — 목적지 상세(사용자 조작이라 유휴 시계를 되돌린다).
@@ -273,7 +279,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     }
     // 취소로 닫혔고 이월된 착지도 없으면 「목록에 없는 역 찾기」 버튼으로 되돌린다(iOS는 시스템이 표시 직전 요소로 되돌린다).
     val cancelRecoverySearch: () -> Unit = {
-        if (!closeRecoverySearch()) scope.launch { land(returnFocus.requesterFor(RECOVERY_FIND_TAG), "복구 역 검색 취소") }
+        if (!closeRecoverySearch()) scope.launch { landRevealed(returnBring.bringFor(RECOVERY_FIND_TAG), returnFocus.requesterFor(RECOVERY_FIND_TAG), "복구 역 검색 취소") }
     }
 
     BackHandler(enabled = page != TransitPage.tracking) {
@@ -294,6 +300,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
         val back = GuideSession.pendingSheetReturn
         val keyAtPush = TransitSheetReturnMemo.keyAtPush
         TransitSheetReturnMemo.keyAtPush = null
+        TransitSheetReturnMemo.viaExpandedLegAtPush = null
         if (back != null) {
             GuideSession.pendingSheetReturn = null
             val now = model.ui.value.let { TransitPhaseKey(it.state?.phase, it.userTransitionSeq) }
@@ -302,7 +309,8 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
             } else null
             val control = target ?: TransitSheetControl.forTag(back)
             if (control != null) landing.land(control, "placeReturn", expectsSystemPlacement = true)
-            else land(if (back == GUIDE_TITLE_RETURN) titleFocus else returnFocus[back] ?: titleFocus, "장소 상세 복귀")
+            else if (back == GUIDE_TITLE_RETURN) land(titleFocus, "장소 상세 복귀")
+            else returnFocus[back]?.let { landRevealed(returnBring.bringFor(back), it, "장소 상세 복귀") } ?: land(titleFocus, "장소 상세 복귀")
         } else {
             val aboard = model.consumeAboardStartLanding() && exists(TransitSheetControl.waitingLabel)
             landing.land(if (aboard) TransitSheetControl.waitingLabel else TransitSheetControl.status, "open", expectsSystemPlacement = true)
@@ -342,6 +350,8 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     OnChange(ui.state?.phaseGen) { _, _ -> expressPromptActive = false }
     // 키는 국면 + 사용자 전이 순번(A47) — 순번만 바뀐 커밋도 여기로 온다. 순번이 그대로인 국면 변화가 관측 전이다. 세션 종료(국면 null)도 온다.
     OnChange(TransitPhaseKey(ui.state?.phase, ui.userTransitionSeq)) { old, new ->
+        // 조망 닫힘 착지가 시스템 배치를 기다리는 중이면(경로 전환 확정이 페이지를 먼저 닫았다) 새 착지가 그 기대를 물려받는다 — 페이지 교체의 커서 이동을 사용자 이동으로 세지 않게.
+        val inheritsPlacement = landing.awaitingSystemPlacement
         // 국면이 바뀌면 진행 중 착지는 낡은 대상을 좇는다 — 먼저 끊는다.
         landing.cancel()
         expressPromptActive = false
@@ -355,7 +365,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
             closeOverview()
             return@OnChange
         }
-        if (target != null) landing.land(target, if (!byUser && lostFocus) "lost=phaseButton" else "transition", expectsSystemPlacement = false)
+        if (target != null) landing.land(target, if (!byUser && lostFocus) "lost=phaseButton" else "transition", expectsSystemPlacement = inheritsPlacement)
     }
     // 목적지 전환 후보 조회 결과 — 0건·오류는 조회 중 행이 바뀐 같은 자리 문구 행에 착지(헌장 §5). 조회 중은 검색 닫힘이 이미 착지를 맡았다.
     OnChange(ui.pendingDestChange?.phase) { _, phase ->
@@ -442,7 +452,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
                 ) { Text(strings.get("guide.progressButton")) }
                 StatusRows(ui, model, renderer, isEn, targets, onOpenStation = { stop, lineName -> openStationDetail(stop, lineName, "status", TransitSheetControl.status.tag) })
                 val rows = TransitRowsCtx(
-                    ui = ui, model = model, strings = strings, renderer = renderer, isEn = isEn, targets = targets, landing = landing, returnFocus = returnFocus, exists = exists,
+                    ui = ui, model = model, strings = strings, renderer = renderer, isEn = isEn, targets = targets, landing = landing, returnFocus = returnFocus, returnBring = returnBring, exists = exists,
                     viaExpanded = viaExpanded, setViaExpanded = { viaExpanded = it },
                     expressPromptActive = expressPromptActive, setExpressPromptActive = { expressPromptActive = it },
                     openStation = openStationDetail,
@@ -453,6 +463,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
                 AlightPrepRow(rows)
                 SurroundingsSection(rows, openPlace = { place, key ->
                     TransitSheetReturnMemo.keyAtPush = model.ui.value.let { TransitPhaseKey(it.state?.phase, it.userTransitionSeq) }
+                    TransitSheetReturnMemo.viaExpandedLegAtPush = if (viaExpanded) model.ui.value.state?.legIndex else null
                     nav.onOpenPlace(place, true, key, null)
                 })
                 DestChangeSection(rows, routeStrings, firstRouteBring)
@@ -540,7 +551,7 @@ private fun TransitDestSearchPage(onDone: () -> Unit) {
         }
     }
     CompositionLocalProvider(LocalModalOpen provides true) {
-        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onDone, titleOverride = null) } }
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onDone, titleOverride = null, stationsOnly = false) } }
     }
 }
 
@@ -575,6 +586,7 @@ private fun SurroundingsSection(c: TransitRowsCtx, openPlace: (Place, String) ->
     SceneButtonSection(
         GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, BeaconDest(anchor.stop.lat, anchor.stop.lng)),
         requesterFor = { k -> c.returnFocus.requesterFor(k) },
+        bringFor = { k -> c.returnBring.bringFor(k) },
         onOpenPlace = openPlace,
     )
 }
@@ -665,7 +677,7 @@ private fun TransitRecoverySearchPage(strings: Strings, onPicked: () -> Unit, on
                 GuideSession.transit.recoverFrom(place.lat, place.lng)
                 onPicked()
             }
-        }.also { pickerRef[0] = it }
+        }.also { it.placesOnly = true; pickerRef[0] = it }
     }
     val state by picker.state.collectAsState()
     DisposableEffect(Unit) {
@@ -678,6 +690,6 @@ private fun TransitRecoverySearchPage(strings: Strings, onPicked: () -> Unit, on
         }
     }
     CompositionLocalProvider(LocalModalOpen provides true) {
-        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onCancel, titleOverride = strings.get("android.transitGuide.recoveryStationSearch")) } }
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onCancel, titleOverride = strings.get("android.transitGuide.recoveryStationSearch"), stationsOnly = true) } }
     }
 }

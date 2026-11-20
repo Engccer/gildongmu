@@ -29,13 +29,13 @@ class EndpointPickerTest {
     private val selected = ArrayList<Pair<DirectionsEndpoint, DirectionsFieldTarget>>()
     private val noted = ArrayList<space.dodoplanet.gildongmu.kit.models.Place>()
 
-    private class Transport(val places: String) : HttpTransport {
+    private class Transport(val places: String, val addresses: String = """{"addresses":[],"query":"q"}""") : HttpTransport {
         val urls = ArrayList<String>()
         override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
             urls += url
             return when (pathOf(url)) {
                 "/api/places" -> HttpResponse(200, places)
-                "/api/address/search" -> HttpResponse(200, """{"addresses":[],"query":"q"}""")
+                "/api/address/search" -> HttpResponse(200, addresses)
                 else -> HttpResponse(404, "")
             }
         }
@@ -63,6 +63,17 @@ class EndpointPickerTest {
         val s = p.state.value!!
         assertEquals(1, s.places.size); assertEquals(1, s.candidateRevision); assertFalse(s.isSearching); assertEquals("검색 결과 1건을 찾았습니다.", s.notice.text)
         assertTrue(t.urls.first { pathOf(it) == "/api/places" }.contains("lat=37.5"))
+    }
+
+    @Test fun `placesOnly면 주소 후보를 버려 후보 수 통지가 장소 줄 수와 같다(잘못 내림 복구 역 검색)`() = runTest(dispatcher) {
+        val oneAddr = """{"addresses":[{"roadAddr":"서울 강동구 천호대로 1","roadAddrPart1":"서울 강동구 천호대로 1","jibunAddr":"길동 1","engAddr":"1 Cheonho-daero, Gangdong-gu, Seoul","zipNo":"05300","bdNm":""}],"query":"q"}"""
+        for ((placesOnly, expect) in listOf(false to 2, true to 1)) {
+            val p = picker(this, Transport(onePlace, oneAddr)).also { it.placesOnly = placesOnly }
+            p.open(DirectionsFieldTarget.from); p.state.value!!.queryState.setTextAndPlaceCursorAtEnd("강동"); p.submitCandidates()
+            testScheduler.advanceUntilIdle()
+            assertEquals(expect, p.state.value!!.places.size + p.state.value!!.addresses.size, "placesOnly=$placesOnly")
+            assertEquals("검색 결과 ${expect}건을 찾았습니다.", p.state.value!!.notice.text)
+        }
     }
 
     @Test fun `selectCurrent는 from·manualLocation에서만 onSelect(Current), to·via는 무시`() = runTest(dispatcher) {

@@ -206,6 +206,9 @@ class TransitSheetLanding(
     var cursorTag: String? = null
         private set
 
+    /** 진행 중 요청이 아직 시스템 배치를 기다리는가 — 같은 커밋에서 그 요청을 대신하는 새 요청이 이 기대를 물려받는다(조망 닫힘 직후 국면 전이). */
+    val awaitingSystemPlacement: Boolean get() = pending?.systemPlacementSeen == false
+
     /**
      * 착지 요청 — 새 요청이 앞 요청을 대신한다(latest-wins). `expectsSystemPlacement`(기본값 없음): 시스템이 곧 커서를 둘 요청인가(시트 표시·페이지 닫힘·전경
      * 복귀) — 참이면 창 안 첫 이동 한 번을 시스템 배치로 보고 세지 않는다. 시트 안 버튼 전이·관측 전이는 거짓.

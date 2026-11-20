@@ -334,7 +334,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             ) { Text(strings.get("guide.progressButton")) }
             // 주변 확인 — 앵커는 목적지(도착지 부근이 어떤 모습인가를 묻는다, iOS spec §5). 펼친 결과가 아래 행을 밀지만 펼침은 방금 누른 행동이다.
             ui.dest?.let { dest ->
-                SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, dest), requesterFor) { place, key -> nav.onOpenPlace(place, true, key, null) }
+                SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, dest), requesterFor, bringFor = null) { place, key -> nav.onOpenPlace(place, true, key, null) }
             }
             if (sheetRowExists(ui, SheetRow.reroute)) {
                 Button(
@@ -572,7 +572,7 @@ private fun SearchPage(target: DirectionsFieldTarget, onDone: (committed: String
     }
     // 시트는 IME를 밀어 올리지 않는다 — 입력 착지와 함께 뜨는 키보드가 후보·상태 줄을 가리지 않게(비-TalkBack 사용자).
     CompositionLocalProvider(LocalModalOpen provides true) {
-        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = { onDone(null) }, titleOverride = null) } }
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = { onDone(null) }, titleOverride = null, stationsOnly = false) } }
     }
 }
 
@@ -665,7 +665,7 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
         }
         val arrival = ui.arrivalDest
         if (ui.endKind != SessionEndKind.stopped && arrival != null) {
-            SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.end, arrival), requesterFor) { place, key -> nav.onOpenPlace(place, true, key, null) }
+            SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.end, arrival), requesterFor, bringFor = null) { place, key -> nav.onOpenPlace(place, true, key, null) }
         }
         Button(onClick = { GuideSession.walk.closeEndScreen() }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-end-close")) { Text(strings.get("actions.close")) }
     }

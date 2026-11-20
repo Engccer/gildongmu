@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +63,8 @@ class TransitRowsCtx(
     val targets: TransitLandingTargets,
     val landing: TransitSheetLanding,
     val returnFocus: MutableMap<String, FocusRequester>,
+    /** `returnFocus`와 같은 키의 들이기 요청자 — 화면 밖일 수 있는 복귀 줄이 단다. */
+    val returnBring: MutableMap<String, BringIntoViewRequester>,
     val exists: (TransitSheetControl) -> Boolean,
     val viaExpanded: Boolean,
     val setViaExpanded: (Boolean) -> Unit,
@@ -148,6 +153,7 @@ private fun ViaStopStationRow(stop: TransitLegStop, lineName: String, text: Stri
     Text(
         text,
         Modifier.fillMaxWidth()
+            .bringIntoViewRequester(c.returnBring.bringFor(key))
             .landingTarget(c.returnFocus.requesterFor(key))
             .clickable(role = Role.Button) { c.openStation(stop, lineName, "via", key) }
             .testTag(key)
@@ -353,7 +359,8 @@ private fun WaitingList(c: TransitRowsCtx, leg: TransitGuideLeg) {
         else c.model.reasonText(ui.waitingReason ?: space.dodoplanet.gildongmu.kit.TransitWaitingEmptyReason.none)
         StaticLine(text, "transit-no-candidates", secondary = true)
     }
-    rows.forEach { (id, candidate) -> CandidateRow(c, leg, display, id, candidate) }
+    // 항목 정체성은 열차 id — 앞 열차가 빠져도 같은 노드의 글자가 다음 열차로 바뀌지 않는다(커서가 얹힌 노드는 그 열차를 따른다).
+    rows.forEach { (id, candidate) -> key(id) { CandidateRow(c, leg, display, id, candidate) } }
     // 대기 국면 탈출구(§13.2) + 탑승 변경 취소(§13.1).
     SheetButton(strings.get("transitGuide.refresh"), Modifier.testTag("transit-refresh")) { c.model.refreshWaiting() }
     if (aboardPicking) {
@@ -461,7 +468,7 @@ internal fun StationPicker(
     // 잘못 내림 복구만(E78 §5-2): 하차역을 지나쳐 목록에 없는 역.
     onFindStation?.let { find ->
         // 검색 페이지를 취소로 닫으면 이 버튼으로 되돌아온다(`RECOVERY_FIND_TAG`).
-        SheetButton(c.strings.get("android.transitGuide.recoveryFindStation"), Modifier.landingTarget(c.returnFocus.requesterFor(RECOVERY_FIND_TAG)).testTag(RECOVERY_FIND_TAG)) { find() }
+        SheetButton(c.strings.get("android.transitGuide.recoveryFindStation"), Modifier.bringIntoViewRequester(c.returnBring.bringFor(RECOVERY_FIND_TAG)).landingTarget(c.returnFocus.requesterFor(RECOVERY_FIND_TAG)).testTag(RECOVERY_FIND_TAG)) { find() }
     }
     SheetButton(c.strings.get(transitReboardCancelKey(c.ui)), Modifier.testTag("transit-picker-cancel")) { onCancel() }
 }

@@ -59,10 +59,11 @@ import space.dodoplanet.gildongmu.kit.joinText
  * 끝점 검색(spec §3-2, iOS `DirectionsEndpointSearchView` 대응). 폼을 덮는 모달 콘텐츠 — 상단 바의 뒤로 버튼이 닫기(취소)이고
  * 진입 착지는 검색 입력, 후보 도착은 첫 후보. 받아쓰기는 검색 버튼 뒤(B22 ②, iOS 마이크 행 동형 — 탭 토글): 전사를 다듬어 입력에 넣고
  * 원문을 통지한 뒤 바로 후보 검색, 후보 수 통지는 `submitCandidates`가 낸다. 포커스는 옮기지 않는다(선택은 후보 목록 스와이프, iOS 동형).
+ * `stationsOnly`(기본값 없음, 잘못 내림 복구의 역 검색): 장소만 고를 수 있으니 현재 위치 버튼·최근 장소·주소 후보 줄을 그리지 않는다(셋 다 종류를 몰라 늘 거절된다, iOS `stationsOnlyView`).
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack: () -> Unit, titleOverride: String?) {
+fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack: () -> Unit, titleOverride: String?, stationsOnly: Boolean) {
     val res = LocalContext.current.resources
     val lang = remember(res) { AppLocale.current(res) }
     val strings = remember(res) { resourceStrings(res) }
@@ -87,7 +88,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
     LaunchedEffect(p.candidateRevision) {
         if (p.candidateRevision > picker.consumedCandidateRevision) {
             picker.consumedCandidateRevision = p.candidateRevision
-            if (p.places.isNotEmpty() || p.addresses.isNotEmpty()) {
+            if (p.places.isNotEmpty() || (!stationsOnly && p.addresses.isNotEmpty())) {
                 withFrameNanos { }
                 // 받아쓰기 줄이 서며 작은 화면에서는 첫 후보가 화면 밖이다 — 먼저 스크롤해야 한소네 커서가 포커스를 따른다(검색 화면과 같음).
                 runCatching { firstCandidateBring.bringIntoView() }.onFailure { Log.w("EndpointSearch", "첫 후보 스크롤 실패", it) }
@@ -148,7 +149,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             }
 
             // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정에서는 지정 해제를 뜻한다. 도착지는 스왑이 담당하고 경유지는 장소만.
-            when (p.target) {
+            if (!stationsOnly) when (p.target) {
                 DirectionsFieldTarget.from -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
                 DirectionsFieldTarget.manualLocation -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("manualLocation.useGps")) }
                 DirectionsFieldTarget.to, DirectionsFieldTarget.via -> Unit
@@ -156,7 +157,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
 
             StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
 
-            if (!p.hasSearched && p.recentEndpoints.isNotEmpty()) {
+            if (!stationsOnly && !p.hasSearched && p.recentEndpoints.isNotEmpty()) {
                 SectionHeading(strings.get("recent.title"))
                 val pinnedLabel = strings.get("recent.pinned")
                 val reorder = reorderLabels()
@@ -200,7 +201,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                     modifier = if (index == 0) Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
-            p.addresses.forEachIndexed { index, address ->
+            if (!stationsOnly) p.addresses.forEachIndexed { index, address ->
                 val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
                 ActionRow(
                     visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",

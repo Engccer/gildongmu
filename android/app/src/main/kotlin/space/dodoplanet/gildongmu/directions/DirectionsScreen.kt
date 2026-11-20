@@ -122,7 +122,7 @@ fun DirectionsScreen(
     // 바깥 값과 OR — 안내 시트가 떠 있는 동안 `AppRoot`가 참을 공급한다(M4b 후속 ②). 자기 값으로 덮으면 시트 뒤에서 앱 통지를 집는다.
     CompositionLocalProvider(LocalModalOpen provides (noticeOpen || LocalModalOpen.current)) {
         Box(Modifier.fillMaxSize()) {
-            if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker, titleOverride = null)
+            if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker, titleOverride = null, stationsOnly = false)
         }
     }
     // 저장은 확인만 한다 — 닫기(뒤로·바깥 탭)는 저장하지 않아 다음 진입에 다시 뜬다(iOS 계약, 소스 가드).

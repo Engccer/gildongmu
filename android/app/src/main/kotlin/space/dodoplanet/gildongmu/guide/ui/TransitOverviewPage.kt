@@ -9,10 +9,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -103,19 +106,20 @@ private fun TransitOverviewMain(
     val model = GuideSession.transit
     val headerFocus = remember { FocusRequester() }
     val altFocus = remember { FocusRequester() }
+    val altBring = remember { BringIntoViewRequester() }
     val header = transitOverviewHeaderText(model, ui, strings)
     val rows = transitOverviewRows(model, ui, strings, isEn, latch)
     val offersAlt = transitOverviewOffersAlternatives(model)
     // 진입 착지는 여기 한 곳. 하위 페이지에서 돌아왔는데 버튼이 없으면(노출이 꺼졌다) 헤더로 물러난다 — 없는 버튼에 착지하면 커서가 어디에도 가지 않는다.
     LaunchedEffect(Unit) {
-        if (returnsFromAlt && offersAlt) land(altFocus, "다른 경로 보기 버튼") else land(headerFocus, "조망 헤더")
+        if (returnsFromAlt && offersAlt) landRevealed(altBring, altFocus, "다른 경로 보기 버튼") else land(headerFocus, "조망 헤더")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         if (rows.isNotEmpty()) {
             Button(onClick = { onClose(null) }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("transit-overview-close-top")) { Text(strings.get("actions.close")) }
         }
         HeadingLine(header, "transit-overview-header", focus = headerFocus)
-        for (row in rows) {
+        for (row in rows) key(row.id) {
             when (row) {
                 is TransitOverviewItem.Text -> BodyLine(row.text, "transit-overview-${row.id}")
                 is TransitOverviewItem.Action -> Button(
@@ -126,7 +130,7 @@ private fun TransitOverviewMain(
             }
         }
         if (offersAlt) {
-            Button(onClick = onViewAlternatives, modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(altFocus).testTag("transit-view-alternatives")) {
+            Button(onClick = onViewAlternatives, modifier = Modifier.fillMaxWidth().tapTarget().bringIntoViewRequester(altBring).landingTarget(altFocus).testTag("transit-view-alternatives")) {
                 Text(strings.get("transitGuide.viewAlternatives"))
             }
         }
