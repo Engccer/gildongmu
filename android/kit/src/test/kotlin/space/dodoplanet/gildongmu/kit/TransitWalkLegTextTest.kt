@@ -96,4 +96,10 @@ class TransitWalkLegTextTest {
             assertEquals(c.expected, TransitWalkLegText.destinationName(c.label, c.roman, c.english), c.id)
         }
     }
+
+    @Test fun englishHangulFallsBackToDestinationPhrase() {
+        // en 세션 재현: 한글 목적지는 '목적지까지' 문구로 떨어진다.
+        val name = TransitWalkLegText.destinationName(label = "63빌딩", roman = null, english = true)
+        assertEquals("route.transit.legWalkToDest", TransitWalkLegText.resolve(name = name, distance = "242m", minutes = 4).key)
+    }
 }

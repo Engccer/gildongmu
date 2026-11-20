@@ -613,6 +613,198 @@ class TransitGuideTest {
             assertEquals(want, subwayRidingMessage(c.arrivalCode), "code ${c.arrivalCode}")
         }
     }
+
+    // === 노선 집합(E76)·E76 후속 ⓔⓕⓓ — Kit `TransitGuideTests`의 `busLaneSet…`·`followup…` 미러 ===
+
+    @Test fun busLaneSetDecodeSelectAndRestore() {
+        val json = """{"mode":"bus","lineName":"271","lineNameEn":"271","fromName":"승차","toName":"하차","minutes":8,"serviceRouteId":"R1","stops":[{"name":"승차","lat":37.5,"lng":127,"cityCode":"1000","arsId":"01001","localId":"S1"},{"name":"하차","lat":37.6,"lng":127,"cityCode":"1000","localId":"S2"}],"lanes":[{"lineName":"271","lineNameEn":"271","serviceRouteId":"R1","serviceCityCode":1000},{"lineName":"273","serviceRouteId":"R2","serviceCityCode":1000}]}"""
+        val decoded = KitJson.decodeFromString(TransitRouteLeg.serializer(), json)
+        val lanes = transitGuideLanesOf(decoded)!!
+        assertEquals(listOf("R1", "R2"), lanes.map { it.key })
+        assertEquals("271, 273", transitBriefingLineName(decoded, english = false))
+        assertFalse(transitLegUsesEnglish(decoded, DataLocale.en))
+        val stops = decoded.stops!!
+        val leg = TransitGuideLeg(
+            mode = "bus", lineName = "271", trackMode = TransitTrackMode.seoulBus,
+            boardName = "승차", alightName = "하차", boardStop = stops.first(), alightStop = stops.last(), viaStops = stops,
+            stationCount = 3, routeId = "R1", wayCode = null, walkBeforeMinutes = 2, lineNameEn = "271", lanes = lanes,
+        )
+        val itemJson = """{"vehicleId":"V2","direction":"","message":"곧 도착","express":false,"route":"R2"}"""
+        val item = KitJson.decodeFromString(TransitTrackItem.serializer(), itemJson)
+        val lane = transitLaneForItem(leg, item)!!
+        val selected = transitLegWithLane(leg, lane)
+        assertEquals("R2", selected.routeId)
+        assertEquals("273", selected.lineName)
+        assertNull(selected.lineNameEn)
+        assertEquals(leg.viaStops, selected.viaStops)
+        assertEquals(leg.lanes, selected.lanes)
+        val restored = transitLegWithLane(selected, lanes[0])
+        assertEquals("R1", restored.routeId)
+        assertEquals("271", restored.lineNameEn)
+        val display = transitDisplayLeg(selected, boardOverrideIndex = null)
+        assertEquals("273", display.line.ko)
+        assertEquals("271, 273", display.laneList?.ko)
+        assertNull(display.laneList?.en)
+        val stripped = withoutPrewalk(TransitGuideRoute(listOf(selected), walkAfterMinutes = null))
+        assertEquals(lanes, stripped.legs[0].lanes)
+        assertNull(stripped.legs[0].walkBeforeMinutes)
+    }
+
+    private val followupStops: List<TransitLegStop> = listOf(
+        followupStop("아현역", "14068", "113000477", null),
+        followupStop("충정로역", "13045", "112000430", "Chungjeongno Station"),
+        followupStop("서대문역사거리", "13047", "101000304", null),
+        followupStop("광화문역", "01009", "100000384", null),
+    )
+
+    private fun followupStop(name: String, ars: String?, local: String?, en: String?): TransitLegStop {
+        val json = "{\"name\":\"$name\",\"lat\":37.5,\"lng\":127," +
+            (ars?.let { "\"arsId\":\"$it\"," } ?: "") + (local?.let { "\"localId\":\"$it\"," } ?: "") +
+            (en?.let { "\"nameEn\":\"$it\"," } ?: "") + "\"cityCode\":\"1000\"}"
+        return KitJson.decodeFromString(TransitLegStop.serializer(), json)
+    }
+
+    private val defaultFollowupLanes = listOf(
+        TransitGuideLane("271", null, "100100047"),
+        TransitGuideLane("273", null, "100100049"),
+    )
+
+    private fun followupLeg(
+        trackMode: TransitTrackMode = TransitTrackMode.seoulBus,
+        mode: String = "bus",
+        stops: List<TransitLegStop>? = null,
+        stationCount: Int? = 3,
+        lanes: List<TransitGuideLane>? = defaultFollowupLanes,
+    ): TransitGuideLeg {
+        val via = stops ?: followupStops
+        return TransitGuideLeg(
+            mode = mode, lineName = "271", trackMode = trackMode, boardName = "아현역", alightName = "광화문역",
+            boardStop = via.first(), alightStop = via.last(), viaStops = via, stationCount = stationCount,
+            routeId = "100100047", wayCode = null, walkBeforeMinutes = 4, boardNameEn = "Ahyeon Station", lanes = lanes,
+        )
+    }
+
+    private val approxLock = TransitLock(TransitTrackMode.seoulBus, "100100047", "", "")
+    private val identifiedLock = TransitLock(TransitTrackMode.seoulBus, "100100047", "", "v1")
+
+    @Test fun followupLegFromStop() {
+        val next = transitLegFromStop(followupLeg(), 1)!!
+        assertEquals(followupStops[1], next.boardStop)
+        assertEquals("충정로역", next.boardName)
+        assertEquals("Chungjeongno Station", next.boardNameEn)
+        assertEquals(followupStops.subList(1, 4), next.viaStops)
+        assertEquals(2, next.stationCount)
+        assertNull(next.walkBeforeMinutes)
+        assertNull(next.lanes)
+        assertTrue(next.lanesPending)
+        assertTrue(next.lineName == "271" && next.routeId == "100100047" && next.alightStop == followupStops[3])
+        // 영문 없는 정류장을 고르면 옛 승차 영문이 남지 않는다.
+        assertNull(transitLegFromStop(followupLeg(), 2)?.boardNameEn)
+        // 정거장 수를 모르면 계속 모른다.
+        assertNull(transitLegFromStop(followupLeg(stationCount = null), 1)?.stationCount)
+        for (i in listOf(0, 3, 4, -1)) assertNull(transitLegFromStop(followupLeg(), i), "index $i")
+    }
+
+    @Test fun followupLanesWithRoutes() {
+        val leg = transitLegFromStop(followupLeg(), 1)!!
+        val lanes = transitLanesWithRoutes(
+            leg,
+            listOf(
+                TransitLaneRoute("100100033", "160", "160"),
+                TransitLaneRoute("100100047", "271"),
+                TransitLaneRoute("", "x"),
+                TransitLaneRoute("100100033", "160"),
+            ),
+        )
+        assertEquals(listOf(TransitGuideLane("271", null, "100100047"), TransitGuideLane("160", "160", "100100033")), lanes)
+        assertNull(transitLanesWithRoutes(followupLeg(), emptyList()))
+        val many = (0 until 20).map { TransitLaneRoute("R$it", "$it") }
+        assertEquals(12, transitLanesWithRoutes(followupLeg(), many)?.size)
+    }
+
+    @Test fun followupLegWithLanesClearsPendingMark() {
+        val pending = transitLegFromStop(followupLeg(), 1)!!
+        val filled = transitLegWithLanes(pending, defaultFollowupLanes)
+        assertFalse(filled.lanesPending)
+        assertEquals(defaultFollowupLanes, filled.lanes)
+        // 집합이 없으면 표식만 지우고 lanes는 그대로다.
+        val unfilled = transitLegWithLanes(pending, null)
+        assertFalse(unfilled.lanesPending)
+        assertNull(unfilled.lanes)
+    }
+
+    @Test fun followupReboardStopPickable() {
+        assertTrue(transitReboardStopPickable(followupLeg()))
+        val missing = followupStops.toMutableList()
+        missing[1] = followupStop("충정로역", null, "112000430", null)
+        assertFalse(transitReboardStopPickable(followupLeg(stops = missing)))
+        val empty = TransitGuideLeg(
+            mode = "bus", lineName = "271", trackMode = TransitTrackMode.seoulBus, boardName = "a", alightName = "b",
+            boardStop = null, alightStop = null, viaStops = emptyList(), stationCount = null, routeId = "R", wayCode = null,
+            walkBeforeMinutes = null,
+        )
+        assertFalse(transitReboardStopPickable(empty))
+        assertTrue(transitReboardStopPickable(followupLeg(trackMode = TransitTrackMode.subway, mode = "subway")))
+        assertFalse(transitReboardStopPickable(followupLeg(trackMode = TransitTrackMode.tagoBus)))
+    }
+
+    @Test fun followupRideLineUnconfirmed() {
+        assertTrue(transitRideLineUnconfirmed(followupLeg(), approxLock))
+        assertFalse(transitRideLineUnconfirmed(followupLeg(), identifiedLock))
+        assertFalse(transitRideLineUnconfirmed(followupLeg(lanes = null), approxLock))
+        assertTrue(transitRideLineUnconfirmed(transitLegFromStop(followupLeg(), 1)!!, approxLock))
+        assertFalse(transitRideLineUnconfirmed(followupLeg(), null))
+        assertFalse(transitRideLineUnconfirmed(followupLeg(mode = "subway"), approxLock))
+    }
+
+    @Test fun followupTagoLaneSetKeyedByLineName() {
+        fun decode(lanes: String, line: String = "1711"): TransitRouteLeg {
+            val json = "{\"mode\":\"bus\",\"lineName\":\"$line\",\"fromName\":\"a\",\"toName\":\"b\",\"minutes\":8,\"stops\":[{\"name\":\"a\",\"lat\":36.3,\"lng\":127.4,\"cityCode\":\"25\",\"localId\":\"DJB1\"},{\"name\":\"b\",\"lat\":36.4,\"lng\":127.4,\"cityCode\":\"25\",\"localId\":\"DJB2\"}],\"lanes\":$lanes}"
+            return KitJson.decodeFromString(TransitRouteLeg.serializer(), json)
+        }
+        val leg = decode("""[{"lineName":"1711"},{"lineName":"7016"},{"lineName":"708"},{"lineName":"7016"}]""")
+        assertEquals(
+            TransitTrackMode.tagoBus,
+            classifyTransitTrackMode(leg.mode, leg.lineName ?: "", leg.serviceRouteId, leg.stops?.firstOrNull(), leg.stops?.lastOrNull()),
+        )
+        assertEquals(listOf("1711", "7016", "708"), transitGuideLanesOf(leg)?.map { it.key })
+        // 첫 항목이 leg 자신이 아니면 버린다, 하나뿐이어도 집합이 아니다.
+        assertNull(transitGuideLanesOf(decode("""[{"lineName":"7016"},{"lineName":"1711"}]""")))
+        assertNull(transitGuideLanesOf(decode("""[{"lineName":"1711"},{"lineName":"1711"}]""")))
+    }
+
+    // A74: 선언 버튼 술어와 대기 목록 풀(웹 `transit-guide.test.ts` 동형).
+    @Test fun boardingDeclareOfferedPredicate() {
+        fun of(signal: TransitSignal, pending: Boolean = false, seen: Boolean = false) =
+            transitBoardingDeclareOffered(signal, boardConfirmPending = pending, boardDepartedSeen = seen)
+        assertFalse(of(TransitSignal.tracking))
+        assertFalse(of(TransitSignal.notYetVisible))
+        assertTrue(of(TransitSignal.tracking, true))
+        assertTrue(of(TransitSignal.tracking, false, true))
+        assertTrue(of(TransitSignal.signalLost))
+        assertTrue(of(TransitSignal.upstreamFailed))
+    }
+
+    @Test fun boardablePoolDropsDepartedKeepsOrder() {
+        fun item(id: String, departed: Boolean?) = TransitTrackItem(
+            vehicleId = id, direction = "하행", message = "m", remainingStops = 0, destinationName = null,
+            express = false, arrivalCode = "1", departedLikely = departed,
+        )
+        val pool = transitBoardablePool(listOf(item("a", true), item("b", null), item("c", false)))
+        assertEquals(listOf("b", "c"), pool.map { it.vehicleId })
+    }
+
+    // 서버 응답의 선택 필드가 디코딩에서 살아남는다 — 배선이 끊기면 조용히 null이 돼 기능이 죽는다.
+    @Test fun trackItemDecodesDepartedFields() {
+        val json = """{"vehicleId":"2230","direction":"하행","message":"m","remainingStops":0,"destinationName":null,"express":false,"arrivalCode":"1","departedLikely":true,"platformAgeSeconds":143}"""
+        val item = KitJson.decodeFromString(TransitTrackItem.serializer(), json)
+        assertEquals(true, item.departedLikely)
+        assertEquals(143, item.platformAgeSeconds)
+        val bare = KitJson.decodeFromString(TransitTrackItem.serializer(), """{"vehicleId":"1","direction":"d","message":"m","express":false}""")
+        assertNull(bare.departedLikely)
+        assertNull(bare.platformAgeSeconds)
+        assertNull(bare.route)
+    }
 }
 
 /** 이벤트 종류를 fixture 문자열로 환원(웹 event.kind 대응). `TransitGuideToneTest`와 공유 — 새 케이스는 여기서 컴파일이 막는다. */

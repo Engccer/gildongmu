@@ -127,4 +127,16 @@ class TransitGuideTextTest {
             }
         }
     }
+
+    /** E76: 노선 집합이 있으면 대기 문맥이 `line` 대신 「271, 273」을 말한다(Kit `transitWaitContextLine`의 `laneList ?? line`). */
+    @Test fun `대기 문맥은 노선 집합이 있으면 그것을 말한다`() {
+        fun leg(laneList: TransitLabel?) = TransitDisplayLeg(
+            mode = "bus", line = TransitLabel("271"), board = TransitLabel("아현역"), alight = TransitLabel("광화문역"),
+            stops = emptyList(), stationCount = 3, walkBeforeMinutes = null, boardOverridden = false, laneList = laneList,
+        )
+        val withSet = transitWaitContextLine(isEn = false, leg = leg(TransitLabel("271, 273")), isCurrentLeg = true)
+        assertEquals(listOf("아현역", "271, 273"), withSet.parts.single().args)
+        val single = transitWaitContextLine(isEn = false, leg = leg(null), isCurrentLeg = true)
+        assertEquals(listOf("아현역", "271"), single.parts.single().args)
+    }
 }

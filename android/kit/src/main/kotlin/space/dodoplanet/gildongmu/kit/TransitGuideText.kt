@@ -65,9 +65,9 @@ fun transitWaitContextLine(isEn: Boolean, leg: TransitDisplayLeg, isCurrentLeg: 
     val overridden = isCurrentLeg && leg.boardOverridden
     val walk = leg.walkBeforeMinutes
     if (!overridden && walk != null && walk > 0) {
-        return makeLine(isEn, modeKey(leg, "waitContextWalk"), listOf(leg.board, leg.line)) { listOf(walk.toString(), it[0], it[1]) }
+        return makeLine(isEn, modeKey(leg, "waitContextWalk"), listOf(leg.board, leg.laneList ?: leg.line)) { listOf(walk.toString(), it[0], it[1]) }
     }
-    return makeLine(isEn, modeKey(leg, "waitContext"), listOf(leg.board, leg.line)) { it }
+    return makeLine(isEn, modeKey(leg, "waitContext"), listOf(leg.board, leg.laneList ?: leg.line)) { it }
 }
 
 fun transitBoardingContextLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =

@@ -32,6 +32,8 @@ data class TransitDisplayLeg(
     val boardOverridden: Boolean,
     /** 하차 출구 번호(E25) — 조인이 아니라 표시 값이라 투영에 둔다. 부재는 null. */
     val exitAlight: String? = null,
+    /** 노선 집합(E76, 둘 이상일 때만 — 「271, 273」). 대기 문맥이 `line` 대신 읽는다. 집합이 없으면 null. */
+    val laneList: TransitLabel? = null,
 )
 
 @Serializable
@@ -78,6 +80,7 @@ fun transitDisplayLeg(leg: TransitGuideLeg, boardOverrideIndex: Int?): TransitDi
         walkBeforeMinutes = leg.walkBeforeMinutes,
         boardOverridden = override != null,
         exitAlight = leg.exitAlight,
+        laneList = transitLaneListLabel(leg.lanes),
     )
 }
 
@@ -103,3 +106,16 @@ fun transitMessageLabel(ko: String, en: String?): TransitLabel = TransitLabel(ko
 
 /** 현재역 쌍 — 없으면 null(부재와 빈 문자열을 뭉개지 않는다). */
 fun transitLocationLabel(ko: String?, en: String?): TransitLabel? = if (!ko.isNullOrEmpty()) transitLabel(ko, en) else null
+
+/** 노선 한 줄의 표시 라벨 — 없으면 null. */
+fun transitLaneLabel(lane: TransitGuideLane?): TransitLabel? = lane?.let { transitLabel(it.lineName, it.lineNameEn) }
+
+/** 노선 집합의 표시 라벨(쉼표로 이은 「271, 273」). 둘 미만은 집합이 아니라 null. 영문은 전 노선이 갖출 때만. */
+fun transitLaneListLabel(lanes: List<TransitGuideLane>?): TransitLabel? {
+    if (lanes == null || lanes.size < 2) return null
+    val labels = lanes.map { transitLabel(it.lineName, it.lineNameEn) }
+    return TransitLabel(
+        ko = labels.joinToString(", ") { it.ko },
+        en = if (labels.all { it.en != null }) labels.mapNotNull { it.en }.joinToString(", ") else null,
+    )
+}

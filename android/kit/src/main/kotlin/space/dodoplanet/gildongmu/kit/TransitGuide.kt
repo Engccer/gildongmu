@@ -1,9 +1,11 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import space.dodoplanet.gildongmu.kit.models.QuickExit
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
+import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 
 /**
  * 대중교통 실시간 길 안내 상태 머신 — 웹 `src/lib/transit-guide.ts` ↔ Kit `TransitGuide.swift` 1:1 미러(B2 스펙 §4.2).
@@ -97,8 +99,11 @@ fun transitBoardingObservationLost(signal: TransitSignal): Boolean =
  * boarding 국면에서 선언 버튼([선택한 열차에 탔어요])을 세우는가. 관측이 끝났거나(N3 ①), 고른 열차가 고르는 순간 이미
  * 승강장에 있어 자동 승격을 미룬 채 사용자 확인을 기다릴 때(A74)다. 웹 `boardingDeclareOffered` 미러.
  */
+fun transitBoardingDeclareOffered(signal: TransitSignal, boardConfirmPending: Boolean, boardDepartedSeen: Boolean): Boolean =
+    transitBoardingObservationLost(signal) || boardConfirmPending || boardDepartedSeen
+
 fun transitBoardingDeclareOffered(state: TransitGuideState): Boolean =
-    transitBoardingObservationLost(state.signal) || state.boardConfirmPending || state.boardDepartedSeen
+    transitBoardingDeclareOffered(state.signal, state.boardConfirmPending, state.boardDepartedSeen)
 
 /**
  * 승차 대기 목록의 풀(A74): 조회 역을 이미 떠난 것으로 서버가 판정한 열차(`departedLikely`)를 뺀다 — 고르면 한 대 앞
@@ -117,6 +122,10 @@ fun transitAboardCandidates(items: List<TransitTrackItem>): List<TransitTrackIte
     items.filter { it.arrivalCode in ABOARD_ARRIVAL_CODES }
 
 private val ABOARD_ARRIVAL_CODES = setOf("0", "1", "2", "3", "4", "5")
+
+/** 버스 노선 집합의 한 노선(E76) — `key`는 서울버스 TOPIS 노선 ID, 지방버스는 노선 번호(`lineName`). */
+@Serializable
+data class TransitGuideLane(val lineName: String, val lineNameEn: String?, val key: String)
 
 /** 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다. */
 @Serializable
@@ -153,6 +162,13 @@ data class TransitGuideLeg(
     val exitAlight: String? = null,
     /** 구간 소요 분(ODsay `TransitLeg.minutes`) — 유휴 폴 정지 한계의 근거(E36 §4.2.6). 표시엔 쓰지 않는다. */
     val minutes: Int? = null,
+    /** 같은 정류장에서 같은 하차 정류소로 가는 노선 집합(E76, 둘 이상일 때만 — 첫 항목은 leg 자신). */
+    val lanes: List<TransitGuideLane>? = null,
+    /**
+     * 재기준 정류장의 집합을 아직 모른다(E76 후속 ⓔ) — `transitLegFromStop`이 세우고 `phase=lanes` 응답 반영이 지운다.
+     * 런타임 표식이라 직렬화 대상이 아니다(공유 fixture에 없다, Swift `CodingKeys`가 뺀 것과 같다).
+     */
+    @Transient val lanesPending: Boolean = false,
 )
 
 /**
@@ -212,6 +228,8 @@ data class TransitTrackItem(
     val directionEn: String? = null,
     val destinationNameEn: String? = null,
     val currentLocationEn: String? = null,
+    /** 노선 집합 폴(E76)에서 이 항목이 속한 노선의 키(서울버스 TOPIS 노선 ID, 지방버스 노선 번호). 단일 노선 폴엔 부재. */
+    val route: String? = null,
 )
 
 sealed class TransitTrackPoll {
@@ -545,6 +563,7 @@ fun buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute? {
                 expressStopIds = leg.expressStopIds?.takeIf { it.isNotEmpty() },
                 exitAlight = transitValidExitNo(leg.exit?.alight),
                 minutes = leg.minutes,
+                lanes = transitGuideLanesOf(leg),
             ),
         )
         pendingWalk = null
@@ -1345,6 +1364,112 @@ fun subwayRidingMessage(arrivalCode: String?): SubwayRidingMessage = when (arriv
     else -> SubwayRidingMessage.Raw
 }
 
-/** 노선 집합 항목(E76 후속 ⓔ, Kit `TransitLaneRoute` 미러 — 응답 디코딩만). */
+// === 노선 집합(E76)·서울버스 정류장 재기준·번호 없는 문장(E76 후속 ⓔⓕⓓ) — 순수, 웹 미러 ===
+
+/**
+ * 서울버스는 키가 TOPIS ID이고 첫 노선 정체성과 서버 상한 12를 지킨다. 지방버스(E76 후속 ⓓ)는 키가 **노선 번호**
+ * (`lineName`)다 — TAGO 도착 `routeno`와 같은 축이고, 이름 중복은 한 번만 세며, 둘 이상이면서 첫 항목이 leg 자신일
+ * 때만 집합이다. 웹 `guideLanesOf` 미러.
+ */
+fun transitGuideLanesOf(leg: TransitRouteLeg): List<TransitGuideLane>? {
+    val stops = leg.stops ?: emptyList()
+    val mode = classifyTransitTrackMode(
+        leg.mode, leg.lineName ?: "", leg.serviceRouteId, stops.firstOrNull(), if (stops.size > 1) stops.last() else null,
+    )
+    val source = leg.lanes ?: return null
+    if (mode == TransitTrackMode.tagoBus) {
+        val own = leg.lineName
+        if (own.isNullOrEmpty()) return null
+        val seen = HashSet<String>()
+        val lanes = ArrayList<TransitGuideLane>()
+        for (lane in source) {
+            if (lane.lineName.isEmpty() || !seen.add(lane.lineName)) continue
+            lanes.add(TransitGuideLane(lane.lineName, lane.lineNameEn, lane.lineName))
+        }
+        if (lanes.size < 2 || lanes.first().key != own) return null
+        return lanes.take(12)
+    }
+    val id = leg.serviceRouteId
+    if (mode != TransitTrackMode.seoulBus || id == null) return null
+    val lanes = source.mapNotNull { lane ->
+        val key = lane.serviceRouteId
+        if (key.isNullOrEmpty()) null else TransitGuideLane(lane.lineName, lane.lineNameEn, key)
+    }
+    if (lanes.size < 2 || lanes.first().key != id) return null
+    return lanes.take(12)
+}
+
+fun transitLaneForItem(leg: TransitGuideLeg, item: TransitTrackItem): TransitGuideLane? {
+    val key = item.route ?: return null
+    return leg.lanes?.firstOrNull { it.key == key }
+}
+
+fun transitLegWithLane(leg: TransitGuideLeg, lane: TransitGuideLane): TransitGuideLeg =
+    leg.copy(lineName = lane.lineName, lineNameEn = lane.lineNameEn, routeId = lane.key)
+
+/**
+ * 승차 중 [탑승 변경]이 「지금 어느 역·정류장」을 먼저 묻는가(A16 L3, 서울버스는 E76 후속 ⓔ). 지하철은 역 이름으로 조회하고,
+ * 서울버스는 경유 정류장 전부에 `arsId`(대기 폴)·`localId`(하차 순번)가 있어야 그 정류장 기준으로 다시 기다릴 수 있다.
+ * 지방버스는 [탑승 변경]이 없다. 웹 `reboardStopPickable` 미러.
+ */
+fun transitReboardStopPickable(leg: TransitGuideLeg): Boolean {
+    if (leg.viaStops.isEmpty()) return false
+    return when (leg.trackMode) {
+        TransitTrackMode.subway -> true
+        TransitTrackMode.seoulBus -> leg.viaStops.all { !it.arsId.isNullOrEmpty() && !it.localId.isNullOrEmpty() }
+        else -> false
+    }
+}
+
+/**
+ * 고른 정류장 기준으로 바꾼 leg(서울버스 재기준, spec `2026-11-07-e76-followup-design.md` §2.2). 승차·경유·정거장 수가 그
+ * 정류장부터이고 선행 도보·집합은 지우며(`lanesPending`) 노선·하차는 그대로다. 첫 정류장·하차 정류장·범위 밖은 null.
+ * 웹 `legFromStop` 미러.
+ */
+fun transitLegFromStop(leg: TransitGuideLeg, index: Int): TransitGuideLeg? {
+    if (!(index > 0 && index < leg.viaStops.size - 1)) return null
+    val stop = leg.viaStops[index]
+    // 바꿀 필드만 대입한다(`copy`) — 필드를 새로 더해도 복사에서 빠지지 않는다.
+    return leg.copy(
+        boardStop = stop,
+        boardName = stop.name,
+        boardNameEn = stop.nameEn,
+        viaStops = leg.viaStops.subList(index, leg.viaStops.size).toList(),
+        stationCount = if (leg.stationCount == null) null else leg.viaStops.size - 1 - index,
+        walkBeforeMinutes = null,
+        lanes = null,
+        lanesPending = true,
+    )
+}
+
+/** 재기준 집합 응답을 leg에 반영한다 — 미조회 표식을 지우고, 집합이 있으면(둘 이상) 채운다. 웹 `filled` 조립 미러. */
+fun transitLegWithLanes(leg: TransitGuideLeg, lanes: List<TransitGuideLane>?): TransitGuideLeg =
+    leg.copy(lanesPending = false, lanes = lanes ?: leg.lanes)
+
+/** 재기준 집합 서버 응답의 노선 하나(`/api/transit/track?phase=lanes`). */
 @Serializable
 data class TransitLaneRoute(val routeId: String, val lineName: String, val lineNameEn: String? = null)
+
+/** `[지금 노선] + 서버 노선` → 안내 집합(§2.4). 첫 항목은 언제나 leg 자신이다. 둘 미만이면 null, 상한 12. 웹 `lanesWithRoutes` 미러. */
+fun transitLanesWithRoutes(leg: TransitGuideLeg, routes: List<TransitLaneRoute>): List<TransitGuideLane>? {
+    val own = leg.routeId
+    if (own.isNullOrEmpty()) return null
+    val lanes = ArrayList<TransitGuideLane>()
+    lanes.add(TransitGuideLane(leg.lineName, leg.lineNameEn, own))
+    val seen = hashSetOf(own)
+    for (r in routes) {
+        if (r.routeId.isEmpty() || r.lineName.isEmpty() || !seen.add(r.routeId)) continue
+        lanes.add(TransitGuideLane(r.lineName, r.lineNameEn, r.routeId))
+    }
+    val capped = lanes.take(12)
+    return if (capped.size >= 2) capped else null
+}
+
+/**
+ * 승차 중 노선을 모르는가(ⓕ·ⓓ) — 근사 잠금 ∧ (같은 하차 정류소로 가는 노선이 둘 이상 ∨ 재기준 집합 미조회). 상태에서
+ * 유도한다(leg에 표식을 저장하지 않는다). 웹 `rideLineUnconfirmed` 미러.
+ */
+fun transitRideLineUnconfirmed(leg: TransitGuideLeg, lock: TransitLock?): Boolean {
+    if (lock == null || !isApproxTransitLock(lock) || leg.mode != "bus") return false
+    return (leg.lanes?.size ?: 0) >= 2 || leg.lanesPending
+}
