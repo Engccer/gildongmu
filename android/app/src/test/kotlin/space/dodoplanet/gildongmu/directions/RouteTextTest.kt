@@ -3,6 +3,8 @@ package space.dodoplanet.gildongmu.directions
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.WalkCollapse
+import space.dodoplanet.gildongmu.kit.models.CarCongestion
+import space.dodoplanet.gildongmu.kit.models.CarJam
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.CarRouteGuide
 import space.dodoplanet.gildongmu.kit.models.RouteWaypoint
@@ -15,6 +17,7 @@ import space.dodoplanet.gildongmu.kit.models.WalkRouteStep
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 /** spec §3-4 요약·스텝 문장(iOS `RouteBriefing.swift` 대응). */
 class RouteTextTest {
@@ -100,5 +103,27 @@ class RouteTextTest {
         assertEquals("계단 회피 경로는 불러오지 못했습니다.", ko.get(walkLinesFailedKey(listOf("accessible"))!!))
         assertEquals(null, walkLinesFailedKey(emptyList()))
         assertEquals(null, walkLinesFailedKey(listOf("scenic")))
+    }
+
+    // 정체 줄(E80 §4) — 웹 `car-traffic-text.test.ts`와 같은 케이스·같은 문장.
+    private fun jam(start: Int, length: Int, road: String?) = CarJam(road, start, length, RoutePoint(0.0, 0.0), RoutePoint(0.0, 0.0))
+
+    @Test fun `정체 줄 - 출발 직후 정체는 출발 지점부터`() {
+        assertEquals("막히는 구간 1곳: 출발 지점부터 통일로 900m 구간.", carCongestionText(CarCongestion(listOf(jam(30, 900, "통일로"))), false, ko))
+        assertEquals("막히는 구간 1곳: 출발 지점부터 900m 구간.", carCongestionText(CarCongestion(listOf(jam(30, 900, null))), false, ko))
+    }
+
+    @Test fun `정체 줄 - 이름은 세 곳까지, 나머지는 개수만`() {
+        val jams = listOf(1000, 3000, 5000, 7000, 9000).map { jam(it, 600, "올림픽대로") }
+        assertEquals(
+            "막히는 구간 5곳: 1km 앞 올림픽대로 600m 구간, 3km 앞 올림픽대로 600m 구간, 5km 앞 올림픽대로 600m 구간, 그 밖에 2곳.",
+            carCongestionText(CarCongestion(jams), false, ko),
+        )
+    }
+
+    @Test fun `정체 줄 - 3-state와 영어 화면의 한글 도로 이름`() {
+        assertNull(carCongestionText(null, false, ko))
+        assertEquals("막히는 구간이 없습니다.", carCongestionText(CarCongestion(emptyList()), false, ko))
+        assertEquals("막히는 구간 1곳: 850m 앞 700m 구간.", carCongestionText(CarCongestion(listOf(jam(850, 700, "올림픽대로"))), true, ko))
     }
 }

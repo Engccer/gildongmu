@@ -32,6 +32,7 @@ class RouteService(val client: APIClient) {
      * 한국어 안내를 주고 그 사실은 비-ko 사용자에게 낭독으로만 드러난다. "ko"는 파라미터를 생략해 기존 요청과
      * byte-identical. 서버는 en이어도 NCP 키 부재·경유지면 ko로 폴백하고 그 결과를 `guidanceLang`으로 알린다.
      * `via`도 기본값 없음(경유지 누락이 조용히 컴파일되지 않게).
+     * `traffic`: 정체 구간 옵트인(E80 §2, Kit 동형). **기본값이 없다** — 결과 화면·안내 조회는 켜고, 그 밖은 끈다를 호출부가 밝힌다.
      */
     suspend fun car(
         originLat: Double, originLng: Double,
@@ -39,11 +40,13 @@ class RouteService(val client: APIClient) {
         lang: String,
         includeGeometry: Boolean = false,
         via: RoutePoint?,
+        traffic: Boolean,
     ): CarRouteBriefing {
         val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
         if (lang != "ko") query.add("lang" to lang)
         if (includeGeometry) query.add("includeGeometry" to "1")
         if (via != null) query.add("via" to coordPair(via.lat, via.lng))
+        if (traffic) query.add("traffic" to "1")
         return client.get("/api/route/car", query)
     }
 

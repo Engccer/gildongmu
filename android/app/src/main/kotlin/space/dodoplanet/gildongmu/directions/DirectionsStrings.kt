@@ -110,6 +110,13 @@ internal fun stringId(key: String): Int? = when (key) {
     "beacon.heading" -> R.string.beacon_heading
     "beacon.stop" -> R.string.beacon_stop
     "route.transit.busNo" -> R.string.route_transit_busNo
+    "route.briefing.jams" -> R.string.route_briefing_jams
+    "route.briefing.jamNone" -> R.string.route_briefing_jamNone
+    "route.briefing.jamItem" -> R.string.route_briefing_jamItem
+    "route.briefing.jamItemUnnamed" -> R.string.route_briefing_jamItemUnnamed
+    "route.briefing.jamItemStart" -> R.string.route_briefing_jamItemStart
+    "route.briefing.jamItemStartUnnamed" -> R.string.route_briefing_jamItemStartUnnamed
+    "route.briefing.jamMore" -> R.string.route_briefing_jamMore
     "route.transit.legBoardExit" -> R.string.route_transit_legBoardExit
     "route.transit.legServiceOutside" -> R.string.route_transit_legServiceOutside
     "route.transit.legWalkTo" -> R.string.route_transit_legWalkTo

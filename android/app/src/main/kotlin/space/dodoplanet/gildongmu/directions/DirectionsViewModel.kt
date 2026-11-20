@@ -430,7 +430,7 @@ class DirectionsViewModel(
             }
             // 도보 줄 목록(E42). 첫 줄 실패는 서버 502(→ 실패), 둘째 줄 실패는 서버가 그 줄만 빼서 흡수한다. 빈 목록 = 경로 없음.
             val walk = async(io) { timed { routes.walkLines(origin.lat, origin.lng, dest.lat, dest.lng, dl, viaCoord) } }
-            val car = async(io) { timed { routes.car(origin.lat, origin.lng, dest.lat, dest.lng, lang, via = viaCoord) } }
+            val car = async(io) { timed { routes.car(origin.lat, origin.lng, dest.lat, dest.lng, lang, via = viaCoord, traffic = true) } }
             Triple(transit.await(), walk.await(), car.await())
         }
         currentCoroutineContext().ensureActive()

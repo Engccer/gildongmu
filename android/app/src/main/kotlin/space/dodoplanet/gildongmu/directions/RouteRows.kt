@@ -290,11 +290,13 @@ fun WalkOutcomeRows(
     walkLinesFailedKey(failedLines)?.let { TextRow(strings.get(it), "walk-lines-failed") }
 }
 
-/** 자동차 본문: 요약 1행 + 안내 행(펼침 없음 — 경로 하나). */
+/** 자동차 본문: 요약 1행 + 정체 1행(E80, 있을 때만) + 안내 행(펼침 없음 — 경로 하나). */
 @Composable
 fun CarOutcomeRows(briefing: CarRouteBriefing, viaLabel: String?, lang: String, strings: Strings) {
     val meters = strings.get("android.unit.spokenMeters")
     val summary = carSummaryText(briefing, lang, strings)
     TextRow(summary, "car-summary", spoken = spokenDistanceUnits(summary, meters))
+    // 정체(E80 §4): 요약 바로 뒤 한 행. 미요청·정보 없음은 행 없음, 정체 없음은 그렇다고 말한다(3-state). 데이터 언어는 화면과 같은 축(ko 밖은 en).
+    carCongestionText(briefing.congestion, english = lang != "ko", strings)?.let { TextRow(it, "car-congestion") }
     carStepItems(briefing, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "car-step-$i", spoken = spokenDistanceUnits(item, meters)) }
 }

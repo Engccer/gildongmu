@@ -1,6 +1,14 @@
 package space.dodoplanet.gildongmu.kit.models
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.nullable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
 import space.dodoplanet.gildongmu.kit.BearingUnavailable
 import space.dodoplanet.gildongmu.kit.CarAction
 import space.dodoplanet.gildongmu.kit.RoutePoint
@@ -58,7 +66,45 @@ data class CarRouteBriefing(
     val waypoint: RouteWaypoint? = null,
     /** 안내문 언어 "ko"/"en"(A26, 웹 `guidanceLang` 미러). 구버전 서버·구버전 응답은 null. */
     val guidanceLang: String? = null,
+    /**
+     * 정체 구간(E80, 옵트인 `traffic=1`에만). null = 미요청 또는 정보 없음(웹은 키 부재와 `null`을 가르지만 소비자는 둘 다 침묵이라
+     * 같은 값으로 받는다), 빈 `jams` = 문턱을 넘는 정체 없음. ⚠ 형식이 어긋나면 경로는 살리고 정체만 null로 접는다(Kit 디코딩 동형 —
+     * 일부만 버리면 「정체 없음」으로 위장할 수 있어 통째로 접는다).
+     */
+    @Serializable(with = LenientCarCongestionSerializer::class)
+    val congestion: CarCongestion? = null,
 )
+
+/** 정체 구간 하나(E80 spec §2, 웹·Kit `CarJam` 미러). 거리는 경로 출발점 기준 정수 m. */
+@Serializable
+data class CarJam(
+    /** 구간 안 가장 긴 이름 있는 도로. 무명이면 null. */
+    val road: String? = null,
+    val startMeters: Int,
+    val lengthMeters: Int,
+    /** 정체 시작·끝 좌표 — 주행 중 판정이 안내 경로에 투영한다. */
+    val start: RoutePoint,
+    val end: RoutePoint,
+)
+
+@Serializable
+data class CarCongestion(val jams: List<CarJam>)
+
+/** 정체 관용 디코딩(Kit `CarRouteBriefing.init(from:)`의 `try?`): 해석되지 않으면 null(정보 없음). 미러 파일이 아니라 직렬화 보조다. */
+@OptIn(ExperimentalSerializationApi::class)
+internal object LenientCarCongestionSerializer : KSerializer<CarCongestion?> {
+    override val descriptor: SerialDescriptor = CarCongestion.serializer().descriptor.nullable
+
+    override fun deserialize(decoder: Decoder): CarCongestion? {
+        val element = (decoder as JsonDecoder).decodeJsonElement()
+        if (element is JsonNull) return null
+        return runCatching { decoder.json.decodeFromJsonElement(CarCongestion.serializer(), element) }.getOrNull()
+    }
+
+    override fun serialize(encoder: Encoder, value: CarCongestion?) {
+        if (value == null) encoder.encodeNull() else encoder.encodeSerializableValue(CarCongestion.serializer(), value)
+    }
+}
 
 // MARK: - 대중교통 경로
 

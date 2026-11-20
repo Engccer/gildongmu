@@ -158,20 +158,45 @@ class RouteServiceTest {
 
     @Test fun carViaNilOmitsParam() = runTest {
         val (svc, t) = service(carBody)
-        svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null)
+        svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null, traffic = false)
         assertFalse(t.lastQuery().hasName("via"))
     }
 
     /** A26: 자동차도 walk와 같은 규율 — ko는 파라미터를 생략하고 비-ko만 싣는다. */
     @Test fun carSendsLangOnlyForNonKorean() = runTest {
         val (svc, t) = service(carBody)
-        svc.car(37.5, 127.0, 37.6, 127.1, lang = "en", via = null)
+        svc.car(37.5, 127.0, 37.6, 127.1, lang = "en", via = null, traffic = false)
         assertTrue(t.lastQuery().has("lang", "en"))
-        svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", includeGeometry = true, via = RoutePoint(37.55, 127.05))
+        svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", includeGeometry = true, via = RoutePoint(37.55, 127.05), traffic = false)
         val q = t.lastQuery()
         assertFalse(q.hasName("lang"))
         assertTrue(q.has("includeGeometry", "1"))
         assertTrue(q.has("via", "37.55,127.05"))
+    }
+
+    /** E80 §2: 정체는 옵트인 — 켜면 `traffic=1`, 끄면 파라미터 없음. 응답 `congestion`은 정체 목록·null 모두 디코딩된다. */
+    @Test fun carTrafficOptIn() = runTest {
+        val on = """{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"congestion":{"jams":[{"road":null,"startMeters":10,"lengthMeters":600,"start":{"lat":37.5,"lng":127},"end":{"lat":37.5,"lng":127.01}}]}}"""
+        val (svc, t) = service(HttpResponse(200, on))
+        val b = svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null, traffic = true)
+        assertTrue(t.lastQuery().has("traffic", "1"))
+        assertEquals(600, b.congestion?.jams?.first()?.lengthMeters)
+        assertNull(b.congestion?.jams?.first()?.road)
+        val (svc2, t2) = service(HttpResponse(200, """{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"congestion":null}"""))
+        val off = svc2.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null, traffic = false)
+        assertFalse(t2.lastQuery().hasName("traffic"))
+        assertNull(off.congestion)
+    }
+
+    /** E80 설계 리뷰 m7: 정체 형식이 어긋나도 경로는 산다 — 정체만 null(정보 없음)로 접는다. 빈 목록은 「정체 없음」이라 남는다. */
+    @Test fun carMalformedCongestionKeepsRoute() = runTest {
+        val bad = """{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"provider":"tmap","congestion":{"jams":[{"road":null,"startMeters":"x"}]}}"""
+        val (svc, _) = service(HttpResponse(200, bad))
+        val b = svc.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null, traffic = true)
+        assertEquals("tmap", b.provider)
+        assertNull(b.congestion)
+        val (svc2, _) = service(HttpResponse(200, """{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"congestion":{"jams":[]}}"""))
+        assertEquals(emptyList(), svc2.car(37.5, 127.0, 37.6, 127.1, lang = "ko", via = null, traffic = true).congestion?.jams)
     }
 
     /** E27: 대중교통 `lang` — 비-ko만 싣는다. includeStops도 옵트인. */

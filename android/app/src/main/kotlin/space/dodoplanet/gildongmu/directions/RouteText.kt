@@ -1,7 +1,10 @@
 package space.dodoplanet.gildongmu.directions
 
 import space.dodoplanet.gildongmu.kit.formatDistance
+import space.dodoplanet.gildongmu.kit.hasHangul
 import space.dodoplanet.gildongmu.kit.joinText
+import space.dodoplanet.gildongmu.kit.models.CarCongestion
+import space.dodoplanet.gildongmu.kit.models.CarJam
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.TransitRouteSummary
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
@@ -40,6 +43,35 @@ fun carSummaryText(briefing: CarRouteBriefing, lang: String, strings: Strings): 
     strings.get("android.route.taxiFare", wonText(briefing.taxiFare, lang)),
     if (briefing.tollFare > 0) strings.get("android.route.tollFare", wonText(briefing.tollFare, lang)) else null,
 )
+
+/**
+ * 정체 줄(E80 spec §4·§5, iOS `carCongestionText`·웹 `car-traffic-text.ts` 미러 — 같은 키가 문장 정본). null = 줄 없음(미요청·정보 없음),
+ * 빈 목록 = 「막히는 구간이 없습니다.」(3-state). 이름은 [carBriefingJamMax]곳까지, 나머지는 개수만. 출발 지점 100m 안에서 시작하면
+ * 「출발 지점부터」. `english`(데이터 언어 en)면 한글 도로 이름을 뺀다(iOS `spokenJamRoad`와 같은 규칙).
+ */
+fun carCongestionText(congestion: CarCongestion?, english: Boolean, strings: Strings): String? {
+    val jams = congestion?.jams ?: return null
+    if (jams.isEmpty()) return strings.get("route.briefing.jamNone")
+    val items = jams.take(carBriefingJamMax).map { carJamItemText(it, english, strings) }.toMutableList()
+    val rest = jams.size - items.size
+    if (rest > 0) items.add(strings.get("route.briefing.jamMore", rest))
+    return strings.get("route.briefing.jams", jams.size, items.joinToString(", "))
+}
+
+private const val carBriefingJamMax = 3
+private const val carJamFromStartMeters = 100
+
+private fun carJamItemText(jam: CarJam, english: Boolean, strings: Strings): String {
+    val length = formatDistance(jam.lengthMeters)
+    val road = jam.road?.takeIf { it.isNotEmpty() && !(english && hasHangul(it)) }
+    if (jam.startMeters < carJamFromStartMeters) {
+        return road?.let { strings.get("route.briefing.jamItemStart", it, length) }
+            ?: strings.get("route.briefing.jamItemStartUnnamed", length)
+    }
+    val distance = formatDistance(jam.startMeters)
+    return road?.let { strings.get("route.briefing.jamItem", distance, it, length) }
+        ?: strings.get("route.briefing.jamItemUnnamed", distance, length)
+}
 
 /** 도보 줄 이름(E42, iOS `WalkLineText.nameKey` 미러) — 조회 화면 줄 이름과 안내 시작 버튼이 같은 이름을 쓴다. */
 fun walkLineNameKey(line: WalkLineKind): String = when (line) {
