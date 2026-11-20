@@ -179,3 +179,130 @@ object GuideSession {
 | 새 정체 규칙의 검사 순서가 이탈 전에 기준선을 채택한다 | 수용(iOS 순서와 다른 서술) | §4-5 순서 명시 |
 | 도보 인계 실패 시 종료 화면이 먼저 사라져 실패 문장·복구 버튼 자리가 없다 | 기각 — iOS `acceptCarWalkHandoff`와 같은 순서이고, 인계 직전 자동차 세션이 정밀 위치 권한·위치 켬을 방금 충족했다(실패 문장은 낭독·진동으로 나간다) | — |
 | 경로 재획득(목적지·경유지 변경)마다 ETA 횟수가 1로 돌아간다 | 기각 — iOS `fetchGuideRoute`가 같은 자리에서 같은 값을 쓴다(사용자가 연 재획득만 늘린다, 미러 우선) | — |
+
+## 6. 대중교통 세션 상세 (`and-m5-transit`, iOS `TransitGuideModel`·`GuideSession` 대중교통 절단면)
+
+> 설계 판별: 새 세션 모델과 두 모델이 공유하는 경계(전경 서비스·오디오·시트 호스트·도보 인계)의 모양을 정하므로 설계 리뷰 대상이다. 판정 계층은 `:kit`에 있다(`TransitGuide`의 리듀서 `transitGuideStep`·`initTransitGuide`·`buildTransitGuideRoute`·폴 주기 `transitPollIntervalMs`, `TransitGuideText`·`TransitGuideTone`·`TransitIdle`·`TransitProgressOverview`·`TransitTrackService`, 단계 1이 옮기는 `ExitHold`·`TransitTransferWalk`·`TransitWrongStopRecovery`·`TransitBackgroundTone`·`TransitRidingPosition`·`TransitBusStop`과 노선 선택 E76 함수). 앱 층은 iOS를 같은 자리·같은 조건으로 옮긴다. 낭독 문장은 iOS가 쓰는 `transitGuide.*` 키 그대로다(iOS 앱 코드가 쓰는 136키가 안드로이드 생성물에 모두 있다, 2026-11-21 대조).
+
+### 6-1. 모델 구조
+
+- **`guide/TransitGuideModel.kt` 한 클래스**(iOS `TransitGuideModel.swift` 1:1, 함수 이름·순서 동일). 도보 모델과 나누는 이유는 iOS와 같다(§2-1): 상태 기계가 리듀서 `transitGuideStep`이고 fix 파이프라인이 없다. 파일을 기능별로 쪼개지 않는다 — iOS와 줄 단위로 대조하는 것이 이식의 유일한 검증 수단이다(`WalkGuideModel.kt`와 같은 판단).
+- **관찰 상태는 `ui: StateFlow<TransitGuideUiState>` 하나**(도보 `WalkGuideUiState` 동형). iOS `@Observable`이 뷰에 내보내는 값(`state`·`route`·`waitingLive`·`waitingDeparted`·`waitingReason`·`pendingWalkHandoff`·`pendingDestChange`·`pendingAltRoutes`·`pendingRecovery`·`ridingPosition`·`busStopMark`·`boardOverrideIndex`·`reboardPickerActive`·`aboardStep`·`expressBlockedNote`·`idlePaused` 등)만 담고, `@ObservationIgnored`인 것(폴 작업·장부·세대·캐시)은 모델의 비공개 필드다. 시트의 파생 값(iOS 계산 속성 `overview`·`viaStopHereIndex`·`currentLeg`·`isOnFinalLeg`·`finalLegWalkMinutes`)은 모델의 공개 함수로 둔다.
+- **포트**(전부 생성자 주입, 기본값 없음): `routes: RouteService`(목적지 전환·다른 경로·잘못 내림 복구 재조회), `track: TransitTrackService`, `position: TransitPositionService`, `strings`, `dataLocale`, `controller: GuideForegroundController`(§6-4), `permissions: GuidePermissions`(keep-alive 판정은 현재 권한만 읽고 요청하지 않는다 — iOS 「대중교통 시작은 권한 요청 지점이 아니다」), `tones`, `speaker`, `deviceSpeech: DeviceSpeechQueue`, `haptics`, `env: GuideEnvironment`, `coordinator`, `scope`, `clock`. 같은 포트 인스턴스를 두 모델이 공유한다(§6-5).
+- **문장 렌더러**: `guide/TransitGuideTextRenderer.kt`(iOS `TransitGuideTextRenderer.swift` 미러) — Kit `TransitGuideText`의 구조화 줄을 앱 문자열로 조립한다. 언어 판정 `transitGuideIsEn`은 iOS와 같은 술어(데이터 로케일이 en)를 앱 함수로 둔다.
+- **세션 점유**: `coordinator.claim(stop = { stop() })`(iOS 동형). 모델 입구 둘(`start`·`startAfterPrewalk`)은 `GuideSession.isActive`면 거부 통지(`guide.alreadyActive`)를 내고 돌아간다 — iOS가 모델 입구에서도 거부하는 것과 같다(외부 시작은 `GuideSession`이 먼저 걸러 여기까지 오지 않는다).
+
+### 6-2. 수명과 상태 전이
+
+| 입구 | iOS | 안드로이드 |
+|---|---|---|
+| 시작 | `start(transitRoute:destinationLabel:destinationRoman:dest:accessible:aboard:)` | `start(route, destinationLabel, dest, accessible)` — `aboard`(E71 지금 탄 열차)는 iOS에서도 여정(`startJourney`)만 넘기므로 여정 세션(`and-journey`)이 인자를 더한다. `destinationRoman`은 §2-2처럼 세 요청에 함께 더할 때까지 없다(데이터 로케일 ko 전제) |
+| 도보 뒤 시작 | `startAfterPrewalk(guideRoute:startLeg:…:prewalkCompleted:)` | 같은 이름·인자, `prewalkCompleted` 기본값 없음(걸어서 닿았으면 그 구간의 도보 문맥을 지운 경로 — `withoutWalkBefore`) |
+| 정지 | `stop(playStopTone:)`·`stopForTransferWalk()`(여정 훅 보존)·`clearWalkHandoff()`·`teardown()` | 같다. 여정 훅(`onJourneyRideCompleted`·`onJourneyStopped`·`journeyNextIsWalk`)은 필드만 두고 여정 세션이 배선한다 |
+| 전경 전이 | `handleScenePhaseChange` | `setForeground(foreground)`(도보 동형 — `GuideSession.setForeground`가 두 모델에 넘긴다). 복귀 인계(`deviceSpeech.handOver()`)가 추적 가드 **앞**인 순서, 복귀 즉폴, 버린 통지가 있을 때만 현재 상태 한 문장(`returnStatusText`) |
+
+- 상태 전이는 전부 리듀서다: 입력(`TransitGuideInput` — 폴 결과·사용자 선언·전진)을 `dispatch`가 넣고, 나온 이벤트를 `handle(event)`가 톤·통지로 바꾼다(iOS `dispatch`·`handle`·`announcementText` 그대로). 앱이 국면을 직접 쓰지 않는다.
+- 사용자 동작(iOS `board`·`confirmBoarded`·`boardApprox`·`advance`·`advanceIntoWalkHandoff`·`beginReboard`·`cancelReboard`·`changeBoarding(at:)`·`changeBoarding()`·`cancelChangeBoarding`·`boardAlready(express:)`·`beginAboard`·`pickAboardStation`·`boardAboard`·`declareArrived`·`refreshWaiting`·`announceProgress`)은 같은 이름의 공개 함수다. 전부 `touchUserAction()`(유휴 재개)을 지난다.
+- 급행(A16): 대기 목록의 종착 차단·급행 병기·급행 확인 프롬프트(`expressPrompt`)는 iOS 판정 그대로.
+- 떠난 열차(A74): 폴이 사라진 후보를 `retained`에 180초 보존하고 「N분 전 떠남」 줄(`waitingDeparted`)을 만든다(iOS `retainSeconds`).
+- 하차 인계 신호: 마지막 구간 완료(`completeOrAdvance`)가 `stop()` 뒤에 `pendingWalkHandoff`(`TransitWalkHandoff(destinationLabel, walkMinutes, exitAlight, alightLat, alightLng)`)를 남긴다 — 한 턴 수명 신호이고 같은 턴에 `GuideSession.acceptWalkHandoff()`가 소비한다(§6-6).
+- 환승 도보 신호: 다음 구간 앞 도보가 걷기 안내 대상(`transitTransferWalkTarget`)이면 전진을 커밋하지 않고 `GuideSession.transitTransferWalk(TransitTransferWalkHandoff(…))`를 부른다(§6-6).
+
+### 6-3. 폴과 유휴
+
+- 폴 루프는 코루틴 하나(`pollJob`, iOS `pollTask`)다: `restartPollLoop(immediate)` → 주기 `transitPollIntervalMs(state)`(0이면 즉폴도 없음, A37) → 매 회차 직전 `enterIdleIfDue()` → `pollOnce()`(도착 정보 `track`) → `refreshPosition(seq)`(승차 중 현재역 E35, 도착 폴 계측 밖) → 다음 주기. 잘못 내림 복구 중·유휴 정지 중엔 예약하지 않는다.
+- 취소 가드: 폴 결과는 세대(`phaseGen`·`seq`·세션 토큰)가 맞을 때만 `dispatch`한다. 복귀 즉폴이 옛 작업을 취소하고 그 결과를 버리는 것이 3-state 방어선이다(iOS 설계 리뷰 O2 — 백그라운드에서 끊긴 요청이 `failed`로 도착해 「조회 실패」를 지어내지 않게).
+- 유휴 정지(E36): 마지막 조작 뒤 `transitIdlePollLimitMs(legMinutes)`가 지나면 폴·keep-alive를 멈추고 정지음 + `transitGuide.idlePaused`(분류 `deferrable`). 재개는 사용자 조작·전경 복귀(`transitGuide.resumed` + 상태, 즉시 창구 `highPriority`).
+- 백그라운드 톤(E79): `playTone(tone, allowedInBackground)`의 허용 집합은 Kit `transitToneAllowedInBackground`(단계 1 이식). 정지 fix 같은 도보 규칙은 없다(대중교통 톤은 리듀서 이벤트에서만 난다).
+
+### 6-4. 전경 서비스: 소유자 한 지점과 keep-alive
+
+**판정**: 서비스는 하나(`GuideForegroundService`, `location` 타입)이고, 서비스의 다섯 경로(fix·위치 꺼짐·알림 문장·알림 「안내 종료」·`startForeground` 실패)는 `GuideSession.serviceOwner()` 한 지점이 고른 소유자에게 간다.
+
+```kotlin
+/** 전경 서비스가 말을 거는 세션 쪽 — 도보·자동차(`WalkGuideModel`)와 대중교통(`TransitGuideModel`)이 구현한다. */
+interface GuideServiceOwner {
+    val locationProfile: StateFlow<GuideLocationProfile?>   // null = 서비스가 필요 없다
+    val notificationText: Flow<Pair<String, String>>        // (제목, 본문) — 서비스는 distinctUntilChanged만
+    fun handleServiceFix(fix: GuideFixPayload)
+    fun handleProviderDisabled()
+    fun stopFromNotification()                               // 알림 「안내 종료」 = 시트의 안내 종료와 같은 함수
+    fun onServiceStartFailed(generation: Int, error: Throwable)
+}
+enum class GuideLocationProfile { beacon, keepAlive, keepAliveBus }
+```
+
+- **소유자 선택**: `serviceOwner()` = 도보 모델이 시작 중이거나 추적 중이면 도보, 아니면 대중교통이 추적 중이면 대중교통, 아니면 null(서비스는 `stopSelf`). 매 콜백 시점에 조회하고 인스턴스를 붙들지 않는다(종전 규칙 유지). 둘이 동시에 추적하는 순간은 코디네이터 점유가 막는다(인계는 앞 모델 `stop()`이 뒤 모델 `claim`보다 먼저).
+- **시작 실패의 세대**: `GuideForegroundController.start(generation: Int)`. 세대는 `GuideSession.nextServiceGeneration()`이 하나씩 올려 주고, 요청한 모델이 자기 값을 든다. 서비스는 인텐트 extra로 받은 세대를 실패와 함께 `GuideSession.onServiceStartFailed(generation, e)`로 돌려주고, 세션은 **그 세대를 든 모델에만** 넘긴다(인계 직후 늦게 온 앞 세션의 실패가 새 세션을 접지 않게). 이미 떠 있는 서비스의 재사용(`service start reused`)은 실패가 없다.
+- **도보·자동차**: 지금 동작 그대로(프로파일 `beacon` = 1초·고정밀, 실패 = 세션 실패 `onServiceStartFailed`).
+- **대중교통 keep-alive**(E36·A46·E48, iOS `updateKeepAlive`): (boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 유휴 아님 ∧ **위치 권한이 이미 있음**이면 서비스를 켜고, 아니면 끈다. 권한이 없으면 열지 않고 세션당 로그 한 줄(`keepAlive denied`) — 권한 창을 띄우지 않는다. 프로파일은 버스 승차 중 정류장 표식이 적용될 때(`transitBusStopApplies`) `keepAliveBus`(고정밀·1초·거리 필터 없음, iOS 10m급·필터 없음), 그 밖 `keepAlive`(`QUALITY_LOW_POWER`·간격 60초·최소 거리 500m, iOS 1km급·500m). 서비스는 프로파일이 바뀌면 스트림을 다시 연다. **시작 실패는 세션을 끝내지 않는다**(iOS `startKeepAliveUpdates`가 false를 돌려주는 것과 같은 자리): 로그 한 줄, keep-alive 꺼진 채 계속(전경 폴은 돈다).
+- **wake lock**: 대중교통 keep-alive도 서비스 수명 wake lock을 든다(폴 코루틴이 절전에서 멎지 않게 — iOS에선 keep-alive 위치 갱신이 앱을 깨워 둔다). 대기 국면(waiting)에 화면을 끄면 iOS처럼 폴이 멎을 수 있다 — iOS 정본 동작이고 복귀 즉폴이 갚는다.
+- **백그라운드 시작 제한**: Android 12+는 백그라운드에서 전경 서비스를 시작할 수 없다. keep-alive를 켜는 전이(대기 → boarding)는 사용자 선택(전경)이라 걸리지 않고, riding은 boarding에서 이미 켜진 서비스를 프로파일만 바꾼다(A46). 그 밖 경로에서 실패하면 위 「시작 실패」 규칙을 탄다.
+- **keep-alive fix**: 대중교통의 `handleServiceFix`는 버스 정류장 판정(`transitBusStopStep`)과 하차 정류장 한 마디(A69)만 먹는다(iOS `ingestKeepAliveFix`, 리듀서 입력이 아니다).
+- **알림**: 제목은 대중교통 시트 제목 문자열, 본문은 띠바 문장(`guideBandSummary`)이다. 알림 「안내 종료」는 시트의 「안내 종료」와 같은 함수(정지음 + 정지 문장).
+
+### 6-5. 오디오·억제
+
+- 포커스·톤 재생기·TTS·진동은 `GuideSession.attach`가 한 벌 만들어 두 모델에 주입한다(§2-6). **의도된 iOS 차이**: iOS 대중교통은 톤 재생기를 따로 든다(`BeaconTonePlayer(label: "transit")`). 안드로이드는 재생기 하나(M4 §5-2 #16)이고 세션이 동시에 둘 돌지 않으므로 iOS의 「소유권 이전(`.ownershipTransferred`)」 장치는 필요 없다. 인계 순서(앞 세션 정지음 → 600ms → 뒤 세션 시작음)는 같은 재생기에서 그대로 난다.
+- **`DeviceSpeechQueue` 승격**: 지금 `WalkGuideModel` 안의 인스턴스를 `GuideSession.attach`로 올려 두 모델에 주입한다(iOS 「세 모델 공유 칸」). TTS 포트의 단일 콜백 둘(`speaker.onInterrupted`, `TtsGuideSpeaker(onPendingDropped)`)은 `GuideSession`이 받아 칸과 **현재 소유자**(`serviceOwner()`와 같은 선택, 정지 뒤면 마지막 소유자)로 보낸다 — 지금처럼 `walk`에 직결하면 대중교통 문장의 버림이 도보 모델의 `missedAnnouncement`를 세운다.
+- 세션 경계(`beginSession`·`stop`)마다 `deviceSpeech.reset()`(E53 §4.2 ⑤) — 공유 칸이라 뒤 세션의 시작이 앞 세션의 대기 문장을 버리는 것이 iOS와 같은 동작이다.
+- **억제 소유자 집합**: `setOutputSuppressed(active, owner)`가 두 모델의 `outputSuppressed`를 함께 건다. 이전 값(`suppressionPrior`)은 모델마다 따로 든다. 대중교통의 `outputSuppressed` 해제는 iOS처럼 억제 중 버린 마지막 문장(`droppedWhileSuppressed`)을 한 번 다시 낸다(버스 하차 한 마디는 제외, iOS 설계 리뷰 2차).
+
+### 6-6. 시작과 도보 인계 (`GuideSession`, iOS `GuideSession` 대중교통 절단면)
+
+```kotlin
+/** 대중교통 안내 시작 요청 — 기본값 없음. */
+data class TransitStartRequest(val route: TransitRoute, val destinationLabel: String, val dest: BeaconDest, val accessible: Boolean)
+
+object GuideSession {
+    fun startTransit(request: TransitStartRequest)   // isAttached → refuseIfActive() → beginTransit(request)
+    private fun beginTransit(request: TransitStartRequest)          // 승차 전 도보 판정(A25)이 여기서 갈린다
+    fun acceptWalkHandoff()                           // 하차 인계(E34) — 대중교통 시트의 「남은 도보 안내 시작」
+    fun transitTransferWalk(handoff: TransitTransferWalkHandoff)  // 환승 도보(E73)·잘못 내림 복구의 걷기(E78)
+    fun transitPassedPrewalk()                        // A68: 탔다·경로를 바꿨다 → 승차 전 도보 재시작 줄을 거둔다
+    fun restartBeacon()                               // 길찾기 [정확한 위치 허용] 재시작의 유일한 경로(A13·A68)
+}
+```
+
+- **승차 전 도보(A25)**: `beginTransit`이 `buildTransitGuideRoute` → `transitPrewalkTarget`으로 첫 승차 앞 도보가 걷기 대상인지 본다. 대상이면 `PrewalkContext`(id·경로·시작 구간 0·목적지·계단 회피·역 라벨·도보 분·`isTransfer = false`·`lead = null`)를 세우고 `launchPrewalk` → 승차역까지 도보 세션을 **`beginBeacon`으로**(거부 판정 없음 — §3) 연다. 아니면 곧장 `transit.start`.
+- **`launchPrewalk`**(iOS 동형): 컨텍스트 저장 → `prewalkRestart` 저장 → `walk.markPrewalk(station, transfer)` → `walk.onSessionEnd = { reason -> endPrewalk(context.id, reason) }` → 시작 문장(`transitPrewalkStartLine`, 환승은 `highPriority`)을 대중교통 창구로 → 도보 시작 → 동기 거부면 곧장 `endPrewalk(id, startFailed)`.
+- **`endPrewalk(id, reason)`**: id가 다르면 무시. `arrived` → 600ms 뒤 `transit.startAfterPrewalk(prewalkCompleted = true)`. `startFailed` → 도보 모델의 원인·다리 문장이 끝나기를 기다렸다가(`walk.announcementsSettled()`를 100ms마다, 상한 8초 — iOS는 VoiceOver가 켜졌을 때만 기다리지만 안드로이드는 안내 문장이 늘 TTS라 늘 기다린다) `startAfterPrewalk(prewalkCompleted = false)`. 환승 도보 중 `locationLost` → 600ms 뒤 같은 대기 후 `prewalkCompleted = true`. 그 밖(`userStopped`·`locationLost`·`ended`)은 아무 문장도 내지 않는다(도보 모델이 사유 뒤에 이미 붙였다).
+- **도보 모델 쪽 신설**: `enum class BeaconEndReason { arrived, startFailed, userStopped, locationLost, ended }`와 `onSessionEnd` 훅(정지 경로마다 사유를 한 번), `markPrewalk`·`clearPrewalk`(승차 전 도보 표식 — 시작 문장·정지 꼬리 문장 「대중교통 안내도 종료했습니다」(환승)·다리 문장(A67 시작 실패 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)이 이 표식을 읽는다). 문장은 iOS `BeaconModel`의 해당 자리 키 그대로.
+- **하차 인계(E34·E84)**: 마지막 구간 시트의 「남은 도보 안내 시작」 → `transit.advanceIntoWalkHandoff()`가 참이면 `acceptWalkHandoff()`: 인계 값에서 출구(`transitValidExitNo(exitAlight)`)와 하차역 좌표로 `ExitLead`를 **`stop()` 전에** 읽고 → `transit.stop()` → `clearWalkHandoff()` → 600ms 뒤 공개 `startWalk(WalkStartRequest(…, exitLead))`(대중교통이 이미 끝나 거부 판정을 그대로 지난다 — iOS `startBeacon` 동형. §3 표의 「하차 인계는 `beginBeacon`」은 이것으로 고친다). 잘못 내림 복구의 「걸어가기」는 인계 값 없이 들어와 출구가 실리지 않는다(iOS 동형).
+- **환승 도보(E73)**: `transitTransferWalk(handoff)` → `transit.stopForTransferWalk()`(정지음 없음) → 600ms 뒤 점유가 없으면 `launchPrewalk(isTransfer = true, lead = handoff.lead)` + `beginBeacon`, 점유가 있으면 버린다(로그 `transferWalk abandoned`).
+- **600ms 대기 작업은 `prewalkJob` 한 칸**이고 모든 시작 진입(`beginBeacon`·`beginTransit`)이 `cancelPrewalk()`로 함께 취소한다(iOS `prewalkTask`). 하차 인계의 대기는 `walkHandoffJob` 따로(iOS 동형).
+- **출구 대기(E84)**: `WalkStartRequest.exitLead: ExitLead?`(기본값 없음, `ExitLead(exit, stationLat, stationLng)`). 도보 모델이 출구 문장 `guide.exitLeadStart`를 첫 시작류 통지 앞에 한 번 싣고(`exitLeadPrefixNeeded`), Kit `ExitHold` 창을 연다 — 창 동안 fix 게이트와 잊힌 세션 안전망 두절 임계(`GuideTuning.sessionIdleNoFixExitHoldSeconds`)를 iOS `BeaconModel`의 `openExitHold`·`exitHold` 자리 그대로 따른다. 자동차·다른 도보 시작 호출부는 `exitLead = null`을 명시한다. `restart()`는 `lastStartRequest`의 출구를 그대로 다시 쓴다(iOS `exitHold?.lead`).
+- **재시작(A13·A68)**: 길찾기 실패 줄의 [정확한 위치 허용]은 `walk.restart()` 직접 호출(지금 `WalkGuideStartButton.kt`)을 `GuideSession.restartBeacon()`으로 바꾼다 — 직전 시작이 승차 전 도보였으면 연결을 다시 걸어 도착 뒤 대중교통으로 잇는다. `retirePrewalkRestart`의 거두는 자리는 iOS 그대로(승차 전 도보가 아닌 시작·대중교통이 그 계획을 지나감).
+- **소스 가드**(`GuideSourceGuardTest` ①-2를 넓힌다): `startTransit(` 호출부는 대중교통 시작 버튼 파일 하나, `beginBeacon(` 호출부는 `GuideSession.kt` 안의 공개 시작 함수 둘·승차 전 도보·환승 도보·`restartBeacon` 자리, `startWalk(`은 기존 둘에 하차 인계 하나, `transit.start(`·`startAfterPrewalk(` 호출부는 `GuideSession.kt` 하나, `walk.restart()` 호출부는 `GuideSession.kt` 하나.
+
+### 6-7. 시트·띠바
+
+- **`GuideSession.screen: GuideScreenKind?`**(`beacon`·`transit`, iOS `screen` 동형): 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 `pendingWalkHandoff`가 있으면 `transit`. `hasScreen`·띠바·`reopenAfterNestedScreen`은 이 값을 본다. `GuideBottomBar`가 이 값으로 `GuideSheet` 또는 새 `TransitGuideSheet`를 고른다(한 호스트, 두 시트를 따로 띄우지 않는다 — iOS 설계 리뷰 M2).
+- **`guide/ui/TransitGuideSheet.kt`**(iOS `TransitTrackingSheet.swift` 1:1): 행 순서는 iOS `sheetBody` 그대로(제목 → 상태 문장 → 경유역 목록 → 국면 컨트롤 → 공통). 국면별 컨트롤 집합·버튼 라벨·작업 메뉴 순서는 iOS 그대로이고, 줄은 `mergedRow` 한 접근성 객체(§4 「한 줄 = 한 객체」), 낭독용 거리 풀어쓰기를 줄 이름에 얹지 않는다(A75).
+- **착지**(E38 위원장 판정): 시트 진입·국면 전이·역 선택 취소 복귀·띠바 복귀의 착지 대상은 **상태 문장 행 하나**다. 예외는 자기 질문을 여는 화면(역 선택 질문 헤딩·급행 확인 헤딩·차량 선택 목록 라벨)과 목적지 전환·잘못 내림 복구 상태 행. 안드로이드 착지 기구는 도보 시트의 `GuideSheetLanding`(첫 정보 행 착지·배경 이월·`sheetReturnSeq`)을 대상 키만 바꿔 쓴다.
+- **제목 메뉴**: 전화 걸기(E90, `AppConfig.placePhoneBook.guideDestinationPhone`, 번호가 없으면 항목 없음) → 장소 상세 → 목적지 바꾸기 — 도보 시트 `guideTitleMenuItems`와 같은 번호부·같은 순서(iOS 대중교통 시트 제목 메뉴와 대조해 다르면 iOS를 따른다).
+- **띠바**: 대중교통이면 Kit `guideBandSummary`(목적지 변경 대기 > 하차 인계 > 국면, 이미 이식돼 있다)의 문장.
+
+### 6-8. 검증
+
+- `:kit`: 단계 1 이식 파일마다 Swift 테스트 미러 + 공유 fixture 전 케이스(`exit-hold-cases`·`transit-riding-position-cases`·`transit-bus-stop-cases` 등).
+- 앱 JVM(페이크 레인 — `WalkGuideModelTest`·`CarGuideModelTest` 선례, 도착 정보·위치 조회는 페이크 서비스, 시계는 가짜 시계): 모델 단계는 iOS `TransitGuideModel`의 각 공개 함수가 낸 발화 목록·국면·폴 예약을 본다(시작 문장, 대기 → 탑승 → 승차 → 도착 → 다음 구간, 완료와 `pendingWalkHandoff`, 유휴 정지·재개, 백그라운드 톤 허용 집합, 떠난 열차 180초, 취소 가드가 옛 폴 결과를 버림). 경계 단계는 서비스 소유자 선택·세대 거름·keep-alive 켜고 끔·프로파일 전환·억제 집합·`deviceSpeech` 공유. 인계 단계는 승차 전 도보 도착 → 600ms → 대중교통 시작 구간, 시작 실패 → 통지 대기 → 대중교통, 환승 도보, 하차 인계의 출구 실림, 재시작이 연결을 다시 거는 것.
+- 소스 가드: §6-6 호출부 표, 서비스 콜백이 `GuideSession.walk`를 직접 부르지 않음(`serviceOwner()`만).
+- 실기기(한소네 7, 실내): 시작 진입점 단계에서 처음 닿는다 — 대중교통 결과 줄 펼침의 시작 버튼, 시트 제목·상태 문장 착지, 차량 선택 목록, 제목 메뉴 전화 걸기가 다이얼 화면을 여는 것까지, 안내 종료. 실승차가 필요한 항목(도착 관측·승차 중 현재역·하차 인계·출구 대기·환승 도보·잘못 내림 복구·백그라운드 폴)은 BACKLOG §2 실승차 판정 행으로 남긴다.
+
+### 6-9. 단계 분해와 각 단계가 남기는 인터페이스
+
+계획 문서의 순서(모델 → 서비스·오디오 → 시트 → 시작 진입점 → 도보 인계 → 공지)에서 **시작 진입점을 도보 인계 뒤로** 옮긴다: 승차 전 도보(A25)가 `beginTransit` 안에서 갈리므로 진입점을 여는 순간 인계가 있어야 하고, 하차 인계가 없으면 마지막 구간의 「남은 도보 안내 시작」이 죽은 버튼이다. 진입점 전 단계는 사용자가 닿지 않는 코드로 통합한다(플래그·실험 게이트 없음). 진입점 전 단계에는 화면을 띄울 길이 없으므로 한소네 점검은 진입점 단계에서 전 구간을 한 번에 본다(그 전 화면 단계는 코드 리뷰·접근성 감사·Compose 단위 테스트).
+
+| 단계 | 내용 | 남기는 인터페이스 |
+|---|---|---|
+| 1 (이 세션) | §6, `:kit` 이식(§6 머리) | Kit 함수·타입(등록부 `mirrors/guide.json` ported) |
+| 2 모델 핵심 | `TransitGuideModel` 수명·폴·유휴·전경 전이·리듀서 배선·통지·톤·사용자 동작 전부(A16·A74 포함)·`TransitGuideTextRenderer`·`TransitGuideUiState`. 서비스·세션 배선 없음(포트 페이크) | `TransitGuideModel` 생성자(§6-1 포트), `start`·`startAfterPrewalk`·`stop`·`stopForTransferWalk`·`setForeground`, `ui`, `pendingWalkHandoff`, `keepAliveWanted: StateFlow<GuideLocationProfile?>`(판정만, 서비스는 아직) |
+| 3 모델 확장 | 승차 중 현재역 E35(`refreshPosition`)·버스 정류장 E48(`handleServiceFix`)·노선 선택·잠금 E76·잘못 내림 복구 E78·목적지 전환·다른 경로 | 같은 클래스의 공개 함수(iOS 이름) |
+| 4 서비스·오디오 경계 | §6-4·§6-5: `GuideServiceOwner`·세대·프로파일·wake lock·알림 문장, `GuideSession.transit`·`attach` 조립, `DeviceSpeechQueue`·TTS 콜백 라우팅, 억제 집합, `GuideScreenKind` | `GuideSession.transit`, `serviceOwner()`, `screen` |
+| 5 시트 | §6-7 `TransitGuideSheet`·`GuideBottomBar` 선택·띠바·착지·제목 메뉴 E90·경유역 장소 상세 | 시트가 부르는 모델 함수 |
+| 6 도보 인계 | §6-6 승차 전 도보·하차 인계·환승 도보·복구 걷기·출구 대기 E84·재시작 A68·도보 모델 훅 | `GuideSession.startTransit`(아직 호출부 없음), `acceptWalkHandoff`, `transitTransferWalk` |
+| 7 진입점·공지 | 길찾기 대중교통 경로 줄 펼침 첫 항목의 시작 버튼(iOS `beacon.guideStartTransitAlt`, 조건 `buildTransitGuideRoute != null`, 경로마다) — `DirectionsScreen.kt`가 대중교통 줄에 슬롯을 넘기고 `RouteRows.kt`는 슬롯 자리만, 시작 실패 줄(`lastStartKind`에 대중교통 표식), 새 소식 시트(B27 ⑤)·`WalkGuideNoticeSheet` 문안, BACKLOG E43 M5 갱신과 §2 실승차 행, 한소네 전 구간 | — |
+
+- 단계마다 `origin/main`에 통합한다. 문맥이 크게 불어나면 그 단계에서 끊고 통합 보고 인계 절에 남은 단계를 적는다.
+- 단계 2·3은 iOS 한 파일을 두 번에 나눠 옮기므로, 단계 2는 단계 3 몫의 필드·분기를 **빈 자리 없이 비워 두지 않는다**: iOS 함수가 단계 3 기능을 부르는 자리는 단계 2에서 그 호출을 빼고 `// 단계 3: <iOS 함수 이름>` 한 줄을 남긴다(단계 3이 grep으로 전수 회수). 이 표식은 단계 3 통합 때 0이어야 한다(소스 가드).
