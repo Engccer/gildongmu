@@ -30,6 +30,7 @@ sys.path.insert(0, scripts_dir)
 import h7  # noqa: E402
 
 results: list[tuple[str, str, str]] = []
+mic_was_granted: bool | None = None
 seen_lines: list[str] = []
 
 
@@ -42,7 +43,13 @@ def record(status: str, name: str, detail: str = "") -> None:
     print(f"== {status} {name} {detail}", flush=True)
 
 
+class ForeignApp(RuntimeError):
+    """길동무가 아닌 앱이 앞에 있다(다른 세션의 앱일 수 있다). 그 앱에 키를 넣지 않고 멈춘다."""
+
+
 def press(spec: str, wait: float = STEP_WAIT, label: str | None = None) -> list[str]:
+    if not app_on_top() and "launcher" not in focus():
+        raise ForeignApp(focus())
     since = h7.now()
     out = h7.brl(spec, label=label, wait=wait)
     if not out:
@@ -137,14 +144,16 @@ def check_dictation_toggle() -> None:
         return record("FAIL", "받아쓰기 시작 버튼 다시 찾기")
     out = enter(5)
     joined = " / ".join(out)
-    if any("받아쓰기 중지" in o for o in out):
-        record("PASS", "받아쓰기 켜짐(라벨 중지)")
+    # 녹음 중에는 낭독이 없을 수 있다(라벨이 상태 신호). 출력에 없으면 커서를 옮겨 라벨을 직접 읽는다.
+    line = next((o for o in out if "받아쓰기 중지" in o), None) or find("받아쓰기 중지", first="prev", limit=4)
+    if line:
+        record("PASS", "받아쓰기 켜짐(라벨 중지)", line)
         if find("받아쓰기 중지", first="prev", limit=4):
             enter(4)
     elif out:
         record("INFO", "받아쓰기 시작 결과(녹음 대신 안내)", joined[-100:])
     else:
-        record("FAIL", "받아쓰기 시작 뒤 아무 출력 없음")
+        record("FAIL", "받아쓰기 시작 뒤 라벨이 「받아쓰기 중지」로 바뀌지 않음")
     time.sleep(2)
 
 
@@ -226,14 +235,14 @@ def check_shortcuts() -> None:
     launch(f"{PACKAGE}.action.VOICE_SEARCH")
     out = [norm(o) for o in h7.lcd(since)]
     seen_lines.extend(out)
-    if any("받아쓰기 중지" in o for o in out):
-        record("PASS", "바로가기 「음성 검색」 → 받아쓰기 시작")
+    # 녹음 중에는 낭독이 없다(라벨이 상태 신호). 커서를 옮겨 버튼 라벨을 직접 읽는다.
+    line = next((o for o in out if "받아쓰기 중지" in o), None) or find("받아쓰기 중지", first="prev", limit=10)
+    if line:
+        record("PASS", "바로가기 「음성 검색」 → 받아쓰기 켜짐(라벨 중지)", line)
         if find("받아쓰기 중지", first="prev", limit=4):
             enter(4)
-    elif any("받아쓰기" in o for o in out):
-        record("INFO", "바로가기 「음성 검색」 결과", " / ".join(out)[-100:])
     else:
-        record("FAIL", "바로가기 「음성 검색」 뒤 받아쓰기 출력 없음", " / ".join(masked(o) for o in out)[-100:])
+        record("FAIL", "바로가기 「음성 검색」 뒤 「받아쓰기 중지」 없음", " / ".join(masked(o) for o in out)[-100:])
 
 
 def check_duplicates() -> None:
@@ -246,7 +255,16 @@ def check_duplicates() -> None:
     record("WARN" if dups else "PASS", "한 줄 안 중복 출력", " / ".join(dups[:5]))
 
 
+MIC = "android.permission.RECORD_AUDIO"
+
+
+def mic_granted() -> bool:
+    return f"{MIC}: granted=true" in h7.sh(f"dumpsys package {PACKAGE} | grep RECORD_AUDIO")
+
+
 def cleanup() -> None:
+    if mic_was_granted is False:
+        h7.sh("pm", "revoke", PACKAGE, MIC)  # 시험 전 상태로(이 앱의 마이크 권한만)
     if app_on_top():
         press("space z", wait=3, label="앱 닫기")
     record("PASS" if not app_on_top() else "WARN", "앱 닫기", focus())
@@ -263,8 +281,13 @@ def main() -> int:
     if PACKAGE not in h7.sh("pm", "list", "packages", PACKAGE):
         print("길동무가 설치돼 있지 않습니다.")
         return 2
+    global mic_was_granted
+    mic_was_granted = mic_granted()
     try:
         if sys.argv[1:] != ["--cleanup"]:
+            # 받아쓰기 시작을 보려면 마이크 권한이 있어야 한다. 권한 창 조작 대신 이 앱에만 시험 동안 주고 끝나면 거둔다.
+            if not mic_was_granted:
+                h7.sh("pm", "grant", PACKAGE, MIC)
             launch()
             if not go_search_tab():
                 record("FAIL", "검색 탭 찾기")
@@ -275,11 +298,15 @@ def main() -> int:
                 check_settings_and_sources()
                 check_shortcuts()
                 check_duplicates()
+    except ForeignApp as e:
+        record("INFO", "다른 앱이 앞에 있어 키 입력을 멈춤(다른 세션 사용 중일 수 있음)", str(e))
     finally:
         cleanup()
     print("\n결과")
     for status, name, detail in results:
         print(f"  {status}  {name}  {detail}")
+    if any(n.startswith("다른 앱이 앞에") for _, n, _ in results):
+        return 2
     return 1 if any(s == "FAIL" for s, _, _ in results) else 0
 
 

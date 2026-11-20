@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -118,18 +120,26 @@ fun SearchScreen(
     // 결과 행 requester는 행 키로 보관한다 — 첫 결과 착지와 pop 복귀 착지가 같은 맵을 쓴다.
     val rowFocus = remember { mutableMapOf<String, FocusRequester>() }
     val rowFocusFor: (String) -> FocusRequester = { key -> rowFocus.getOrPut(key) { FocusRequester() } }
+    // 첫 결과 착지 전 스크롤용. 화면 밖 행에 포커스를 주면 한소네가 그 포커스 이벤트를 따르지 않는다(실기기 2026-11-21).
+    val rowBring = remember { mutableMapOf<String, BringIntoViewRequester>() }
+    val rowBringFor: (String) -> BringIntoViewRequester = { key -> rowBring.getOrPut(key) { BringIntoViewRequester() } }
     // 최근 검색 행의 requester는 검색어로 보관한다 — index로 들면 삭제 뒤 옛 목록의 자리를 가리켜 지워질 행에 착지한다.
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
     val searchingLabel = stringResource(R.string.android_search_searching)
 
     // 결과 도착 시 첫 결과 행 착지(한 프레임 뒤, 소비한 세대만 한 번). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
+    // 행을 먼저 화면 안으로 스크롤하고(끝날 때까지 기다림) 포커스를 준다: 위에 받아쓰기·위치 표시줄이 서면서 작은 화면(한소네 576dp)에서는
+    // 첫 행이 화면 밖이고, 화면 밖 행의 포커스 이동은 한소네 커서가 따르지 않아 커서가 상태 줄에 남았다.
     LaunchedEffect(s.resultsRevision) {
         if (s.resultsRevision > vm.consumedRevision) {
             vm.consumedRevision = s.resultsRevision
             if (s.totalCount > 0) {
                 withFrameNanos { }
-                s.outcome?.let { firstRowKey(it) }?.let { key -> runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) } }
+                s.outcome?.let { firstRowKey(it) }?.let { key ->
+                    runCatching { rowBring[key]?.bringIntoView() }.onFailure { Log.w("SearchScreen", "첫 결과 스크롤 실패", it) }
+                    runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) }
+                }
             }
         }
     }
@@ -229,7 +239,7 @@ fun SearchScreen(
                 // 장소 줄 「물어보기」(B21): 돌아오면 그 줄로 착지한다(상세 열기와 같은 복귀 키).
                 val rowNav = LocalPlaceRowNav.current
                 val onAskPlace: ((Place) -> Unit)? = rowNav?.let { nav -> { place -> vm.rememberReturnFocus("place-${place.id}"); nav.openChat(place) } }
-                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion, onAskPlace) { place ->
+                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, rowBringFor, vm::setBucket, vm::setRegion, onAskPlace) { place ->
                     vm.rememberReturnFocus("place-${place.id}")
                     onOpenPlace(place)
                 }
@@ -282,6 +292,7 @@ private fun ResultSections(
     region: String?,
     lang: String,
     rowFocusFor: (String) -> FocusRequester,
+    rowBringFor: (String) -> BringIntoViewRequester,
     onBucket: (String?) -> Unit,
     onRegion: (String?) -> Unit,
     onAskPlace: ((Place) -> Unit)?,
@@ -290,7 +301,7 @@ private fun ResultSections(
     val sections = outcome.orderedSections
     val showHeadings = sections.size > 1
     // 모든 행이 키로 requester를 받는다(첫 결과 착지·pop 복귀 착지가 같은 맵).
-    fun rowModifier(key: String): Modifier = Modifier.landingTarget(rowFocusFor(key))
+    fun rowModifier(key: String): Modifier = Modifier.bringIntoViewRequester(rowBringFor(key)).landingTarget(rowFocusFor(key))
 
     for (section in sections) {
         when (section) {

@@ -25,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,6 +68,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
     val fieldFocus = remember { FocusRequester() }
     val searchButtonFocus = remember { FocusRequester() }
     val firstCandidateFocus = remember { FocusRequester() }
+    val firstCandidateBring = remember { BringIntoViewRequester() }
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
     val searchingLabel = strings.get("android.search.searching")
@@ -85,6 +88,8 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             picker.consumedCandidateRevision = p.candidateRevision
             if (p.places.isNotEmpty() || p.addresses.isNotEmpty()) {
                 withFrameNanos { }
+                // 받아쓰기 줄이 서며 작은 화면에서는 첫 후보가 화면 밖이다 — 먼저 스크롤해야 한소네 커서가 포커스를 따른다(검색 화면과 같음).
+                runCatching { firstCandidateBring.bringIntoView() }.onFailure { Log.w("EndpointSearch", "첫 후보 스크롤 실패", it) }
                 runCatching { firstCandidateFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "첫 후보 착지 실패", it) }
             }
         }
@@ -190,7 +195,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 ActionRow(
                     visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
                     onClick = { picker.selectPlace(place) },
-                    modifier = if (index == 0) Modifier.landingTarget(firstCandidateFocus) else Modifier,
+                    modifier = if (index == 0) Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
             p.addresses.forEachIndexed { index, address ->
@@ -198,7 +203,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 ActionRow(
                     visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
                     onClick = { picker.selectAddress(address) },
-                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.landingTarget(firstCandidateFocus) else Modifier,
+                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
         }

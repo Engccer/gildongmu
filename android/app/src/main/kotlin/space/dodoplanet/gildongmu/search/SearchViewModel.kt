@@ -213,7 +213,6 @@ class SearchViewModel(
         _state.update { it.copy(recentQueries = list) }
     }
 
-    /** 모두 지우기 — 고정은 보존한다. 목록이 남으면 "모두 지웠습니다"는 거짓이라 다른 문장. */
     /**
      * 고정 최근 검색어 순서 바꾸기(B23, iOS `SearchView.moveRecent`): 화면의 고정 순서에 이동을 적용해 저장소에 넘기고 돌려받은 저장 배열을
      * 채택한다. 새 자리는 전체 목록 기준 1부터 통지한다 — 커서는 같은 행에 남아 라벨이 다시 읽히지 않으므로 이 통지가 이동의 유일한 증거다.
@@ -227,6 +226,7 @@ class SearchViewModel(
         _state.update { it.copy(recentQueries = after, notice = next(strings.moved(position + 1))) }
     }
 
+    /** 모두 지우기 — 고정은 보존한다. 목록이 남으면 "모두 지웠습니다"는 거짓이라 다른 문장. */
     fun clearRecent() {
         val after = store.clearQueries()
         _state.update { it.copy(recentQueries = after, notice = next(if (after.isEmpty()) strings.cleared() else strings.clearedExceptPinned())) }
