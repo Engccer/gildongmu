@@ -174,37 +174,45 @@
     },
     {
       "swift": "ExitHold.swift",
-      "status": "pending",
-      "note": "E84 출구 대기 판정(iOS 선행). 공유 fixture exit-hold-cases.json. 안드로이드는 대중교통 안내 미구현(BACKLOG §4 B14)이라 이식 보류(spec 2026-11-14-transit-exit-carryover-design.md)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ExitHold.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ExitHoldTest.kt",
+      "note": "E84 출구 대기 판정. 공유 fixture exit-hold-cases.json 전 케이스(steps·recentBest·prefix·storableRun·idleScenarios). GuideTuning.sessionIdleNoFixExitHoldSeconds는 RouteGuide.kt. 앱 소비는 M5 대중교통 단계 6(spec 2026-11-20-android-m5-guidance-design.md §6-6)"
     },
     {
       "swift": "TransitBackgroundTone.swift",
-      "status": "pending",
-      "note": "E79 대중교통 백그라운드 톤 허용 집합(iOS 선행) — 안드로이드는 대중교통 안내 미구현(BACKLOG §4 B14)이라 이식 보류(spec 2026-11-07-e79-transit-background-tones-design.md)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitBackgroundTone.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitBackgroundToneTest.kt",
+      "note": "E79 대중교통 백그라운드 톤 허용 집합. 앱 소비는 M5 대중교통 단계 2(spec §6-3)"
     },
     {
       "swift": "TransitDisplayProjection.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjection.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjectionTest.kt",
-      "note": "transitLabel의 trim은 Swift whitespacesAndNewlines 집합 미러(SwiftSemantics.kt) — Kotlin trim()은 제어 문자 몇 개가 달라 쓰지 않는다"
+      "note": "transitLabel의 trim은 Swift whitespacesAndNewlines 집합 미러(SwiftSemantics.kt) — Kotlin trim()은 제어 문자 몇 개가 달라 쓰지 않는다 · 2026-11-21 E76 노선 집합(TransitGuideLane·transitLegWithLane 등) 표류분 이식"
     },
     {
       "swift": "TransitGuide.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuide.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTest.kt",
-      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 Swift ICU 약칭 공백(White_Space)을 명시로 적은 REGEX_SPACE_MEMBERS(SwiftSemantics.kt, [\\t\\n\\u000B\\f\\r\\u0085\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백과는 U+FEFF(JS만)·U+0085(Swift만)가 다르다). trim은 Swift 집합별 미러(SwiftSemantics.kt)"
+      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 Swift ICU 약칭 공백(White_Space)을 명시로 적은 REGEX_SPACE_MEMBERS(SwiftSemantics.kt, [\\t\\n\\u000B\\f\\r\\u0085\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백과는 U+FEFF(JS만)·U+0085(Swift만)가 다르다). trim은 Swift 집합별 미러(SwiftSemantics.kt) · 2026-11-21 E76 노선 집합(TransitGuideLane·transitLegWithLane 등) 표류분 이식"
     },
     {
       "swift": "TransitTransferWalk.swift",
-      "status": "pending",
-      "note": "E73 환승 도보 인계 판정(iOS 선행) — 웹·안드로이드 대중교통 안내에 세션 중간 재개 경로가 없어 이식 보류(spec 2026-10-19-e73-transfer-walk-design.md D13)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitTransferWalk.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitTransferWalkTest.kt",
+      "note": "E73 환승 도보 판정. JourneyTuning이 :kit에 없어 상수 하나를 이 파일에 두었다 — Journey.swift 이식(and-journey) 때 그쪽 정의로 합친다"
     },
     {
       "swift": "TransitWrongStopRecovery.swift",
-      "status": "pending",
-      "note": "E78 잘못 내림 복구 판정(iOS 정식판 선행) — 웹엔 대중교통 재조회 기계가, 안드로이드엔 대중교통 안내 세션이 없어 이식 보류(spec 2026-11-07-e78-wrong-stop-recovery-design.md Q5)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitWrongStopRecovery.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitWrongStopRecoveryTest.kt",
+      "note": "E78 잘못 내림 복구 판정. 앱 소비는 M5 대중교통 단계 3(spec §6-9)"
     },
     {
       "swift": "TransitGuideText.swift",
@@ -235,13 +243,17 @@
     },
     {
       "swift": "TransitRidingPosition.swift",
-      "status": "pending",
-      "note": "E35 승차 중 현재역(표시 전용). 공유 fixture transit-riding-position-cases.json. 안드로이드에 대중교통 안내 화면이 생길 때 이식한다 — TransitPositionService(/api/transit/position 조회)도 같은 파일이다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitRidingPosition.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitRidingPositionTest.kt",
+      "note": "E35 승차 중 현재역(표시 전용)과 TransitPositionService. 공유 fixture transit-riding-position-cases.json 63건 전수"
     },
     {
       "swift": "TransitBusStop.swift",
-      "status": "pending",
-      "note": "E48 버스 승차 중 현재 정류장(기기 위치, 표시 전용). 공유 fixture transit-bus-stop-cases.json. 안드로이드에 대중교통 안내 화면이 생길 때 이식한다 — 위치 스트림 프로파일(버스 승차 중 정밀)과 A69 하차 정류장 도착 한 마디(transitBusAlightNoticeStep, 공유 fixture alightNotice)도 함께 옮긴다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitBusStop.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitBusStopTest.kt",
+      "note": "E48 버스 승차 중 현재 정류장과 A69 하차 정류장 한 마디(transitBusAlightNoticeStep). 공유 fixture transit-bus-stop-cases.json 74건 전수"
     },
     {
       "swift": "TransitSurroundingsAnchor.swift",
