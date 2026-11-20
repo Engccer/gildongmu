@@ -20,3 +20,4 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **버튼 착지는 `a11y/Landing.kt`의 `landingTarget`만**(`requestFocus()`는 TalkBack 터치 모드에서 조용히 false). → PATTERNS
 - ⚠ **`:kit` 테스트는 모듈 밖 파일을 읽어 Gradle이 변경을 모른다**: `:app`은 모듈 밖 파일만 바꾼 뒤 `--rerun-tasks`. → PATTERNS
 - ⚠ **도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다**(다른 소스셋으로 옮기지 말 것, `AppSourceGuardTest`·`check-release-manifest.mjs`). → PATTERNS
+- ⚠ **사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다**(`defaultMinSize`는 최소 제약 0일 때만 채운다): 몫을 최소 높이로 넘기는 배치는 `maxOf(몫, 48dp)`. → PATTERNS

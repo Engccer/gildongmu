@@ -676,3 +676,8 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 ### 도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다
 
 ⚠ **도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다**(iOS 백그라운드 모드 동형). 다른 소스셋에 옮기면 그 구성에서만 화면을 끄면 안내가 죽는다 — `AppSourceGuardTest`와 `android/scripts/check-release-manifest.mjs`가 잠근다. 실험 전용 항목의 자리는 `android/README.md`.
+
+### 사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다
+
+⚠ **사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다** — `defaultMinSize`는 들어온 최소 제약이 0일 때만 값을 채운다. 정보 띠(B25 `InfoBandColumn`)는 몫을 최소 높이로 넘기는데, 고정 줄이 칸을 거의 채워 몫이 48dp보다 작아지면 띠가 종전 줄 하한보다 낮아졌다(2026-11-20 리뷰). 최소 높이를 넘기는 배치는 `maxOf(몫, 48.dp.roundToPx())`로 하한을 직접 지킨다.
+
