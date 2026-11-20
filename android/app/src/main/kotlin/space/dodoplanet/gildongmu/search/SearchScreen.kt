@@ -48,6 +48,7 @@ import space.dodoplanet.gildongmu.place.placeRowActions
 import space.dodoplanet.gildongmu.a11y.pinnedMoves
 import space.dodoplanet.gildongmu.a11y.reorderCustomActions
 import space.dodoplanet.gildongmu.a11y.reorderLabels
+import space.dodoplanet.gildongmu.a11y.rememberMovedRowLanding
 import space.dodoplanet.gildongmu.kit.ReorderMove
 import space.dodoplanet.gildongmu.chat.DictationControls
 import space.dodoplanet.gildongmu.chat.dictationNoticeText
@@ -126,6 +127,7 @@ fun SearchScreen(
     // 최근 검색 행의 requester는 검색어로 보관한다 — index로 들면 삭제 뒤 옛 목록의 자리를 가리켜 지워질 행에 착지한다.
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
+    val movedRecent = rememberMovedRowLanding { recentFocus[it] }
     val searchingLabel = stringResource(R.string.android_search_searching)
     val scroll = rememberScrollState()
 
@@ -229,7 +231,8 @@ fun SearchScreen(
                         recentFocus.remove(text)
                         if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
                     },
-                    onMove = vm::moveRecent,
+                    bringFor = { movedRecent.bringFor(it) },
+                    onMove = { text, move -> vm.moveRecent(text, move); movedRecent.pending = text },
                     onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
                 )
             }
@@ -269,6 +272,7 @@ private fun RecentSection(
     onRun: (String) -> Unit,
     onTogglePin: (String) -> Unit,
     onDelete: (String) -> Unit,
+    bringFor: (String) -> BringIntoViewRequester,
     onMove: (String, ReorderMove) -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -278,11 +282,12 @@ private fun RecentSection(
     )
     Text(stringResource(R.string.recent_title), Modifier.headingText().padding(top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
     val reorder = reorderLabels()
-    // key: 이동이 같은 레이아웃 노드를 옮겨 TalkBack 커서가 그 행에 남는다(iOS `keepFocusAfterMove` 대응, a11y/ReorderActions.kt).
+    // key + 옮긴 행 다시 착지(iOS `keepFocusAfterMove` 대응, a11y/ReorderActions.kt `MovedRowLanding`).
     for (q in queries) key(q.text) {
         val moves = pinnedMoves(queries, q, { it.pinned }) { a, b -> a.text == b.text }
         RecentRow(
             query = q.text, pinned = q.pinned, labels = labels, focusRequester = requesterFor(q.text),
+            modifier = Modifier.bringIntoViewRequester(bringFor(q.text)),
             onRun = { onRun(q.text) }, onTogglePin = { onTogglePin(q.text) }, onDelete = { onDelete(q.text) },
             moveActions = reorderCustomActions(moves, reorder) { onMove(q.text, it) },
         )

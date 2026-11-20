@@ -46,6 +46,7 @@ import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.a11y.pinnedMoves
 import space.dodoplanet.gildongmu.a11y.reorderCustomActions
+import space.dodoplanet.gildongmu.a11y.rememberMovedRowLanding
 import space.dodoplanet.gildongmu.a11y.reorderLabels
 import space.dodoplanet.gildongmu.chat.DictationControls
 import space.dodoplanet.gildongmu.chat.dictationNoticeText
@@ -159,13 +160,14 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 SectionHeading(strings.get("recent.title"))
                 val pinnedLabel = strings.get("recent.pinned")
                 val reorder = reorderLabels()
-                // key: 이동이 같은 노드를 옮겨 TalkBack 커서가 그 행에 남는다(B23, a11y/ReorderActions.kt). 이동 셋이 작업 메뉴 맨 앞.
+                // key + 옮긴 행 다시 착지(B23, a11y/ReorderActions.kt `MovedRowLanding`). 이동 셋이 작업 메뉴 맨 앞.
+                val movedEndpoint = rememberMovedRowLanding { recentFocus.requesterFor(it as String) }
                 for (e in p.recentEndpoints) key(e.id) {
                     val moves = pinnedMoves(p.recentEndpoints, e, { it.pinned }) { a, b -> a.id == b.id }
                     ActionRow(
                         visual = e.label, tag = "ep-recent-${e.id}", spoken = e.label,
                         state = if (e.pinned) pinnedLabel else null, pinned = e.pinned,
-                        actions = reorderCustomActions(moves, reorder) { picker.moveRecentEndpoint(e, it) } + listOf(
+                        actions = reorderCustomActions(moves, reorder) { picker.moveRecentEndpoint(e, it); movedEndpoint.pending = e.id } + listOf(
                             CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { picker.togglePinRecentEndpoint(e); true },
                             CustomAccessibilityAction(strings.get("recent.delete")) {
                                 val target = picker.removeRecentEndpoint(e)
@@ -175,7 +177,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                             },
                         ),
                         onClick = { picker.selectRecentEndpoint(e) },
-                        modifier = Modifier.landingTarget(recentFocus.requesterFor(e.id)),
+                        modifier = Modifier.bringIntoViewRequester(movedEndpoint.bringFor(e.id)).landingTarget(recentFocus.requesterFor(e.id)),
                     )
                 }
                 Button(

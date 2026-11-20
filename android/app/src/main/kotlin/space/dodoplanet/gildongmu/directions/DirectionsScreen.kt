@@ -43,6 +43,8 @@ import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.pinnedMoves
 import space.dodoplanet.gildongmu.a11y.reorderCustomActions
+import space.dodoplanet.gildongmu.a11y.rememberMovedRowLanding
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import space.dodoplanet.gildongmu.a11y.reorderLabels
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
@@ -314,20 +316,21 @@ private fun DirectionsForm(
                 SectionHeading(strings.get("recentRoutes.title"))
                 val pinnedLabel = strings.get("recent.pinned")
                 val reorder = reorderLabels()
-                // key: 이동이 같은 노드를 옮겨 TalkBack 커서가 그 행에 남는다(B23, a11y/ReorderActions.kt). 이동 셋이 작업 메뉴 맨 앞.
+                // key + 옮긴 행 다시 착지(B23, a11y/ReorderActions.kt `MovedRowLanding`). 이동 셋이 작업 메뉴 맨 앞.
+                val movedRoute = rememberMovedRowLanding { ui.recentFocus.requesterFor(it as String) }
                 for (route in s.recentRoutes) key(route.id) {
                     val label = vm.recentRouteLabel(route, lang)
                     val moves = pinnedMoves(s.recentRoutes, route, { it.pinned }) { a, b -> a.id == b.id }
                     ActionRow(
                         visual = label, tag = "recent-route-${route.id}",
                         state = if (route.pinned) pinnedLabel else null, pinned = route.pinned,
-                        actions = reorderCustomActions(moves, reorder) { vm.moveRecentRoute(route, it) } + listOf(
+                        actions = reorderCustomActions(moves, reorder) { vm.moveRecentRoute(route, it); movedRoute.pending = route.id } + listOf(
                             CustomAccessibilityAction(strings.get(if (route.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentRoute(route); true },
                             CustomAccessibilityAction(strings.get("recent.delete")) { ui.recentFocus.remove(route.id); vm.removeRecentRoute(route); true },
                         ),
                         // 결과 도착 시 이 섹션이 통째로 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
                         onClick = { ui.submitFocus.requestFocus(); vm.activateRecentRoute(route) },
-                        modifier = Modifier.landingTarget(ui.recentFocus.requesterFor(route.id)),
+                        modifier = Modifier.bringIntoViewRequester(movedRoute.bringFor(route.id)).landingTarget(ui.recentFocus.requesterFor(route.id)),
                     )
                 }
                 Button(onClick = { ui.recentFocus.clear(); vm.clearRecentRoutes() }, modifier = Modifier.tapTarget().testTag("recent-route-clear")) {
