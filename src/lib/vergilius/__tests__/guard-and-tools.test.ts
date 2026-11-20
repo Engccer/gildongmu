@@ -33,7 +33,7 @@ const routeStart: RouteStartRenderPayload = {
   mode: "walk",
   dest: { lat: 37.5716, lng: 126.9769 },
   destLabel: "광화문역",
-  destRoman: null,
+  destRoman: null, destPhone: null,
   via: null,
   accessible: false,
   carProvider: null,

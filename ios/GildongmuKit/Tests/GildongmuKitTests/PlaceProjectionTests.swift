@@ -168,7 +168,10 @@ import Foundation
 
 @Test func guideDestinationPlaceKeepsCoordsAndLabelWithEmptyCategory() {
     let place = guideDestinationPlace(
-        dest: BeaconDest(lat: 37.5547, lng: 126.9707), label: "오아시스마켓")
+        dest: BeaconDest(lat: 37.5547, lng: 126.9707), label: "오아시스마켓", phone: "02-123-4567")
+
+    // 전화번호부가 아는 번호는 상세의 전화 줄까지 간다(E90).
+    #expect(place.phone == "02-123-4567")
 
     #expect(place.name == "오아시스마켓")
     #expect(place.lat == 37.5547)

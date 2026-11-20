@@ -367,6 +367,7 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
         dest,
         destLabel: p.name,
         destRoman: p.nameRoman ?? null,
+        destPhone: p.phone || null,
       },
       source: src,
     };

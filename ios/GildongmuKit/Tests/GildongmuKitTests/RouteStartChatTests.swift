@@ -25,10 +25,10 @@ private func payloads(_ renders: [ChatRenderPayload]) -> [RouteStartChatPayload]
 }
 
 @Suite struct RouteStartDecodeTests {
-    @Test func fixture의_키는_계약의_아홉_개다() throws {
+    @Test func fixture의_키는_계약의_열_개다() throws {
         for render in try fixtureRenders() {
             #expect(Set(render.keys) == [
-                "type", "mode", "dest", "destLabel", "destRoman", "via", "accessible", "carProvider", "transit",
+                "type", "mode", "dest", "destLabel", "destRoman", "destPhone", "via", "accessible", "carProvider", "transit",
             ])
         }
     }

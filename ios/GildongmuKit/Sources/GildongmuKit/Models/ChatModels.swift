@@ -42,6 +42,8 @@ public struct JourneyChatPayload: Decodable, Sendable, Hashable {
     public let dest: RoutePoint
     public let destLabel: String
     public let destRoman: String?
+    /// 도착지 전화번호(E90, 없으면 nil).
+    public let destPhone: String?
 }
 
 extension ChatRenderPayload: Decodable {

@@ -81,6 +81,7 @@ struct JourneyChatCardView: View {
                 dest: RecentEndpoint(
                     label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),
                 board: payload.board, alight: payload.alight)
+            notePhone()
             GuideSession.shared.startJourney(plan: JourneyPlan(
                 variant: variant, egress: variant.egress?.options.first, destLabel: payload.destLabel,
                 destRoman: payload.destRoman, dest: BeaconDest(lat: payload.dest.lat, lng: payload.dest.lng),
@@ -88,10 +89,17 @@ struct JourneyChatCardView: View {
         }
     }
 
+    /// 여정 도착지의 전화번호를 목적지 전화번호부에 적는다(E90) — 마지막 단계 안내 시트의 「전화 걸기」가 찾는다.
+    private func notePhone() {
+        noteDestinationPhone(
+            label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, phone: payload.destPhone)
+    }
+
     /// [길찾기에서 열기](D14): 길찾기 탭에 도착지·갈아탈 곳을 채운다. `requery`가 거짓이면 카드의 결과를 재조회 없이 그대로 보여 주고,
     /// 참이면(낡은 카드·수동 위치 카드의 [안내 시작]) 같은 여정을 **실제 위치**로 다시 조회하며 사유를 조회 시작 때 한 번 말한다.
     private func openInDirections(requery: Bool) {
         guard !busy || requery else { return }
+        notePhone()
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
             role: .to,
             endpoint: .place(label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),

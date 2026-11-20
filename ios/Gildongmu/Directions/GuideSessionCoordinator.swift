@@ -11,10 +11,17 @@ enum GuideScreenKind: String, Identifiable {
 }
 
 /// 안내를 시작할 도착지(E83 R11 `GuideSession.startGuide`): 좌표·이름·라틴 표기(없으면 nil — en 시작 문장이 싣는다).
+/// `phone`은 그 자리가 든 전화번호(E90, 모르면 nil)이고 세션으로 넘어가지 않는다 — `startGuide`·`handOverOuting`이 목적지
+/// 전화번호부에 적고 안내 시트가 거기서 찾는다.
 struct GuideDestination {
     let dest: BeaconDest
     let label: String
     let labelRoman: String?
+    let phone: String?
+
+    func notePhone() {
+        noteDestinationPhone(label: label, lat: dest.lat, lng: dest.lng, phone: phone)
+    }
 }
 
 /// 안내를 시작할 수단과 그 수단의 판정 인자(E83 R11). ⚠ 연관 값에 기본값을 두지 않는다 — 경유지·계단 회피를 빠뜨린
@@ -194,7 +201,7 @@ final class GuideSession {
         guard let target = outing.returnTarget else { return }
         // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로).
         let destination = GuideDestination(
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil)
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil, phone: nil)
         handOverOuting(
             to: destination,
             start: .request(BeaconModel.StartRequest(
@@ -224,6 +231,8 @@ final class GuideSession {
     /// 인계 고지는 도보 안내의 시작 문장("{도착지}까지 도보 안내 시작…", E40)이 맡는다 — 따로 말하면 같은 정보가 두 번이다.
     /// 승차 전 도보(A25)와 같은 모양: 컨텍스트 id + 인계 플래그 아래 시작하고, 실패(`.startFailed`)를 그 id로 받는다.
     func handOverOuting(to destination: GuideDestination, start: OutingHandoverStart) {
+        // 인계가 실패해 길찾기 탭 프리필로 떨어져도 번호가 남게 먼저 적는다(E90).
+        destination.notePhone()
         outing.withdrawPendingRequest()
         outing.endForHandover()
         if case .directions(let notice) = start {
@@ -288,6 +297,7 @@ final class GuideSession {
     /// 도보의 줄은 길찾기 화면의 첫 도보 시작 버튼과 같다(계단 회피를 청하면 그 줄, Kit `WalkLineKind.startLine`).
     /// 자동차를 시작할 수 있는지(Kit `canStartCarGuide`)와 어느 대중교통 경로인지는 호출자가 정한다.
     func startGuide(to destination: GuideDestination, mode: GuideStartMode) {
+        destination.notePhone()
         switch mode {
         case .walk(let accessible, let waypoint):
             self.startBeacon(BeaconModel.walkLineRequest(

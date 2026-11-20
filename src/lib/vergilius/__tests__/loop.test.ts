@@ -185,7 +185,7 @@ describe("runVergiliusLoop", () => {
 
   it("도구 결과의 좌표는 모델에 가지 않고(깊이 무관), 렌더의 좌표는 앱에 그대로 간다", async () => {
     const routeStart = {
-      type: "route-start", mode: "walk", dest: { lat: 37.5547, lng: 126.9707 }, destLabel: "서울역", destRoman: null,
+      type: "route-start", mode: "walk", dest: { lat: 37.5547, lng: 126.9707 }, destLabel: "서울역", destRoman: null, destPhone: null,
       via: null, accessible: false, carProvider: null, transit: null,
     } satisfies RenderPayload;
     const execute = vi.fn(async (): Promise<ToolResult> => ({
@@ -207,7 +207,7 @@ describe("runVergiliusLoop", () => {
 
   it("route-start 렌더만 결과에 남는다", async () => {
     const routeStart = {
-      type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null,
+      type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null, destPhone: null,
       via: null, accessible: false, carProvider: null, transit: null,
     } satisfies RenderPayload;
     const execute = vi.fn(async (name: string): Promise<ToolResult> =>
@@ -230,7 +230,7 @@ describe("runVergiliusLoop", () => {
     const execute = vi.fn(async (): Promise<ToolResult> => ({
       data: {},
       render: {
-        type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null,
+        type: "route-start", mode: "walk", dest: { lat: 1, lng: 2 }, destLabel: "시청", destRoman: null, destPhone: null,
         via: null, accessible: false, carProvider: null, transit: null,
       },
     }));

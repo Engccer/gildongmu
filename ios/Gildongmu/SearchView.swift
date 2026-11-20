@@ -532,6 +532,7 @@ struct PlaceRowActions: ViewModifier {
     /// 길찾기 탭 도착지 프리필 진입(Task I4).
     private var directionsButton: some View {
         Button(appLocalized("directions.toHere")) {
+            noteDestinationPhone(place)
             DirectionsPrefillStore.shared.pending = DirectionsPrefill(
                 role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
         }

@@ -39,6 +39,7 @@ struct TransitTrackingSheet: View {
     /// ⚠ N1 M3가 기각한 것은 반대 방향(장소 상세가 떠 있는데 루트 안내 시트를 올리기)이다 —
     /// 안내 시트 위 장소 상세는 현행 정본(spec 2026-09-11 §1.2).
     @State private var detailPlace: Place?
+    @Environment(\.openURL) private var openURL
     /// 경유역 상세의 노선 힌트(E44 spec §5.2) — 행을 누르는 순간의 leg `lineName`으로 확정한다. 시트 클로저에서
     /// `currentLeg`를 읽으면 목적지 상세에도 붙고, 상세가 열린 채 구간이 바뀌면 힌트가 바뀐다(설계 리뷰 M4).
     @State private var detailLineHint: String?
@@ -151,6 +152,7 @@ struct TransitTrackingSheet: View {
                         GuideTitleActionsRow(
                             heading: appLocalized("beacon.transitHeading"),
                             label: model.destinationLabel,
+                            onCall: destinationTelURL.map { url in { model.touchUserAction(); openURL(url) } },
                             waypoint: nil,
                             onRemoveWaypoint: nil,
                             onChangeDestination: GuideSession.shared.journey == nil
@@ -921,7 +923,14 @@ struct TransitTrackingSheet: View {
         guard let dest = detailDest else { return }
         model.touchUserAction()
         detailLineHint = nil
-        detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
+        detailPlace = guideDestinationPlace(
+            dest: dest, label: model.destinationLabel,
+            phone: guideDestinationPhone(dest: dest, label: model.destinationLabel))
+    }
+
+    /// 제목 행 「전화 걸기」의 주소(E90) — 목적지 번호를 모르면 nil이고 동작이 없다.
+    private var destinationTelURL: URL? {
+        placeTelURL(guideDestinationPhone(dest: detailDest, label: model.destinationLabel))
     }
 
     /// 착지 대상 부착 헬퍼(A35 spec §4.1 ①) — `focusedControl` 바인딩의 **유일한 부착 자리**(소스 가드

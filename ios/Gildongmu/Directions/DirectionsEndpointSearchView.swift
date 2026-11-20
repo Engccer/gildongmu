@@ -515,6 +515,7 @@ struct DirectionsEndpointSearchView: View {
             } else if isTransferTarget {
                 selectTransferPlace(place)
             } else {
+                noteDestinationPhone(place)
                 select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
             }
         } label: {
@@ -677,6 +678,7 @@ struct DirectionsEndpointSearchView: View {
         case .subway: mode = .subway
         case .rail: mode = .rail
         case nil:
+            noteDestinationPhone(place)
             select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
             return
         }

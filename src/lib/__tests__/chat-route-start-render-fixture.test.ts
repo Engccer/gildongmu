@@ -32,9 +32,9 @@ const transitResultKeys = interfaceKeys(libTypes, "TransitRouteResult");
 const transitResultRequired = requiredKeys(libTypes, "TransitRouteResult");
 
 describe("Kit 채팅 route-start 렌더 fixture = 서버 렌더 모양", () => {
-  it("타입에서 읽은 키가 계약의 아홉 개다", () => {
+  it("타입에서 읽은 키가 계약의 열 개다", () => {
     expect(renderKeys).toEqual(
-      ["accessible", "carProvider", "dest", "destLabel", "destRoman", "mode", "transit", "type", "via"],
+      ["accessible", "carProvider", "dest", "destLabel", "destPhone", "destRoman", "mode", "transit", "type", "via"],
     );
   });
 

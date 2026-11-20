@@ -82,6 +82,7 @@ struct BeaconTrackingSheet: View {
     /// (설계 리뷰 M3, 대중교통 `pendingFollowUp` 동형). 모달 뒤의 행에 대입하면 조용히 되돌아간다.
     @State private var landAfterDismiss: DismissLanding?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     /// 「지금 여기는 어디?」 창(E75 — 전 구간 조망 + 지금 위치 주변, 위원장 판정 개정 2026-08-10의 조망 모달): 인라인 펼침은
     /// 같은 화면의 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가 성립한다. 닫으면 시스템이
     /// 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
@@ -395,7 +396,9 @@ struct BeaconTrackingSheet: View {
         .sheet(isPresented: $showPlaceDetail, onDismiss: landAfterSubSheet) {
             if let dest = model.dest {
                 PlaceDetailSheet(
-                    place: guideDestinationPlace(dest: dest, label: model.destinationLabel),
+                    place: guideDestinationPlace(
+                        dest: dest, label: model.destinationLabel,
+                        phone: guideDestinationPhone(dest: dest, label: model.destinationLabel)),
                     showsDirectionsEntry: false)
             }
         }
@@ -448,9 +451,11 @@ struct BeaconTrackingSheet: View {
     /// 경유지 삭제 뒤 착지는 `waypointRemoved`(경로를 다시 조회하니 조회 끝까지 기다린다).
     private var titleActionsRow: some View {
         let waypointAvailable = GuideSession.shared.waypointAvailable
+        let telURL = placeTelURL(guideDestinationPhone(dest: model.dest, label: model.destinationLabel))
         return GuideTitleActionsRow(
             heading: appLocalized(model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"),
             label: model.destinationLabel,
+            onCall: telURL.map { url in { openURL(url) } },
             waypoint: waypointAvailable
                 ? (label: model.waypoint.map { appLocalized("ios.guide.titleWaypointChange", $0.label) }
                        ?? appLocalized("directions.addVia"),

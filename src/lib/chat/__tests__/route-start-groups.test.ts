@@ -15,6 +15,7 @@ function start(mode: RouteStartMode, over: Partial<RouteStartRenderPayload> = {}
     dest: GANGNAM,
     destLabel: "강남역",
     destRoman: null,
+    destPhone: null,
     via: null,
     accessible: false,
     carProvider: mode === "car" ? "tmap" : null,

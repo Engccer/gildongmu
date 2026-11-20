@@ -67,6 +67,7 @@ const payload: JourneyRenderPayload = {
   dest: { lat: 37.571, lng: 126.976 },
   destLabel: "광화문",
   destRoman: null,
+  destPhone: null,
 };
 
 let fetchMock: ReturnType<typeof vi.fn>;

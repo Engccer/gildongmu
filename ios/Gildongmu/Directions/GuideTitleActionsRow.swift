@@ -5,13 +5,16 @@ import SwiftUI
 /// 붙어 제목이 섹션 헤더가 아니라 행이다(spec 2026-10-19-e74-guide-title-actions §2). 제목은 수단·목적지를 합친 한 줄 +
 /// 헤딩 trait(헤딩 로터 보존), 오른쪽은 경로 새로고침(도보·자동차, 선택) → 접기 아이콘(읽기 순서 제목 → 새로고침 → 접기,
 /// E75 판정 2). VoiceOver 동작 목록은 iOS가 밀기 버튼에서 만든다 — 오른쪽 묶음이 먼저, 묶음 안은 선언 순이라 들리는 순서는
-/// 경유지 → 경유지 삭제 → 목적지 바꾸기 → 장소 상세 보기. nil인 동작은 버튼이 없다.
+/// 전화 걸기 → 경유지 → 경유지 삭제 → 목적지 바꾸기 → 장소 상세 보기. nil인 동작은 버튼이 없다.
+/// 「전화 걸기」(E90)는 목적지 전화번호를 알 때만 서고 언제나 첫 동작이다 — 오른쪽 묶음의 첫 선언 자리를 지킨다.
 /// 끝까지 밀기 실행은 두 묶음 다 끈다 — 되돌릴 수 없는 동작들이다(E74 판정 2).
 ///
 /// 도착 종료·핸드오프 화면에는 두지 않는다 — 세션이 끝난 화면이라 "목적지 바꾸기"가 성립하지 않는다.
 struct GuideTitleActionsRow<Refresh: View>: View {
     let heading: String
     let label: String
+    /// 목적지에 전화 걸기(E90) — 목적지 전화번호부(`destinationTelURL`)가 번호를 알 때만. nil이면 버튼이 없다.
+    let onCall: (() -> Void)?
     /// 경유지 추가/바꾸기 — 라벨이 곧 상태(「경유지 추가」 / 「{경유지}, 경유지 바꾸기」). 대중교통·비-ko는 nil.
     let waypoint: (label: String, action: () -> Void)?
     /// 경유지 삭제 — 미도착 경유지가 있을 때만.
@@ -24,6 +27,7 @@ struct GuideTitleActionsRow<Refresh: View>: View {
     @ViewBuilder let refresh: () -> Refresh
 
     init(heading: String, label: String,
+         onCall: (() -> Void)?,
          waypoint: (label: String, action: () -> Void)?,
          onRemoveWaypoint: (() -> Void)?,
          onChangeDestination: (() -> Void)?,
@@ -32,6 +36,7 @@ struct GuideTitleActionsRow<Refresh: View>: View {
          @ViewBuilder refresh: @escaping () -> Refresh = { EmptyView() }) {
         self.heading = heading
         self.label = label
+        self.onCall = onCall
         self.waypoint = waypoint
         self.onRemoveWaypoint = onRemoveWaypoint
         self.onChangeDestination = onChangeDestination
@@ -56,6 +61,9 @@ struct GuideTitleActionsRow<Refresh: View>: View {
             Button(appLocalized("ios.guide.destMenuDetail"), action: onShowDetail)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onCall {
+                Button(appLocalized("ios.place.call"), action: onCall)
+            }
             if let waypoint {
                 Button(waypoint.label, action: waypoint.action)
             }
@@ -175,4 +183,21 @@ struct GuideInfoBand: ViewModifier {
             content
         }
     }
+}
+
+/// 안내 목적지의 전화번호(E90) — 목적지 전화번호부가 제목의 이름·좌표로 아는 번호. 모르면 nil이다.
+/// 제목 행의 「전화 걸기」와 「장소 상세 보기」의 전화 줄이 같은 값을 쓴다.
+func guideDestinationPhone(dest: BeaconDest?, label: String) -> String? {
+    guard let dest else { return nil }
+    return PlacePhoneBook().phone(label: label, lat: dest.lat, lng: dest.lng)
+}
+
+/// 목적지를 고르는 자리가 그때 손에 든 번호를 전화번호부에 적는다(E90). 번호가 없으면 아무것도 하지 않는다.
+/// ⚠ 장소를 길찾기 끝점·안내 목적지로 넘기는 새 자리는 이것을 함께 부른다(가드 `guide-destination-call-guard.test.ts`).
+func noteDestinationPhone(label: String, lat: Double, lng: Double, phone: String?) {
+    PlacePhoneBook().note(label: label, lat: lat, lng: lng, phone: phone)
+}
+
+func noteDestinationPhone(_ place: Place) {
+    noteDestinationPhone(label: place.name, lat: place.lat, lng: place.lng, phone: place.phone)
 }

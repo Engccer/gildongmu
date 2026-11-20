@@ -30,6 +30,8 @@ public struct RouteStartChatPayload: Decodable, Sendable, Hashable {
     public let dest: RoutePoint
     public let destLabel: String
     public let destRoman: String?
+    /// 도착지 전화번호(E90, 없으면 nil — 이 키가 없던 서버 응답도 nil로 읽는다).
+    public let destPhone: String?
     public let via: Via?
     /// 도보의 계단 회피. 그 밖의 수단은 false.
     public let accessible: Bool
@@ -52,6 +54,7 @@ public struct RouteStartCardGroup: Sendable, Hashable {
     public let dest: RoutePoint
     public let destLabel: String
     public let destRoman: String?
+    public let destPhone: String?
     public let walk: RouteStartChatPayload?
     public let car: RouteStartChatPayload?
     public let transit: RouteStartChatPayload?
@@ -64,7 +67,7 @@ public struct RouteStartCardGroup: Sendable, Hashable {
 }
 
 /// 한 답의 `route-start` 렌더를 도착지 좌표로 묶는다(R1·R12, 웹 `MessageBubble`과 같은 규칙) — 순수 함수.
-/// 묶음 순서는 그 도착지가 처음 나온 순서이고, 같은 수단이 둘이면 첫 것만 쓴다. 이름·로마자는 묶음의 첫 렌더 것이다.
+/// 묶음 순서는 그 도착지가 처음 나온 순서이고, 같은 수단이 둘이면 첫 것만 쓴다. 이름·로마자·전화번호는 묶음의 첫 렌더 것이다.
 public func routeStartCardGroups(_ renders: [ChatRenderPayload]) -> [RouteStartCardGroup] {
     var order: [RoutePoint] = []
     var byDest: [RoutePoint: [RouteStartChatPayload]] = [:]
@@ -77,7 +80,7 @@ public func routeStartCardGroups(_ renders: [ChatRenderPayload]) -> [RouteStartC
         guard let items = byDest[dest], let first = items.first else { return nil }
         func pick(_ mode: RouteStartMode) -> RouteStartChatPayload? { items.first { $0.mode == mode } }
         return RouteStartCardGroup(
-            dest: dest, destLabel: first.destLabel, destRoman: first.destRoman,
+            dest: dest, destLabel: first.destLabel, destRoman: first.destRoman, destPhone: first.destPhone,
             walk: pick(.walk), car: pick(.car), transit: pick(.transit))
     }
 }

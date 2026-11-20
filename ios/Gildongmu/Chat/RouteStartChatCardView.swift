@@ -23,7 +23,8 @@ struct RouteStartChatCardView: View {
 
     private var destination: GuideDestination {
         GuideDestination(
-            dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman)
+            dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman,
+            phone: group.destPhone)
     }
 
     private var destinationEndpoint: DirectionsEndpoint {
@@ -151,6 +152,7 @@ struct RouteStartChatCardView: View {
 
     /// [길찾기에서 열기](R8): 길찾기 탭에 도착지와 경유지를 채우고 평소 조회(전 수단)를 돌린다. 착지는 그 화면의 평소 규칙이다.
     private func openInDirections() {
+        destination.notePhone()
         preemptLocating()
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
             role: .to, endpoint: destinationEndpoint,
@@ -160,6 +162,7 @@ struct RouteStartChatCardView: View {
     /// 낡은 카드·수동 위치 카드의 [대중교통 안내 시작](R6): 길찾기 탭에서 **기기 위치**로 다시 조회하고 사유를 조회 시작 때 한 번 말한다.
     /// 경유지는 싣지 않는다 — 대중교통은 경유지를 지원하지 않아 실으면 그 수단이 「미지원」으로 떨어진다.
     private func requeryInDirections() {
+        destination.notePhone()
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
             role: .to, endpoint: destinationEndpoint,
             realOriginRequeryNotice: appLocalized("journey.cardStaleRequery"))

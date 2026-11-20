@@ -102,6 +102,8 @@ export interface RouteStartRenderPayload {
   destLabel: string;
   /** 영문 원천이 없을 때의 서버 로마자(여정 카드와 같은 규칙). */
   destRoman: string | null;
+  /** 도착지 전화번호(E90: iOS 안내 시트의 「전화 걸기」). 장소 검색이 번호를 주지 않았으면 null. */
+  destPhone: string | null;
   /** 도보·자동차만. 대중교통은 늘 null. */
   via: { lat: number; lng: number; label: string } | null;
   /** 도보의 계단 회피. 그 밖의 수단은 false. */
@@ -144,6 +146,8 @@ export interface JourneyRenderPayload {
   dest: { lat: number; lng: number };
   destLabel: string;
   destRoman: string | null;
+  /** 도착지 전화번호(E90). 없으면 null. */
+  destPhone: string | null;
 }
 
 /** 도구 실행 결과 — LLM용 데이터 + 선택적 카드 + 출처. */

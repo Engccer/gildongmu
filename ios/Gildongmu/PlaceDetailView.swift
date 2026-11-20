@@ -224,6 +224,7 @@ struct PlaceDetailView<DomainSection: View>: View {
             // 두 버튼은 별개 접근성 객체다 — 라벨이 각각 동작의 범위를 말한다. "여기부터"는 도착지 입력으로 착지(E32).
             if showsDirectionsEntry {
                 Button(appLocalized("directions.toHere")) {
+                    noteDestinationPhone(place)
                     DirectionsPrefillStore.shared.pending = DirectionsPrefill(
                         role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                 }
@@ -238,6 +239,7 @@ struct PlaceDetailView<DomainSection: View>: View {
             if showsDirectionsEntry, guideSession.journey == nil,
                guideSession.beacon.isTracking || guideSession.transit.isTracking {
                 Button(appLocalized("guide.changeDestHere")) {
+                    noteDestinationPhone(place)
                     let dest = BeaconDest(lat: place.lat, lng: place.lng)
                     if guideSession.beacon.isTracking {
                         if guideSession.beacon.changeDestination(dest: dest, label: place.name, labelRoman: place.nameRoman) {

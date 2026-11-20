@@ -109,6 +109,7 @@ function makePayload(over: Partial<JourneyRenderPayload> = {}): JourneyRenderPay
     dest: { lat: 37.4979, lng: 127.0276 },
     destLabel: "강남역",
     destRoman: "Gangnam Station",
+    destPhone: null,
     ...over,
   };
 }

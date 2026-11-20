@@ -301,7 +301,9 @@ struct OutingSheet: View {
     }
 
     private func destination(_ place: OutingHistoryPlace) -> GuideDestination {
-        GuideDestination(dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name, labelRoman: place.nameRoman)
+        GuideDestination(
+            dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name, labelRoman: place.nameRoman,
+            phone: place.phone)
     }
 
     /// 답 줄 아래의 버튼(V21·V22) — 줄마다 한 버튼이고 제목·heading은 없다(답 줄이 곧 맥락이다). 누르면 나들이를 끝내고 그
@@ -323,7 +325,8 @@ struct OutingSheet: View {
     @ViewBuilder
     private func routeGroupButtons(_ group: RouteStartCardGroup, showsName: Bool) -> some View {
         let dest = GuideDestination(
-            dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman)
+            dest: BeaconDest(lat: group.dest.lat, lng: group.dest.lng), label: group.destLabel, labelRoman: group.destRoman,
+            phone: group.destPhone)
         let name = showsName
             ? bilingualName(lang: AppLanguage.current, ko: group.destLabel, en: nil, roman: group.destRoman).primary : nil
         if let walk = group.walk {

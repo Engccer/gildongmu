@@ -267,6 +267,7 @@ function routeStartRender(p: Place, fields: RouteStartFields): RouteStartRenderP
     dest: { lat: p.lat, lng: p.lng },
     destLabel: p.name,
     destRoman: p.nameRoman ?? null,
+    destPhone: p.phone || null,
     via: fields.mode === "transit" ? null : fields.via,
     accessible: fields.mode === "walk" ? fields.accessible : false,
     carProvider: fields.mode === "car" ? fields.carProvider : null,
