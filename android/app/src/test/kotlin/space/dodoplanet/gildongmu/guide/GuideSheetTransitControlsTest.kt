@@ -34,6 +34,7 @@ class GuideSheetTransitControlsTest {
         assertFalse(sheetRowExists(brief.copy(exitHoldExit = "3", arrivalDest = BeaconDest(37.0, 127.0)), SheetRow.exitRelease))
         assertEquals(SheetRow.exitRelease, SheetRow.forTag("guide-exit-release"))
         assertFalse(SheetRow.exitRelease in SheetRow.infoRows)
+        assertTrue(SheetRow.exitRelease in SheetRow.lossRecoveryRows)
     }
 
     @Test fun `시트 배선 — 두 버튼은 모델 함수를 부르고 착지는 조회를 기다리지 않는다`() {

@@ -241,4 +241,44 @@ class GuideTransitHandoffTest {
         t.model.boardAlready(express = null)  // 훅 → GuideSession.transitPassedPrewalk
         assertFalse(w.model.ui.value.status.isFailure, "그 계획을 지나간 실패 줄은 거둔다(A68)")
     }
+
+    @Test fun `승차 전 도보 없이 곧장 서는 대중교통도 톤을 싣고 시트를 펼친 채 선다`() = joint { w, t ->
+        val direct = route(subwayLeg("천호", "여의도")).let { it.copy(legs = it.legs.drop(1)) }  // 앞 도보 없음 — 승차 전 도보 대상 없음
+        GuideSession.isMinimized = true
+        val before = w.tones.preloads
+        GuideSession.startTransit(t.request(direct))
+        settle()
+        assertNull(w.model.ui.value.prewalkTarget)
+        assertTrue(t.model.isTracking, "곧장 대중교통이 선다")
+        assertTrue(w.tones.preloads > before, "톤 프리로드")
+        assertFalse(GuideSession.isMinimized, "접힌 띠바로 서지 않는다")
+    }
+
+    @Test fun `승차 전 도보 도착 뒤 대중교통은 시트를 펼친 채 선다`() = joint { w, t ->
+        GuideSession.startTransit(t.request())
+        settle()
+        assertTrue(w.model.isTracking)
+        GuideSession.isMinimized = true
+        w.model.declarePrewalkArrival()
+        settle()
+        after(610)
+        assertTrue(t.model.isTracking)
+        assertFalse(GuideSession.isMinimized)
+    }
+
+    @Test fun `승차 전 도보 시작 중 서비스 시작 실패는 다리 문장을 낭독한다`() = joint { w, t ->
+        w.controller.failOnStart = IllegalStateException("denied")
+        GuideSession.startTransit(t.request())
+        settle()
+        assertFalse(w.model.isTracking)
+        assertTrue(w.speaker.texts.any { it.endsWith(PREWALK_BRIDGE_TAIL) }, w.speaker.texts.toString())
+    }
+
+    @Test fun `승차 전 도보 시작 잡이 던져도 다리 문장을 낭독한다`() = joint { w, t ->
+        w.perms.failNotifications = IllegalStateException("boom")
+        GuideSession.startTransit(t.request())
+        settle()
+        assertFalse(w.model.isTracking)
+        assertTrue(w.speaker.texts.any { it.endsWith(PREWALK_BRIDGE_TAIL) }, w.speaker.texts.toString())
+    }
 }

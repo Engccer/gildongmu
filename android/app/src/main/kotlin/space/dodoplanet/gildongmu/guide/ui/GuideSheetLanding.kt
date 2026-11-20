@@ -18,6 +18,9 @@ enum class SheetRow(val tag: String) {
     companion object {
         val infoRows = listOf(remaining, liveTop, status)
 
+        /** 커서가 앉은 채 사라지면 첫 정보 행으로 옮기는 행(iOS `presentInfoRows`) — 정보 행 셋과 「출구로 나왔어요」(E84, 출구 대기 창이 fix로 닫히면 버튼이 사라진다). */
+        val lossRecoveryRows = infoRows + exitRelease
+
         /** 초점 노드의 고정 표식(testTag = 리소스 id) → 행. 낭독 문장은 10m마다 바뀌어 표식으로 가른다. */
         fun forTag(tag: String?): SheetRow? = entries.firstOrNull { it.tag == tag }
     }
@@ -150,7 +153,7 @@ class GuideSheetLanding(
      */
     fun onRowsChanged(old: Set<SheetRow>, new: Set<SheetRow>) {
         val row = cursorRow ?: return
-        if (row !in SheetRow.infoRows || row !in old || row in new || !isTracking()) return
+        if (row !in SheetRow.lossRecoveryRows || row !in old || row in new || !isTracking()) return
         request("lost=$row", expectsSystemPlacement = false)
     }
 

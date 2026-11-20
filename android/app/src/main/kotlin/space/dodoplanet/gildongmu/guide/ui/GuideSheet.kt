@@ -251,7 +251,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         }
     }
     // 소실 복구(E57 §3.4): 커서가 앉아 있던 정보 행이 사라지면 그 시점의 첫 정보 행으로 — 판정은 행 집합이 바뀌는 순간의 커서 행이다.
-    val presentRows = SheetRow.infoRows.filter { sheetRowExists(ui, it) }.toSet()
+    val presentRows = SheetRow.lossRecoveryRows.filter { sheetRowExists(ui, it) }.toSet()
     var lastRows by remember { mutableStateOf(presentRows) }
     LaunchedEffect(presentRows) {
         val old = lastRows

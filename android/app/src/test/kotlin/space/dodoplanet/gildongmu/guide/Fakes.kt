@@ -70,7 +70,9 @@ class FakePermissions(
     override fun isLocationEnabled() = enabled
     override fun currentLocation() = location
     override suspend fun requestLocation(): LocationPermission { locationRequests++; return requestResult ?: location }
-    override suspend fun requestNotifications() { notificationRequests++ }
+    /** 시작 잡 안의 포트 동기 throw를 흉내 낸다(알림 권한 요청이 던진다). */
+    var failNotifications: Throwable? = null
+    override suspend fun requestNotifications() { notificationRequests++; failNotifications?.let { throw it } }
     override suspend fun requestActivityRecognition() = activity
 }
 

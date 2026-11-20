@@ -572,8 +572,9 @@ class WalkGuideModel(
                 GuideDiag.log("start failed ${e::class.simpleName}: ${e.message}")
                 // 이 도보 세션은 시작되지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(`onSessionEnd`, iOS 시작 실패 판정과 같은 사유).
                 pendingEndReason = BeaconEndReason.startFailed
+                val bridge = prewalkTarget != null  // `stop()`이 표식을 지우기 전에 — 연결이 곧 대중교통 대기로 잇는다(A67 다리 문장)
                 stop()
-                fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
+                fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge)
             } finally {
                 if (startGeneration == generation) {
                     starting = false
@@ -696,9 +697,10 @@ class WalkGuideModel(
         val wasTracking = isTracking
         // 도보 안내가 서지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(시작 실패와 같은 사유).
         pendingEndReason = BeaconEndReason.startFailed
+        val bridge = prewalkTarget != null  // `stop()`이 표식을 지우기 전에(위 시작 잡 실패와 같은 이유)
         stop(playStopTone = false)
         if (!wasTracking) return
-        fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
+        fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge)
     }
 
     /**
@@ -711,6 +713,8 @@ class WalkGuideModel(
     private fun fail(
         status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none, prewalkTail: PrewalkStopTail? = null,
         highPriority: Boolean = false,
+        /** `stop()`을 먼저 지난 시작 실패(안드로이드 고유 — 서비스 시작 실패·포트 동기 예외)가 승차 전 도보였는가. `stop()`이 `starting`·표식을 지워 아래 판정이 못 본다. */
+        prewalkBridgeAfterStop: Boolean = false,
     ) {
         this.status = status
         failResolution = resolution
@@ -718,7 +722,7 @@ class WalkGuideModel(
         pendingFailLanding = true
         mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
-        val prewalkBridge = starting && prewalkTarget != null
+        val prewalkBridge = (starting && prewalkTarget != null) || prewalkBridgeAfterStop
         announce(
             if (prewalkBridge) strings.get("android.beacon.prewalkUnavailableWith", strings.get(key)) else statusText,
             highPriority = highPriority || prewalkBridge, speechClass = GuideSpeechClass.actionable,

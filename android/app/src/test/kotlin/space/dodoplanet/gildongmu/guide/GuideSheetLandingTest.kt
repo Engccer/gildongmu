@@ -184,6 +184,15 @@ class GuideSheetLandingTest {
         assertTrue(h.last.contains("reason=userMoved"), h.last)
     }
 
+    @Test fun `소실 복구 — 커서가 출구 해제 버튼에 있다가 사라져도 착지 요청이 나간다`() = runTest {
+        val h = H(this)
+        h.landing.onA11yFocus(SheetRow.exitRelease)
+        h.rows = setOf(SheetRow.status)
+        h.landing.onRowsChanged(setOf(SheetRow.status, SheetRow.exitRelease), h.rows)
+        advanceUntilIdle()
+        assertTrue(h.last.contains("note=lost=exitRelease"), h.last)
+    }
+
     @Test fun `소실 복구 — 커서가 앉은 정보 행이 사라지면 그 시점의 첫 정보 행으로, 스와이프로 떠났으면 그대로`() = runTest {
         val h = H(this)
         h.landing.request("open", expectsSystemPlacement = true); advanceUntilIdle()

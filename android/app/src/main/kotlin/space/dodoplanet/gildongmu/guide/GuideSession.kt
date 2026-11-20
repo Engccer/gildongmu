@@ -399,6 +399,12 @@ object GuideSession {
         cancelPrewalk()
         retirePrewalkRestart()  // 새 대중교통 시작 — 승차 전 도보가 있으면 아래 `launchPrewalk`가 새 연결을 세운다
         walk.clearArrival()
+        // 시트 표시 초기화와 톤 프리로드(`beginBeacon`과 같은 몫) — 승차 전 도보 없이 곧장 서는 대중교통도 접힌 띠바로 서지 않고, 공유 재생기의 톤이 실린다.
+        pendingSheetReturn = null
+        suppressNextBandLanding = false
+        sceneLookups.clear()
+        isMinimized = false
+        walk.tones.preload()
         // 승차 전 도보(A25): 첫 탑승 구간 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면 같은 요청으로 대중교통 세션을 잇는다. 판정은 Kit
         // 순수 함수 — null이면 종전 경로.
         val guideRoute = buildTransitGuideRoute(request.route)
@@ -500,6 +506,7 @@ object GuideSession {
                 prewalkJob?.cancel()
                 prewalkJob = uiScope.launch {
                     delay(HANDOFF_GAP_MS)
+                    isMinimized = false  // 승차 전 도보 화면이 사라진 틈(iOS 호스트가 `hasScreen` 소실에 최소화를 푼다) — 대중교통 시트를 펼친 채 세운다
                     transit.startAfterPrewalk(
                         guideRoute = context.guideRoute, startLeg = context.startLeg, destinationLabel = context.destinationLabel, dest = context.dest,
                         accessible = context.accessible, prewalkCompleted = true,
@@ -537,6 +544,7 @@ object GuideSession {
                 waited += WALK_SPEECH_POLL_MS
             }
             GuideDiag.log("prewalk $logLabel ms=$waited")
+            isMinimized = false  // 위 도착 갈래와 같은 이유
             transit.startAfterPrewalk(
                 guideRoute = context.guideRoute, startLeg = context.startLeg, destinationLabel = context.destinationLabel, dest = context.dest,
                 accessible = context.accessible, prewalkCompleted = prewalkCompleted,
