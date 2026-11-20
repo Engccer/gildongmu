@@ -46,6 +46,15 @@
 - `and-m5-car` → `and-m5-transit`: 시작 진입점(`GuideSession`의 시작 함수 모양, 시작 버튼, 전경 서비스, 시트 호스트)은 `and-m5-car`의 spec이 정하고 통합 보고에 인계 절로 적는다. `startWalk(WalkStartRequest)`를 부르는 기존 코드는 깨지 않는다.
 - `and-rows`의 줄 동작 헬퍼(전화 걸기 → 여기까지 길찾기 → 주소 복사 → 물어보기)는 `and-rows`만 쓴다. 다른 세션은 이번 웨이브에서 부르지 않는다.
 
+#### 정정 (2026-11-20 22:45 KST, 기준 `3bba3963`, 코디네이터가 재현 확인)
+
+- `and-common` 착수 보고: `:kit` `RecentSearchStore.reorderPinned*`는 **이식돼 있지 않다**(`Reorder.kt`만 있다, `grep reorderPinned android/kit/src/main` 0건). BACKLOG B23 본문의 「이식돼 있고」를 그대로 옮긴 착수 프롬프트의 전제가 틀렸다. `and-common`이 `K/RecentSearchStore.kt`에 `applyPinnedOrder`·`reorderPinned*`와 Kit 테스트를 옮긴다(소유에 더한다).
+- `and-common`: B23 최근 경로 이동에 `A/directions/DirectionsViewModel.kt` 함수 하나와 `DirectionsStrings.kt` 키 4줄을 덧붙인다(`and-route` 소유 파일, 덧붙이기만).
+- `and-rows` 착수 보고: `PlaceRow` 호출부가 `A/search/SearchScreen.kt`(`and-common` 소유)에 있어 그 함수 몇 줄을 고치고, `A/nav/AppRoot.kt`에 공급 한 줄을 더한다. `:kit` `LocationNarrative.kt`·`StationPhone.kt`·`models/NearbyModels.kt`에 함수·필드를 더한다(소유에 더한다).
+- `and-route` 착수 보고: 노선 이름 조립은 `K/TransitExitLines.kt`에 둔다(iOS 자리와 같다, 소유에 더한다). 수단 재조회도 `lanes=1`을 보낸다.
+
+- 판정 요청 둘(`and-rows` 22:43, `and-route` 22:45)이 같은 건이다: 영어 등 한국어가 아닌 화면에서 한글 병기 때문에 낭독용 이름이 화면 글자와 다른 줄. 위원장에게 묻기 전에 `and-rows`(`a11y/A11y.kt` 소유)가 한소네 영어 화면 출력을 관측하고, 두 번 실리면 자식 글자의 시맨틱을 숨겨 낭독용 이름만 한 번 내는 방법을 검토한다(채택 조건: 누르기·작업 메뉴·착지 보존을 테스트로 확인, 한국어 화면 불변, 실기기 한 번 출력). 조건을 못 맞추면 그대로 두고 통합한 뒤 코디네이터가 위원장에게 묻는다. 회신 원문은 `~/gildongmu-wt/and-rows-reports/coordinator-202611202258.md`.
+
 **공용 생성물·문서**: `res/values*/strings.xml`·`gildongmu-kit-strings.json`·`arg-order.json`은 rebase 뒤 생성 스크립트로 다시 만든다(손 편집 금지). `messages/*.json`은 고치지 않는다(안드로이드 전용 문안은 `android/i18n/android-extra/`). `android/kit/mirrors/*.json`은 자기 항목만. `CHANGELOG.md`·`docs/BACKLOG.md`·`PROGRESS.md`·`android/README.md`·`.claude/rules/android.md`는 자기 항목·자기 절만 고치고 rebase 뒤 `comm -23`으로 소실을 대조한다. `CLAUDE.md`를 고쳤으면 통합 보고에 적는다(형제 `AGENTS.md`는 코디네이터가 다시 만든다). 서버·웹·iOS(`src/**`·`ios/**`·`packages/**`)와 공유 fixture는 읽기만 한다.
 
 ## §3 git 격리·게이트
