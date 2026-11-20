@@ -127,6 +127,7 @@ fun SearchScreen(
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
     val searchingLabel = stringResource(R.string.android_search_searching)
+    val scroll = rememberScrollState()
 
     // 결과 도착 시 첫 결과 행 착지(한 프레임 뒤, 소비한 세대만 한 번). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
     // 행을 먼저 화면 안으로 스크롤하고(끝날 때까지 기다림) 포커스를 준다: 위에 받아쓰기·위치 표시줄이 서면서 작은 화면(한소네 576dp)에서는
@@ -137,8 +138,13 @@ fun SearchScreen(
             if (s.totalCount > 0) {
                 withFrameNanos { }
                 s.outcome?.let { firstRowKey(it) }?.let { key ->
+                    val before = scroll.value
+                    val countNotice = vm.state.value.notice
                     runCatching { rowBring[key]?.bringIntoView() }.onFailure { Log.w("SearchScreen", "첫 결과 스크롤 실패", it) }
                     runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) }
+                    // 스크롤이 일어나면 한소네가 화면 밖으로 나간 커서를 옮겨 읽으며 결과 수 통지를 덮는다(실기기). 그때만 착지 뒤에
+                    // 같은 문장을 한 번 더 낸다(진동 없이). 스크롤이 없는 큰 화면은 종전 그대로 한 번이다.
+                    if (scroll.value != before && vm.state.value.notice.seq == countNotice.seq) vm.announce(countNotice.text)
                 }
             }
         }
@@ -162,7 +168,7 @@ fun SearchScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(horizontal = 16.dp)
                 .semantics { testTagsAsResourceId = true },
         ) {
