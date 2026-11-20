@@ -17,6 +17,7 @@ import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DirectionsUiState
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.GuideSessionKind
+import space.dodoplanet.gildongmu.guide.TransitStartMark
 import space.dodoplanet.gildongmu.guide.TransitStartRequest
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
 import space.dodoplanet.gildongmu.guide.guideStrings
@@ -48,8 +49,8 @@ fun TransitGuideStartButton(route: TransitRoute, name: String, dest: BeaconDest,
 }
 
 /** 이 경로의 시작 버튼 아래 시작 실패 행을 세우는가 — 승차 전 도보(줄 없는 도보 시작)가 이 경로의 대중교통 시작에서 나왔을 때만. */
-fun transitStartFailureShown(ui: WalkGuideUiState, startedRoute: TransitRoute?, route: TransitRoute): Boolean =
-    startedRoute === route && ui.lastStartKind == GuideSessionKind.walk && ui.lastStartLine == null
+fun transitStartFailureShown(ui: WalkGuideUiState, started: TransitStartMark?, route: TransitRoute): Boolean =
+    started?.route === route && ui.lastStartKind == GuideSessionKind.walk && ui.lastStartLine == null
 
 /**
  * 대중교통 시작 버튼 조립: 도착 좌표가 있을 때만(도착 = `promotedDestination ?: (to as Place)`, 도보·자동차 슬롯과 같은 규칙, `to == Current`면 없음).

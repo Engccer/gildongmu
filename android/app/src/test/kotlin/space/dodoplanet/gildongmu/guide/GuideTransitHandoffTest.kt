@@ -255,7 +255,7 @@ class GuideTransitHandoffTest {
         GuideSession.startTransit(request)
         settle()
         val route = request.route
-        assertSame(route, GuideSession.transitStartRoute.value)
+        assertSame(route, GuideSession.transitStartRoute.value?.route, "내용이 같은 앞 테스트의 경로가 남아 있어도 이번 객체를 싣는다")
         val ui = w.model.ui.value
         assertTrue(ui.status.isFailure)
         assertTrue(transitStartFailureShown(ui, GuideSession.transitStartRoute.value, route))

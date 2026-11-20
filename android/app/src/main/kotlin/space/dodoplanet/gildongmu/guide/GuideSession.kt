@@ -73,6 +73,9 @@ fun guideScreenKind(walk: WalkGuideUiState?, transit: TransitGuideUiState?): Gui
  */
 data class TransitStartRequest(val route: TransitRoute, val destinationLabel: String, val dest: BeaconDest, val accessible: Boolean)
 
+/** 대중교통 시작 버튼이 연 경로 표식(`GuideSession.transitStartRoute`). data class가 아니다 — 매 시작이 다른 값이어야 StateFlow가 버리지 않는다. */
+class TransitStartMark(val route: TransitRoute)
+
 /**
  * 안내 세션 앱 수명 싱글턴(iOS `GuideSession.shared` 미러, spec §3-1). 세션은 화면이 아니라 앱이 소유한다 — 시트를 내리는
  * 제스처는 최소화이고 소거는 "닫기"뿐(N1). 서비스·스트림·알림은 `walk`를 매 호출 시점에 조회하고 인스턴스를 붙들지 않는다.
@@ -160,9 +163,10 @@ object GuideSession {
      * 길찾기 대중교통 시작 버튼이 마지막으로 연 경로 객체(iOS 화면 상태 `lastGuideStart = .transitAlt(routeKey)`의 안드로이드 자리) — 그 시작이
      * 연 승차 전 도보가 실패하면 시작 실패 행을 그 경로 버튼 아래에 세운다. 도보·자동차의 공개 시작이 지운다.
      * ⚠ `routeKey`(`p0`·`p1`…)는 한 응답 안에서만 유일하다 — 새 조회의 같은 키 경로 아래 옛 실패가 서지 않게 객체 동일성(`===`)으로 가른다.
+     * ⚠ 감싸개(`TransitStartMark`, 동일성 equals)를 거친다: `MutableStateFlow`는 `equals`가 같은 값을 버려 내용이 같은 새 조회 경로를 저장하지 못한다.
      */
-    private val _transitStartRoute = MutableStateFlow<TransitRoute?>(null)
-    val transitStartRoute: StateFlow<TransitRoute?> = _transitStartRoute.asStateFlow()
+    private val _transitStartRoute = MutableStateFlow<TransitStartMark?>(null)
+    val transitStartRoute: StateFlow<TransitStartMark?> = _transitStartRoute.asStateFlow()
 
     /**
      * 띄울 시트(M5 §6-7, iOS `screen` 동형): 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 하차 인계
@@ -405,7 +409,7 @@ object GuideSession {
     fun startTransit(request: TransitStartRequest) {
         if (!isAttached || !hasTransit || refuseIfActive()) return
         walk.clearFailure()  // 지난 도보(인계 도보 등)의 실패가 이 경로 버튼 아래 서지 않게 — 승차 전 도보가 없는 경로는 `retirePrewalkRestart`를 지나지 않는다
-        _transitStartRoute.value = request.route
+        _transitStartRoute.value = TransitStartMark(request.route)
         beginTransit(request)
     }
 
