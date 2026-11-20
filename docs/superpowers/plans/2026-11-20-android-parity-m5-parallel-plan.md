@@ -1,0 +1,80 @@
+# 2026-11-20 안드로이드 등가성·M5 병렬 계획 (A75 · B17 · B21~B25 · B27 · E43 M5)
+
+코디네이터 `gildongmu-3d [11226e]`(위원장 창, 판정 진행). worktree 기준 SHA는 이 문서를 넣은 커밋이다(소유권은 그 부모 `414419a3`에서 쟀다). 위원장 지시(2026-11-20): 안드로이드 관련 구현을 병렬 세션으로 진행하고 판정과 질문은 코디네이터 세션에서 한다.
+
+## §1 마일스톤·확정 판정·모델 배정
+
+| 세션 | 과제 | 확정 판정 | 모델·노력 | 웨이브 |
+|---|---|---|---|---|
+| `and-rows` | A75(검색·내 주변·둘러보기 줄의 거리 풀어쓰기 제거) → B21 ①~⑧(장소 줄 동작과 문장 속 장소·역 열기) | BACKLOG §1 A75 판정 ⓐ, §4 B21 판정(⑨는 iOS E72 실기기 판정 뒤라 제외) | opus · medium | 1 |
+| `and-common` | B22(받아쓰기: 설정 행 숨김·검색 탭 음성 검색·끝점 검색 받아쓰기·앱 바로가기) · B23(고정한 최근 항목 순서 바꾸기) · B27 ①~④(제목 메뉴 새로고침·유휴 리셋·검색 탭 현재 위치 표시줄·걸음 산출 고지) | BACKLOG §4 B22 판정(탭 방식만, 「길게 누르기」는 별도 작업)·B23·B27 | opus · medium | 1 |
+| `and-route` | B24(버스 노선 집합 표시) · B17(자동차 정체 줄, 조회 화면 몫) · B25(도보 안내 시트 정보 띠) | BACKLOG §4 B24·B17·B25 | opus · medium | 1 |
+| `and-m5-car` | E43 M5 설계(자동차 → 대중교통 → 여정 분해와 세션 공유 진입점)와 자동차 실시간 안내 | BACKLOG §5 E43 「M5 자동차·대중교통 안내」, 2026-11-20 판정(등가성 묶음과 나란히) | opus · high | 1 |
+| `and-m5-transit` | E43 M5 대중교통 실시간 안내와 도보 인계, B27 ⑤ 새 소식 시트 | 같은 항목 | opus · high | 2 (`and-m5-car` 통합 뒤) |
+| `and-journey` | B26 여정 | BACKLOG §4 B26 | opus · high | 3 (`and-m5-transit` 통합 뒤) |
+
+공통: 구현·이식·탐색 서브에이전트는 `model: sonnet`·`effort: medium`, 리뷰어·감사는 `model: opus`·`effort: high`. `and-m5-car`·`and-m5-transit`은 새 세션 구조와 상태 전이를 정하므로 spec 커밋 뒤 codex `adversarial-review` 1회(회전 상한 2회). 나머지 세션은 iOS 정본이 확정된 이식이라 설계 리뷰를 생략한다.
+
+### 코디네이터 설계 판정 (제품 판단 아님)
+
+- **A75의 처방을 화면의 모든 병합 줄에 적용한다.** 원인(`mergedRow`에 낭독용 이름을 얹으면 한소네가 이름과 글자를 이어 붙인다)이 길찾기 브리핑 줄·안내 시트 줄에도 같고, `android/README.md` §6이 이 풀어쓰기를 「실기기 판정 뒤 제거 가능」으로 적어 두었다. 세션마다 자기 소유 파일의 줄에서 걷어 낸다. 음성 발화와 상태 통지 채널(`WalkGuideModel.post`·`StatusLine`)의 풀어쓰기는 그대로 둔다. 낭독용 이름이 거리 말고 다른 이유로 보이는 글자와 다른 줄은 두고 판정 요청으로 보고한다.
+- **M5는 정식 기능 구성(`debug`·`release`)에 넣는다.** 동기화 기준이 iOS 정식판이고 iOS는 2.0에서 자동차·대중교통 안내를 정식판으로 졸업시켰다(도보 안내 정식판 이동과 같은 원칙, `android/README.md` 「배포 전 개발·검증 기준」). 운전자 모드 피커처럼 iOS 실험판에 남은 것은 범위 밖이다.
+- **M5는 자동차 → 대중교통 → 여정 순으로 직렬이다.** 셋 다 `GuideSession`의 시작 진입점·전경 서비스·시트 호스트를 고치고 대중교통은 도보 세션으로 인계하므로, 앞 세션이 정한 진입점 모양이 뒤 세션의 인터페이스다.
+- **이번 웨이브의 세션은 한소네에 설치하지 않는다.** 실기기 점검(`hansone-smoke.py`의 A75 경고 소멸 포함)은 웨이브 1 통합 뒤 코디네이터가 위원장에게 물어 한 번에 한다.
+
+## §2 파일 소유권 (기준 `414419a3`)
+
+`A/` = `android/app/src/main/kotlin/space/dodoplanet/gildongmu/`, `K/` = `android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/`. 호출 관계로 쟀다(이름 grep이 아니다). 테스트 파일은 같은 패키지의 것을 함께 소유한다.
+
+| 세션 | 소유(수정) |
+|---|---|
+| `and-rows` | `A/search/SearchRows.kt`(함수 `RecentRow` 제외) · `A/nearby/**` · `A/chat/ChatRenders.kt`·`ChatInline.kt`·`ChatMessages.kt`·`AddressToPlace.kt` · `A/place/**` · `A/a11y/A11y.kt`·`Lines.kt` · 줄 동작 헬퍼 새 파일 · `K/NearbyService.kt`와 그 모델(옵트인 `coords=1`·`places=1`) · `android/README.md` §6의 풀어쓰기 문장 |
+| `and-common` | `A/search/SearchScreen.kt`·`SearchViewModel.kt` · `SearchRows.kt`의 `RecentRow` 함수 · `A/directions/EndpointSearchContent.kt`·`EndpointPicker.kt`·`EndpointSearchState.kt` · `A/directions/DirectionsScreen.kt`의 최근 경로 줄 · `A/settings/**` · `A/speech/**` · `A/chat/ChatViewModel.kt`·`ChatScreen.kt`·`ChatDictation.kt` · `A/nav/**` · `A/a11y/AppTopBar.kt` · `A/location/LocationBar.kt` · `A/MainActivity.kt` · `AndroidManifest.xml`의 바로가기 선언과 `res/xml/shortcuts.xml` · `android/i18n/android-extra/*.json`의 자기 키 |
+| `and-route` | `K/RouteService.kt`·`K/models/RouteModels.kt` · `A/directions/TransitLegText.kt`·`RouteRows.kt`·`RouteText.kt`·`BriefingStations.kt`·`DirectionsStrings.kt` · `A/directions/DirectionsViewModel.kt`의 경로 조회 호출 자리 · `A/guide/ui/GuideSheet.kt`·`GuideBand.kt` |
+| `and-m5-car` | `A/guide/**`(위 두 파일과 `ui/WalkGuideNoticeSheet.kt` 제외) · `A/audio/**`(`ChatTtsPlayer.kt` 제외) · `K/Car*.kt`·`K/GuideStart.kt`(신설)·`K/CarTrafficAhead.kt`(신설)·`K/GuideSessionCoordinator.kt` · spec `docs/superpowers/specs/2026-11-20-android-m5-guidance-design.md` · `AndroidManifest.xml`의 안내 서비스 선언 |
+
+**겹침과 직렬 순서**
+
+- `K/RouteService.kt`·`K/models/RouteModels.kt`·`A/directions/RouteRows.kt`·`A/guide/ui/GuideSheet.kt`: `and-route` → `and-m5-car`. `and-m5-car`은 `and-route`가 `origin/main`에 통합되기 전에는 이 넷을 고치지 않는다. 통합 여부는 `git fetch origin && git log origin/main --oneline -- android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/RouteModels.kt | head -1`이 기준 SHA 뒤 커밋을 내는지로 본다(통보를 기다리지 않는다). 그 전까지는 spec·`:kit` 이식·`WalkGuideModel` 쪽을 한다.
+- `A/search/SearchRows.kt`: `and-rows`(장소·주소 줄)와 `and-common`(`RecentRow`)이 함수 단위로 나눠 고친다. `A/directions/DirectionsScreen.kt`: `and-common`(최근 경로 줄)과 `and-m5-car`(자동차 안내 시작 자리)가 자리를 나눠 고친다. `AndroidManifest.xml`: `and-common`(바로가기)과 `and-m5-car`(서비스). 알고 받아들인 겹침이고, 뒤에 통합하는 쪽이 rebase 충돌을 푼다.
+- `A/nav/AppRoot.kt`는 `and-common` 소유다. 다른 세션이 등록 한두 줄을 더해야 하면 더하고 통합 보고에 자진 신고한다.
+- `GuideSheet.kt`의 B16(「경로 새로고침」·「지금 여기는 어디?」)은 iOS E75 실기기 판정 전이라 이번 범위 밖이다.
+
+**경계 인터페이스**
+
+- `and-route` → `and-m5-car`: 자동차 정체 모델(`CarJam`·`congestion` 3-state)과 옵트인 `traffic=1`은 `and-route`가 `RouteModels.kt`·`RouteService.kt`에 iOS Kit과 같은 이름으로 넣는다. 주행 중 새 정체 판정(`CarTrafficAhead.swift`의 `newCarJamsAhead`)은 `and-m5-car` 몫이다. 버스 노선 집합은 `and-route`가 표시 몫(`TransitLane`·`TransitRouteLeg.lanes`·`transitBriefingLineName`, `lanes=1`)만 옮기고 노선 선택·잠금(`transitLegWithLane`)은 `and-m5-transit` 몫이다.
+- `and-m5-car` → `and-m5-transit`: 시작 진입점(`GuideSession`의 시작 함수 모양, 시작 버튼, 전경 서비스, 시트 호스트)은 `and-m5-car`의 spec이 정하고 통합 보고에 인계 절로 적는다. `startWalk(WalkStartRequest)`를 부르는 기존 코드는 깨지 않는다.
+- `and-rows`의 줄 동작 헬퍼(전화 걸기 → 여기까지 길찾기 → 주소 복사 → 물어보기)는 `and-rows`만 쓴다. 다른 세션은 이번 웨이브에서 부르지 않는다.
+
+**공용 생성물·문서**: `res/values*/strings.xml`·`gildongmu-kit-strings.json`·`arg-order.json`은 rebase 뒤 생성 스크립트로 다시 만든다(손 편집 금지). `messages/*.json`은 고치지 않는다(안드로이드 전용 문안은 `android/i18n/android-extra/`). `android/kit/mirrors/*.json`은 자기 항목만. `CHANGELOG.md`·`docs/BACKLOG.md`·`PROGRESS.md`·`android/README.md`·`.claude/rules/android.md`는 자기 항목·자기 절만 고치고 rebase 뒤 `comm -23`으로 소실을 대조한다. `CLAUDE.md`를 고쳤으면 통합 보고에 적는다(형제 `AGENTS.md`는 코디네이터가 다시 만든다). 서버·웹·iOS(`src/**`·`ios/**`·`packages/**`)와 공유 fixture는 읽기만 한다.
+
+## §3 git 격리·게이트
+
+main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gildongmu-wt/<이름>`(브랜치 `feat/<이름>`)와 `node_modules`·공식 Android 스킬은 코디네이터가 미리 만들었다. 세션은 `npm install`·SDK 설치를 하지 않는다.
+
+- 통합: 고정 `base` rebase → 공유 문서 `comm -23` 대조 → 생성물 재생성 → 게이트 → `git push origin feat/<이름>:main && git -C ~/Mac-Projects/gildongmu pull --ff-only`. `--force` 금지, 거부되면 fetch부터 다시.
+- **Gradle은 가벼운 실행까지 전부 머신 전역 락 안에서 돈다**(`android/README.md` §7의 `mkdir` 락 대신 스킬의 `gate-lock.py`를 쓴다. 게이트 끝의 `./gradlew --stop`이 머신의 데몬을 모두 내려 락 밖 실행을 죽이기 때문이다).
+  ```bash
+  export ANDROID_HOME=~/Library/Android/sdk
+  python3 ~/.claude/skills/parallel-sessions/scripts/gate-lock.py <이름> -- bash -c 'cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:assembleExperimental :app:compileDebugAndroidTestKotlin; code=$?; ./gradlew --stop >/dev/null 2>&1; exit $code'
+  VITEST_MAX_WORKERS=2 python3 ~/.claude/skills/parallel-sessions/scripts/gate-lock.py <이름> -- npm run test:run
+  node android/scripts/check-release-manifest.mjs android/app/build/outputs/apk/debug/app-debug.apk   # release도, 실험판은 --experimental
+  ```
+  개발 중 좁은 실행(`./gradlew :kit:test --tests …`)도 같은 락으로 감싸고 끝에 `--stop`을 붙인다.
+- 기준선 기록 `~/.claude/parallel-sessions/gildongmu/baseline-<worktree 기준 SHA 12자리>.log`(`:kit:test`·`:app:testDebugUnitTest`, 정확한 경로는 착수 프롬프트에 있다). 실패하면 먼저 이 기록과 대조하고, 기준선을 다시 재려고 `git stash`·`checkout`을 하지 않는다. rebase 뒤 처음 보는 실패는 자기 것으로 단정하지 말고 보고한다.
+- 리뷰: 전부 커밋한 뒤 `git diff origin/main...HEAD`로 별도 컨텍스트 리뷰어(`model: opus`)에게 맡긴다. 화면을 고쳤으면 접근성 감사를 붙인다(워크스페이스 `~/Mac-Projects/.claude/agents/a11y-auditor.md`를 Read해 지시를 준 `model: opus` 범용 에이전트). 리뷰가 도는 동안 rebase·커밋 금지, 결과는 보고 디렉터리의 파일로 받아 전문을 읽는다. 리뷰 반영분은 다시 리뷰하지 않는다.
+- 실기기 설치(`adb install`·`android install`·`hansone-smoke.py`)와 에뮬레이터 기동은 하지 않는다. 산출물 경로만 보고한다.
+- 사용자 판정은 `~/gildongmu-wt/<이름>-reports/judgment-<YYYYmmddHHMM>.md`로 쓰고 코디네이터에 통보한 뒤 기본값으로 계속한다. 하드 스톱(비용·외부 발신·파괴·아키텍처 양자택일)은 코디네이터에게 보고한다.
+
+## §4 웨이브
+
+웨이브 1: `and-rows`·`and-common`·`and-route`·`and-m5-car`. 웨이브 2: `and-m5-transit`. 웨이브 3: `and-journey`. 그 뒤 doc-audit 세션과 한소네 실기기 점검.
+
+## §5 착수 프롬프트·보고
+
+프롬프트 사본 `~/.claude/parallel-sessions/gildongmu/<이름>.prompt.txt`, 보고 `~/gildongmu-wt/<이름>-reports/`(단계마다 새 파일 `start`·`review`·`integrated`·`blocked`·`judgment`).
+
+## §5-1 통합 기록
+
+| 세션 | 통합 SHA | 시각 | 자진 신고 | 남은 판정 |
+|---|---|---|---|---|
