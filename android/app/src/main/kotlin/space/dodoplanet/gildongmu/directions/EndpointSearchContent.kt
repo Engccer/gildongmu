@@ -62,7 +62,7 @@ import space.dodoplanet.gildongmu.kit.joinText
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack: () -> Unit) {
+fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack: () -> Unit, titleOverride: String?) {
     val res = LocalContext.current.resources
     val lang = remember(res) { AppLocale.current(res) }
     val strings = remember(res) { resourceStrings(res) }
@@ -102,7 +102,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
         pendingRecentLanding = null
     }
 
-    val title = when (p.target) {
+    val title = titleOverride ?: when (p.target) {
         DirectionsFieldTarget.from -> strings.get("directions.searchFrom")
         DirectionsFieldTarget.to -> strings.get("directions.searchTo")
         DirectionsFieldTarget.via -> strings.get("directions.searchVia")

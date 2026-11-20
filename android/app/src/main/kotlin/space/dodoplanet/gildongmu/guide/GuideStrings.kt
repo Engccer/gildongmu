@@ -411,6 +411,15 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "transitGuide.reboardStopCancel" -> R.string.transitGuide_reboardStopCancel
     "transitGuide.reboardCancel" -> R.string.transitGuide_reboardCancel
     "android.transitGuide.recoveryFindStation" -> R.string.android_transitGuide_recoveryFindStation
+    "android.transitGuide.recoveryStart" -> R.string.android_transitGuide_recoveryStart
+    "android.transitGuide.recoveryRetry" -> R.string.android_transitGuide_recoveryRetry
+    "android.transitGuide.recoveryWalk" -> R.string.android_transitGuide_recoveryWalk
+    "android.transitGuide.recoveryNotSubway" -> R.string.android_transitGuide_recoveryNotSubway
+    "android.transitGuide.recoveryStationSearch" -> R.string.android_transitGuide_recoveryStationSearch
+    "android.transitGuide.destChangeCancel" -> R.string.android_transitGuide_destChangeCancel
+    "android.transitGuide.destChangeHeading" -> R.string.android_transitGuide_destChangeHeading
+    "transitGuide.surroundingsAnchorCurrent" -> R.string.transitGuide_surroundingsAnchorCurrent
+    "transitGuide.surroundingsAnchorAlight" -> R.string.transitGuide_surroundingsAnchorAlight
     "android.place.callRepresentative" -> R.string.android_place_callRepresentative
     else -> null
 }

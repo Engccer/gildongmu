@@ -7,7 +7,14 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.guide.ui.TransitRecoveryControls
+import space.dodoplanet.gildongmu.guide.ui.TransitSheetControl
+import space.dodoplanet.gildongmu.guide.ui.transitControlExists
+import space.dodoplanet.gildongmu.guide.ui.transitDestChangeStatusKey
+import space.dodoplanet.gildongmu.guide.ui.transitRecoveryControls
+import space.dodoplanet.gildongmu.guide.ui.transitRecoveryStatusKey
 import space.dodoplanet.gildongmu.kit.BeaconDest
+import space.dodoplanet.gildongmu.kit.GuideSpeechClass
 import space.dodoplanet.gildongmu.kit.TransitLabel
 import space.dodoplanet.gildongmu.kit.TransitPhase
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
@@ -466,5 +473,56 @@ class TransitGuideRouteChangeTest {
         settle()
         assertNull(h.ui.pendingDestChange, "정지 뒤 걸려 있던 조회 작업이 슬롯을 되살리지 않는다")
         assertFalse(h.model.recoveryOffered)
+    }
+
+    // ── 5-D: 시트가 읽는 상태 ──
+
+    @Test fun `검색으로 고른 역에서 복구하면 조회 중 행을 거쳐 결과 행 키와 버튼 집합이 선다`() = transitTest(dispatcher) { h ->
+        rideSubway(h)
+        h.model.beginRecovery()
+        val picking = transitRecoveryControls(h.ui, h.model.recoveryOffered, walkAvailable = h.ui.dest != null)
+        assertEquals(TransitRecoveryControls(picking = true, start = false, retry = false, walk = false), picking, "역 질문이 버튼 자리를 대신한다")
+        h.queueRoute(null, delayMs = 5_000)
+        h.model.recoverFrom(37.55, 127.05)
+        settle()
+        assertEquals(PendingRecovery.Phase.loading, h.ui.pendingRecovery?.phase)
+        assertEquals("android.transitGuide.destChangeLoading", transitRecoveryStatusKey(h.ui))
+        pass(10_000)
+        assertEquals(RecoveryOutcome.noRoute, h.ui.recoveryOutcome)
+        assertEquals("android.transitGuide.recoveryNoRoute", transitRecoveryStatusKey(h.ui))
+        val after = transitRecoveryControls(h.ui, h.model.recoveryOffered, walkAvailable = true)
+        assertEquals(TransitRecoveryControls(picking = false, start = true, retry = false, walk = true), after, "경로 없음의 다음 행동은 걸어가기 하나")
+        assertEquals(false, transitRecoveryControls(h.ui, h.model.recoveryOffered, walkAvailable = false)?.walk)
+    }
+
+    @Test fun `목적지 전환 준비는 상태 행에서 후보로 가고 후보가 실리면 행이 없고 확정이면 비운다`() = transitTest(dispatcher) { h ->
+        h.rideBus()
+        settle()
+        h.queueRoute(null)
+        h.model.prepareDestinationChange(NEW_DEST, "강남역", null)
+        assertEquals("android.transitGuide.destChangeLoading", transitDestChangeStatusKey(h.ui))
+        settle()
+        assertEquals("android.transitGuide.destChangeNone", transitDestChangeStatusKey(h.ui), "0건은 조회 실패와 다른 문장")
+        h.queueRoute(adoptable())
+        h.model.prepareDestinationChange(NEW_DEST, "강남역", null)
+        settle()
+        val loaded = assertIs<DestChangePhase.Loaded>(h.ui.pendingDestChange?.phase)
+        assertNull(transitDestChangeStatusKey(h.ui), "후보가 실리면 상태 행이 없다")
+        assertFalse(transitControlExists(h.ui, TransitSheetControl.destChangeStatus, false, false))
+        assertTrue(h.model.commitDestinationChange(loaded.result.recommended))
+        assertNull(h.ui.pendingDestChange)
+    }
+
+    @Test fun `시트의 1회성 결과는 문장과 진동을 함께 내고 억제 중이면 진동도 없다`() = transitTest(dispatcher) { h ->
+        h.rideBus()
+        settle()
+        h.model.announceExternalResult("번호를 찾지 못했습니다.", highPriority = true, speechClass = GuideSpeechClass.actionable, haptic = ResultHapticKind.attention)
+        settle()
+        assertTrue(h.speaker.texts.contains("번호를 찾지 못했습니다."), h.speaker.texts.toString())
+        assertEquals(listOf(ResultHapticKind.attention), h.haptics.fired)
+        h.haptics.fired.clear()
+        h.model.outputSuppressed = true
+        h.model.announceExternalResult("억제", highPriority = true, speechClass = GuideSpeechClass.actionable, haptic = ResultHapticKind.failure)
+        assertEquals(emptyList(), h.haptics.fired, "문장이 나가는 조건 = 진동이 나가는 조건")
     }
 }

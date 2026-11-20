@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -48,10 +49,13 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.LocalModalOpen
+import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DirectionsFieldTarget
 import space.dodoplanet.gildongmu.directions.EndpointPicker
@@ -60,8 +64,11 @@ import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.directions.guideDestinationPhone
 import space.dodoplanet.gildongmu.directions.noteDestination
 import space.dodoplanet.gildongmu.directions.resourceStrings
+import space.dodoplanet.gildongmu.directions.transitRouteEntries
+import space.dodoplanet.gildongmu.directions.transitSummaryText
 import space.dodoplanet.gildongmu.guide.DestChangePhase
 import space.dodoplanet.gildongmu.guide.GuideDiag
+import space.dodoplanet.gildongmu.guide.GuideFormSync
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.PendingRecovery
 import space.dodoplanet.gildongmu.guide.TransitAboardStep
@@ -76,12 +83,16 @@ import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.guideDestinationPlace
+import space.dodoplanet.gildongmu.kit.StationLayoutKind
 import space.dodoplanet.gildongmu.kit.joinText
+import space.dodoplanet.gildongmu.kit.stationLayoutKind
+import space.dodoplanet.gildongmu.kit.transitSurroundingsAnchor
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.transitOpenStationLine
 import space.dodoplanet.gildongmu.kit.transitStationMentions
 import space.dodoplanet.gildongmu.kit.transitStopPlace
+import space.dodoplanet.gildongmu.nearby.SceneButtonSection
 import space.dodoplanet.gildongmu.place.StationPhoneStore
 import space.dodoplanet.gildongmu.place.dial
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -175,6 +186,9 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     var pendingFollowUp by remember { mutableStateOf<OverviewFollowUp?>(null) }
     var landTitleSeq by remember { mutableIntStateOf(0) }
     var landProgressSeq by remember { mutableIntStateOf(0) }
+    val routeStrings = remember(context.resources) { resourceStrings(context.resources) }
+    /** 목적지 전환 첫 후보 행을 화면 안으로 들이는 요청자(iOS `proxy.scrollTo(first)`). */
+    val firstRouteBring = remember { BringIntoViewRequester() }
 
     val exists: (TransitSheetControl) -> Boolean = { c ->
         page == TransitPage.tracking && transitControlExists(model.ui.value, c, expressPromptActive, model.recoveryOffered)
@@ -257,12 +271,16 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
         page = TransitPage.tracking
         landing.landDeferred("deferred")
     }
+    // 취소로 닫혔고 이월된 착지도 없으면 「목록에 없는 역 찾기」 버튼으로 되돌린다(iOS는 시스템이 표시 직전 요소로 되돌린다).
+    val cancelRecoverySearch: () -> Unit = {
+        if (!closeRecoverySearch()) scope.launch { land(returnFocus.requesterFor(RECOVERY_FIND_TAG), "복구 역 검색 취소") }
+    }
 
     BackHandler(enabled = page != TransitPage.tracking) {
         when (page) {
             TransitPage.overview -> closeOverview()
             TransitPage.destSearch -> closeDestSearch()
-            TransitPage.recoverySearch -> closeRecoverySearch()
+            TransitPage.recoverySearch -> cancelRecoverySearch()
             TransitPage.tracking -> Unit
         }
     }
@@ -342,7 +360,12 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     // 목적지 전환 후보 조회 결과 — 0건·오류는 조회 중 행이 바뀐 같은 자리 문구 행에 착지(헌장 §5). 조회 중은 검색 닫힘이 이미 착지를 맡았다.
     OnChange(ui.pendingDestChange?.phase) { _, phase ->
         when (phase) {
-            is DestChangePhase.Loaded -> Unit // 5-D: landFirstDestChangeRouteFocus
+            is DestChangePhase.Loaded -> {
+                // 첫 후보 착지(스펙 §4.4) — 도착 통지는 내지 않는다(착지 낭독이 첫 후보를 읽는다). 조회 중 행에 걸려 있던 착지는 끊는다.
+                landing.cancel()
+                val first = transitRouteEntries(phase.result, emptyList(), routeStrings).firstOrNull()?.route?.routeKey
+                if (first != null) scope.launch { landFirstDestChangeRouteFocus(firstRouteBring, returnFocus.requesterFor(transitDestRouteTag(first))) }
+            }
             DestChangePhase.Empty, DestChangePhase.Failed -> landing.land(TransitSheetControl.destChangeStatus, "destChangeResult", expectsSystemPlacement = false)
             DestChangePhase.Loading, null -> Unit
         }
@@ -368,7 +391,11 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
             return
         }
         TransitPage.recoverySearch -> {
-            // 5-D: recovery search page
+            TransitRecoverySearchPage(
+                strings = strings,
+                onPicked = { closeRecoverySearch() },
+                onCancel = cancelRecoverySearch,
+            )
             return
         }
         TransitPage.tracking -> Unit
@@ -419,12 +446,16 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
                     viaExpanded = viaExpanded, setViaExpanded = { viaExpanded = it },
                     expressPromptActive = expressPromptActive, setExpressPromptActive = { expressPromptActive = it },
                     openStation = openStationDetail,
+                    openRecoverySearch = { page = TransitPage.recoverySearch },
                 )
                 ViaStopsRows(rows)
                 PhaseControls(rows)
                 AlightPrepRow(rows)
-                // 5-D: surroundingsSection
-                // 5-D: destChangeSection
+                SurroundingsSection(rows, openPlace = { place, key ->
+                    TransitSheetReturnMemo.keyAtPush = model.ui.value.let { TransitPhaseKey(it.state?.phase, it.userTransitionSeq) }
+                    nav.onOpenPlace(place, true, key, null)
+                })
+                DestChangeSection(rows, routeStrings, firstRouteBring)
             }
         }
         // 안내 종료는 목록 밖 최하단 고정(iOS `GuideStopButton(tall: false)` — 도보 시트의 두 배 높이는 E81 정보 띠 판정이라 여기 없다).
@@ -509,6 +540,144 @@ private fun TransitDestSearchPage(onDone: () -> Unit) {
         }
     }
     CompositionLocalProvider(LocalModalOpen provides true) {
-        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onDone) } }
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onDone, titleOverride = null) } }
+    }
+}
+
+/** 복구 「목록에 없는 역 찾기」 버튼 표식 — 역 검색 취소 복귀의 착지 키(`StationPicker`가 같은 값으로 `landingTarget`을 단다). */
+internal const val RECOVERY_FIND_TAG = "transit-picker-find"
+
+internal fun transitDestRouteTag(routeKey: String): String = "transit-dest-route-$routeKey"
+
+/** 목적지 전환 첫 후보 착지(iOS `landFirstDestChangeRouteFocus`) — 가시화 → 지연 → 대입 → 600ms 뒤 1회 재시도(`land`). */
+private suspend fun landFirstDestChangeRouteFocus(bring: BringIntoViewRequester, requester: FocusRequester) {
+    withFrameNanos { }
+    try { bring.bringIntoView() } catch (e: CancellationException) { throw e } catch (e: Exception) { GuideDiag.log("destChange first route reveal failed ${e::class.simpleName}") }
+    land(requester, "목적지 전환 첫 후보")
+}
+
+/**
+ * 주변 확인(iOS `surroundingsSection`) — 앵커는 도착 유래 판정 그대로다(E35 접근성 감사 M1): 실시간 위치를 따르면 승차 내내 역마다 앵커가 바뀌어 사용자가 연
+ * 장면을 읽는 도중에 버리게 된다. 헤더는 헤딩, 본문은 도보 시트와 같은 `SceneButtonSection`(세션이 좌표 단위로 조회를 들고, 앵커가 바뀌면 지난 역 장면을
+ * 버린다). 대중교통과 도보 세션은 동시에 없으므로 자리(`SceneSlot.tracking`)는 하나를 쓴다.
+ */
+@Composable
+private fun SurroundingsSection(c: TransitRowsCtx, openPlace: (Place, String) -> Unit) {
+    val state = c.ui.state ?: return
+    val leg = transitUiLeg(c.ui) ?: return
+    val anchor = transitSurroundingsAnchor(state, leg) ?: return
+    val (key, name) = transitSurroundingsHeading(anchor)
+    Text(
+        c.strings.get(key, name),
+        Modifier.fillMaxWidth().mergedRow("transit-surroundings-heading").headingText().padding(vertical = 8.dp),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    SceneButtonSection(
+        GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, BeaconDest(anchor.stop.lat, anchor.stop.lng)),
+        requesterFor = { k -> c.returnFocus.requesterFor(k) },
+        onOpenPlace = openPlace,
+    )
+}
+
+/**
+ * 새 경로 후보 섹션(iOS `destChangeSection`, 스펙 §4) — 확정 전이라 메인 컨트롤(옛 목적지 안내)은 그대로 남는다. 중간 상태를 만들지 않는 것이 계약이고 두 섹션
+ * 공존이 그 표현이다. 후보 선택 = 확정(2단): 라벨은 결과 목록과 같은 조립(이름+요약). 3-state: 경로 없음 ≠ 조회 실패, 출구는 취소뿐.
+ */
+@Composable
+private fun DestChangeSection(c: TransitRowsCtx, routeStrings: Strings, firstRouteBring: BringIntoViewRequester) {
+    val pending = c.ui.pendingDestChange ?: return
+    val lang = AppLocale.current(LocalContext.current.resources)
+    Text(
+        c.strings.get("android.transitGuide.destChangeHeading", pending.label),
+        Modifier.fillMaxWidth().mergedRow("transit-dest-change-heading").headingText().padding(vertical = 8.dp),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    if (c.exists(TransitSheetControl.destChangeStatus)) {
+        transitDestChangeStatusKey(c.ui)?.let { key ->
+            Text(
+                c.strings.get(key),
+                Modifier.fillMaxWidth().transitLandingRow(c.targets, TransitSheetControl.destChangeStatus).padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+    (pending.phase as? DestChangePhase.Loaded)?.let { loaded ->
+        transitRouteEntries(loaded.result, emptyList(), routeStrings).forEachIndexed { index, entry ->
+            val tag = transitDestRouteTag(entry.route.routeKey)
+            Button(
+                onClick = {
+                    if (c.model.commitDestinationChange(entry.route)) {
+                        GuideFormSync.post(DirectionsEndpoint.Place(pending.label, pending.dest.lat, pending.dest.lng, pending.labelRoman))
+                        c.landing.land(TransitSheetControl.status, "destChangeCommitted", expectsSystemPlacement = false)
+                    } else {
+                        // stale 재조회(§4.2) — 선택 행들이 사라지고 조회 중 상태 행으로 돌아간다(헌장 §5 선점).
+                        c.landing.land(TransitSheetControl.destChangeStatus, "destChangeStale", expectsSystemPlacement = false)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget()
+                    .then(if (index == 0) Modifier.bringIntoViewRequester(firstRouteBring) else Modifier)
+                    .landingTarget(c.returnFocus.requesterFor(tag)).testTag(tag),
+            ) { Text(joinText(entry.name, transitSummaryText(entry.route.summary, lang, routeStrings))) }
+        }
+    }
+    Button(
+        onClick = {
+            c.model.cancelDestinationChange()
+            c.landing.land(TransitSheetControl.status, "destChangeCancel", expectsSystemPlacement = false)
+        },
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag("transit-dest-change-cancel"),
+    ) { Text(c.strings.get("android.transitGuide.destChangeCancel")) }
+}
+
+/**
+ * 잘못 내림 복구의 역 검색 페이지(iOS `DirectionsEndpointSearchView(recoveryStation:)`, E78 §5-2) — **지하철역만 받는다**(`stationLayoutKind == subway`). 끝점 검색
+ * 모델(`EndpointPicker`)은 지하철역만 거르는 인자가 없어 시트 쪽에서 거른다: 장소 후보를 고를 때 부르는 `noteDestinationPhone` 자리에서 고른 장소의 종류를
+ * 적어 두고, 확정 콜백이 그 종류로 판정한다(최근 기록·주소·현재 위치는 종류를 몰라 받지 않는다). 아니면 페이지를 연 채 검색 화면 통지로 알린다. 고른 역 좌표가
+ * 출발점이다(`recoverFrom`). 열린 동안 안내 출력을 억제하고(받아쓰기 마이크) 해제는 `onDispose`, 앱 통지를 집지 않는다(`LocalModalOpen`).
+ */
+@Composable
+private fun TransitRecoverySearchPage(strings: Strings, onPicked: () -> Unit, onCancel: () -> Unit) {
+    val context = LocalContext.current
+    val res = context.resources
+    val scope = rememberCoroutineScope()
+    val pickedKind = remember { arrayOfNulls<StationLayoutKind>(1) }
+    val pickerRef = remember { arrayOfNulls<EndpointPicker>(1) }
+    val picker = remember {
+        EndpointPicker(
+            search = SearchService(AppConfig.apiClient),
+            store = RecentSearchStore(SharedPreferencesStore(context.applicationContext)),
+            strings = resourceStrings(res),
+            io = Dispatchers.IO,
+            scope = scope,
+            dataLocale = { AppLocale.dataLocale(res) },
+            ranking = { null },
+            // 거절하면 페이지를 연 채 두어야 하므로 닫기는 호스트가 맡는다.
+            closesOnSelect = false,
+            // 목적지 전화번호부가 아니라 "고른 장소의 종류를 적는 자리"로 쓴다(번호부에는 아무것도 적지 않는다).
+            noteDestinationPhone = { place -> pickedKind[0] = stationLayoutKind(place) },
+        ) { endpoint, _ ->
+            val kind = pickedKind[0]
+            pickedKind[0] = null
+            val place = endpoint as? DirectionsEndpoint.Place
+            if (place == null || !transitRecoverySearchAccepts(kind)) {
+                pickerRef[0]?.postNotice(strings.get("android.transitGuide.recoveryNotSubway"))
+            } else {
+                GuideSession.transit.recoverFrom(place.lat, place.lng)
+                onPicked()
+            }
+        }.also { pickerRef[0] = it }
+    }
+    val state by picker.state.collectAsState()
+    DisposableEffect(Unit) {
+        val owner = Any()
+        picker.open(DirectionsFieldTarget.from)
+        GuideSession.setOutputSuppressed(true, owner)
+        onDispose {
+            picker.close()
+            GuideSession.setOutputSuppressed(false, owner)
+        }
+    }
+    CompositionLocalProvider(LocalModalOpen provides true) {
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = onCancel, titleOverride = strings.get("android.transitGuide.recoveryStationSearch")) } }
     }
 }

@@ -572,7 +572,7 @@ private fun SearchPage(target: DirectionsFieldTarget, onDone: (committed: String
     }
     // 시트는 IME를 밀어 올리지 않는다 — 입력 착지와 함께 뜨는 키보드가 후보·상태 줄을 가리지 않게(비-TalkBack 사용자).
     CompositionLocalProvider(LocalModalOpen provides true) {
-        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = { onDone(null) }) } }
+        Box(Modifier.fillMaxSize().imePadding()) { state?.let { EndpointSearchContent(picker, it, onBack = { onDone(null) }, titleOverride = null) } }
     }
 }
 

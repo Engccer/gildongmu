@@ -2914,6 +2914,15 @@ class TransitGuideModel(
     }
 
     /**
+     * 시트가 낸 1회성 결과(전화 걸기 실패·없음 등)의 문장과 진동을 함께 낸다 — "문장이 나가는 조건 = 진동이 나가는 조건"(억제 중이면 둘 다 없다).
+     * 다른 화면(브리핑 역·내 주변)은 문장과 진동을 함께 내는데 시트만 문장뿐이던 자리(5-B 우려 3)를 메운다. `haptic`은 기본값 없음.
+     */
+    fun announceExternalResult(message: String, highPriority: Boolean, speechClass: GuideSpeechClass, haptic: ResultHapticKind) {
+        announce(message, highPriority = highPriority, speechClass = speechClass)
+        resultHaptic(haptic)
+    }
+
+    /**
      * 자동 통지 창구(spec 2026-08-14 §4-6 동형). 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에 게시한다(지연·latest-wins·세대는 `DeferredAnnouncer` 소유).
      * 하차 임박·도착만 `highPriority`(§6.1). `speechClass`는 기본값 없는 필수 인자다(E53 spec §3 — 백그라운드에서 말하는가를 가른다). 이벤트는 Kit
      * `transitEventSpeechClass`가 정본이다.

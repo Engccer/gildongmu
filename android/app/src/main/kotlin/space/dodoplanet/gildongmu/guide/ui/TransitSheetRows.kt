@@ -67,6 +67,8 @@ class TransitRowsCtx(
     val setExpressPromptActive: (Boolean) -> Unit,
     /** 경유역 상세(지하철 구간) — 시트의 `openStationDetail`(노선 힌트 포함). */
     val openStation: (stop: TransitLegStop, lineName: String, source: String, returnTo: String) -> Unit,
+    /** 잘못 내림 복구의 「목록에 없는 역 찾기」 — 시트가 복구 역 검색 페이지를 연다. */
+    val openRecoverySearch: () -> Unit,
 )
 
 /** 이 단계에서 말미 도보 인계가 가능한가(iOS `onWalkHandoff != nil`). 단계 6이 `GuideSession.acceptWalkHandoff`를 배선하기 전에도 모델의 전이 가드(`pendingWalkHandoff`)가 안전하다. */
@@ -139,7 +141,7 @@ private fun ViaStopStationRow(stop: TransitLegStop, lineName: String, text: Stri
         c.model.touchUserAction()
         // 브리핑 로터와 같은 창구 — 번호면 걸고, 그 밖이면 3상태를 통지로 알린다. 시트엔 live region이 없어(가드 ⑨) 모델의 TTS 한 채널로 말한다.
         callStationPhone(store, stop, lineName, context::dial)?.let { notice ->
-            c.model.announceExternal(context.getString(notice.text), highPriority = true, speechClass = GuideSpeechClass.actionable)
+            c.model.announceExternalResult(context.getString(notice.text), highPriority = true, speechClass = GuideSpeechClass.actionable, haptic = notice.haptic.toGuideHaptic())
         }
         true
     }
@@ -214,7 +216,50 @@ internal fun PhaseControls(c: TransitRowsCtx) {
             }
         }
     }
-    // 5-D: recoveryControls
+    RecoveryControls(c, leg)
+}
+
+/**
+ * 「여기서 다시 길찾기」(E78 spec §3·§8, iOS `recoveryControls`) — 국면 버튼 바로 다음. 지하철은 역부터 묻고(버튼 자리를 역 목록이 대신한다), 상태 행은 버튼 아래
+ * 한 줄 + 그 결과의 다음 행동 하나다. 상태 행 문장은 착지 폴백과 같은 키 함수(`transitRecoveryStatusKey`)다.
+ */
+@Composable
+private fun RecoveryControls(c: TransitRowsCtx, leg: TransitGuideLeg) {
+    val controls = transitRecoveryControls(c.ui, c.model.recoveryOffered, walkAvailable = c.ui.dest != null) ?: return
+    if (controls.picking) {
+        StationPicker(
+            c, leg,
+            onPick = { index -> c.model.recoverFrom(index) },
+            onFindStation = c.openRecoverySearch,
+            onCancel = {
+                c.model.cancelRecovery()
+                c.landing.land(TransitSheetControl.status, "recoveryCancel", expectsSystemPlacement = false)
+            },
+        )
+    } else {
+        SheetButton(c.strings.get("android.transitGuide.recoveryStart"), Modifier.testTag("transit-recovery-start")) { c.model.beginRecovery() }
+    }
+    if (c.exists(TransitSheetControl.recoveryStatus)) {
+        transitRecoveryStatusKey(c.ui)?.let { key ->
+            Text(
+                c.strings.get(key),
+                Modifier.fillMaxWidth().transitLandingRow(c.targets, TransitSheetControl.recoveryStatus).padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+    if (controls.retry) {
+        // 누르면 이 행이 사라진다 — 상태 행(조회 중)으로 커서를 옮긴다(헌장 §5).
+        SheetButton(c.strings.get("android.transitGuide.recoveryRetry"), Modifier.testTag("transit-recovery-retry")) {
+            c.model.retryRecovery()
+            c.landing.land(TransitSheetControl.recoveryStatus, "recoveryRetry", expectsSystemPlacement = false)
+        }
+    }
+    if (controls.walk) {
+        SheetButton(c.strings.get("android.transitGuide.recoveryWalk"), Modifier.testTag("transit-recovery-walk")) {
+            // 단계 6: GuideSession.acceptWalkHandoff
+        }
+    }
 }
 
 /**
@@ -414,7 +459,10 @@ internal fun StationPicker(
         SheetButton(if (c.isEn) (stop.en ?: stop.ko) else stop.ko, Modifier.testTag("transit-picker-$index")) { onPick(index) }
     }
     // 잘못 내림 복구만(E78 §5-2): 하차역을 지나쳐 목록에 없는 역.
-    onFindStation?.let { find -> SheetButton(c.strings.get("android.transitGuide.recoveryFindStation"), Modifier.testTag("transit-picker-find")) { find() } }
+    onFindStation?.let { find ->
+        // 검색 페이지를 취소로 닫으면 이 버튼으로 되돌아온다(`RECOVERY_FIND_TAG`).
+        SheetButton(c.strings.get("android.transitGuide.recoveryFindStation"), Modifier.landingTarget(c.returnFocus.requesterFor(RECOVERY_FIND_TAG)).testTag(RECOVERY_FIND_TAG)) { find() }
+    }
     SheetButton(c.strings.get(transitReboardCancelKey(c.ui)), Modifier.testTag("transit-picker-cancel")) { onCancel() }
 }
 

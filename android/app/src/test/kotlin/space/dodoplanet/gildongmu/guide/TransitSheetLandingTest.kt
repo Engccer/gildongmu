@@ -275,7 +275,7 @@ class TransitSheetLandingTest {
     private val sheet = guideUi.resolve("TransitGuideSheet.kt").readText()
 
     @Test fun `시트 행 순서와 배선 — 제목, 진행 상황, 상태 문장, 최하단 안내 종료`() {
-        val order = listOf("GuideTitleMenu(", "strings.get(\"guide.progressButton\")", "StatusRows(ui", "ViaStopsRows(rows)", "PhaseControls(rows)", "AlightPrepRow(rows)", "strings.get(\"beacon.stop\")")
+        val order = listOf("GuideTitleMenu(", "strings.get(\"guide.progressButton\")", "StatusRows(ui", "ViaStopsRows(rows)", "PhaseControls(rows)", "AlightPrepRow(rows)", "SurroundingsSection(rows", "DestChangeSection(rows", "strings.get(\"beacon.stop\")")
         val at = order.map { sheet.indexOf(it) }
         assertTrue(at.all { it >= 0 } && at == at.sorted(), "행 순서 $order → $at")
         // 종료는 대중교통 모델 종료(알림 종료와 같은 톤 재생), 제스처는 최소화.
