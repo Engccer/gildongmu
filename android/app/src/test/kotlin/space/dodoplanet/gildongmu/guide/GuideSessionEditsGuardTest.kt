@@ -50,8 +50,8 @@ class GuideSessionEditsGuardTest {
         assertTrue(!code.contains("getBackStackEntry<PlaceDetailRoute>"), "다른 탭의 상세를 잡아 오판한다")
         assertTrue(code.contains("GuideSession.reopenAfterNestedScreen()"))
         // 목적지 상세는 길찾기 진입을 숨긴다(이미 그곳으로 안내 중), 주변 확인 행의 상세는 iOS처럼 보인다.
-        assertTrue(sheet.contains("nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN)"))
-        assertEquals(2, Regex("""nav\.onOpenPlace\(place, true, key\)""").findAll(sheet).count())
+        assertTrue(sheet.contains("nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN, null)"))
+        assertEquals(2, Regex("""nav\.onOpenPlace\(place, true, key, null\)""").findAll(sheet).count())
     }
 
     @Test fun `길찾기 폼 동기화 진입점은 하나이고 무통지 조회다`() {

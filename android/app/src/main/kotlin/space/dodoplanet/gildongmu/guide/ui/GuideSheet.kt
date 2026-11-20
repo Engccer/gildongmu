@@ -95,8 +95,11 @@ import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 /** 안내 시트가 앱 골격에 요청하는 이동 둘 — 설정(E31 체중)·장소 상세 중첩(M4b). `AppRoot`가 NavController로 채운다. */
 class GuideNav(
     val onOpenSettings: () -> Unit,
-    /** 장소 상세 push(`openGuidePlace`) — 시트 최소화·재개·재개 착지(`returnTo`)는 그쪽 몫. */
-    val onOpenPlace: (place: Place, showsDirectionsEntry: Boolean, returnTo: String) -> Unit,
+    /**
+     * 장소 상세 push(`openGuidePlace`) — 시트 최소화·재개·재개 착지(`returnTo`)는 그쪽 몫. `stationLineHint`는 경유역 상세의 전화 조회 노선 힌트(E44, 대중교통 시트만 싣고
+     * 도보·자동차 호출부는 `null`을 명시한다 — 기본값이 없다).
+     */
+    val onOpenPlace: (place: Place, showsDirectionsEntry: Boolean, returnTo: String, stationLineHint: String?) -> Unit,
 )
 
 /**
@@ -295,7 +298,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                                     context.dial(phone)
                                     landTitleSeq++
                                 }
-                                GuideTitleMenuItem.detail -> ui.dest?.let { nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN) }
+                                GuideTitleMenuItem.detail -> ui.dest?.let { nav.onOpenPlace(guideDestinationPlace(it, ui.destinationLabel, destinationPhone), false, GUIDE_TITLE_RETURN, null) }
                                 GuideTitleMenuItem.change -> page = GuidePage.Search(DirectionsFieldTarget.to)
                             }
                         },
@@ -331,7 +334,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             ) { Text(strings.get("guide.progressButton")) }
             // 주변 확인 — 앵커는 목적지(도착지 부근이 어떤 모습인가를 묻는다, iOS spec §5). 펼친 결과가 아래 행을 밀지만 펼침은 방금 누른 행동이다.
             ui.dest?.let { dest ->
-                SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, dest), requesterFor) { place, key -> nav.onOpenPlace(place, true, key) }
+                SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.tracking, dest), requesterFor) { place, key -> nav.onOpenPlace(place, true, key, null) }
             }
             if (sheetRowExists(ui, SheetRow.reroute)) {
                 Button(
@@ -662,7 +665,7 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
         }
         val arrival = ui.arrivalDest
         if (ui.endKind != SessionEndKind.stopped && arrival != null) {
-            SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.end, arrival), requesterFor) { place, key -> nav.onOpenPlace(place, true, key) }
+            SceneButtonSection(GuideSession.sceneLookup(GuideSession.SceneSlot.end, arrival), requesterFor) { place, key -> nav.onOpenPlace(place, true, key, null) }
         }
         Button(onClick = { GuideSession.walk.closeEndScreen() }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-end-close")) { Text(strings.get("actions.close")) }
     }

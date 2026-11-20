@@ -15,11 +15,11 @@ import space.dodoplanet.gildongmu.place.PlaceDetailRoute
  * 화면(채팅·주변)은 그 엔트리가 아직 스택에 있으므로 무시한다. `returnTo`는 재개 착지(제목 또는 주변 확인 행 키). 안내 신호는 억제하지 않는다
  * (임박 큐는 안전 계층, iOS 동형).
  */
-fun NavController.openGuidePlace(place: Place, showsDirectionsEntry: Boolean, returnTo: String) {
+fun NavController.openGuidePlace(place: Place, showsDirectionsEntry: Boolean, returnTo: String, stationLineHint: String?) {
     GuideSession.pendingSheetReturn = returnTo
     GuideSession.suppressNextBandLanding = true
     GuideSession.isMinimized = true
-    navigate(PlaceDetailRoute.of(place).copy(showsDirectionsEntry = showsDirectionsEntry))
+    navigate(PlaceDetailRoute.of(place).copy(showsDirectionsEntry = showsDirectionsEntry, stationLineHint = stationLineHint))
     val pushedId = currentBackStackEntry?.id ?: return GuideSession.reopenAfterNestedScreen()
     addOnDestinationChangedListener(object : NavController.OnDestinationChangedListener {
         // `currentBackStack`은 라이브러리 그룹 한정 API다. 묻는 것이 "push한 **그 엔트리**가 아직 스택 어딘가에 있는가"인데 공개 API에 답이 없다:

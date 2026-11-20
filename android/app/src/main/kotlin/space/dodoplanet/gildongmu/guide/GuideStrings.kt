@@ -372,5 +372,30 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "transitGuide.reboardStopPrompt" -> R.string.transitGuide_reboardStopPrompt
     "transitGuide.expressPrompt" -> R.string.transitGuide_expressPrompt
     "android.transitGuide.destChangeNone" -> R.string.android_transitGuide_destChangeNone
+    "transitGuide.advance" -> R.string.transitGuide_advance
+    "transitGuide.walkHandoffStart" -> R.string.transitGuide_walkHandoffStart
+    "transitGuide.advanceUntrackable" -> R.string.transitGuide_advanceUntrackable
+    "transitGuide.boardSelected" -> R.string.transitGuide_boardSelected
+    "transitGuide.boardSelectedBus" -> R.string.transitGuide_boardSelectedBus
+    "transitGuide.reselectVehicle" -> R.string.transitGuide_reselectVehicle
+    "transitGuide.changeBoarding" -> R.string.transitGuide_changeBoarding
+    "transitGuide.boardApprox" -> R.string.transitGuide_boardApprox
+    "transitGuide.refresh" -> R.string.transitGuide_refresh
+    "transitGuide.boardAlready" -> R.string.transitGuide_boardAlready
+    "transitGuide.continueWithoutTrain" -> R.string.transitGuide_continueWithoutTrain
+    "transitGuide.pickAnotherStation" -> R.string.transitGuide_pickAnotherStation
+    "transitGuide.expressYes" -> R.string.transitGuide_expressYes
+    "transitGuide.expressNo" -> R.string.transitGuide_expressNo
+    "transitGuide.cancelChangeBoarding" -> R.string.transitGuide_cancelChangeBoarding
+    "transitGuide.selectTrain" -> R.string.transitGuide_selectTrain
+    "transitGuide.selectBus" -> R.string.transitGuide_selectBus
+    "transitGuide.directionCheck" -> R.string.transitGuide_directionCheck
+    "transitGuide.noCandidatesAboard" -> R.string.transitGuide_noCandidatesAboard
+    "transitGuide.viaStopsTrain" -> R.string.transitGuide_viaStopsTrain
+    "transitGuide.viaStopsBus" -> R.string.transitGuide_viaStopsBus
+    "transitGuide.reboardStopCancel" -> R.string.transitGuide_reboardStopCancel
+    "transitGuide.reboardCancel" -> R.string.transitGuide_reboardCancel
+    "android.transitGuide.recoveryFindStation" -> R.string.android_transitGuide_recoveryFindStation
+    "android.place.callRepresentative" -> R.string.android_place_callRepresentative
     else -> null
 }

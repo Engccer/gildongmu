@@ -145,7 +145,7 @@ private object TransitSheetReturnMemo {
 
 /** iOS `onChange(of:)` — 컴포지션 진입 값은 건너뛰고 값이 바뀔 때만 (이전, 새 값)으로 부른다. */
 @Composable
-private fun <T> OnChange(value: T, action: (old: T, new: T) -> Unit) {
+internal fun <T> OnChange(value: T, action: (old: T, new: T) -> Unit) {
     val last = remember { arrayListOf(value) }
     LaunchedEffect(value) {
         val old = last[0]
@@ -209,24 +209,24 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
     DisposableEffect(Unit) { onDispose { landing.dispose() } }
 
     // 장소 상세(스택 화면) — 시트를 접고 push, 돌아오면 `returnTo` 줄에 착지(iOS 표준 중첩 시트 + 시스템 커서 복원). 길찾기 진입 버튼은 숨긴다.
-    val openPlace: (Place, String) -> Unit = { place, returnTo ->
+    val openPlace: (Place, String, String?) -> Unit = { place, returnTo, stationLineHint ->
         TransitSheetReturnMemo.keyAtPush = model.ui.value.let { TransitPhaseKey(it.state?.phase, it.userTransitionSeq) }
-        nav.onOpenPlace(place, false, returnTo)
+        nav.onOpenPlace(place, false, returnTo, stationLineHint)
     }
     // iOS `showDestinationDetail` — 목적지 상세(사용자 조작이라 유휴 시계를 되돌린다).
     val showDestinationDetail: () -> Unit = {
         ui.dest?.let { dest ->
             model.touchUserAction()
-            openPlace(guideDestinationPlace(dest, ui.destinationLabel, destinationPhone), GUIDE_TITLE_RETURN)
+            openPlace(guideDestinationPlace(dest, ui.destinationLabel, destinationPhone), GUIDE_TITLE_RETURN, null)
         }
     }
     // iOS `openStationDetail` — 지하철 경유역의 장소 상세(E33): 좌표·ID·한국어 이름으로 곧장 연다. `returnTo`는 돌아올 줄의 표식(상태 문장 언급이면
-    // `TransitSheetControl.status.tag`, 경유역 행이면 그 행 키 — 5-B). ⚠ 노선 힌트(E44 `stationLineHint`)는 실을 자리가 없다: `GuideNav.onOpenPlace`가
-    // 힌트를 받지 않는다(`nav/AppRoot.kt`가 `openGuidePlace`를 넘긴다). 힌트 없는 경유역 상세는 그 역의 전화번호 조회가 노선 축 없이 돈다.
+    // `TransitSheetControl.status.tag`, 경유역 행이면 그 행 키). 노선 힌트(E44 `stationLineHint`)는 여기서 확정한다(iOS `detailLineHint = lineName`, E44 §5.2) —
+    // 역 상세의 전화 줄이 그 노선 축으로 조회한다.
     val openStationDetail: (stop: TransitLegStop, lineName: String, source: String, returnTo: String) -> Unit = { stop, lineName, source, returnTo ->
         model.touchUserAction()
         GuideDiag.log("transit stationDetail open station=${stop.name} line=$lineName source=$source")
-        openPlace(transitStopPlace(stop), returnTo)
+        openPlace(transitStopPlace(stop), returnTo, lineName)
     }
     // iOS `prefetchViaPhones` — 펼친 경유역 목록의 전화번호 일괄 조회(E44 §6). 지하철 구간만.
     val prefetchViaPhones: () -> Unit = {
@@ -414,9 +414,15 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
                     modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(progressFocus).testTag("guide-progress"),
                 ) { Text(strings.get("guide.progressButton")) }
                 StatusRows(ui, model, renderer, isEn, targets, onOpenStation = { stop, lineName -> openStationDetail(stop, lineName, "status", TransitSheetControl.status.tag) })
-                // 5-B: viaStopsRows
-                // 5-B: phaseControls
-                // 5-B: alightPrepRow
+                val rows = TransitRowsCtx(
+                    ui = ui, model = model, strings = strings, renderer = renderer, isEn = isEn, targets = targets, landing = landing, returnFocus = returnFocus, exists = exists,
+                    viaExpanded = viaExpanded, setViaExpanded = { viaExpanded = it },
+                    expressPromptActive = expressPromptActive, setExpressPromptActive = { expressPromptActive = it },
+                    openStation = openStationDetail,
+                )
+                ViaStopsRows(rows)
+                PhaseControls(rows)
+                AlightPrepRow(rows)
                 // 5-D: surroundingsSection
                 // 5-D: destChangeSection
             }
