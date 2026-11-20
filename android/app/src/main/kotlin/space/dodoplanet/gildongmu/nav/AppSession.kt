@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.nav
 
+import android.content.Intent
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,7 +60,10 @@ object AppSession {
     // `AppRoot`도 같은 전역 흐름을 보고 있어 먼저 꺼내 가면 새 화면은 처음 탭으로 뜬다(한소네 실측 2026-11-21). 받은 쪽만 꺼낸다.
     private var pendingOwner: Any? = null
 
-    fun offer(intentAction: String?, owner: Any) {
+    fun offer(intentAction: String?, intentFlags: Int, owner: Any) {
+        // 최근 앱에서 다시 연 태스크(액티비티가 뒤로 가기로 끝난 뒤)는 시스템이 기준 인텐트 = 바로가기 인텐트에 이 플래그를 붙여 새로 만든다.
+        // 사용자의 바로가기 실행이 아니다(iOS는 인텐트 `perform()`에서만 선다) — 받지 않는다(재리뷰 지적 2, 한소네 재현).
+        if ((intentFlags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return
         val action = actionFor(intentAction) ?: return
         backgroundedAt = null
         pendingOwner = owner

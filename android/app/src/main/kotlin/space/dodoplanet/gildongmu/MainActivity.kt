@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 앱 바로가기(B22 ④): 정적 바로가기는 새 태스크로 이 액티비티를 다시 만든다. 구성 변경 재생성은 같은 인텐트를 다시 들고 오므로 첫 생성만 받는다.
-        if (savedInstanceState == null) AppSession.offer(intent?.action, this)
+        if (savedInstanceState == null) AppSession.offer(intent?.action, intent?.flags ?: 0, this)
         else AppSession.restoreBackgroundedAt(savedInstanceState.getDouble(BACKGROUNDED_AT_KEY, Double.NaN).takeIf { !it.isNaN() })
         // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).
         val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -139,7 +139,7 @@ class MainActivity : ComponentActivity() {
     /** singleTop(매니페스트)이라 런처 아이콘·안내 알림 복귀가 여기로 온다(액션 없음 → `offer`가 무시). 바로가기는 CLEAR_TASK라 새 액티비티의 `onCreate`로 간다. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        AppSession.offer(intent.action, this)
+        AppSession.offer(intent.action, intent.flags, this)
     }
 
     override fun onDestroy() {

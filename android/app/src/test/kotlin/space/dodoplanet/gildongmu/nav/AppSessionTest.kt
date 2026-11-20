@@ -18,20 +18,20 @@ class AppSessionTest {
     @AfterTest fun clean() = AppSession.resetForTest()
 
     @Test fun `바로가기 액션은 1칸 보류되고 꺼내면 비며 음성 검색만 마이크 신호를 세운다`() {
-        AppSession.offer("android.intent.action.MAIN", owner)
+        AppSession.offer("android.intent.action.MAIN", SHORTCUT_FLAGS, owner)
         assertNull(AppSession.pending.value) // 일반 실행은 액션이 아니다
-        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, owner)
+        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, SHORTCUT_FLAGS, owner)
         assertEquals(LaunchAction.voiceSearch, AppSession.take(owner))
         assertNull(AppSession.take(owner)) // 멱등 — 재구성 때 다시 돌아도 리셋은 한 번
         assertTrue(AppSession.voiceStartRequested.value)
-        AppSession.offer(AppSession.ACTION_NEARBY, owner)
+        AppSession.offer(AppSession.ACTION_NEARBY, SHORTCUT_FLAGS, owner)
         assertEquals(LaunchAction.nearby, AppSession.take(owner))
         assertFalse(AppSession.voiceStartRequested.value) // 직전 음성 검색의 잔존 신호는 지운다(유령 마이크 차단)
     }
 
     @Test fun `액션은 받은 액티비티만 꺼낸다 — 지워지는 옛 화면이 먼저 가져가지 않는다`() {
         val old = Any()
-        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, owner)
+        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, SHORTCUT_FLAGS, owner)
         assertNull(AppSession.take(old))
         assertFalse(AppSession.voiceStartRequested.value)
         assertEquals(LaunchAction.voiceSearch, AppSession.take(owner))
@@ -63,7 +63,7 @@ class AppSessionTest {
 
     @Test fun `바로가기 진입은 같은 전경 전환의 유휴 판정을 무효화한다`() {
         AppSession.onBackground(0.0)
-        AppSession.offer(AppSession.ACTION_NEARBY, owner)
+        AppSession.offer(AppSession.ACTION_NEARBY, SHORTCUT_FLAGS, owner)
         assertFalse(AppSession.onForeground(IdleReset.interval * 2, guideActive = false))
     }
 
@@ -115,7 +115,17 @@ class AppSessionTest {
 
     private val owner = Any()
 
+    /** 바로가기로 연 액티비티를 뒤로 가기로 끝낸 뒤 최근 앱에서 다시 열면 시스템이 같은 바로가기 인텐트를 다시 준다(재리뷰 지적 2, 한소네 재현). */
+    @Test fun `최근 앱 재실행의 바로가기 인텐트는 액션으로 받지 않는다`() {
+        AppSession.offer(AppSession.ACTION_VOICE_SEARCH, HISTORY_FLAGS, owner)
+        assertNull(AppSession.pending.value)
+        assertNull(AppSession.take(owner))
+        assertFalse(AppSession.voiceStartRequested.value)
+    }
+
     private companion object {
         const val ANDROID = "http://schemas.android.com/apk/res/android"
+        const val SHORTCUT_FLAGS = 0x10008000 // NEW_TASK|CLEAR_TASK(정적 바로가기)
+        const val HISTORY_FLAGS = 0x10100000 // NEW_TASK|LAUNCHED_FROM_HISTORY(최근 앱 재실행)
     }
 }
