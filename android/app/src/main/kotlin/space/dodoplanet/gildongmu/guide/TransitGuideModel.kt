@@ -972,7 +972,8 @@ class TransitGuideModel(
             // 백그라운드 버림은 복귀 시 현재 상태 낭독(`missedAnnouncement`, E53 §4.3)이 갚는다 — 장부를 되돌리면 음성 토글이 꺼진 채 정류장에 서 있는 동안 fix마다 재시도하고,
             // 복귀 낭독과 이 문장이 연달아 나가 서로 끊는다(a11y 감사 M2).
             val notice = busAlightNotice
-            if (isForeground && notice != null && notice.legIndex == legIndex && notice.phaseGen == phaseGen) {
+            // TTS 불능은 지속이라 되돌리면 fix마다 도착 톤이 반복된다(iOS는 전경 발화가 실패하지 않아 톤이 한 번이다).
+            if (isForeground && !speaker.isUnavailable && notice != null && notice.legIndex == legIndex && notice.phaseGen == phaseGen) {
                 busAlightNotice = notice.copy(announced = false)
                 GuideDiag.log { "transit busAlightReached dropped leg=$legIndex" }
             }

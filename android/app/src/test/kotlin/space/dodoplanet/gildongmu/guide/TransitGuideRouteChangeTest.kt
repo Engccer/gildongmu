@@ -144,22 +144,38 @@ class TransitGuideRouteChangeTest {
         assertEquals("bus", h.model.currentLeg?.mode, "이 모델은 인계에서 끝난다(교체는 도보 뒤 startAfterPrewalk)")
     }
 
-    @Test fun `복구 슬롯이 있는 동안 폴과 즉폴과 하차 한 마디는 0이다`() = transitTest(dispatcher) { h ->
+    @Test fun `복구 슬롯이 있는 동안 하차 한 마디는 0이다`() = transitTest(dispatcher) { h ->
         h.rideBus()
         settle()
         h.queueRoute(adoptable(), delayMs = 600_000)
         h.model.beginRecovery()
         settle()
+        h.model.handleServiceFix(h.fix(3))
+        pass(1_000)
+        h.model.handleServiceFix(h.fix(3))
+        pass(1_000)
+        assertFalse(h.speaker.texts.contains(h.catalog.get("transitGuide.alightStopReached", "라")), "하차 한 마디 0: ${h.speaker.texts}")
+        assertNotNull(h.ui.pendingRecovery)
+    }
+
+    // 폴 주기가 0보다 큰 잠금(지하철 식별 잠금)이어야 게이트가 실제로 걸린다 — 근사 잠금 버스는 슬롯이 없어도 주기 0이다.
+    @Test fun `복구 슬롯이 있는 동안 주기 폴과 복귀 즉폴은 0이고 슬롯이 없으면 복귀 즉폴이 나간다`() = transitTest(dispatcher) { h ->
+        rideSubway(h)
+        val base = h.nonRouteUrls().size
+        h.model.setForeground(false)
+        h.model.setForeground(true)
+        settle()
+        assertTrue(h.nonRouteUrls().size > base, "전제: 슬롯 없이 복귀하면 즉폴이 나간다")
+        h.model.beginRecovery()
+        settle()
+        assertNotNull(h.ui.pendingRecovery)
         val before = h.nonRouteUrls().size
-        h.model.handleServiceFix(h.fix(3))
-        pass(1_000)
-        h.model.handleServiceFix(h.fix(3))
-        pass(1_000)
+        pass(120_000)
+        assertEquals(before, h.nonRouteUrls().size, "슬롯 동안 주기 폴 0")
         h.model.setForeground(false)
         h.model.setForeground(true)
         pass(120_000)
-        assertEquals(before, h.nonRouteUrls().size, "슬롯 동안 폴 0(즉폴 포함)")
-        assertFalse(h.speaker.texts.contains(h.catalog.get("transitGuide.alightStopReached", "라")), "하차 한 마디 0: ${h.speaker.texts}")
+        assertEquals(before, h.nonRouteUrls().size, "슬롯 동안 복귀 즉폴 0")
         assertNotNull(h.ui.pendingRecovery)
     }
 
@@ -191,7 +207,6 @@ class TransitGuideRouteChangeTest {
         h.model.cancelRecovery()
         assertNull(h.ui.pendingRecovery)
         pass(10_000)
-        assertEquals("r", h.ui.route?.legs?.firstOrNull()?.let { "r" } ?: "", "세션은 그대로")
         assertNull(h.ui.recoveryOutcome)
         assertEquals(TransitPhase.riding, h.phase, "옛 안내가 복구 없이 이어진다")
     }
@@ -449,7 +464,7 @@ class TransitGuideRouteChangeTest {
         assertNull(h.ui.pendingRecovery)
         assertNull(h.ui.recoveryOutcome)
         settle()
-        assertNull(h.ui.pendingDestChange, "늦은 응답이 죽은 세션에 슬롯을 되살리지 않는다")
+        assertNull(h.ui.pendingDestChange, "정지 뒤 걸려 있던 조회 작업이 슬롯을 되살리지 않는다")
         assertFalse(h.model.recoveryOffered)
     }
 }

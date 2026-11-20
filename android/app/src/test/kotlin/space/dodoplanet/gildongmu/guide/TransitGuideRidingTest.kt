@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.guide.TransitGuideHarness.PathReply
 import space.dodoplanet.gildongmu.kit.TransitLabel
 import space.dodoplanet.gildongmu.kit.TransitPhase
@@ -229,6 +230,34 @@ class TransitGuideRidingTest {
         h.model.handleServiceFix(h.fix(3))
         pass(1_000)
         assertEquals(1, h.speaker.texts.count { it == text }, "정류장에 서 있는 동안 다시 말하지 않는다")
+    }
+
+    @Test fun `TTS를 쓸 수 없으면 하차 접근 fix를 거듭 넣어도 도착 톤은 한 번이다`() = transitTest(dispatcher) { h ->
+        h.rideBus()
+        settle()
+        h.speaker.isUnavailable = true
+        h.speaker.allow = false
+        repeat(6) {
+            h.model.handleServiceFix(h.fix(3))
+            pass(1_000)
+        }
+        assertEquals(1, h.tones.played.count { it == BeaconTone.nearby }, "발화 실패가 지속돼도 톤은 반복되지 않는다: ${h.tones.played}")
+    }
+
+    @Test fun `일시적 발화 실패는 다음 fix가 다시 말한다`() = transitTest(dispatcher) { h ->
+        h.rideBus()
+        settle()
+        val text = h.catalog.get("transitGuide.alightStopReached", "라")
+        h.speaker.allow = false
+        h.model.handleServiceFix(h.fix(3))
+        pass(1_000)
+        h.model.handleServiceFix(h.fix(3))
+        pass(1_000)
+        assertFalse(h.speaker.texts.contains(text))
+        h.speaker.allow = true
+        h.model.handleServiceFix(h.fix(3))
+        pass(1_000)
+        assertEquals(1, h.speaker.texts.count { it == text }, "버려진 문장은 다음 fix가 다시 말한다: ${h.speaker.texts}")
     }
 
     @Test fun `억제 중 버려진 하차 한 마디는 해제 때 되살리지 않는다`() = transitTest(dispatcher) { h ->
