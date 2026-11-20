@@ -254,9 +254,9 @@ class TransitGuideRouteChangeTest {
         h.queueRoute(adoptable())
         h.speaker.spoken.clear()
         h.model.retryRecovery()
-        assertEquals(2, h.coordinateCalls.size, "버스는 누름마다 새 측위")
         assertFalse(h.speaker.texts.contains(h.catalog.get("android.transitGuide.destChangeLoading")), "다시 시도는 조회 중 통지를 겹치지 않는다")
         settle()
+        assertEquals(2, h.coordinateCalls.size, "버스는 누름마다 새 측위")
         assertEquals("subway", h.model.currentLeg?.mode)
         assertNull(h.ui.recoveryOutcome)
     }
