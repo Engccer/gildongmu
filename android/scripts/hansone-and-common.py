@@ -108,7 +108,8 @@ def masked(line: str) -> str:
 
 def launch(action: str | None = None) -> None:
     if action:
-        h7.sh("am", "start", "-a", action, "-n", f"{PACKAGE}/.MainActivity")
+        # 정적 바로가기는 시스템이 NEW_TASK|CLEAR_TASK(0x10008000)를 붙여 연다. 플래그 없이 열면 화면이 겹쳐 실제와 다르다.
+        h7.sh("am", "start", "-f", "0x10008000", "-a", action, "-n", f"{PACKAGE}/.MainActivity")
         time.sleep(6)
     else:
         h7.launch(f"{PACKAGE}/.MainActivity", wait=5)
