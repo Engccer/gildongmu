@@ -76,6 +76,19 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | `android docs <키워드>` | 공식 Android 문서 검색(API·마이그레이션·모범 사례) |
 | `android skills add <id> --agent=claude-code,codex --project=.` | 공식 Android 스킬 설치. **worktree마다** `android skills add android-cli navigation-3 testing-setup adaptive styles edge-to-edge play-policy-insights --agent=claude-code,codex --project=.`로 두 에이전트를 명시한다. 생성물 `.claude/skills/`·`.agents/skills/`는 `.gitignore`에 있어 커밋되지 않는다 |
 
+### 화면 읽기 프로그램 자동 점검 — 한소네 점자, 가상 기기 톡백
+
+두 화면 읽기 프로그램은 같은 화면을 다르게 읽는다(한소네는 낭독용 이름과 화면 글자를 이어 붙인다, BACKLOG A75). 한쪽 결과로 다른 쪽을 대신하지 않는다.
+
+- **한소네 7 점자 흐름**: `H7_SCRIPTS=<h7.py 폴더> python3 android/scripts/hansone-smoke.py [검색어]`. 점자 키를 주입하고 점자·화면 출력 기록으로 검색 → 장소 상세 → 길찾기 → 도보 안내 → 제목 메뉴 → 안내 종료를 판정한다. 키 주입 도구 `h7.py`는 저장소 밖에 있다. 한소네가 터미널 모드(화면 읽기 프로그램의 점자 단말)이면 종료 코드 2로 거절한다. 출력이 키보다 한 박자 늦어 키 사이 대기는 1.8초다(1.0초는 한 칸 어긋난 줄을 읽는다). 한소네에는 `uiautomator dump`·`android layout`을 쓰지 않는다. ⚠ 단계별 조작은 2026-11-20에 손으로 확인했고, 대본을 처음부터 끝까지 한 번에 돌린 적은 아직 없다.
+- **가상 기기 톡백 낭독**: `python3 android/scripts/talkback-speech.py on|tab [횟수]|since <초>`. 톡백이 음성 합성기로 넘긴 문장을 logcat에서 읽는다. 준비는 한 번이다.
+  1. `sdkmanager "emulator" "system-images;android-35;google_apis_playstore;arm64-v8a"`, `avdmanager create avd -n gildongmu-talkback -k <그 이미지> -d pixel_7`, `emulator -avd gildongmu-talkback -no-window -no-audio`. Play 스토어 이미지에 톡백이 들어 있다.
+  2. 톡백 설정 → 고급 설정 → 개발자 설정 → Log output level을 VERBOSE로 바꾼다(루트가 없어 화면에서만 바뀐다. 톡백을 끈 채 `uiautomator dump`로 좌표를 읽어 누른다).
+  3. `pm grant com.google.android.marvin.talkback android.permission.POST_NOTIFICATIONS`. 주지 않으면 권한 창이 화면 위에 남는다.
+  - ⚠ **톡백 쓸기 제스처는 주입되지 않는다**(`input swipe`, 톡백 키보드 단축키 Alt+방향키 모두 무반응). 이동은 탭 키뿐이라 조작 대상만 지나고 본문 글줄의 읽기 순서는 판정하지 못한다. 화면 조작은 톡백을 끈 채 좌표로 하고, 읽을 자리에서 톡백을 켠다.
+  - 한글은 `input text`로 들어가지 않는다(영문 자판 글쇠로 바뀌어 들어간다). 가상 기기는 화면 없이 띄우면 위치를 잡지 못했다(`emu geo fix` 뒤에도 「위치를 확인할 수 없습니다」) — 거리가 붙는 줄의 낭독은 아직 확인하지 못했다.
+  - 한소네가 USB로 함께 물려 있으면 adb 서버가 수시로 죽는다(`libunwind: stepWithCompactEncoding`). 명령은 다시 서버를 띄워 통과하지만 느려진다.
+
 ## 3. 이식 관용구 (Swift → Kotlin)
 
 정본은 **Swift**다. 웹 TS 판과 공유 fixture로 교차 검증하고, Kit 테스트(`ios/GildongmuKit/Tests/GildongmuKitTests/<이름>Tests.swift`)를 `kit/src/test/.../<이름>Test.kt`로 함께 옮긴다(fixture 없는 것도 테스트는 있다). 파일 이름은 Swift를 따른다(`Coverage.swift` → `Coverage.kt`).
