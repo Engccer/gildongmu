@@ -87,7 +87,7 @@ object GuideSession {
 
 ## 4. 자동차 세션 상세 (iOS `BeaconModel` `sessionKind == .car` 절단면)
 
-판정 계층은 `:kit`에 있다: `GuideTuning.car`(임박 `max(15m, v×6초)`·표본 부족 60m·`silentCatchUp`·정숙 시간·경유지 접근 `max(150m, v×60초)`·안전망 두절 900초·무이동 축 없음·도착 추정 두절 120초·무이동 300초·150m·기하 없이 150m에서 최종 접근), `CarAction`(서버 `action` 투영), `buildCarGuide`·`roadNameAt`·`carSpokenLandmark`(E56·E61), `carArrivalStep`(40m·정지·정확도 ≤ 30m), `guideSpeechChannel`(E53). 새로 옮기는 것은 `CarTrafficAhead.kt`(E80, 공유 fixture `car-jams-ahead-cases.json`)뿐이다. 앱 층은 iOS 분기를 같은 자리·같은 조건으로 옮긴다. 문장은 iOS가 쓰는 키(`guide.car*`·`guide.currentRoad`·`guide.carRoadNow`·`ios.guide.carOffRoute` → `android.guide.carOffRoute`·`ios.beacon.carWalkHandoffStart` → `android.beacon.carWalkHandoffStart`)를 그대로 쓴다(생성물에 이미 있다).
+판정 계층은 `:kit`에 있다: `GuideTuning.car`(임박 `max(15m, v×6초)`·표본 부족 60m·`silentCatchUp`·정숙 시간·경유지 접근 `max(150m, v×60초)`·안전망 두절 900초·무이동 축 없음·도착 추정 두절 120초·무이동 300초·150m·기하 없이 150m에서 최종 접근), `CarAction`(서버 `action` 투영), `buildCarGuide`·`roadNameAt`·`carSpokenLandmark`(E56·E61), `carArrivalStep`(40m·정지·정확도 ≤ 30m), `guideSpeechChannel`(E53). 새로 옮기는 것은 `CarTrafficAhead.kt`(E80, 공유 fixture `car-jams-ahead-cases.json`)뿐이다. 앱 층은 iOS 분기를 같은 자리·같은 조건으로 옮긴다. 문장은 iOS가 쓰는 키(`guide.car*`·`guide.currentRoad`·`guide.carRoadNow`·`ios.beacon.carWalkHandoffStart` → `android.beacon.carWalkHandoffStart`)를 그대로 쓴다(생성물에 이미 있다).
 
 ### 4-1. 시작
 
@@ -115,7 +115,7 @@ object GuideSession {
 
 - 행동은 서버 `action`만 읽는다(문장 분류 폴백 금지 — 없으면 침묵). `buildCarGuide`가 이미 `CarAction.guideAction`을 스텝에 싣는다.
 - 하단 2행: 윗줄·아랫줄의 행동구는 수단별(`guide.carLiveAction.*`)이고 `turnApproachMeters`가 `tuning`(속도 함수)으로 「잠시 후」 전환 시점을 정한다. 앱의 `GuideText.liveTop`·`liveNext`·`liveActionPhrase`·`progress`에 수단 인자를 더한다(iOS `kind:` 인자 동형, 기본값 없음).
-- **자동차 실행 안내는 리듀서의 정숙 시간 기준을 적는다**: 억제 복구 발화·전경 복귀 갚기·경유지 접근 예고 뒤 `guideState.lastAnnouncedAt = now`(iOS `sessionKind == .car` 두 자리, 가드 `car-waypoint-approach-guard.test.ts`의 안드로이드 판을 `GuideSourceGuardTest`에 둔다).
+- **자동차 실행 안내는 리듀서의 정숙 시간 기준을 적는다**: 억제 복구 발화·전경 복귀 갚기 뒤 `guideState.lastAnnouncedAt = now`(iOS `sessionKind == .car` 두 자리 — 경유지 접근 예고는 리듀서가 스스로 적는다, 가드 `car-waypoint-approach-guard.test.ts`의 안드로이드 판을 `GuideSourceGuardTest`에 둔다).
 
 ### 4-4. 현재 도로 (E56)
 
@@ -136,7 +136,7 @@ object GuideSession {
 - 제목 헤딩: `beacon.carHeading`(도보 `beacon.walkHeading`).
 - 정보 행 순서(상세): 남은 거리 → **현재 도로** → 윗줄(지금 할 일) → 아랫줄(다음 안내) → 상태. 간략 강등이면 종전대로 상태 행.
 - 제목 메뉴(전화 걸기 → 장소 상세 → 목적지 바꾸기)와 경유지 추가·변경·삭제는 자동차에서도 같다(iOS 동형). 조망의 「대안 경로 보기」는 도보만(`alternativePreviewAvailable`이 도보 조건).
-- 이탈: 상태 행·윗줄은 벗어난 쪽만(도보와 같은 규칙), 시계 문장은 `guide.carOffRouteClock`·`guide.carOffRouteBehind`(도보 `offRouteReturnClock`·`offRouteTurnBack`), 상태 행의 국면 문장은 `android.guide.carOffRoute`(도보 `guide.offRoute`). E69 「경로 다시 조회」는 도보와 같은 조건(자동 판정이 손을 든 회차).
+- 이탈: 상태 행·윗줄은 벗어난 쪽만(도보와 같은 규칙), 시계 문장은 `guide.carOffRouteClock`·`guide.carOffRouteBehind`(도보 `offRouteReturnClock`·`offRouteTurnBack`), 상태 행의 국면 문장은 도보와 같은 `guide.offRoute`다(의도된 iOS 차이: iOS `carOffRoute`는 안드로이드에 없는 「경로 새로고침」을 가리킨다, B16). E69 「경로 다시 조회」는 도보와 같은 조건(자동 판정이 손을 든 회차).
 - `B25` 정보 띠가 들어오면 자동차도 같은 띠를 쓴다(현재 도로 행은 띠 밖 — iOS는 띠 비율 1:2:1에 현재 도로를 넣지 않는다).
 
 ### 4-7. 진행 상황(「진행 상황 듣기」)

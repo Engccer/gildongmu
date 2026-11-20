@@ -681,3 +681,9 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 ⚠ **사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다** — `defaultMinSize`는 들어온 최소 제약이 0일 때만 값을 채운다. 정보 띠(B25 `InfoBandColumn`)는 몫을 최소 높이로 넘기는데, 고정 줄이 칸을 거의 채워 몫이 48dp보다 작아지면 띠가 종전 줄 하한보다 낮아졌다(2026-11-20 리뷰). 최소 높이를 넘기는 배치는 `maxOf(몫, 48.dp.roundToPx())`로 하한을 직접 지킨다.
 
+### 안내 시작은 수단마다 공개 함수 하나가 거부 판정 `refuseIfActive()` 뒤 본문 `beginBeacon`을 부르고, 자동차는 같은 모델의 `sessionKind = car` 세션이다
+
+**안내 시작은 수단마다 공개 함수 하나(`GuideSession.startWalk`·`startCar`)가 거부 판정 `refuseIfActive()` 뒤 본문 `beginBeacon`을 부른다**(M5 spec `docs/superpowers/specs/2026-11-20-android-m5-guidance-design.md` §2-2, iOS `refuseIfActive`·`beginBeacon` 동형). 요청 타입(`WalkStartRequest`·`CarStartRequest`, 봉인 인터페이스 `BeaconStartRequest`)이 수단을 들고 기본값 인자가 없다. 대중교통 세션의 내부 인계는 거부 판정 없이 `beginBeacon`으로 들어간다. 새 시작 함수를 더하면 `GuideSourceGuardTest` ①-2의 호출부 표를 넓힌다(iOS `guidance-gate-drift.test.ts`의 안드로이드 판).
+
+자동차는 별도 모델이 아니라 `WalkGuideModel`의 `sessionKind = car` 세션이다(iOS `BeaconModel` 동형). 임계는 `tuning`(수단에서 유도, 운전자 프로파일 없음)이 데이터로 가르고, 문장·조회 대상이 갈리는 행동만 iOS `sessionKind == .car` 분기를 같은 자리·같은 조건으로 옮긴다. ⚠ 걸음 센서는 `stop()` 뒤에도 마지막 값(`steps.liveSample`)을 남긴다. 자동차 세션이 그 값을 읽으면 앞 도보 세션의 걸음이 자동차 종료 화면에 걸음 요약으로 샌다. 자동차는 표본을 null로 둔다. 수단은 `stop()`이 도보로 되돌리므로 종료 화면의 수단(`arrivalSessionKind`)은 `stop()` **앞**에서 캡처한다.
+

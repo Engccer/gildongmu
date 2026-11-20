@@ -21,3 +21,4 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **`:kit` 테스트는 모듈 밖 파일을 읽어 Gradle이 변경을 모른다**: `:app`은 모듈 밖 파일만 바꾼 뒤 `--rerun-tasks`. → PATTERNS
 - ⚠ **도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다**(다른 소스셋으로 옮기지 말 것, `AppSourceGuardTest`·`check-release-manifest.mjs`). → PATTERNS
 - ⚠ **사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다**(`defaultMinSize`는 최소 제약 0일 때만 채운다): 몫을 최소 높이로 넘기는 배치는 `maxOf(몫, 48dp)`. → PATTERNS
+- **안내 시작은 수단마다 공개 함수 하나가 거부 판정 `refuseIfActive()` 뒤 본문 `beginBeacon`을 부르고, 자동차는 같은 모델의 `sessionKind = car` 세션이다**(M5): 새 시작 함수는 `GuideSourceGuardTest` ①-2 표를 넓히고, 자동차 세션은 걸음 센서 값(`steps.liveSample`)을 읽지 않는다. → PATTERNS
