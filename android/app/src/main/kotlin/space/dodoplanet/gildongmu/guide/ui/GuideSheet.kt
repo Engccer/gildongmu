@@ -4,6 +4,12 @@ import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -82,7 +88,6 @@ import space.dodoplanet.gildongmu.kit.WalkHealth
 import space.dodoplanet.gildongmu.kit.guideDestinationPlace
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.Place
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.nearby.SceneButtonSection
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
@@ -147,7 +152,6 @@ fun sheetRowExists(ui: WalkGuideUiState, row: SheetRow): Boolean {
 
 @Composable
 private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
-    val meters = strings.get("android.unit.spokenMeters")
     val context = LocalContext.current
     // 목적지 전화번호(E90) — 전화번호부가 제목의 이름·좌표로 안다. 세션 통로를 타지 않는다.
     val destinationPhone = remember(ui.dest, ui.destinationLabel) { AppConfig.placePhoneBook.guideDestinationPhone(ui.dest, ui.destinationLabel) }
@@ -273,7 +277,9 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
     }
     // 행 표식을 리소스 id로 낸다 — 초점 관찰이 커서가 앉은 행을 이것으로 가린다(`ObserveA11yFocus`).
     Column(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        // 정보 띠(E81): 스크롤 칸의 보이는 높이를 재서 띠 셋에 나눠 준다(`InfoBandColumn`).
+        BoxWithConstraints(Modifier.weight(1f)) {
+        InfoBandColumn(viewportHeight = constraints.maxHeight, modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
                     GuideTitleMenu(
@@ -334,20 +340,24 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             }
             if (ui.mode == GuideMode.brief) BodyLine(strings.get("beacon.straightLineNote"), "guide-brief-note")
             // 정보 행 셋(첫 정보 행 후보, 이 순서가 곧 착지 우선순위) — 렌더 조건은 `sheetRowExists` 한 곳.
-            if (sheetRowExists(ui, SheetRow.remaining)) InfoRow(ui.remainingText.orEmpty(), SheetRow.remaining, meters, rowFocus)
-            if (sheetRowExists(ui, SheetRow.liveTop)) InfoRow(ui.liveTopText.orEmpty(), SheetRow.liveTop, meters, rowFocus)
-            if (ui.mode == GuideMode.detail) {
-                ui.liveNextText?.takeIf { it.isNotEmpty() }?.let { BodyLine(it, "guide-live-next", spokenDistanceUnits(it, meters)) }
+            // 정보 띠(E81): 남은 거리 1 : 지금 할 행동(윗줄 또는 상태 문장) 2 : 다음 예고 1. 줄을 더하지 않고 키우기만 한다.
+            val detail = ui.mode == GuideMode.detail
+            if (sheetRowExists(ui, SheetRow.remaining)) InfoRow(ui.remainingText.orEmpty(), SheetRow.remaining, detail, rowFocus)
+            if (sheetRowExists(ui, SheetRow.liveTop)) InfoRow(ui.liveTopText.orEmpty(), SheetRow.liveTop, detail, rowFocus)
+            if (detail) {
+                ui.liveNextText?.takeIf { it.isNotEmpty() }?.let { BandText(it, "guide-live-next", InfoBand.next, detail, focus = null) }
             }
-            if (sheetRowExists(ui, SheetRow.status)) InfoRow(statusLine(ui, strings), SheetRow.status, meters, rowFocus)
+            if (sheetRowExists(ui, SheetRow.status)) InfoRow(statusLine(ui, strings), SheetRow.status, detail, rowFocus)
             if (ui.soundDegraded) BodyLine(strings.get("android.guide.mediaVolumeZero"), "guide-sound-volume")
             if (ui.focusDenied) BodyLine(strings.get("android.guide.focusDenied"), "guide-sound-focus")
             if (ui.ttsUnavailable) BodyLine(strings.get("android.guide.ttsUnavailable"), "guide-sound-tts")
             if (ui.isSilenced) BodyLine(strings.get("android.beacon.soundUnavailable"), "guide-sound-silenced")
         }
+        }
+        // 「안내 종료」는 두 배 높이(E81 판정 3·6) — 화면 맨 아래를 짚으면 바로 닿는다.
         Button(
             onClick = { GuideSession.walk.stopByUser() },
-            modifier = Modifier.fillMaxWidth().padding(16.dp).tapTarget().testTag("guide-stop"),
+            modifier = Modifier.fillMaxWidth().padding(16.dp).defaultMinSize(minHeight = GuideStopTallHeight).testTag("guide-stop"),
         ) { Text(strings.get("beacon.stop")) }
     }
 }
@@ -356,10 +366,67 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
 private fun statusLine(ui: WalkGuideUiState, strings: Strings): String =
     if (ui.statusIsNextPreview) strings.get("guide.progressNext", ui.statusText) else ui.statusText
 
-/** 착지 대상 정보 행(`BodyLine`과 같은 모양 + 착지 requester, 표식은 행의 고정 tag). */
+/** 착지 대상 정보 행 = 정보 띠(E81) 하나 + 착지 requester, 표식은 행의 고정 tag. 낭독은 보이는 글자 그대로(A75). */
 @Composable
-private fun InfoRow(text: String, row: SheetRow, meters: String, focus: Map<SheetRow, FocusRequester>) {
-    Text(text, Modifier.fillMaxWidth().mergedRow(row.tag, spokenDistanceUnits(text, meters), focus = focus.getValue(row)).padding(vertical = 8.dp))
+private fun InfoRow(text: String, row: SheetRow, detail: Boolean, focus: Map<SheetRow, FocusRequester>) {
+    val band = if (row == SheetRow.remaining) InfoBand.remaining else InfoBand.action
+    BandText(text, row.tag, band, detail, focus.getValue(row))
+}
+
+/** 정보 띠(E81, iOS `BeaconTrackingSheet.InfoBand`). 지금 할 행동 자리는 상세의 윗줄과 간략·보조의 상태 문장이 번갈아 쓴다(함께 서지 않는다). */
+internal enum class InfoBand { remaining, action, next }
+
+/** 띠의 몫(합 4, iOS `bandWeight`). 남은 거리·다음 예고는 있을 때 1씩, 나머지는 전부 지금 할 행동이다. */
+internal fun infoBandWeight(band: InfoBand, present: Set<InfoBand>): Int = when (band) {
+    InfoBand.remaining, InfoBand.next -> 1
+    InfoBand.action -> 4 - (if (InfoBand.remaining in present) 1 else 0) - (if (InfoBand.next in present) 1 else 0)
+}
+
+/** 「안내 종료」 두 배 높이(종전 48dp의 두 배, iOS `GuideStopButton(tall:)`). */
+internal val GuideStopTallHeight = 96.dp
+
+/**
+ * 띠 한 줄 = 접근성 객체 하나. 높이를 키운 띠 **전체**가 그 객체라 빈 곳을 짚어도 읽힌다(병합 노드가 바깥 `Box`에 있고 글자는 그 자식).
+ * 배정 높이는 [InfoBandColumn]이 최소 높이 제약으로 준다 — 글자를 줄이거나 자르지 않고, 큰 글자면 넘쳐 스크롤된다.
+ */
+@Composable
+private fun BandText(text: String, tag: String, band: InfoBand, detail: Boolean, focus: FocusRequester?) {
+    val style = when (band) {
+        InfoBand.remaining, InfoBand.next -> MaterialTheme.typography.titleLarge
+        InfoBand.action -> if (detail) MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.headlineSmall
+    }
+    val color = if (band == InfoBand.next) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified
+    Box(Modifier.layoutId(band).fillMaxWidth().mergedRow(tag, focus = focus).padding(vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
+        Text(text, style = style, color = color)
+    }
+}
+
+/**
+ * 정보 띠 배치(E81): 위에서 아래로 쌓는 `Column`과 같되, 띠가 아닌 줄을 먼저 재고 **보이는 높이 - 고정 줄**을 띠 셋이
+ * 남은 거리 1 : 지금 할 행동 2 : 다음 예고 1로 나눠 최소 높이로 갖는다. 없는 띠의 몫은 지금 할 행동이 받는다(합 4).
+ * iOS는 두 측정값이 서로 다른 순간에 갱신돼 120ms 뒤 재계산(`scheduleRebalance`)이 필요했지만, 여기는 한 측정 패스에서 고정 줄을
+ * 먼저 재므로 되먹임이 없다. 줄 수·순서는 자식 그대로라 접근성 객체 수와 스와이프 순서가 바뀌지 않는다.
+ */
+@Composable
+private fun InfoBandColumn(viewportHeight: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val loose = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+        val bands = measurables.map { it.layoutId as? InfoBand }
+        val fixed = measurables.mapIndexed { i, m -> if (bands[i] == null) m.measure(loose) else null }
+        val present = bands.filterNotNull().toSet()
+        val viewport = if (viewportHeight == Constraints.Infinity) 0 else viewportHeight
+        val total = (viewport - fixed.sumOf { it?.height ?: 0 }).coerceAtLeast(0)
+        val placeables = measurables.mapIndexed { i, m ->
+            fixed[i] ?: run {
+                m.measure(loose.copy(minHeight = total * infoBandWeight(bands[i]!!, present) / 4))
+            }
+        }
+        val width = placeables.maxOfOrNull { it.width }?.coerceIn(constraints.minWidth, constraints.maxWidth) ?: constraints.minWidth
+        layout(width, placeables.sumOf { it.height }.coerceAtLeast(constraints.minHeight)) {
+            var y = 0
+            for (p in placeables) { p.placeRelative(0, y); y += p.height }
+        }
+    }
 }
 
 /**
@@ -401,7 +468,6 @@ private fun GuideTitleMenu(title: String, strings: Strings, items: List<GuideTit
  */
 @Composable
 private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, returnsFromPreview: Boolean, onViewAlternative: () -> Unit, onClose: () -> Unit) {
-    val meters = strings.get("android.unit.spokenMeters")
     val headerFocus = remember { FocusRequester() }
     val viewAltFocus = remember { FocusRequester() }
     val header = remember(ui) { GuideSession.walk.progressText() }
@@ -411,13 +477,13 @@ private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, returnsFromPrev
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-overview-close-top")) { Text(strings.get("actions.close")) }
-        HeadingLine(header, "guide-overview-header", focus = headerFocus, spoken = spokenDistanceUnits(header, meters))
+        HeadingLine(header, "guide-overview-header", focus = headerFocus)
         val steps = ui.routeStepDescriptions.orEmpty()
         val waypointRow = ui.routeWaypointRow
         steps.forEachIndexed { i, desc ->
             if (waypointRow != null && waypointRow.first == i) BodyLine(waypointRow.second, "guide-overview-waypoint")
             val line = if (ui.currentStepIndex == i) strings.get("android.guide.routeListCurrent", desc) else desc
-            BodyLine(line, "guide-overview-step-$i", spokenDistanceUnits(line, meters))
+            BodyLine(line, "guide-overview-step-$i")
         }
         if (ui.alternativePreviewAvailable) {
             Button(onClick = onViewAlternative, modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(viewAltFocus).testTag("guide-view-alternative")) {
@@ -435,7 +501,6 @@ private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, returnsFromPrev
  */
 @Composable
 private fun AltPreviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -> Unit) {
-    val meters = strings.get("android.unit.spokenMeters")
     val headerFocus = remember { FocusRequester() }
     val header = remember(ui) { GuideSession.walk.altPreviewHeaderText() }
     DisposableEffect(Unit) {
@@ -444,7 +509,7 @@ private fun AltPreviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -
     }
     LaunchedEffect(Unit) { land(headerFocus, "대안 프리뷰 헤더") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        HeadingLine(header, "guide-alt-header", focus = headerFocus, spoken = spokenDistanceUnits(header, meters))
+        HeadingLine(header, "guide-alt-header", focus = headerFocus)
         if (ui.altPreviewReady) {
             // 낡음 폴백 재조회 중엔 상태 설명(라벨 불변 — 포커스를 쥔 노드의 텍스트 교체는 TalkBack이 다시 읽는다는 보장이 없다, E50·주변 확인 관례).
             val searching = strings.get("android.directions.searching")
@@ -455,7 +520,7 @@ private fun AltPreviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -
         }
         // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
         ui.altPreviewSteps?.forEachIndexed { i, desc ->
-            BodyLine(desc, "guide-alt-step-$i", spokenDistanceUnits(desc, meters))
+            BodyLine(desc, "guide-alt-step-$i")
         }
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-alt-close")) { Text(strings.get("actions.close")) }
     }

@@ -90,7 +90,7 @@ class GuideSheetA11yTest {
         rule.onNodeWithTag("guide-title").assertIsDisplayed()
         rule.onNodeWithTag("guide-status").assertIsDisplayed()
         rule.onNodeWithTag("guide-brief-note").assertIsDisplayed()
-        rule.onNodeWithTag("guide-stop").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("guide-stop").assertIsDisplayed().assertHeightIsAtLeast(96.dp) // E81 두 배 높이
         rule.onNodeWithTag("guide-minimize").assertHeightIsAtLeast(48.dp)
         assertEquals(tabsBefore, rule.onNodeWithTag("tabs").getBoundsInRoot())
         checkAllRoots()
