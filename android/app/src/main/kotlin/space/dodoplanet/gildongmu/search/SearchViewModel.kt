@@ -25,6 +25,8 @@ import space.dodoplanet.gildongmu.nav.ReturnFocusSlot
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchOutcome
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.ReorderMove
+import space.dodoplanet.gildongmu.a11y.pinnedOrderAfterMove
 import space.dodoplanet.gildongmu.kit.normalizeVoiceQuery
 
 /** 검색 화면 상태(iOS `SearchModel` 미러). 검색어는 여기 없다 — `SearchViewModel.queryState`(`TextFieldState`). */
@@ -59,6 +61,8 @@ class SearchStrings(
     val deleted: () -> String,
     val cleared: () -> String,
     val clearedExceptPinned: () -> String,
+    /** 이동 뒤 새 자리(1부터, B23 — iOS `announceReorderPosition`). */
+    val moved: (Int) -> String,
 )
 
 /**
@@ -210,6 +214,19 @@ class SearchViewModel(
     }
 
     /** 모두 지우기 — 고정은 보존한다. 목록이 남으면 "모두 지웠습니다"는 거짓이라 다른 문장. */
+    /**
+     * 고정 최근 검색어 순서 바꾸기(B23, iOS `SearchView.moveRecent`): 화면의 고정 순서에 이동을 적용해 저장소에 넘기고 돌려받은 저장 배열을
+     * 채택한다. 새 자리는 전체 목록 기준 1부터 통지한다 — 커서는 같은 행에 남아 라벨이 다시 읽히지 않으므로 이 통지가 이동의 유일한 증거다.
+     */
+    fun moveRecent(text: String, move: ReorderMove) {
+        val current = _state.value.recentQueries
+        val order = pinnedOrderAfterMove(current, current.firstOrNull { it.text == text } ?: return, move, { it.pinned }) { a, b -> a.text == b.text } ?: return
+        val after = store.reorderPinnedQueries(order.map { it.text })
+        val position = after.indexOfFirst { it.text == text }
+        if (position < 0) return
+        _state.update { it.copy(recentQueries = after, notice = next(strings.moved(position + 1))) }
+    }
+
     fun clearRecent() {
         val after = store.clearQueries()
         _state.update { it.copy(recentQueries = after, notice = next(if (after.isEmpty()) strings.cleared() else strings.clearedExceptPinned())) }

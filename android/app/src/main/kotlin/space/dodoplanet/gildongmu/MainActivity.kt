@@ -137,4 +137,5 @@ fun searchStrings(res: () -> Resources): SearchStrings = SearchStrings(
     deleted = { res().getString(R.string.recent_deleted) },
     cleared = { res().getString(R.string.recent_cleared) },
     clearedExceptPinned = { res().getString(R.string.recent_clearedExceptPinned) },
+    moved = { appLocalized(res(), R.string.android_reorder_moved, it) },
 )

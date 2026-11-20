@@ -43,6 +43,8 @@ import space.dodoplanet.gildongmu.kit.KoreanParticle
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentEndpoint
 import space.dodoplanet.gildongmu.kit.RecentRoute
+import space.dodoplanet.gildongmu.kit.ReorderMove
+import space.dodoplanet.gildongmu.a11y.pinnedOrderAfterMove
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.RouteService
@@ -842,6 +844,20 @@ class DirectionsViewModel(
         store.setRoutePinned(route, pinned)
         list[index] = RecentRoute(route.from, route.to, route.via, pinned)
         _state.update { it.copy(recentRoutes = list) }
+    }
+
+    /**
+     * 고정 최근 경로 순서 바꾸기(B23, iOS `DirectionsTabView.moveRecentRoute`): 화면의 고정 순서에 이동을 적용해 저장소에 넘기고(경로 정체성은
+     * 출발·도착·경유 전부) 돌려받은 저장 배열을 채택한다. 착지는 발급하지 않는다 — 행이 `key`로 옮겨져 커서가 그대로 남고, 새 자리는 통지로 말한다.
+     */
+    fun moveRecentRoute(route: RecentRoute, move: ReorderMove) {
+        recentRoutesTouched = true
+        val current = _state.value.recentRoutes
+        val order = pinnedOrderAfterMove(current, route, move, { it.pinned }) { a, b -> a.id == b.id } ?: return
+        val after = store.reorderPinnedRoutes(order)
+        val position = after.indexOfFirst { it.id == route.id }
+        if (position < 0) return
+        _state.update { it.copy(recentRoutes = after, notice = next(strings.get("android.reorder.moved", position + 1))) }
     }
 
     /** 모두 지우기 — 고정은 보존. 비면 섹션이 소멸해 조회 버튼으로 착지. */

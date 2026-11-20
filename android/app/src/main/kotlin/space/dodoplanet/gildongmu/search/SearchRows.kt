@@ -146,6 +146,7 @@ fun RecentRow(
     onTogglePin: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    moveActions: List<CustomAccessibilityAction> = emptyList(),
 ) {
     Row(
         modifier
@@ -159,7 +160,8 @@ fun RecentRow(
             .clearAndSetSemantics {
                 contentDescription = query
                 if (pinned) stateDescription = labels.pinned
-                customActions = listOf(
+                // 이동 셋이 먼저(B23, iOS E67 「이동 셋 → 고정 해제 → 삭제」) — 비고정 행·고정 1개면 비어 있다.
+                customActions = moveActions + listOf(
                     CustomAccessibilityAction(if (pinned) labels.unpin else labels.pin) { onTogglePin(); true },
                     CustomAccessibilityAction(labels.delete) { onDelete(); true },
                 )

@@ -755,6 +755,22 @@ class DirectionsViewModelTest {
         assertEquals(LandingTarget.Submit, m.state.value.landing?.target)
     }
 
+    @Test fun `최근 경로 - 고정 순서 바꾸기는 저장 배열을 채택하고 새 자리를 통지하며 착지를 발급하지 않는다(B23)`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        val routes = listOf("A", "B", "C").mapIndexed { i, l -> RecentRoute(null, RecentEndpoint(l, 37.5 + i * 0.1, 127.0)) }
+        for (r in routes) { store.recordRoute(r); store.setRoutePinned(r, true) }
+        val m = vm(allOk(), store = store)
+        dispatcher.scheduler.advanceUntilIdle()
+        val before = m.state.value.recentRoutes
+        val landingBefore = m.state.value.landing
+        m.moveRecentRoute(before.last(), space.dodoplanet.gildongmu.kit.ReorderMove.up)
+        val after = m.state.value.recentRoutes
+        assertEquals(listOf(before[0], before[2], before[1]).map { it.id }, after.map { it.id })
+        assertEquals(after, store.routes())
+        assertEquals("2번째로 옮겼습니다", m.state.value.notice.text)
+        assertEquals(landingBefore, m.state.value.landing)
+    }
+
     @Test fun `최근 장소 - 삭제 착지 다음·이전·소멸, 고정 자리 유지, 모두 지우기 고정 보존`() = runTest(dispatcher) {
         val store = RecentSearchStore(InMemoryKeyValueStore())
         for (i in 1..3) store.recordEndpoint(RecentEndpoint("P$i", 37.0 + i, 127.0), RecentEndpointScope.to)

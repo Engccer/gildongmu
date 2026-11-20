@@ -20,6 +20,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -40,6 +41,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.landingTarget
+import space.dodoplanet.gildongmu.a11y.pinnedMoves
+import space.dodoplanet.gildongmu.a11y.reorderCustomActions
+import space.dodoplanet.gildongmu.a11y.reorderLabels
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.requesterFor
@@ -309,12 +313,15 @@ private fun DirectionsForm(
             if (s.results == null && !s.isBusy && s.recentRoutes.isNotEmpty()) {
                 SectionHeading(strings.get("recentRoutes.title"))
                 val pinnedLabel = strings.get("recent.pinned")
-                for (route in s.recentRoutes) {
+                val reorder = reorderLabels()
+                // key: 이동이 같은 노드를 옮겨 TalkBack 커서가 그 행에 남는다(B23, a11y/ReorderActions.kt). 이동 셋이 작업 메뉴 맨 앞.
+                for (route in s.recentRoutes) key(route.id) {
                     val label = vm.recentRouteLabel(route, lang)
+                    val moves = pinnedMoves(s.recentRoutes, route, { it.pinned }) { a, b -> a.id == b.id }
                     ActionRow(
                         visual = label, tag = "recent-route-${route.id}",
                         state = if (route.pinned) pinnedLabel else null, pinned = route.pinned,
-                        actions = listOf(
+                        actions = reorderCustomActions(moves, reorder) { vm.moveRecentRoute(route, it) } + listOf(
                             CustomAccessibilityAction(strings.get(if (route.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentRoute(route); true },
                             CustomAccessibilityAction(strings.get("recent.delete")) { ui.recentFocus.remove(route.id); vm.removeRecentRoute(route); true },
                         ),

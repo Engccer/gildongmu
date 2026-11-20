@@ -37,6 +37,7 @@ class SearchViewModelTest {
     private val strings = SearchStrings(
         searchingFor = { "'$it' 검색 중…" }, failed = { "실패" }, empty = { "없음" }, count = { "결과 $it 건" },
         deleted = { "삭제했습니다" }, cleared = { "모두 지웠습니다" }, clearedExceptPinned = { "고정 제외 지움" },
+        moved = { "${it}번째로 옮겼습니다" },
     )
     private val placesK2 = """{"places":[{"id":"k2","name":"강남역","category":"교통,수송 > 지하철","address":"서울 강남구","roadAddress":"서울 강남구 강남대로","lat":37.49,"lng":127.02}],"provider":"kakao-local","query":"강남"}"""
     private val places = """{"places":[{"id":"k1","name":"강동역","category":"교통,수송 > 지하철","address":"서울 강동구","roadAddress":"서울 강동구 천호대로","lat":37.5,"lng":127.1}],"provider":"kakao-local","query":"강동"}"""
@@ -260,5 +261,22 @@ class SearchViewModelTest {
         assertEquals(listOf("강동"), m.state.value.recentQueries.map { it.text })
         m.announce("음성 인식을 시작하지 못했습니다.")
         assertEquals("음성 인식을 시작하지 못했습니다.", m.state.value.notice.text)
+    }
+
+    @Test fun `고정 검색어 순서 바꾸기는 저장 배열을 채택하고 새 자리를 1부터 통지한다(B23)`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        for (q in listOf("가", "나", "다", "라")) store.recordQuery(q)
+        for (q in listOf("나", "다", "라")) store.setQueryPinned(q, true)
+        val m = vm(byPath(), store = store)
+        dispatcher.scheduler.advanceUntilIdle()
+        val pins = m.state.value.recentQueries.filter { it.pinned }.map { it.text }
+        val last = pins.last()
+        m.moveRecent(last, space.dodoplanet.gildongmu.kit.ReorderMove.toTop)
+        assertEquals(last, m.state.value.recentQueries.first().text)
+        assertEquals("1번째로 옮겼습니다", m.state.value.notice.text)
+        assertEquals(m.state.value.recentQueries, store.queries()) // 화면 = 저장
+        val seq = m.state.value.notice.seq
+        m.moveRecent("가", space.dodoplanet.gildongmu.kit.ReorderMove.up) // 비고정은 이동 없음
+        assertEquals(seq, m.state.value.notice.seq)
     }
 }

@@ -161,6 +161,7 @@ internal fun stringId(key: String): Int? = when (key) {
     "recent.unpin" -> R.string.recent_unpin
     "recent.pinned" -> R.string.recent_pinned
     "recent.clearedExceptPinned" -> R.string.recent_clearedExceptPinned
+    "android.reorder.moved" -> R.string.android_reorder_moved
     "recentRoutes.title" -> R.string.recentRoutes_title
     "recentRoutes.item" -> R.string.recentRoutes_item
     "recentRoutes.itemVia" -> R.string.recentRoutes_itemVia

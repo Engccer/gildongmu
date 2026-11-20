@@ -6,7 +6,7 @@ import kotlinx.serialization.builtins.serializer
 
 /**
  * 순서 바꾸기 판정 — Kit `Reorder.swift` 미러(E67 고정 항목 순서·E66 탭 순서, spec 2026-10-05-reorder-rotor-actions-design.md §1·§3.1).
- * 안드로이드 화면 이식(TalkBack 동작 메뉴)은 iOS 실기기 판정 뒤다. 엔트리 이름은 Swift 케이스 이름 그대로다.
+ * 안드로이드 화면(TalkBack 작업 메뉴)은 앱 `a11y/ReorderActions.kt`가 쓴다(B23). 엔트리 이름은 Swift 케이스 이름 그대로다.
  */
 enum class ReorderMove { toTop, up, down }
 

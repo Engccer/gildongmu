@@ -338,3 +338,86 @@ class RecentEndpointRomanTest {
         assertTrue(route.from == null && route.via == null && !route.pinned)
     }
 }
+
+// Kit `RecentSearchStoreTests`의 E67 재배열 케이스(기대값 재사용, spec 2026-10-05-reorder-rotor-actions-design.md §2).
+class RecentPinnedReorderTest {
+    private fun seededQueries(): RecentSearchStore {
+        val store = RecentSearchStore(fresh())
+        for (text in listOf("y", "x", "c", "b", "a")) store.recordQuery(text)
+        for (text in listOf("a", "b", "c")) store.setQueryPinned(text, pinned = true)
+        return store
+    }
+
+    @Test fun reorderRebuildsPinBlockAndLeavesUnpinnedAlone() {
+        val store = seededQueries()
+        val moved = store.reorderPinnedQueries(listOf("c", "a", "b"))
+        assertEquals(listOf("c", "a", "b", "x", "y"), moved.map { it.text })
+        assertTrue(moved.take(3).all { it.pinned } && !moved[3].pinned)
+        assertEquals(moved, store.queries())
+    }
+
+    /** 사용자 지정 순은 그 뒤의 쓰기(재기록·새 고정·해제·삭제·모두 지우기)를 지나도 남는다(§2.1 전수표). */
+    @Test fun userOrderSurvivesEveryOtherWrite() {
+        val store = seededQueries()
+        store.reorderPinnedQueries(listOf("c", "a", "b"))
+        assertEquals(listOf("c", "a", "b", "x", "y"), store.recordQuery("a").map { it.text })
+        assertEquals(listOf("c", "a", "b", "z", "x", "y"), store.recordQuery("z").map { it.text })
+        assertEquals(listOf("c", "a", "b", "x", "z", "y"), store.setQueryPinned("x", pinned = true).map { it.text })
+        assertEquals(listOf("c", "b", "x", "a", "z", "y"), store.setQueryPinned("a", pinned = false).map { it.text })
+        assertEquals(listOf("c", "x", "a", "z", "y"), store.removeQuery("b").map { it.text })
+        assertEquals(listOf("c", "x"), store.clearQueries().map { it.text })
+    }
+
+    @Test fun reorderIgnoresStrangersAndKeepsMissingPins() {
+        val store = seededQueries()
+        assertEquals(listOf("b", "a", "c", "x", "y"), store.reorderPinnedQueries(listOf("x", "ghost", "b", "b")).map { it.text })
+        assertEquals(listOf("b", "a", "c", "x", "y"), store.reorderPinnedQueries(emptyList()).map { it.text })
+    }
+
+    /** 화면 기준 이동(§2.2): 화면의 고정 순서가 저장과 어긋나 있어도 이동 결과는 화면 순서에 이동을 적용한 것이다. */
+    @Test fun moveFollowsOnScreenPinOrder() {
+        val store = RecentSearchStore(fresh())
+        for (text in listOf("y", "z")) store.recordQuery(text)
+        val screen = store.queries()
+        store.setQueryPinned("y", pinned = true)
+        store.setQueryPinned("z", pinned = true)
+        assertEquals(listOf("y", "z"), store.queries().map { it.text })
+        val onScreenPins = screen.map { it.text }
+        assertEquals(listOf("y", "z"), store.reorderPinnedQueries(Reorder.moved(onScreenPins, 1, ReorderMove.up)).map { it.text })
+        assertEquals(listOf("y", "z"), store.reorderPinnedQueries(Reorder.moved(onScreenPins, 0, ReorderMove.down)).map { it.text })
+        assertEquals(listOf("z", "y"), store.reorderPinnedQueries(onScreenPins).map { it.text })
+    }
+
+    @Test fun reorderKeepsStoredValuesOverPassedOnes() {
+        val store = RecentSearchStore(fresh())
+        val home = RecentEndpoint("집", 37.5, 127.1)
+        val work = RecentEndpoint("회사", 37.6, 127.0, labelRoman = "Hoesa")
+        store.recordEndpoint(home, RecentEndpointScope.to)
+        store.recordEndpoint(work, RecentEndpointScope.to)
+        store.setEndpointPinned(home, RecentEndpointScope.to, pinned = true)
+        store.setEndpointPinned(work, RecentEndpointScope.to, pinned = true)
+        val moved = store.reorderPinnedEndpoints(listOf(RecentEndpoint("다른 이름", 37.60001, 127.0), home), RecentEndpointScope.to)
+        assertEquals(
+            listOf(RecentEndpoint("회사", 37.6, 127.0, pinned = true, labelRoman = "Hoesa"), RecentEndpoint("집", 37.5, 127.1, pinned = true)),
+            moved,
+        )
+        assertEquals(emptyList(), store.endpoints(RecentEndpointScope.from))
+    }
+
+    @Test fun routeReorderUsesFullRouteIdentity() {
+        val store = RecentSearchStore(fresh())
+        val a = RecentEndpoint("A", 37.5, 127.1)
+        val b = RecentEndpoint("B", 37.6, 127.2)
+        val c = RecentEndpoint("C", 37.55, 127.15)
+        val direct = RecentRoute(a, b)
+        val viaC = RecentRoute(a, b, c)
+        val fromHere = RecentRoute(null, b)
+        for (route in listOf(direct, viaC, fromHere)) {
+            store.recordRoute(route)
+            store.setRoutePinned(route, pinned = true)
+        }
+        assertEquals(listOf(direct, viaC, fromHere).map { it.id }, store.routes().map { it.id })
+        assertEquals(listOf(fromHere, direct, viaC).map { it.id }, store.reorderPinnedRoutes(listOf(fromHere, direct, viaC)).map { it.id })
+        assertTrue(store.routes().all { it.pinned })
+    }
+}

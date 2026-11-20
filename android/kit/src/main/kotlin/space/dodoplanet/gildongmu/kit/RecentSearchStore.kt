@@ -121,6 +121,25 @@ class RecentSearchStore(private val store: KeyValueStore) {
             rest.removeAt(idx)
             return rest.filter(isPinned) + listOf(withPinned(items[idx], pinned)) + rest.filter { !isPinned(it) }
         }
+
+        /**
+         * 고정 블록 재배열(E67, spec 2026-10-05-reorder-rotor-actions-design.md §2.2): 넘긴 순서에 있는 고정 항목을 그 순서로
+         * 앞에 세우고(저장본 그대로 — 넘긴 값의 라벨·pinned는 쓰지 않는다), 넘긴 목록에 없는 고정 항목은 저장 순서대로
+         * 그 뒤에 붙인다. 넘긴 목록의 비고정·없는 항목·중복은 무시한다. 비고정 블록은 그대로다.
+         */
+        internal fun <T> applyPinnedOrder(
+            order: List<T>, items: List<T>,
+            isSame: (T, T) -> Boolean, isPinned: (T) -> Boolean,
+        ): List<T> {
+            val pins = items.filter(isPinned).toMutableList()
+            val front = mutableListOf<T>()
+            for (wanted in order) {
+                val i = pins.indexOfFirst { isSame(it, wanted) }
+                if (i < 0) continue
+                front += pins.removeAt(i)
+            }
+            return front + pins + items.filter { !isPinned(it) }
+        }
     }
 
     // MARK: 검색어
@@ -159,6 +178,13 @@ class RecentSearchStore(private val store: KeyValueStore) {
                 withPinned = { q, p -> RecentQuery(q.text, p) }),
             queriesKeyV2, RecentQuery.serializer())
 
+    /** 고정 블록을 넘긴 순서로 다시 세운다(E67 — 화면의 고정 순서에 이동을 적용한 결과를 넘긴다, spec §2.2). */
+    fun reorderPinnedQueries(texts: List<String>): List<RecentQuery> =
+        save(
+            applyPinnedOrder(texts.map { RecentQuery(it) }, queries(),
+                isSame = { a, b -> a.text == b.text }, isPinned = { it.pinned }),
+            queriesKeyV2, RecentQuery.serializer())
+
     // MARK: 장소 (출발지·도착지·경유지 스코프 분리)
 
     fun endpoints(scope: RecentEndpointScope): List<RecentEndpoint> =
@@ -185,6 +211,10 @@ class RecentSearchStore(private val store: KeyValueStore) {
                 isSame = ::sameCoord, isPinned = { it.pinned },
                 withPinned = { e, p -> RecentEndpoint(e.label, e.lat, e.lng, p, e.labelRoman) }),
             endpointsKey(scope), RecentEndpoint.serializer())
+
+    /** 고정 블록을 넘긴 순서로 다시 세운다(E67, 좌표 4자리 동일 판정). */
+    fun reorderPinnedEndpoints(order: List<RecentEndpoint>, scope: RecentEndpointScope): List<RecentEndpoint> =
+        save(applyPinnedOrder(order, endpoints(scope), isSame = ::sameCoord, isPinned = { it.pinned }), endpointsKey(scope), RecentEndpoint.serializer())
 
     // MARK: 경로 (출발·도착 쌍)
 
@@ -214,6 +244,10 @@ class RecentSearchStore(private val store: KeyValueStore) {
                 isSame = ::sameRoute, isPinned = { it.pinned },
                 withPinned = { r, p -> RecentRoute(r.from, r.to, r.via, p) }),
             routesKey, RecentRoute.serializer())
+
+    /** 고정 블록을 넘긴 순서로 다시 세운다(E67, 출발·도착·경유 동일 판정). */
+    fun reorderPinnedRoutes(order: List<RecentRoute>): List<RecentRoute> =
+        save(applyPinnedOrder(order, routes(), isSame = ::sameRoute, isPinned = { it.pinned }), routesKey, RecentRoute.serializer())
 
     // MARK: 내부
 

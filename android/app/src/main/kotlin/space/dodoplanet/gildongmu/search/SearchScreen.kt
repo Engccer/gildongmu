@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -42,6 +43,10 @@ import android.util.Log
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
 import space.dodoplanet.gildongmu.place.placeRowActions
+import space.dodoplanet.gildongmu.a11y.pinnedMoves
+import space.dodoplanet.gildongmu.a11y.reorderCustomActions
+import space.dodoplanet.gildongmu.a11y.reorderLabels
+import space.dodoplanet.gildongmu.kit.ReorderMove
 import space.dodoplanet.gildongmu.chat.DictationControls
 import space.dodoplanet.gildongmu.chat.dictationNoticeText
 import space.dodoplanet.gildongmu.chat.rememberDictation
@@ -193,6 +198,7 @@ fun SearchScreen(
                         recentFocus.remove(text)
                         if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
                     },
+                    onMove = vm::moveRecent,
                     onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
                 )
             }
@@ -232,6 +238,7 @@ private fun RecentSection(
     onRun: (String) -> Unit,
     onTogglePin: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onMove: (String, ReorderMove) -> Unit,
     onClearAll: () -> Unit,
 ) {
     val labels = RecentRowLabels(
@@ -239,10 +246,14 @@ private fun RecentSection(
         unpin = stringResource(R.string.recent_unpin), delete = stringResource(R.string.recent_delete),
     )
     Text(stringResource(R.string.recent_title), Modifier.headingText().padding(top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
-    for (q in queries) {
+    val reorder = reorderLabels()
+    // key: 이동이 같은 레이아웃 노드를 옮겨 TalkBack 커서가 그 행에 남는다(iOS `keepFocusAfterMove` 대응, a11y/ReorderActions.kt).
+    for (q in queries) key(q.text) {
+        val moves = pinnedMoves(queries, q, { it.pinned }) { a, b -> a.text == b.text }
         RecentRow(
             query = q.text, pinned = q.pinned, labels = labels, focusRequester = requesterFor(q.text),
             onRun = { onRun(q.text) }, onTogglePin = { onTogglePin(q.text) }, onDelete = { onDelete(q.text) },
+            moveActions = reorderCustomActions(moves, reorder) { onMove(q.text, it) },
         )
     }
     Button(onClick = onClearAll, modifier = Modifier.tapTarget().testTag("recent-clear")) { Text(stringResource(R.string.recent_clearAll)) }

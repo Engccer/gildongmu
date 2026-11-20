@@ -20,6 +20,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,6 +42,9 @@ import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.a11y.pinnedMoves
+import space.dodoplanet.gildongmu.a11y.reorderCustomActions
+import space.dodoplanet.gildongmu.a11y.reorderLabels
 import space.dodoplanet.gildongmu.chat.DictationControls
 import space.dodoplanet.gildongmu.chat.dictationNoticeText
 import space.dodoplanet.gildongmu.chat.rememberDictation
@@ -149,11 +153,14 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             if (!p.hasSearched && p.recentEndpoints.isNotEmpty()) {
                 SectionHeading(strings.get("recent.title"))
                 val pinnedLabel = strings.get("recent.pinned")
-                for (e in p.recentEndpoints) {
+                val reorder = reorderLabels()
+                // key: 이동이 같은 노드를 옮겨 TalkBack 커서가 그 행에 남는다(B23, a11y/ReorderActions.kt). 이동 셋이 작업 메뉴 맨 앞.
+                for (e in p.recentEndpoints) key(e.id) {
+                    val moves = pinnedMoves(p.recentEndpoints, e, { it.pinned }) { a, b -> a.id == b.id }
                     ActionRow(
                         visual = e.label, tag = "ep-recent-${e.id}", spoken = e.label,
                         state = if (e.pinned) pinnedLabel else null, pinned = e.pinned,
-                        actions = listOf(
+                        actions = reorderCustomActions(moves, reorder) { picker.moveRecentEndpoint(e, it) } + listOf(
                             CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { picker.togglePinRecentEndpoint(e); true },
                             CustomAccessibilityAction(strings.get("recent.delete")) {
                                 val target = picker.removeRecentEndpoint(e)

@@ -18,6 +18,8 @@ import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentEndpoint
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.ReorderMove
+import space.dodoplanet.gildongmu.a11y.pinnedOrderAfterMove
 import space.dodoplanet.gildongmu.kit.normalizeVoiceQuery
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
@@ -159,6 +161,16 @@ class EndpointPicker(
         val after = store.removeEndpoint(endpoint, picker.target.recentScope)
         update { it.copy(recentEndpoints = after, notice = next(it, strings.get("recent.deleted"))) }
         return after.getOrNull(minOf(index, after.size - 1))?.id
+    }
+
+    /** 고정 최근 장소 순서 바꾸기(B23, iOS `DirectionsEndpointSearchView.moveRecent`): 그 칸의 스코프에 저장하고 돌려받은 배열을 채택, 새 자리(1부터)를 통지한다. */
+    fun moveRecentEndpoint(endpoint: RecentEndpoint, move: ReorderMove) {
+        val picker = _state.value ?: return
+        val order = pinnedOrderAfterMove(picker.recentEndpoints, endpoint, move, { it.pinned }) { a, b -> a.id == b.id } ?: return
+        val after = store.reorderPinnedEndpoints(order, picker.target.recentScope)
+        val position = after.indexOfFirst { it.id == endpoint.id }
+        if (position < 0) return
+        update { it.copy(recentEndpoints = after, notice = next(it, strings.get("android.reorder.moved", position + 1))) }
     }
 
     fun togglePinRecentEndpoint(endpoint: RecentEndpoint) {

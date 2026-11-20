@@ -124,4 +124,18 @@ class EndpointPickerTest {
         assertEquals("검색 결과 1건을 찾았습니다.", p.state.value!!.notice.text)
         assertTrue(t.urls.any { pathOf(it) == "/api/places" && it.contains("%EA%B0%95%EB%8F%99%EC%97%AD") && !it.contains("%EC%97%AD.") })
     }
+
+    @Test fun `고정 최근 장소 순서 바꾸기는 그 칸의 스코프에 저장하고 새 자리를 통지한다(B23)`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        for (i in 1..3) { val e = RecentEndpoint("P$i", 37.0 + i, 127.0); store.recordEndpoint(e, RecentEndpointScope.from); store.setEndpointPinned(e, RecentEndpointScope.from, true) }
+        val p = EndpointPicker(SearchService(APIClient("https://example.test", Transport(onePlace))), store, CatalogStrings("ko"), dispatcher, this, { "ko" }, { null }, closesOnSelect = true, noteDestinationPhone = {}) { _, _ -> }
+        p.open(DirectionsFieldTarget.from); testScheduler.advanceUntilIdle()
+        val before = p.state.value!!.recentEndpoints
+        p.moveRecentEndpoint(before.last(), space.dodoplanet.gildongmu.kit.ReorderMove.toTop)
+        val after = p.state.value!!.recentEndpoints
+        assertEquals(before.last().id, after.first().id)
+        assertEquals(after, store.endpoints(RecentEndpointScope.from))
+        assertTrue(store.endpoints(RecentEndpointScope.to).isEmpty()) // 다른 칸은 그대로
+        assertEquals("1번째로 옮겼습니다", p.state.value!!.notice.text)
+    }
 }
