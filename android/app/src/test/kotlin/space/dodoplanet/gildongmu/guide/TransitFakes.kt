@@ -43,10 +43,26 @@ class TransitGuideHarness(
     /** 켜면 다음 추적 호출이 HTTP 실패로 끝난다(`TransitTrackPoll.Failed`). */
     var failNextTrack = false
     val seenUrls = mutableListOf<String>()
+    /** 경로 조각별 응답 큐(3-1): url이 조각을 담으면 추적 큐 대신 여기서 꺼낸다. 큐가 비면 `pathDefaults`(없으면 추적 큐). 값은 (HTTP 상태, 본문, 지연 ms). */
+    class PathReply(val status: Int, val body: String, val delayMs: Long = 0)
+    val pathReplies = mutableMapOf<String, ArrayDeque<PathReply>>()
+    private val pathDefaults = mapOf(
+        // 승차 중 현재역 조회(`/api/transit/position`)는 추적 큐를 먹지 않는다 — 기본은 「그 열차는 없다」.
+        "/api/transit/position" to PathReply(200, """{"status":"notFound","total":3}"""),
+    )
+    fun queuePath(fragment: String, reply: PathReply) { pathReplies.getOrPut(fragment) { ArrayDeque() }.addLast(reply) }
+    private fun nextPathReply(url: String): PathReply? {
+        for ((fragment, queue) in pathReplies) if (url.contains(fragment)) queue.removeFirstOrNull()?.let { return it }
+        return pathDefaults.entries.firstOrNull { url.contains(it.key) }?.value
+    }
     val job = SupervisorJob()
     private val client = APIClient("https://example.test", object : HttpTransport {
         override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
             seenUrls += url
+            nextPathReply(url)?.let { r ->
+                if (r.delayMs > 0) withContext(NonCancellable) { delay(r.delayMs) }
+                return HttpResponse(r.status, r.body)
+            }
             if (failNextTrack) { failNextTrack = false; return HttpResponse(500, "") }
             val (body, delayMs) = trackReplies.removeFirstOrNull() ?: (EMPTY_TRACK to 0L)
             if (delayMs > 0) withContext(NonCancellable) { delay(delayMs) }

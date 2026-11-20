@@ -1,9 +1,11 @@
 package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.kit.BeaconDest
+import space.dodoplanet.gildongmu.kit.TransitBusStopMark
 import space.dodoplanet.gildongmu.kit.TransitGuideRoute
 import space.dodoplanet.gildongmu.kit.TransitGuideState
 import space.dodoplanet.gildongmu.kit.TransitLabel
+import space.dodoplanet.gildongmu.kit.TransitRidingPosition
 import space.dodoplanet.gildongmu.kit.TransitTrackItem
 import space.dodoplanet.gildongmu.kit.TransitWaitingEmptyReason
 
@@ -17,8 +19,8 @@ enum class TransitAboardStep { pickStation, pickVehicle }
  * 화면이 읽는 대중교통 안내 상태(iOS `TransitGuideModel`이 `@Observable`로 뷰에 내보내는 값 — 도보 `WalkGuideUiState` 동형). 폴 작업·장부·세대·
  * 캐시 같은 `@ObservationIgnored` 값은 모델의 비공개 필드다.
  *
- * 단계 2-1 범위: 수명·폴·유휴·통지에 쓰는 값과, 이 범위 코드가 읽는 사용자 동작 묶음(2-2) 필드. 단계 3 몫(`ridingPosition`·`busStopMark`·
- * `pendingRecovery`·`pendingDestChange`·`pendingAltRoutes`)은 그 단계가 더한다.
+ * 단계 2-1 범위: 수명·폴·유휴·통지에 쓰는 값과, 이 범위 코드가 읽는 사용자 동작 묶음(2-2) 필드. 단계 3-1이 승차 중 현재역(`ridingPosition`·`positionClock`)과
+ * 버스 정류장 표식(`busStopMark`)을 더했다. 단계 3 나머지(`pendingRecovery`·`pendingDestChange`·`pendingAltRoutes`)는 그 묶음이 더한다.
  */
 data class TransitGuideUiState(
     val state: TransitGuideState? = null,
@@ -51,6 +53,12 @@ data class TransitGuideUiState(
     /** E71 R9: 시트 첫 착지가 질문 라벨이어야 하는 일회성 표식(`consumeAboardStartLanding`이 읽고 푼다). */
     val aboardStartLandingPending: Boolean = false,
     val expressBlockedNote: String? = null,
+    /** 승차 중 현재역(E35 spec §4) — 상태 머신 **밖**의 표시 상태. 리듀서는 이 값을 모르고 판정에 쓰지 않는다. */
+    val ridingPosition: TransitRidingPosition? = null,
+    /** 보존 창 판정의 「지금」(벽시계 ms) — 조회 시점에 굳힌다(뷰가 렌더마다 시계를 읽지 않게). */
+    val positionClock: Double = 0.0,
+    /** 버스 승차 중 현재 정류장(E48) — keep-alive fix로 채우는 표시 전용 상태. 시각이 빠진 표식이고 바뀔 때만 쓴다. */
+    val busStopMark: TransitBusStopMark? = null,
 ) {
     val isTracking: Boolean get() = state != null
 }

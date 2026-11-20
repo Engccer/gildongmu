@@ -105,6 +105,34 @@ import space.dodoplanet.gildongmu.kit.transitWaitContextLine
 import space.dodoplanet.gildongmu.kit.transitWaitingEmptyReason
 import space.dodoplanet.gildongmu.kit.withoutWalkBefore
 import space.dodoplanet.gildongmu.kit.TransitLabel
+import space.dodoplanet.gildongmu.kit.TransitPositionBinding
+import space.dodoplanet.gildongmu.kit.TransitBusAlightNotice
+import space.dodoplanet.gildongmu.kit.TransitBusStopMark
+import space.dodoplanet.gildongmu.kit.TransitBusStopTracker
+import space.dodoplanet.gildongmu.kit.TransitBusStopVerdict
+import space.dodoplanet.gildongmu.kit.TransitDeviceFix
+import space.dodoplanet.gildongmu.kit.TransitNeverSeenPendingVerdict
+import space.dodoplanet.gildongmu.kit.TransitPositionOutcome
+import space.dodoplanet.gildongmu.kit.TransitRidingPosition
+import space.dodoplanet.gildongmu.kit.transitBusAlightNoticeStep
+import space.dodoplanet.gildongmu.kit.transitBusStopApplies
+import space.dodoplanet.gildongmu.kit.transitBusStopHoldMs
+import space.dodoplanet.gildongmu.kit.transitBusStopMark
+import space.dodoplanet.gildongmu.kit.transitBusStopStep
+import space.dodoplanet.gildongmu.kit.transitLanesWithRoutes
+import space.dodoplanet.gildongmu.kit.transitLegFromStop
+import space.dodoplanet.gildongmu.kit.transitLegWithLanes
+import space.dodoplanet.gildongmu.kit.transitNeverSeenPendingStep
+import space.dodoplanet.gildongmu.kit.transitNeverSeenWarningDeferred
+import space.dodoplanet.gildongmu.kit.transitOverviewApplyingBusStop
+import space.dodoplanet.gildongmu.kit.transitOverviewApplyingPosition
+import space.dodoplanet.gildongmu.kit.transitPositionBinding
+import space.dodoplanet.gildongmu.kit.transitPositionLookupDue
+import space.dodoplanet.gildongmu.kit.transitPositionShownIndex
+import space.dodoplanet.gildongmu.kit.transitPositionStatusIndex
+import space.dodoplanet.gildongmu.kit.transitRidingPositionOnIdlePause
+import space.dodoplanet.gildongmu.kit.transitRidingPositionStep
+import space.dodoplanet.gildongmu.kit.transitViaStopHereIndexWithBusStop
 import space.dodoplanet.gildongmu.location.LocationPermission
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -238,6 +266,30 @@ class TransitGuideModel(
     private var expressBlockedNote: String?
         get() = _ui.value.expressBlockedNote
         set(v) = mutate { copy(expressBlockedNote = v) }
+    /** 승차 중 현재역(E35 spec §4) — 상태 머신 **밖**의 표시 상태. 리듀서는 이 값을 모르고 판정에 쓰지 않는다. */
+    private var ridingPosition: TransitRidingPosition?
+        get() = _ui.value.ridingPosition
+        set(v) = mutate { copy(ridingPosition = v) }
+    /** 보존 창 판정의 「지금」(벽시계 ms) — 조회 시점에 굳힌다(뷰가 렌더마다 시계를 읽지 않게). */
+    private var positionClock: Double
+        get() = _ui.value.positionClock
+        set(v) = mutate { copy(positionClock = v) }
+    /**
+     * 버스 승차 중 현재 정류장(E48 spec 2026-09-23 bus-current-stop §2·§4.3) — keep-alive fix로 채우는 **표시 전용** 상태(리듀서 밖). 뷰가 읽는 것은 시각이 빠진
+     * 표식이고 **바뀔 때만** 쓴다(추적 상태는 fix마다 바뀌어 관측 밖에 둔다 — 설계 리뷰 m3). 만료는 폴 시계가 아니라 마지막 관측 + 보존 창에 맞춘 타이머가 판정한다(설계 리뷰 M2).
+     */
+    private var busStopMark: TransitBusStopMark?
+        get() = _ui.value.busStopMark
+        set(v) = mutate { copy(busStopMark = v) }
+    private var busStopTracker: TransitBusStopTracker? = null
+    /** 하차 정류장 도착 한 마디(A69 spec 2026-10-19 §2)의 구간 기록 — 판정은 Kit `transitBusAlightNoticeStep`. 세션 시작·경로 변경·종료에서 비우고 유휴 진입은 비우지 않는다(같은 세션·같은 구간). `reached`는 늦은 「다음 정류장」을 거른다. */
+    private var busAlightNotice: TransitBusAlightNotice? = null
+    private var busStopExpiryJob: Job? = null
+    private class BusFixLog(val verdict: TransitBusStopVerdict, val nearest: Int?, val latched: Int?)
+    /** 계측 `busFix` 줄의 직전 (판정, 최근접, 래치) — 바뀔 때만 쓴다(fix는 초 단위로 온다). */
+    private var lastBusFixLog: BusFixLog? = null
+    /** 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다. */
+    private var neverSeenPending: TransitPositionBinding? = null
 
     // ── 여정 훅(E70 §6.3) — 필드만 두고 여정 세션(`and-journey`)이 배선한다 ──
     /** 여정 마지막 leg 완료 콜백 — 역 B를 지정한 여정의 대중교통 단계에만 걸린다. 걸려 있으면 `.done` 갈래가 이것을 **정확히 한 번** 부르고 `pendingWalkHandoff`를 세우지 않는다. */
@@ -262,17 +314,39 @@ class TransitGuideModel(
 
     /**
      * 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 null.
-     * 단계 3: overview 후처리(`transitOverviewApplyingPosition`·`transitOverviewApplyingBusStop` — ridingPosition·busStopMark)가 이 값 위에 얹힌다.
+     * 승차 중 현재역(E35)은 기존 판정 위에 **후처리**로 얹는다(`transitProgressOverview`·그 fixture는 그대로). 이 값을 읽는 조망·다른 경로 출발점이 같은 「현재역」을 본다.
+     * ⚠ 주변 확인 앵커는 이 값을 읽지 않는다(원시 판정 — 시트 `surroundingsSection`).
      */
     val overview: TransitOverview?
         get() {
             val s = state ?: return null
             val r = route ?: return null
-            return transitProgressOverview(s, r)
+            val base = transitOverviewApplyingPosition(transitProgressOverview(s, r), state = s, position = ridingPosition, now = positionClock)
+            // 버스 승차 중 현재 정류장(E48) — 기기 위치 표식. E35 후처리와는 다른 leg 종류에서만 일한다.
+            val leg = currentLeg ?: return base
+            return transitOverviewApplyingBusStop(base, state = s, leg = leg, mark = busStopMark)
         }
 
-    // 단계 3: positionStatusText
-    // 단계 3: viaStopHereIndex
+    /**
+     * 경유역 목록의 「현재 위치」 index — 도착 `arvlMsg3`·실시간 열차 위치(E35)·버스 기기 위치(E48) 중 큰 값(조인은 한국어 원문).
+     */
+    val viaStopHereIndex: Int?
+        get() {
+            val s = state ?: return null
+            val leg = currentLeg ?: return null
+            return transitViaStopHereIndexWithBusStop(state = s, leg = leg, position = ridingPosition, busStop = busStopMark, now = positionClock)
+        }
+
+    /**
+     * 신호 문장 자리를 차지할 현재역 문장(E35 §6 판정 1) — 도착 피드 미관측 구간에 위치가 잡혀 있을 때만. 상시 표시·조망 silence 행·복귀 낭독이 같은 선택을 지난다.
+     * `now`는 호출자가 고른다(렌더는 조회 시계, 복귀 낭독은 지금 — 백그라운드 동안 창이 지났을 수 있다).
+     */
+    fun positionStatusText(state: TransitGuideState, leg: TransitGuideLeg, now: Double): String? {
+        val index = transitPositionStatusIndex(state, ridingPosition, now) ?: return null
+        val stops = displayLeg(leg, useOverride = false).stops
+        val location = stops.getOrNull(index) ?: return null
+        return renderer.render(transitCurrentStationLine(isEn = transitGuideIsEn, location = location))
+    }
 
     val isTracking: Boolean get() = state != null
     val currentLeg: TransitGuideLeg?
@@ -323,7 +397,13 @@ class TransitGuideModel(
     private class Retained(val item: TransitTrackItem, val lastSeenAtMs: Double)
     private val retained = LinkedHashMap<String, Retained>()
 
-    // 단계 3: reanchor — 서울버스 정류장 재기준(E76 후속 ⓔ)의 되돌림 원본과 세대
+    /**
+     * 서울버스 정류장 재기준(E76 후속 ⓔ §2.2)의 되돌림 원본 — [탑승 변경] 직전 leg(원래 정류장·집합). 취소가 그것을 되돌린다. `gen`은 `phase=lanes` 응답의 결박 —
+     * 다른 정류장을 고르거나 세션이 바뀌면 오른다. 웹 `reanchorRef` 미러.
+     */
+    private class Reanchor(val legIndex: Int, val snapshot: TransitGuideLeg, val gen: Int)
+    private var reanchor: Reanchor? = null
+    private var reanchorGen = 0
     // ⚠ 키는 (legIndex, 대상 정류소) 복합 — legIndex만 쓰면 waiting에서 해석한 승차 정류소가 riding 캐시로 적중해 하차 카운트다운이 승차 정류소 도착을
     // 읽는다(독립 리뷰 BLOCKER).
     private val tagoResolved = HashMap<String, TransitTrackResolvedStop>()
@@ -441,14 +521,14 @@ class TransitGuideModel(
         // 단계 3: routeGen
         seq = 0
         retained.clear()
-        // 단계 3: reanchor
+        reanchor = null
         tagoResolved.clear()
         tagoUnsupported.clear()
         // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 위치 결박이 같은 세대·열차로 되살아나지 않게.
-        // 단계 3: ridingPosition
-        // 단계 3: clearBusStop
-        // 단계 3: busAlightNotice
-        // 단계 3: neverSeenPending
+        ridingPosition = null
+        clearBusStop()
+        busAlightNotice = null
+        neverSeenPending = null
         toneState = TransitToneState.initial
         lastPollStartAt = null
         plannedIntervalMs = null
@@ -529,8 +609,12 @@ class TransitGuideModel(
             // 단계 4: controller — keep-alive 서비스를 끈다
             GuideDiag.log { "transit keepAlive stop reason=sessionEnd" }
         }
-        // 단계 3: ridingPosition · clearBusStop · busAlightNotice · neverSeenPending · reanchor
+        ridingPosition = null
+        clearBusStop()
+        busAlightNotice = null
+        neverSeenPending = null
         retained.clear()
+        reanchor = null
         tagoResolved.clear()
         tagoUnsupported.clear()
         wasBackgrounded = false
@@ -656,7 +740,8 @@ class TransitGuideModel(
         // 단계 3: recoveryStatusText — 잘못 내림 복구 중엔 복구 상태만(E78 §8-5)
         val s = state ?: return ""
         val leg = currentLeg ?: return ""
-        // 단계 3: positionStatusText — 현재역이 잡혀 있으면 그것이 상태다(E35 §6)
+        // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
+        positionStatusText(s, leg, now = nowMs())?.let { return it }
         val unobserved = s.lock?.let(::transitLockIsUnobserved) ?: false
         if (s.signal == TransitSignal.neverSeen && !unobserved) return strings.get("transitGuide.neverSeen")
         return signalStatusText(s.signal, phase = s.phase, isTrain = leg.mode == "subway", unobserved = unobserved)
@@ -714,9 +799,9 @@ class TransitGuideModel(
         if (sinceAction < limitSeconds) return false
         idlePaused = true
         // 폴·keep-alive가 멈추면 fix도 만료 판정도 오지 않는다 — 표식을 남기면 재개 전까지 옛 정류장을 무기한 말한다(설계 리뷰 M4).
-        // 단계 3: clearBusStop
-        // 승차 중 현재역(E35)도 같다(E48 잔여 ⑥) — 보존 창을 재는 폴 시계도 멈춘다.
-        // 단계 3: transitRidingPositionOnIdlePause
+        clearBusStop()
+        // 승차 중 현재역(E35)도 같다(E48 잔여 ⑥) — 보존 창을 재는 폴 시계도 멈춘다. 판정은 Kit(미관측 구간만, 래치만).
+        ridingPosition = transitRidingPositionOnIdlePause(ridingPosition, state)
         GuideDiag.log { "transit idlePause sinceAction=${sinceAction.toInt()}s limit=${limitSeconds.toInt()}s" }
         // 정지 톤(도보 유휴 종료 동형). 전경에서만: 잠근 채 잊은 휴대전화가 한참 뒤 울리면 당황스럽다.
         playTone(BeaconTone.stop, allowedInBackground = false)
@@ -740,8 +825,9 @@ class TransitGuideModel(
         if (wants) {
             // 버스 승차 중이면 정류장을 가를 수 있는 정밀도로 올린다(E48 §4.2) — 그 밖(지하철·boarding)은 저정밀 그대로. 국면 전이·구간 전진·유휴 정지가 모두 이
             // 함수를 지나므로 매번 반영한다. ⚠ 버스 승차의 정상 흐름은 boarding에서 이미 켜진 keep-alive를 riding에서 올리는 이 분기다(A46).
-            // 단계 3: transitBusStopApplies — 버스 승차 중이면 keepAliveBus
-            val busRiding = false
+            // 켜는 조건은 표식의 적용 조건 그 자체다(경유 정류장이 없는 구간에 배터리를 쓰지 않게, 구현 리뷰 m4).
+            val leg = currentLeg
+            val busRiding = leg != null && transitBusStopApplies(s!!, leg)
             val profile = if (busRiding) GuideLocationProfile.keepAliveBus else GuideLocationProfile.keepAlive
             val current = _keepAliveWanted.value
             if (current != null) {
@@ -753,8 +839,7 @@ class TransitGuideModel(
             }
             if (permissions.currentLocation() != LocationPermission.None) {
                 _keepAliveWanted.value = profile
-                // 단계 4: controller — 서비스를 켠다(실패는 세션을 끝내지 않고 로그 한 줄, 전경 폴은 돈다)
-                // 단계 3: ingestKeepAliveFix — keepAliveFixSink 연결(버스 정류장 E48)
+                // 단계 4: controller — 서비스를 켠다(실패는 세션을 끝내지 않고 로그 한 줄, 전경 폴은 돈다). 서비스의 fix는 `handleServiceFix`로 흘린다(iOS `keepAliveFixSink`).
                 GuideDiag.log { "transit keepAlive start profile=${if (busRiding) "bus" else "default"}" }
             } else if (!keepAliveDeniedLogged) {
                 keepAliveDeniedLogged = true
@@ -767,10 +852,96 @@ class TransitGuideModel(
         }
     }
 
-    // 단계 3: refreshBusStopMark
-    // 단계 3: clearBusStop
-    // 단계 3: ingestKeepAliveFix
-    // 단계 3: announceAlightReached
+    /**
+     * 표식을 다시 판정해 **바뀔 때만** 쓰고, 표식이 서 있으면 마지막 관측 + 보존 창에 한 번 더 판정하도록 타이머를 건다 — fix가 끊긴 터널에서도 창이 정확히 닫힌다.
+     */
+    private fun refreshBusStopMark(now: Double) {
+        val s = state
+        val leg = currentLeg
+        val mark = if (s != null && leg != null) transitBusStopMark(s, leg, busStopTracker, now) else null
+        if (mark != busStopMark) busStopMark = mark
+        busStopExpiryJob?.cancel()
+        busStopExpiryJob = null
+        val at = busStopTracker?.lastObservedAt
+        if (mark == null || at == null) return
+        val delayMs = max(0.0, at + transitBusStopHoldMs - now) + 1
+        busStopExpiryJob = scope.launch {
+            delay(delayMs.toLong())
+            if (!isActive) return@launch
+            refreshBusStopMark(nowMs())
+        }
+    }
+
+    private fun clearBusStop() {
+        busStopTracker = null
+        busStopMark = null
+        busStopExpiryJob?.cancel()
+        busStopExpiryJob = null
+        lastBusFixLog = null
+    }
+
+    /**
+     * keep-alive 서비스의 위치 fix 한 건(E48 §4.3, iOS `keepAliveFixSink` → `ingestKeepAliveFix`). 판정은 Kit, 여기는 반영·계측만 — 리듀서 입력이 아니다.
+     * 서비스를 켜고 이 입구에 연결하는 것은 단계 4(`GuideSession`)다.
+     */
+    fun handleServiceFix(fix: GuideFixPayload) {
+        ingestKeepAliveFix(fix)
+    }
+
+    /** keep-alive fix 한 건(E48 §4.3) — 판정은 Kit, 여기는 반영·계측만. */
+    private fun ingestKeepAliveFix(fix: GuideFixPayload) {
+        val s = state ?: return
+        val leg = currentLeg ?: return
+        // 나이: iOS `-fix.timestamp.timeIntervalSinceNow` = 단조 시계로 잰 경과(`GuideFixPayload.elapsedRealtimeMs`는 같은 축, `WalkGuideModel`과 같은 식).
+        val age = clock() - fix.elapsedRealtimeMs / 1000.0
+        val now = nowMs()
+        val deviceFix = TransitDeviceFix(lat = fix.lat, lng = fix.lng, accuracy = fix.accuracy, ageSeconds = age)
+        val result = transitBusStopStep(busStopTracker, s, leg, deviceFix, now)
+        busStopTracker = result.tracker
+        refreshBusStopMark(now)
+        // A69: 표시 전용 계약의 의도된 예외 하나 — 통지만 내고 리듀서 입력(dispatch)으로 흘러가지 않는다. 잘못 내림 복구 중엔 판정째 건너뛴다(E78 §5-1) — 장부를 세운 채
+        // 말만 막으면 복구 취소 뒤에도 영영 말하지 않는다.
+        // 단계 3: pendingRecovery — `if (pendingRecovery == null)` 가드(잘못 내림 복구 E78, 다음 묶음)
+        run {
+            val notice = transitBusAlightNoticeStep(busAlightNotice, s, leg, result, deviceFix, now)
+            busAlightNotice = notice.notice
+            if (notice.speak) announceAlightReached(leg = leg, legIndex = s.legIndex, phaseGen = s.phaseGen)
+        }
+        if (result.verdict == TransitBusStopVerdict.notApplicable) return
+        // 계측: 판정 종류나 래치가 바뀔 때만 1줄 — 실승차 사후에 부정확·노선 밖·모호를 가르는 유일한 증거.
+        val latched = result.tracker?.stopIndex
+        val last = lastBusFixLog
+        if (last == null || last.verdict != result.verdict || last.nearest != result.nearestIndex || last.latched != latched) {
+            lastBusFixLog = BusFixLog(result.verdict, result.nearestIndex, latched)
+            GuideDiag.log {
+                "transit busFix verdict=${result.verdict.name} idx=${result.nearestIndex?.toString() ?: "-"} latched=${latched?.toString() ?: "-"}" +
+                    " acc=${fix.accuracy.roundToInt()} age=${fmt1(age)}s"
+            }
+        }
+    }
+
+    /**
+     * 하차 정류장 도착 한 마디(A69 판정 ②) — 「{하차 정류장} 도착. 내리세요.」 리듀서 `arrived`와 같은 도착 톤 뒤 지연 창구(톤 뒤 발화)로, 진행 중 낭독을 끊는다(늦으면 문이
+     * 닫힌다). 백그라운드에서도 도착 톤을 낸다(E79) — 문장은 그 톤이 끝난 뒤 채널 술어(E53)를 따른다. 전경에서 문장이 버려지면 전달 장부만 되돌린다 — 정류장에 서 있는 동안
+     * 다음 적격 fix가 다시 말한다(설계 리뷰 H4).
+     * ⚠ 재시도의 소유자는 그 하나다: 억제(받아쓰기) 중 버려진 이 문장은 일반 억제 복구(`droppedWhileSuppressed`)에서 뺀다 — 해제 때 위치 재검증 없이 재생되면 정류장을 벗어난
+     * 뒤의 「도착. 내리세요.」나 중복이 된다(설계 리뷰 2차).
+     */
+    private fun announceAlightReached(leg: TransitGuideLeg, legIndex: Int, phaseGen: Int) {
+        GuideDiag.log { "transit busAlightReached leg=$legIndex" }
+        playTone(BeaconTone.nearby, allowedInBackground = transitToneAllowedInBackground(TransitBackgroundToneSource.AlightReached))
+        val text = renderer.render(transitAlightStopReachedLine(isEn = transitGuideIsEn, leg = displayLeg(leg, useOverride = false)))
+        announce(text, highPriority = true, speechClass = GuideSpeechClass.actionable) {
+            if (droppedWhileSuppressed?.text == text) droppedWhileSuppressed = null
+            // 백그라운드 버림은 복귀 시 현재 상태 낭독(`missedAnnouncement`, E53 §4.3)이 갚는다 — 장부를 되돌리면 음성 토글이 꺼진 채 정류장에 서 있는 동안 fix마다 재시도하고,
+            // 복귀 낭독과 이 문장이 연달아 나가 서로 끊는다(a11y 감사 M2).
+            val notice = busAlightNotice
+            if (isForeground && notice != null && notice.legIndex == legIndex && notice.phaseGen == phaseGen) {
+                busAlightNotice = notice.copy(announced = false)
+                GuideDiag.log { "transit busAlightReached dropped leg=$legIndex" }
+            }
+        }
+    }
 
     // MARK: - 사용자 액션
 
@@ -970,7 +1141,8 @@ class TransitGuideModel(
     fun beginReboard() {
         // 단계 3: invalidateRecovery — 복구 중이었으면 폴을 즉시 다시 돌린다(`if (invalidateRecovery()) restartPollLoop(immediate = true)`)
         touchUserAction()
-        // 단계 3: reanchor — 승차 중의 새 [탑승 변경]은 새 원본을 잡는다(`if (state.phase != .waiting) reanchor = nil`)
+        // 승차 중의 새 [탑승 변경]은 새 원본을 잡는다 — 옛 원본이 남아 있으면 안 된다.
+        if (state?.phase != TransitPhase.waiting) reanchor = null
         val leg = currentLeg
         if (leg == null || !transitReboardStopPickable(leg)) {
             changeBoarding()
@@ -1095,11 +1267,11 @@ class TransitGuideModel(
      * 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 — 이름을 받는 판을 남기면 그것이 다시 동명 역 모호 경로가 된다(spec §3.6).
      */
     fun changeBoarding(stopIndex: Int) {
+        val s = state
         val leg = currentLeg
-        if (state != null && leg != null && leg.trackMode == TransitTrackMode.seoulBus) {
+        if (s != null && leg != null && leg.trackMode == TransitTrackMode.seoulBus) {
             reboardPickerActive = false
-            // 단계 3: reseatSeoulBus — 고른 정류장 기준 leg로 바꾸고 다시 기다린다(E76 후속 ⓔ). 그 전까지는 원래 승차 정류장 기준 대기로 돌아간다(iOS가 첫 정류장에서 하는 것과 같다).
-            changeBoarding()
+            reseatSeoulBus(legIndex = s.legIndex, leg = leg, stopIndex = stopIndex)
             return
         }
         boardOverrideIndex = stopIndex
@@ -1107,7 +1279,58 @@ class TransitGuideModel(
         changeBoarding()
     }
 
-    // 단계 3: fetchReanchorLanes
+    /**
+     * 서울버스 정류장 재기준(E76 후속 ⓔ §2.2): 고른 정류장 기준 leg로 바꾸고 다시 기다린다. 첫 정류장(원래 승차)은 종전대로 원래 leg 대기다. ⚠ 3분 보관 후보를 비운다
+     * (설계 리뷰 H1) — 옛 정류장 차량이 새 목록에 섞이면 그 차량을 지금 노선으로 잠근다.
+     */
+    private fun reseatSeoulBus(legIndex: Int, leg: TransitGuideLeg, stopIndex: Int) {
+        val next = transitLegFromStop(leg, stopIndex)
+        if (next == null) {
+            reanchor = null
+            changeBoarding()
+            return
+        }
+        reanchorGen += 1
+        val gen = reanchorGen
+        reanchor = Reanchor(legIndex, leg, gen)
+        replaceCurrentLeg(next)
+        retained.clear()
+        changeBoarding()
+        scope.launch { fetchReanchorLanes(next, gen) }
+    }
+
+    /**
+     * 재기준 정류장의 노선 집합(E76 후속 ⓔ §2.4). 결박: 세션·재기준 세대·대기 국면·같은 leg 그대로일 때만 반영한다(차량을 골랐거나 다른 정류장을 골랐으면 버린다 — 그 leg는
+     * `lanesPending`이 남아 「노선 모름」으로 정직하다). 실패는 조용하다.
+     */
+    private suspend fun fetchReanchorLanes(leg: TransitGuideLeg, gen: Int) {
+        val arsId = leg.boardStop?.arsId ?: return
+        val boardId = leg.boardStop?.localId ?: return
+        val alightId = leg.alightStop?.localId ?: return
+        val routeId = leg.routeId ?: return
+        val session = sessionToken
+        try {
+            val env = withContext(io) { track.seoulLanes(arsId = arsId, boardId = boardId, alightId = alightId, routeId = routeId, lang = dataLocale().rawValue) }
+            val origin = reanchor
+            val s = state
+            val current = currentLeg
+            if (sessionToken != session || origin == null || origin.gen != gen || s == null || s.phase != TransitPhase.waiting || s.legIndex != origin.legIndex ||
+                current == null || !current.lanesPending || current.boardStop != leg.boardStop || env.status != "ok"
+            ) {
+                return
+            }
+            val routes = env.routes ?: return
+            val lanes = transitLanesWithRoutes(current, routes)
+            // 확인된 다른 노선 0 ∧ 미확인 있음(예산 소진·경유 조회 실패)은 「단일 노선 확정」이 아니다 — 「노선 모름」을 남긴다.
+            if (lanes == null && (env.unverified ?: 0) > 0) return
+            replaceCurrentLeg(transitLegWithLanes(current, lanes))
+            if (lanes != null) restartPollLoop(immediate = true)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 네트워크·502 — 조용히(`lanesPending` 유지).
+        }
+    }
 
     fun changeBoarding() {
         dispatch(TransitGuideInput.ChangeBoarding)
@@ -1126,7 +1349,13 @@ class TransitGuideModel(
         val s = state ?: return
         if (s.phase != TransitPhase.waiting) return
         val previous = s.previousLock ?: return
-        // 단계 3: reanchor — 정류장 재기준(E76 후속 ⓔ)을 취소하면 [탑승 변경] 직전 leg(원래 정류장·집합)로 되돌린다(`reanchor = nil` 포함)
+        // 정류장 재기준(E76 후속 ⓔ)을 취소하면 [탑승 변경] 직전 leg(원래 정류장·집합)로 되돌린 뒤 노선을 맞춘다.
+        val origin = reanchor
+        reanchor = null
+        if (origin != null && origin.legIndex == s.legIndex) {
+            replaceCurrentLeg(origin.snapshot)
+            retained.clear()
+        }
         val leg = currentLeg
         if (previous.mode == TransitTrackMode.seoulBus && leg != null) {
             val lane = leg.lanes?.firstOrNull { it.key == previous.routeId }
@@ -1216,17 +1445,17 @@ class TransitGuideModel(
         touchUserAction()
         val s = state ?: return
         val leg = currentLeg ?: return
-        // 단계 3: positionClock — 렌더 밖의 판정이라 위치 보존 창은 **지금** 시각으로(E35 구현 리뷰 m1)
+        // 렌더 밖의 판정이라 위치 보존 창은 **지금** 시각으로(E35 구현 리뷰 m1). 화면 시계도 같은 틱에 앞당겨 화면 줄이 이 답과 어긋나지 않게 한다(검증 리뷰 n4).
+        positionClock = nowMs()
         announceNow(statusLineText(s, leg, now = nowMs(), speaksLocated = true), highPriority = true)
     }
 
     /**
      * 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중 구두점과
      * stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9). `now`(ms)는 위치 보존 창(E35)을 판정할 시각이다 — 화면은 `positionClock`, 통지는 지금(기본값
-     * 없음: 생략이 컴파일을 통과하면 한쪽이 조용히 다른 시계를 쓴다). `speaksLocated`: 현재역 문장을 이 줄에 싣는가(E35) — 조망 머리 문장만 false다. 현재역은
-     * 단계 3이라 두 인자는 아직 쓰이지 않는다(시그니처는 iOS 그대로 둔다).
+     * 없음: 생략이 컴파일을 통과하면 한쪽이 조용히 다른 시계를 쓴다). `speaksLocated`: 현재역 문장을 이 줄에 싣는가(E35) — 조망 머리 문장만 false다. 조망 머리 문장만
+     * false다(위원장 판정 2026-09-23: 조망은 안내 행·정차역 행 두 곳이 현재역을 말한다). false여도 그 자리에 신호 문장을 되살리지 않는다.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun statusLineText(state: TransitGuideState, leg: TransitGuideLeg, now: Double, speaksLocated: Boolean): String {
         val boarding = state.phase == TransitPhase.boarding
         val riding = state.phase == TransitPhase.riding
@@ -1258,8 +1487,12 @@ class TransitGuideModel(
         // 신호 문구(E39 위원장 판정): 대기 국면의 `notYetVisible`은 그 국면 내내 고정이라 정보가 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착
         // 조각이 그 사실을 이미 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제 오는지 못 받았다"(3-state의 unknown).
         // ⚠ `noArrivalInfo`는 **관측된 도달 사례가 없는 방어선**이다 — 실제 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
-        // 단계 3: positionStatusText — 승차 중 현재역(E35 §6 판정 1)이 신호 문장 자리를 차지한다
-        if (state.phase == TransitPhase.waiting && state.signal == TransitSignal.notYetVisible) {
+        // 승차 중 현재역(E35 §6 판정 1): 도착 피드 미관측 구간에 위치가 잡혀 있으면 신호 문장(「하차역에 가까워지면 열차 위치가 표시됩니다.」 등) 자리를 현재역 문장이 차지한다 —
+        // 그대로 두면 경유역 목록의 「현재 위치」와 모순된다.
+        val located = positionStatusText(state, leg, now)
+        if (located != null) {
+            if (speaksLocated) parts += located
+        } else if (state.phase == TransitPhase.waiting && state.signal == TransitSignal.notYetVisible) {
             // 없음
         } else if (state.signal == TransitSignal.tracking && live) {
             if (arrival.isEmpty()) parts += strings.get("transitGuide.noArrivalInfo")
@@ -1330,7 +1563,8 @@ class TransitGuideModel(
                 if (enterIdleIfDue()) return@launch
                 pollOnce()
                 if (!isActive) return@launch
-                // 단계 3: refreshPosition — 승차 중 현재역(E35)은 도착 폴의 계측(`pollEnd elapsed`) **밖**에서 조회한다
+                // 승차 중 현재역(E35): 도착 폴의 계측(`pollEnd elapsed`) **밖**에서 — 위치 조회 시간이 도착 지연으로 섞이지 않게(구현 리뷰 m4). dispatch 뒤 상태로 켜는 조건을 판정한다.
+                refreshPosition(seq)
                 val current = state
                 if (!isActive || current == null) return@launch
                 val next = transitPollIntervalMs(current)
@@ -1404,7 +1638,57 @@ class TransitGuideModel(
         }
     }
 
-    // 단계 3: refreshPosition
+    /**
+     * 승차 중 현재역 조회(E35 spec §5) — 도착 폴 한 번에 최대 1회, **dispatch 뒤** 상태로 켜는 조건을 판정한다(그 폴로 추적이 시작됐으면 묻지 않는다). 별도 타이머가 없어 폴 주기·
+     * 백그라운드 폴·유휴 정지·즉폴 금지를 그대로 상속한다. 위치 실패는 도착 폴을 흔들지 않는다(throw 없음 — 단 취소는 다시 던진다). 계측 `posPoll`은 3-state(found·notFound·failed)와
+     * 조인 결과를 가른다 — 실승차 사후 판정의 유일한 증거.
+     */
+    private suspend fun refreshPosition(seq: Int) {
+        val s = state ?: return
+        val leg = currentLeg ?: return
+        val requested = transitPositionBinding(s)
+        if (requested != null && transitPositionLookupDue(s, leg, ridingPosition)) {
+            val startedAt = clock()
+            val outcome: TransitPositionOutcome = try {
+                TransitPositionService.outcome(withContext(io) { position.lookup(line = leg.lineName, train = requested.vehicleId) })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                TransitPositionService.outcome(e)
+            }
+            if (!currentCoroutineContext().isActive) return
+            val stateNow = state ?: return
+            val legNow = currentLeg ?: return
+            val at = nowMs()
+            val elapsed = clock() - startedAt
+            // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
+            ridingPosition = transitRidingPositionStep(ridingPosition, stateNow, legNow, requested, outcome, at)
+            GuideDiag.log {
+                val kind = when (outcome) {
+                    is TransitPositionOutcome.Found -> "found station=${outcome.station} age=${outcome.dataAgeSeconds?.toString() ?: "-"}"
+                    is TransitPositionOutcome.NotFound -> "notFound lineEmpty=${outcome.lineEmpty}"
+                    TransitPositionOutcome.Unsupported -> "unsupported"
+                    TransitPositionOutcome.Failed -> "failed"
+                }
+                val latched = ridingPosition?.stopIndex?.toString() ?: "-"
+                val shown = transitPositionShownIndex(stateNow, ridingPosition, at)?.toString() ?: "-"
+                "transit posPoll seq=$seq train=${requested.vehicleId} $kind latched=$latched shown=$shown" +
+                    " lookups=${ridingPosition?.lookups ?: 0} signal=${stateNow.signal.rawValue} elapsed=${fmt2(elapsed)}s"
+            }
+        }
+        positionClock = nowMs()
+        // 보류한 경고의 처분 — 조회하지 않은 폴(상한·추적 시작)에서도 본다.
+        val pending = neverSeenPending
+        val current = state
+        if (pending != null && current != null) {
+            val verdict = transitNeverSeenPendingStep(pending, current, ridingPosition, positionClock)
+            if (verdict != TransitNeverSeenPendingVerdict.keep) {
+                neverSeenPending = null
+                GuideDiag.log { "transit neverSeen pending=${verdict.name}" }
+            }
+            if (verdict == TransitNeverSeenPendingVerdict.fire) handle(TransitGuideEvent.NeverSeen)
+        }
+    }
 
     private fun pollStatusText(poll: TransitTrackPoll): String = when (poll) {
         is TransitTrackPoll.Ok -> "ok(${poll.items.size})"
@@ -1627,7 +1911,9 @@ class TransitGuideModel(
         // 강탈한다(독립 리뷰 MAJOR: 픽커를 연 채 폴이 도착 추정으로 전이 → advance → 다음 leg 탑승). ⚠ 국면 기반인 이유: `.board`/`.advance`만 열거하면 폴이 일으키는
         // arrived 전이를 놓친다. `boardOverrideIndex`는 waiting에서 쓰이므로 같은 축으로 묶을 수 없고, 그래서 둘의 소거 조건이 다르다.
         if (result.state.phase != TransitPhase.riding) reboardPickerActive = false
-        // 단계 3: reanchor — 정류장 재기준 원본(E76 후속 ⓔ)의 수명은 그 대기 국면 하나다
+        // 정류장 재기준 원본(E76 후속 ⓔ)의 수명은 그 대기 국면 하나다 — 잠금으로 대기를 벗어난 뒤 [다른 차량 선택]→[취소]가 옛 정류장 leg를 되살리면 새 정류장에서 고른 차량을
+        // 옛 정류장 기준으로 추적한다.
+        if (result.state.phase != TransitPhase.waiting) reanchor = null
         // 계측(§13.5): 국면·신호 전이와 이벤트만 기록(무이벤트 폴 소음 제외).
         if (result.event != null || result.state.phase != state.phase || result.state.signal != state.signal) {
             GuideDiag.log {
@@ -1640,9 +1926,22 @@ class TransitGuideModel(
         firstObservationInStep = !state.trackingAnnounced && result.state.trackingAnnounced
         val event = result.event
         if (event != null) {
-            // 단계 3: busAlightNotice — A69 역순 방지(기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 「다음 정류장 …」을 내지 않는다)
-            // 단계 3: transitNeverSeenWarningDeferred — 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 경고를 결박째 보류한다
-            handle(event)
+            val notice = busAlightNotice
+            val deferred = if (event is TransitGuideEvent.NeverSeen) transitNeverSeenWarningDeferred(result.state, ridingPosition, nowMs()) else null
+            if (event is TransitGuideEvent.ArrivingAtAlightStop && notice != null && notice.reached &&
+                notice.legIndex == result.state.legIndex && notice.phaseGen == result.state.phaseGen
+            ) {
+                // A69 역순 방지: 기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 「다음 정류장 …」은 톤·문장 모두 내지 않는다(그 사람에게 「다음」은 한 정거장 더다).
+                // 리듀서 래치는 그대로 섰다 — 출력만 거른다.
+                GuideDiag.log { "transit arrivingAtAlightStop suppressed reason=alightReached" }
+            } else if (deferred != null) {
+                // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 「찾지 못하고 있다」는 전제가 거짓이라 경고(문장·약한 톤)를 결박째 보류한다. 처분(발화·폐기)은
+                // 폴마다 `refreshPosition` 끝에서.
+                neverSeenPending = deferred
+                GuideDiag.log { "transit neverSeen deferred reason=positionShown" }
+            } else {
+                handle(event)
+            }
         }
         val tone = toned.tone
         if (tone != null) {
