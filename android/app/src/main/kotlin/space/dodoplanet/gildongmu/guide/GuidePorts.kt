@@ -14,6 +14,13 @@ interface GuideForegroundController {
     fun stop()
 }
 
+/**
+ * 전경 서비스가 요청받는 위치 스트림의 모양(M5 spec §6-4). `beacon` = 도보·자동차(1초·고정밀), `keepAlive` = 대중교통 boarding·riding의 프로세스 유지용
+ * 저전력 스트림(60초·500m), `keepAliveBus` = 버스 승차 중 정류장 표식(E48, 고정밀·1초·거리 필터 없음). 대중교통 모델은 원하는 프로파일을
+ * `keepAliveWanted`로 내보내기만 하고, 서비스를 켜고 끄는 것은 단계 4(`GuideServiceOwner`)다.
+ */
+enum class GuideLocationProfile { beacon, keepAlive, keepAliveBus }
+
 /** 권한·기기 상태(§3-2 ②③). 위치 권한은 M2 `AppConfig.permissionGate`를 그대로 지난다. */
 interface GuidePermissions {
     fun isLocationEnabled(): Boolean

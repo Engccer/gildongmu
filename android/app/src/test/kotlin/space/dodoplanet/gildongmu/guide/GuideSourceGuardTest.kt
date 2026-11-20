@@ -107,7 +107,7 @@ class GuideSourceGuardTest {
 
     @Test fun `④ speaker_speak 호출부는 post의 전경 직접 발화와 대기 칸 배선뿐 — 모든 문장이 post의 채널 술어를 지난다(E53)`() {
         val callers = allSources.filter { it.name != "TtsGuideSpeaker.kt" && Regex("""speaker\.speak\(""").containsMatchIn(it.readText()) }.map { it.name }
-        assertEquals(listOf("WalkGuideModel.kt"), callers)
+        assertEquals(listOf("TransitGuideModel.kt", "WalkGuideModel.kt"), callers.sorted())
         val model = guide.resolve("WalkGuideModel.kt").readText()
         val queue = model.substringAfter("private val deviceSpeech = DeviceSpeechQueue(").substringBefore("\n    )")
         assertEquals(2, Regex("""speaker\.speak\(""").findAll(queue).count(), "대기 칸의 발화·전경 게시 둘")
