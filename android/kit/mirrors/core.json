@@ -133,8 +133,10 @@
     },
     {
       "swift": "GuideStart.swift",
-      "status": "pending",
-      "note": "E83 도착지와 수단으로 안내 시작이 길찾기 화면과 함께 쓰는 판정(자동차 시작 조건, 도보 기본 줄). 안드로이드는 채팅 경로 카드를 이식할 때 함께 이식한다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideStart.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideStartTest.kt",
+      "note": "Swift `extension WalkLineKind`의 정적 함수는 `WalkLineKind.Companion` 확장으로 옮겼다. 테스트는 Swift `RouteStartChatTests.swift`의 `GuideStartPredicateTests` 미러(자동차 시작 조건은 길찾기 자동차 안내 시작 버튼이 쓴다, M5)"
     },
     {
       "swift": "InlineTargetSpans.swift",
