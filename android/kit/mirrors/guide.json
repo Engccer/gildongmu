@@ -327,7 +327,7 @@
     {
       "swift": "Journey.swift",
       "status": "pending",
-      "note": "E70 여정 전이(첫 판 iOS 실험판 전용) — 안드로이드 자동차 안내가 없어 이식 보류"
+      "note": "E70 여정 전이(iOS 정식판, 2026-11 졸업) — 안드로이드 자동차·대중교통 안내 세션이 없어 이식 보류(BACKLOG §4 B26)"
     },
     {
       "swift": "CarTrafficAhead.swift",
