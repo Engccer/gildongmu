@@ -64,7 +64,7 @@ class GuideSheetA11yTest {
             MaterialTheme {
                 Column {
                     Box(Modifier.fillMaxWidth().height(200.dp).testTag("content"))
-                    GuideBottomBar(GuideNav(onOpenSettings = {}, onOpenPlace = { _, _, _ -> })) { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
+                    GuideBottomBar(GuideNav(onOpenSettings = {}, onOpenPlace = { _, _, _, _ -> })) { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
                 }
             }
         }
