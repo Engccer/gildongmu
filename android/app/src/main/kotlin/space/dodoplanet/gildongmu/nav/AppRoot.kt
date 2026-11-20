@@ -37,6 +37,8 @@ import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.guide.ui.openGuidePlace
 import space.dodoplanet.gildongmu.guide.ui.openWeightSettings
 import space.dodoplanet.gildongmu.directions.openDirections
+import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
+import space.dodoplanet.gildongmu.place.PlaceRowNav
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.ManualLocationPickerScreen
 import space.dodoplanet.gildongmu.location.ManualLocationRoute
@@ -104,6 +106,9 @@ fun AppRoot(factories: AppFactories) {
         ) { padding ->
             // 안내 시트가 펼쳐진 동안 탭 화면은 앱 통지를 집지 않는다 — 통지는 시트를 접은 뒤 밑 화면이 읽는다(M4b 후속 ②). 탭 화면 안의
             // 공급(다이얼로그·공지 시트)은 이 값과 OR한다(가드 `GuideSheetModalGuardTest`).
+            // 장소 줄 동작(B21)의 길찾기·물어보기 길 — 줄을 그리는 화면마다 배선하지 않고 여기서 한 번 공급한다.
+            val placeRowNav = remember(navController) { PlaceRowNav(navController::openDirections) { navController.openChat(it) } }
+            CompositionLocalProvider(LocalPlaceRowNav provides placeRowNav) {
             CompositionLocalProvider(LocalModalOpen provides guideSheetShowing()) {
             NavHost(
                 navController = navController,
@@ -126,7 +131,7 @@ fun AppRoot(factories: AppFactories) {
                 composable<NearbyRoute> { entry ->
                     val returnFocus: ReturnFocusViewModel = viewModel(entry)
                     NearbyHubScreen(
-                        onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
+                        onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null, directionsEntryAllowed = true)) },
                         onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
                         onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } },
                         takeReturnFocus = returnFocus.slot::take,
@@ -148,7 +153,7 @@ fun AppRoot(factories: AppFactories) {
                         factory = factories.nearby(route.kind, anchor),
                         nav = NearbyNav(
                             onBack = { navController.popBackStack() },
-                            onOpenPlace = { place, domain -> navController.navigate(PlaceDetailRoute.of(place, domain)) },
+                            onOpenPlace = { place, domain, lineHint -> navController.navigate(PlaceDetailRoute.of(place, domain).copy(stationLineHint = lineHint, showsDirectionsEntry = route.directionsEntryAllowed)) },
                             onOpenRouteStops = { navController.navigate(it) },
                         ),
                         requestPrecise = factories.requestPreciseLocation,
@@ -165,7 +170,7 @@ fun AppRoot(factories: AppFactories) {
                         domain = domain,
                         nav = PlaceNav(
                             onBack = { navController.popBackStack() },
-                            onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
+                            onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor, directionsEntryAllowed = route.showsDirectionsEntry)) },
                             onOpenDirections = navController::openDirections, // 탭 전환 — 상세 스택은 검색 탭 백스택에 저장된다(복귀 착지 없음)
                             onOpenChat = { returnFocus.slot.remember(CHAT_RETURN_KEY); navController.openChat(it) }, // M6 spec §7
                         ),
@@ -186,6 +191,7 @@ fun AppRoot(factories: AppFactories) {
                     val route = entry.toRoute<BusRouteStopsRoute>()
                     BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
                 }
+            }
             }
             }
         }

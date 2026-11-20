@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import space.dodoplanet.gildongmu.place.placeRowActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -57,9 +59,16 @@ import space.dodoplanet.gildongmu.kit.sceneItemToPlace
  * "주변 상황" 자동 펼침(iOS `SurroundingsSceneAutoSection`, spec §12-2). 부모(둘러보기) 커밋과 함께 나타나고 트리거·닫기·착지가 없다 —
  * 헤딩이 발견 경로, 포커스는 부모의 위치 문장 1회 착지가 전부. 묶음별 "더 보기" 창은 ViewModel이 들고 커밋마다 리셋한다(판정 31).
  * 항목 행은 `PlaceRow`가 아니라 자체 문장 행(판정 30) — 같은 화면의 가게 목록과 `place-{id}`가 겹친다.
+ * `onAskAbout`이 있으면 항목 행에 장소 줄 동작 묶음을 단다(B21 ③, iOS `rowActionsAskAbout`) — 길찾기 진입이 없는 자리는 null로 묶음째 달지 않는다.
  */
 @Composable
-fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place, returnKey: String) -> Unit) {
+fun SceneAutoSection(
+    payload: AroundPayload,
+    vm: NearbyScreenViewModel<AroundPayload>,
+    requesterFor: (String) -> FocusRequester,
+    onAskAbout: ((Place, returnKey: String) -> Unit)?,
+    onOpenPlace: (Place, returnKey: String) -> Unit,
+) {
     val windows by vm.groupWindows.collectAsState()
 
     HeadingLine(stringResource(R.string.surroundings_ready), "scene-heading")
@@ -68,7 +77,7 @@ fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPay
         payload.sceneFailed || scene == null -> BodyLine(stringResource(R.string.surroundings_error), "scene-error")
         scene.total == 0 -> BodyLine(stringResource(R.string.surroundings_empty), "scene-empty")
         // 위치 문장은 없다 — 부모의 위치 문장이 같은 내용을 이미 말한다(중복 낭독 금지).
-        else -> SceneGroups(scene, windows, showPlace = false, requesterFor, onOpenPlace) { bucket, total ->
+        else -> SceneGroups(scene, windows, showPlace = false, requesterFor, onAskAbout, onOpenPlace) { bucket, total ->
             vm.revealMoreInGroup(bucket, total) { i -> sceneItemKey(bucket, i) }
         }
     }
@@ -84,6 +93,7 @@ private fun SceneGroups(
     windows: Map<String, Int>,
     showPlace: Boolean,
     requesterFor: (String) -> FocusRequester,
+    onAskAbout: ((Place, returnKey: String) -> Unit)?,
     onOpenPlace: (Place, returnKey: String) -> Unit,
     onRevealMore: (bucket: String, total: Int) -> Unit,
 ) {
@@ -106,16 +116,21 @@ private fun SceneGroups(
             val key = sceneItemKey(group.bucket, i)
             val visual = line(name.display)
             val spoken = line(name.primary).takeIf { it != visual }
+            val place = sceneItemToPlace(item)
+            val actions = if (onAskAbout != null) placeRowActions(place) { onAskAbout(place, key) } else emptyList()
             Text(
                 visual,
                 Modifier
                     .fillMaxWidth()
                     .landingTarget(requesterFor(key))
-                    .clickable(role = Role.Button) { onOpenPlace(sceneItemToPlace(item), key) }
+                    .clickable(role = Role.Button) { onOpenPlace(place, key) }
                     .testTag(key)
                     .defaultMinSize(minHeight = 48.dp)
                     .padding(vertical = 8.dp)
-                    .semantics(mergeDescendants = true) { if (spoken != null) contentDescription = spoken },
+                    .semantics(mergeDescendants = true) {
+                        if (spoken != null) contentDescription = spoken
+                        customActions = actions
+                    },
             )
         }
         if (group.items.size > visible) {
@@ -275,7 +290,8 @@ fun SceneButtonSection(lookup: SceneLookup, requesterFor: (String) -> FocusReque
             },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag("scene-close"),
         ) { Text(stringResource(R.string.actions_close)) }
-        SceneGroups(loaded.payload, windows, showPlace = true, requesterFor, onOpenPlace) { bucket, total -> lookup.revealMore(bucket, total) }
+        // 버튼형(안내 시트 「주변 확인」)은 줄 동작이 없다 — 시트 위 길찾기 진입은 안내를 덮는다(iOS 기본 nil).
+        SceneGroups(loaded.payload, windows, showPlace = true, requesterFor, onAskAbout = null, onOpenPlace) { bucket, total -> lookup.revealMore(bucket, total) }
     }
 }
 

@@ -17,14 +17,18 @@ data class PlaceAnchor(val lat: Double, val lng: Double, val name: String, val n
     val coord: NearbyCoord get() = NearbyCoord(lat, lng)
 }
 
-/** 스택 라우트(자기 패키지 소유, README §1). 앵커는 JSON 인자 — 프로세스 재생성 뒤에도 백스택이 복원된다. */
+/**
+ * 스택 라우트(자기 패키지 소유, README §1). 앵커는 JSON 인자 — 프로세스 재생성 뒤에도 백스택이 복원된다.
+ * `directionsEntryAllowed`(iOS 같은 이름, E65): 줄 동작의 「여기까지 길찾기」와 이 화면에서 연 상세의 길찾기 진입을 낼 수 있는가. 길찾기 진입을
+ * 숨긴 상세(경유역·안내 시트 목적지)의 「이 장소 주변」은 거짓을 넘긴다 — 프리필이 그 화면을 파괴하기 때문이다(E45 spec §7). 기본값이 없다(안전 인자).
+ */
 @Serializable
-data class NearbyKindRoute(val kind: NearbyKind, val anchorJson: String? = null) {
+data class NearbyKindRoute(val kind: NearbyKind, val anchorJson: String?, val directionsEntryAllowed: Boolean) {
     val anchor: PlaceAnchor? get() = anchorJson?.let { KitJson.decodeFromString(PlaceAnchor.serializer(), it) }
 
     companion object {
-        fun of(kind: NearbyKind, anchor: PlaceAnchor?) =
-            NearbyKindRoute(kind, anchor?.let { KitJson.encodeToString(PlaceAnchor.serializer(), it) })
+        fun of(kind: NearbyKind, anchor: PlaceAnchor?, directionsEntryAllowed: Boolean) =
+            NearbyKindRoute(kind, anchor?.let { KitJson.encodeToString(PlaceAnchor.serializer(), it) }, directionsEntryAllowed)
     }
 }
 

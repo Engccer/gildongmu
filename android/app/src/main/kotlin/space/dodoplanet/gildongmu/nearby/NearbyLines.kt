@@ -59,6 +59,13 @@ fun subwayStationLine(isEn: Boolean, lang: String, stationName: String, nameEn: 
     return LineText(joinText(b.display, linesText), joinText(b.primary, linesText))
 }
 
+/** 역 이름 하나(작업 메뉴 라벨용, E65, iOS `subwayStationSpokenName`) — 헤딩이 낭독한 이름과 같은 언어(`subwayStationLine`의 `spoken` 이름 조각). */
+fun subwayStationSpokenName(isEn: Boolean, lang: String, stationName: String, nameEn: String?, lines: List<String>, linesEn: List<String>?): String {
+    val linesReady: List<String>? = if (lines.isEmpty()) emptyList() else linesEn
+    if (!isEn || nameEn.isNullOrEmpty() || linesReady == null) return stationName
+    return bilingualName(lang, ko = stationName, en = nameEn, roman = null).primary
+}
+
 /** 최근접 역 낭독 라벨(통지·빈 문구가 **같은 문구**를 쓴다). */
 fun nearestLabel(station: NearestSubwayStation, isEn: Boolean, lang: String): String =
     subwayStationLine(isEn, lang, station.stationName, station.nameEn, station.lines, station.linesEn).spoken

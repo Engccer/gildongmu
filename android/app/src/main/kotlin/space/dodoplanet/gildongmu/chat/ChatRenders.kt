@@ -40,11 +40,11 @@ import space.dodoplanet.gildongmu.kit.MarkdownPlainText
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.chatPlaceMentions
 import space.dodoplanet.gildongmu.kit.models.ChatRenderPayload
-import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.PlaceSort
 import space.dodoplanet.gildongmu.nav.tryStartActivity
 import space.dodoplanet.gildongmu.search.AddressRow
+import space.dodoplanet.gildongmu.place.placeRowActions
 import space.dodoplanet.gildongmu.search.PlaceRow
 import space.dodoplanet.gildongmu.search.WebRow
 
@@ -53,8 +53,9 @@ fun cardPlaces(message: ChatMessage): List<Place> =
     message.renders.filterIsInstance<ChatRenderPayload.Places>().flatMap { it.places }
 
 /**
- * 산문 블록 하나(spec §3-3). 블록은 언제나 **한 접근성 객체**이고 카드 장소 언급 수로 활성화만 가른다:
- * 0개 = 평문 / 1개 = 블록 전체가 버튼(이름만 강조색) / 2개 이상 = 평문 + 장소마다 커스텀 액션(인라인 링크는 노드를 쪼개므로 만들지 않는다).
+ * 산문 블록 하나(spec §3-3). 블록은 언제나 **한 접근성 객체**다(iOS E72 위원장 판정 3·4): 언급 0개 = 평문, 1개 이상 = 평문(이름만 강조색) +
+ * 장소마다 작업 메뉴 「○○ 상세 보기」(언급 수와 무관하게 같다 — 종전 「1개면 블록 전체가 버튼」 갈래는 iOS가 버렸다, B21 ⑧).
+ * 인라인 링크는 노드를 쪼개므로 만들지 않는다. 화면에서 이름을 눌러 여는 길은 iOS E72 실기기 판정 뒤(B21 ⑨와 같은 판정).
  */
 @Composable
 fun AnswerBlock(
@@ -72,16 +73,14 @@ fun AnswerBlock(
     val accent = MaterialTheme.colorScheme.primary
     val text = inline.annotated().withNames(inline.plain, mentions.map { it.name }, SpanStyle(color = accent))
     val base = Modifier.fillMaxWidth()
-    val row = when (mentions.size) {
-        0 -> base.mergedRow(key, focus = targets.row(key))
-        1 -> base.clickable(role = Role.Button) { onOpenPlace(mentions[0], key) }.mergedRow(key, focus = targets.row(key))
-        else -> {
-            val actions = mentions.map { place ->
-                val label = appLocalized(res, R.string.android_chat_openPlace, bilingualName(lang, place.name, en = null, roman = place.nameRoman).primary)
-                CustomAccessibilityAction(label) { onOpenPlace(place, key); true }
-            }
-            base.mergedRow(key, focus = targets.row(key)).semantics { customActions = actions }
+    val row = if (mentions.isEmpty()) {
+        base.mergedRow(key, focus = targets.row(key))
+    } else {
+        val actions = mentions.map { place ->
+            val label = appLocalized(res, R.string.android_chat_openPlace, bilingualName(lang, place.name, en = null, roman = place.nameRoman).primary)
+            CustomAccessibilityAction(label) { onOpenPlace(place, key); true }
         }
+        base.mergedRow(key, focus = targets.row(key)).semantics { customActions = actions }
     }
     Text(
         text,
@@ -114,7 +113,6 @@ fun AnswerExtras(
     lang: String,
     targets: ChatFocusTargets,
     onOpenPlace: (Place, String) -> Unit,
-    onOpenAddress: (JusoAddress, String) -> Unit,
     onNoApp: () -> Unit,
     playing: Boolean,
     onListen: () -> Unit,
@@ -133,7 +131,7 @@ fun AnswerExtras(
                     for (place in render.places) {
                         key(place.id) {
                             val rowKey = "card-${message.id}-$r-${place.id}"
-                            PlaceRow(place, lang, onClick = { onOpenPlace(place, rowKey) }, modifier = Modifier.landingTarget(targets.row(rowKey)))
+                            PlaceRow(place, lang, actions = placeRowActions(place, onAskAbout = null), onClick = { onOpenPlace(place, rowKey) }, modifier = Modifier.landingTarget(targets.row(rowKey)))
                         }
                     }
                 }
@@ -142,7 +140,8 @@ fun AnswerExtras(
                     for (address in render.addresses) {
                         key(address.roadAddr) {
                             val rowKey = "address-${message.id}-$r-${address.roadAddr}"
-                            AddressRow(address, lang, Modifier.landingTarget(targets.row(rowKey)).clickable(role = Role.Button) { onOpenAddress(address, rowKey) })
+                            // 복사 셋만(B21 ⑧, iOS `addressCopyActions` — 주소 카드는 상세로 가지 않는다).
+                            AddressRow(address, lang, Modifier.landingTarget(targets.row(rowKey)))
                         }
                     }
                 }

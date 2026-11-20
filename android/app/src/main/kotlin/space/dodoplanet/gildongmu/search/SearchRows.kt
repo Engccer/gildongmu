@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.place.addressCopyActions
+import androidx.compose.ui.semantics.semantics
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.kit.formatDistance
@@ -53,11 +55,16 @@ fun placeSecondaryLine(place: Place, lang: String, distanceLabel: (String) -> St
     place.distanceMeters?.let { distanceLabel(formatDistance(it.toInt())) },
 )
 
-/** 장소 행: 이름 줄 + `분류, 주소, 거리` 줄을 한 객체로. `onClick`이 있으면 버튼(→ 상세), 없으면 텍스트 객체. */
+/**
+ * 장소 행: 이름 줄 + `분류, 주소, 거리` 줄을 한 객체로. `onClick`이 있으면 버튼(→ 상세), 없으면 텍스트 객체.
+ * 작업 메뉴 `actions`는 기본값이 없다 — 호출부가 장소 줄 동작 묶음(B21, `placeRowActions`: 전화 → 여기까지 길찾기 → 주소 복사 → 물어보기)을
+ * 넘기거나, 길찾기 진입이 없는 자리면 빈 목록으로 묶음째 달지 않는다(iOS `placeRowSwipeActions`를 거는 자리와 같다).
+ */
 @Composable
 fun PlaceRow(
     place: Place,
     lang: String,
+    actions: List<CustomAccessibilityAction>,
     secondaryOverride: String? = null,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -70,18 +77,22 @@ fun PlaceRow(
     val spoken = if (name.secondary == null) null else joinText(name.primary, secondary)
     val base = modifier.fillMaxWidth()
     val rowModifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base
-    Column(rowModifier.mergedRow("place-${place.id}", spoken).padding(vertical = 8.dp)) {
+    Column(rowModifier.mergedRow("place-${place.id}", spoken).semantics { customActions = actions }.padding(vertical = 8.dp)) {
         Text(name.display, style = MaterialTheme.typography.bodyLarge)
         if (secondary.isNotEmpty()) Text(secondary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
-/** 주소 행: `roadAddr, zipNo`. 비-ko는 시각 `engAddr (roadAddr), zipNo`, 낭독은 괄호 없이(E28 판정 ③). */
+/**
+ * 주소 행: `roadAddr, zipNo`. 비-ko는 시각 `engAddr (roadAddr), zipNo`, 낭독은 괄호 없이(E28 판정 ③).
+ * 작업 메뉴는 복사 셋(도로명 → 지번 → 영문, B21 ②) — 검색·채팅 주소 카드 공용이라 행이 스스로 단다.
+ */
 @Composable
 fun AddressRow(address: JusoAddress, lang: String, modifier: Modifier = Modifier) {
     val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
     val spoken = if (name.secondary == null) null else "${name.primary}, ${address.zipNo}"
-    Column(modifier.fillMaxWidth().mergedRow("address-${address.roadAddr}", spoken).padding(vertical = 8.dp)) {
+    val actions = addressCopyActions(address)
+    Column(modifier.fillMaxWidth().mergedRow("address-${address.roadAddr}", spoken).semantics { customActions = actions }.padding(vertical = 8.dp)) {
         Text("${name.display}, ${address.zipNo}", style = MaterialTheme.typography.bodyLarge)
     }
 }

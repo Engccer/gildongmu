@@ -48,7 +48,7 @@ class NearbyScreenA11yTest {
         }
         rule.setContent {
             MaterialTheme {
-                NearbyKindScreen(NearbyKindRoute.of(NearbyKind.subway, anchor), anchor, factory, NearbyNav({}, { _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true })
+                NearbyKindScreen(NearbyKindRoute.of(NearbyKind.subway, anchor, directionsEntryAllowed = true), anchor, factory, NearbyNav({}, { _, _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true })
             }
         }
         rule.enableAccessibilityChecks()
@@ -75,7 +75,7 @@ class NearbyScreenA11yTest {
         val factory = viewModelFactory {
             initializer { NearbyScreenViewModel(NearbyKinds.conditions(service, strings), NearbyCoordinateSource.Fixed(NearbyCoord(anchor.lat, anchor.lng)), strings, SavedStateHandle()) }
         }
-        rule.setContent { MaterialTheme { NearbyKindScreen(NearbyKindRoute.of(NearbyKind.conditions, anchor), anchor, factory, NearbyNav({}, { _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true }) } }
+        rule.setContent { MaterialTheme { NearbyKindScreen(NearbyKindRoute.of(NearbyKind.conditions, anchor, directionsEntryAllowed = true), anchor, factory, NearbyNav({}, { _, _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true }) } }
         rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTagPrefix("conditions-weather").fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle()
@@ -94,7 +94,7 @@ class NearbyScreenA11yTest {
         val factory = viewModelFactory {
             initializer { NearbyScreenViewModel(NearbyKinds.walkInfra(service, strings) { "오후 3:04" }, NearbyCoordinateSource.Fixed(NearbyCoord(anchor.lat, anchor.lng)), strings, SavedStateHandle()) }
         }
-        rule.setContent { MaterialTheme { NearbyKindScreen(NearbyKindRoute.of(NearbyKind.walkInfra, anchor), anchor, factory, NearbyNav({}, { _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true }) } }
+        rule.setContent { MaterialTheme { NearbyKindScreen(NearbyKindRoute.of(NearbyKind.walkInfra, anchor, directionsEntryAllowed = true), anchor, factory, NearbyNav({}, { _, _, _ -> }, {}), requestPrecise = { false }, isLocationEnabled = { true }) } }
         rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTagPrefix("walkinfra-top").fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle()

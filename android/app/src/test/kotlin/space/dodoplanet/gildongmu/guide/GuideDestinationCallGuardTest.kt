@@ -33,6 +33,7 @@ class GuideDestinationCallGuardTest {
             "directions/EndpointPicker.kt" to "        noteDestinationPhone(place)\n", // 끝점 검색 후보 선택(길찾기 폼·안내 시트 목적지 바꾸기, 수동 위치 지정은 {} 명시)
             "place/PlaceDetailScreen.kt" to "AppConfig.placePhoneBook.noteDestination(place)", // 「여기까지 길찾기」(「여기부터」는 목적지가 아니다)
             "guide/ui/GuideHereButtons.kt" to "AppConfig.placePhoneBook.noteDestination(place)", // 「여기로 목적지 변경」(경유지는 목적지가 아니다)
+            "place/PlaceRowActions.kt" to "AppConfig.placePhoneBook.noteDestination(place)", // 장소 줄 작업 메뉴 「여기까지 길찾기」(B21)
         )
         for ((file, needle) in sites) assertEquals(1, count(read(file), needle), file)
         // 지정 화면(수동 위치)은 목적지가 아니라 적지 않는다 — 명시적 빈 람다.

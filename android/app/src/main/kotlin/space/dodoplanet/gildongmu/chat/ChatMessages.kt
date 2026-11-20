@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
-import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.parseChatMarkdownBlocks
 
@@ -51,7 +50,6 @@ fun ChatMessageList(
     lang: String,
     targets: ChatFocusTargets,
     onOpenPlace: (Place, String) -> Unit,
-    onOpenAddress: (JusoAddress, String) -> Unit,
     onSubmitFollowUp: (String) -> Unit,
     onNoApp: () -> Unit,
     /** 재생 중인 답변 id(듣기 버튼 라벨 전환의 원천). */
@@ -73,7 +71,7 @@ fun ChatMessageList(
                             AnswerBlock("block-${message.id}-$index", block.text, block.isHeading, places, lang, targets, onOpenPlace)
                         }
                     }
-                    AnswerExtras(message, lang, targets, onOpenPlace, onOpenAddress, onNoApp, playing = message.id == playingId, onListen = { onListen(message) })
+                    AnswerExtras(message, lang, targets, onOpenPlace, onNoApp, playing = message.id == playingId, onListen = { onListen(message) })
                     if (message.id == lastId && !message.failed && followUps.isNotEmpty()) FollowUpChips(message.id, followUps, onSubmitFollowUp)
                 }
             }

@@ -28,10 +28,13 @@ import space.dodoplanet.gildongmu.kit.models.KidsPlace
 import space.dodoplanet.gildongmu.kit.models.NightClinic
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.nightClinicToPlace
+import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
+import space.dodoplanet.gildongmu.place.placeRowActions
 import space.dodoplanet.gildongmu.search.PlaceRow
 
 /**
- * 장소 목록형 본문 공용(clinic·barrierFree·kids·events — iOS 4뷰의 List 골격, spec §12-1). 행 = `PlaceRow` 버튼(→ 상세),
+ * 장소 목록형 본문 공용(clinic·barrierFree·kids·events — iOS 4뷰의 List 골격, spec §12-1). 행 = `PlaceRow` 버튼(→ 상세) + 장소 줄 동작 묶음(B21 ③,
+ * 「물어보기」에서 돌아오면 그 줄로 착지),
  * 착지·복귀 키 `place-{id}`, "더 보기"는 `vm.revealMore`, 머리·꼬리는 kind가 준다. 헤딩 없음(평면 1행=1객체, iOS 판정 동형).
  * 0건은 `NearbyShell`이 빈 문구로 먼저 가르므로 여기 오는 `items`는 비지 않는다.
  */
@@ -49,10 +52,13 @@ fun <T : Any, P : Any> PlaceListBody(
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val visibleCount by vm.visibleCount.collectAsState()
+    val rowNav = LocalPlaceRowNav.current
     header()
     for (item in items.take(visibleCount)) {
         val p = place(item)
-        PlaceRow(p, lang, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.landingTarget(requesterFor("place-${p.id}")))
+        val key = "place-${p.id}"
+        val actions = placeRowActions(p, rowNav?.let { nav -> { vm.returnFocus.remember(key); nav.openChat(p) } })
+        PlaceRow(p, lang, actions, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.landingTarget(requesterFor(key)))
     }
     if (items.size > visibleCount) {
         Button(onClick = { vm.revealMore(items.size) { i -> "place-${place(items[i]).id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }

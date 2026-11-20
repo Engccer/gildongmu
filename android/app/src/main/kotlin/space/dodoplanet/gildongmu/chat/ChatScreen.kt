@@ -29,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -51,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -190,8 +188,6 @@ private fun ChatConversation(
     val res = context.resources
     val lang = remember(res) { AppLocale.current(res) }
     val scroll = rememberScrollState()
-    // 주소 카드 지오코딩은 이 컴포지션 스코프에서 — 화면이 떠나면 취소되어 늦은 결과로 상세를 열지 않는다(spec §4-4)
-    val scope = rememberCoroutineScope()
     val sendFocus = remember { FocusRequester() }
     val targets = remember { ChatFocusTargets() }
     val barFocus = remember { FocusRequester() }
@@ -328,13 +324,6 @@ private fun ChatConversation(
                 onOpenPlace = { place, key ->
                     vm.rememberReturnFocus(key)
                     onOpenPlace(place)
-                },
-                onOpenAddress = { address, key ->
-                    scope.launch {
-                        val place = vm.resolveAddress(address) ?: return@launch
-                        vm.rememberReturnFocus(key)
-                        onOpenPlace(place)
-                    }
                 },
                 onSubmitFollowUp = { submitSuggestion(it) },
                 onNoApp = { vm.announce(noAppText) },

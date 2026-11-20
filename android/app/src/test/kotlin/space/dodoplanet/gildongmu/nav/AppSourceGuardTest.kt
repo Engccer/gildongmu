@@ -255,6 +255,7 @@ class AppSourceGuardTest {
         "directions_geoError" to "수동이 유지되는 동안 좌표 해석이 성공해 닿지 않고, 닿았다면 직전 판정이 해제한 뒤다(웹 근거)",
         "android_nearby_aroundHere" to "둘러보기 GPS 갈래 문구 — `aroundHereResId`가 수동을 가른다",
         "android_nearby_aroundHereNoPlace" to "둘러보기 GPS 갈래 문구 — `aroundHereResId`가 수동을 가른다",
+        "android_nearby_whereAmIChat" to "채팅 진입 버튼 — 열리는 대화의 앵커는 조회된 좌표(수동 반영)이고 호칭은 산문과 같은 층이다(웹 `KNOWN_UNBRANCHED_KEYS` `ios.nearby.whereAmIChat` 근거)",
         "android_common_locationFailed" to "측위 실패 제목 — 수동이면 좌표가 측위 없이 나오므로 GPS 갈래에서만 닿는다(웹 근거)",
         "android_common_outOfCoverage" to "제공 지역 밖 안내 — 기능 전체에 대한 참인 문장이고 수동 좌표가 밖이어도 그대로 참이다(웹 근거)",
         "directions_useCurrentLocation" to "출발지 picker의 GPS 선택 버튼 이름 — 확정 결과는 필드 문장(`currentLocationText`)이 수동을 가른다(웹 근거)",

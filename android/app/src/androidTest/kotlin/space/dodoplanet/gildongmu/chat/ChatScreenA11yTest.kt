@@ -2,7 +2,6 @@ package space.dodoplanet.gildongmu.chat
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -97,11 +96,11 @@ class ChatScreenA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("question-1").assertIsFocused() // 질문 id 1, 답변 id 2
         rule.onNodeWithTag("block-2-0").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertHasNoClickAction() // 헤딩 블록
-        // 장소 언급 1개 = 블록 전체가 한 노드 버튼
-        rule.onNodeWithTag("block-2-1").assertHasClickAction().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-        assertTrue(rule.onNodeWithTag("block-2-1").fetchSemanticsNode().config.isMergingSemanticsOfDescendants)
-        // 언급 2개 이상 = 버튼이 아니라 산문 등장 순 커스텀 액션
+        // 장소 언급 수와 무관하게 블록은 버튼이 아닌 한 객체 + 산문 등장 순 커스텀 액션(B21 ⑧, iOS E72)
         val res = rule.activity.resources
+        val one = rule.onNodeWithTag("block-2-1").assertHasNoClickAction().fetchSemanticsNode()
+        assertTrue(one.config.isMergingSemanticsOfDescendants)
+        assertEquals(1, one.config[SemanticsActions.CustomActions].size)
         val actions = rule.onNodeWithTag("block-2-2").assertHasNoClickAction().fetchSemanticsNode().config[SemanticsActions.CustomActions].map { it.label }
         assertEquals(listOf(appLocalized(res, R.string.android_chat_openPlace, "빵집 천호"), appLocalized(res, R.string.android_chat_openPlace, "카페 길동")), actions)
         rule.onNodeWithTag("place-c1").assertHasClickAction()

@@ -74,11 +74,32 @@ import space.dodoplanet.gildongmu.location.locationSourceSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
 import space.dodoplanet.gildongmu.place.PlaceDomain
 import space.dodoplanet.gildongmu.search.PlaceRow
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import space.dodoplanet.gildongmu.a11y.AppNotices
+import space.dodoplanet.gildongmu.directions.DirectionsPrefill
+import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
+import space.dodoplanet.gildongmu.kit.StationPhoneResult
+import space.dodoplanet.gildongmu.kit.models.NearbySubwayStation
+import space.dodoplanet.gildongmu.kit.models.TransitLegStop
+import space.dodoplanet.gildongmu.kit.nearbyStationLineHint
+import space.dodoplanet.gildongmu.kit.overviewAnchorPlace
+import space.dodoplanet.gildongmu.kit.overviewDetailTargets
+import space.dodoplanet.gildongmu.kit.transitStopPlace
+import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
+import space.dodoplanet.gildongmu.place.StationPhoneStore
+import space.dodoplanet.gildongmu.place.callStationPhone
+import space.dodoplanet.gildongmu.place.dial
+import space.dodoplanet.gildongmu.place.placeRowActions
 
 /** 화면이 요청하는 스택 이동(내비게이션은 `AppRoot` 몫). */
 class NearbyNav(
     val onBack: () -> Unit,
-    val onOpenPlace: (Place, PlaceDomain?) -> Unit,
+    /** 상세 열기. `stationLineHint`는 역 상세의 전화 조회 노선 힌트(E44) — 역이 아니면 null. */
+    val onOpenPlace: (Place, PlaceDomain?, stationLineHint: String?) -> Unit,
     val onOpenRouteStops: (BusRouteStopsRoute) -> Unit,
 )
 
@@ -89,15 +110,15 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
     when (route.kind) {
         NearbyKind.around -> {
             val vm: NearbyScreenViewModel<AroundPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place, key -> vm.returnFocus.remember(key); nav.onOpenPlace(place, null) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req, route.directionsEntryAllowed) { place, key, domain, hint -> vm.returnFocus.remember(key); nav.onOpenPlace(place, domain, hint) } }
         }
         NearbyKind.subway -> {
             val vm: NearbyScreenViewModel<SubwayNearbyResult> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> SubwayBody(p, req) }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> SubwayBody(p, req, route.directionsEntryAllowed) { place, key, hint -> vm.returnFocus.remember(key); nav.onOpenPlace(place, null, hint) } }
         }
         NearbyKind.bus -> {
             val vm: NearbyScreenViewModel<List<BusStop>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BusBody(p, req) { key, route -> vm.returnFocus.remember(key); nav.onOpenRouteStops(route) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BusBody(p, req, route.directionsEntryAllowed) { key, stops -> vm.returnFocus.remember(key); nav.onOpenRouteStops(stops) } }
         }
         NearbyKind.bike -> {
             val vm: NearbyScreenViewModel<List<BikeStation>> = viewModel(factory = factory)
@@ -105,19 +126,19 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
         }
         NearbyKind.clinic -> {
             val vm: NearbyScreenViewModel<ClinicPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> ClinicBody(p, vm, req) { c -> vm.returnFocus.remember("place-${c.id}"); nav.onOpenPlace(nightClinicToPlace(c), PlaceDomain.Clinic(c)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> ClinicBody(p, vm, req) { c -> vm.returnFocus.remember("place-${c.id}"); nav.onOpenPlace(nightClinicToPlace(c), PlaceDomain.Clinic(c), null) } }
         }
         NearbyKind.barrierFree -> {
             val vm: NearbyScreenViewModel<List<BarrierFreePlace>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BarrierFreeBody(p, vm, req) { b -> vm.returnFocus.remember("place-${b.contentId}"); nav.onOpenPlace(barrierFreePlaceToPlace(b), null) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BarrierFreeBody(p, vm, req) { b -> vm.returnFocus.remember("place-${b.contentId}"); nav.onOpenPlace(barrierFreePlaceToPlace(b), null, null) } }
         }
         NearbyKind.kids -> {
             val vm: NearbyScreenViewModel<List<KidsPlace>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> KidsBody(p, vm, req) { k -> vm.returnFocus.remember("place-${k.id}"); nav.onOpenPlace(kidsPlaceToPlace(k), null) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> KidsBody(p, vm, req) { k -> vm.returnFocus.remember("place-${k.id}"); nav.onOpenPlace(kidsPlaceToPlace(k), null, null) } }
         }
         NearbyKind.events -> {
             val vm: NearbyScreenViewModel<List<CultureEvent>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> EventsBody(p, vm, req) { e -> vm.returnFocus.remember("place-${e.id}"); nav.onOpenPlace(cultureEventToPlace(e), PlaceDomain.Event(e)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> EventsBody(p, vm, req) { e -> vm.returnFocus.remember("place-${e.id}"); nav.onOpenPlace(cultureEventToPlace(e), PlaceDomain.Event(e), null) } }
         }
         NearbyKind.walkInfra -> {
             val vm: NearbyScreenViewModel<WalkInfraPayload> = viewModel(factory = factory)
@@ -269,7 +290,12 @@ fun <P : Any> NearbyShell(
 // ── 도메인 본문(spec §3-6~3-9). 한 줄 = 한 객체, 거리는 보이는 글자 그대로(A75 판정 ⓐ). 낭독 이름은 병기처럼 글자와 다를 때만.
 
 @Composable
-private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> FocusRequester) {
+private fun SubwayBody(
+    result: SubwayNearbyResult,
+    requesterFor: (String) -> FocusRequester,
+    directionsEntryAllowed: Boolean,
+    onOpenStation: (Place, returnKey: String, lineHint: String?) -> Unit,
+) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val isEn = AppLocale.dataLocale(res) == "en"
@@ -277,10 +303,10 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
         val line = subwayStationLine(isEn, lang, station.stationName, station.nameEn, station.lines, station.linesEn)
         val distance = formatDistance(station.distanceMeters)
         val key = "station-${station.stationName}"
-        Text(
-            joinText(line.visual, distance),
-            Modifier.fillMaxWidth().mergedRow(key, joinText(line.spoken, distance).takeIf { it != joinText(line.visual, distance) }, focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
-            style = MaterialTheme.typography.titleMedium,
+        StationTitle(
+            station, joinText(line.visual, distance), joinText(line.spoken, distance).takeIf { it != joinText(line.visual, distance) }, key, requesterFor(key),
+            spokenName = subwayStationSpokenName(isEn, lang, station.stationName, station.nameEn, station.lines, station.linesEn),
+            directionsEntryAllowed = directionsEntryAllowed, onOpenStation = onOpenStation,
         )
         // 4-state를 뭉개지 않는다: 조회 실패 / 운행 시간 밖 / 실시간 미제공 / 정상(0건 포함)
         when {
@@ -299,17 +325,23 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
 }
 
 @Composable
-private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequester, onOpenRouteStops: (returnKey: String, BusRouteStopsRoute) -> Unit) {
+private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequester, directionsEntryAllowed: Boolean, onOpenRouteStops: (returnKey: String, BusRouteStopsRoute) -> Unit) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val hint = stringResource(R.string.android_nearby_routeStopsHint)
     val lowFloor = stringResource(R.string.android_nearby_lowFloor)
+    val toHere = stringResource(R.string.directions_toHere)
+    val rowNav = LocalPlaceRowNav.current
     for (stop in stops) {
         val heading = busStopHeading(stop, lang)
         val key = "stop-${stop.nodeId}"
+        // 정류소 제목 작업 메뉴(B21 ⑤, iOS E65 → E72): 정류소 상세 화면이 없어 「여기까지 길찾기」 하나뿐. 길찾기 진입을 숨긴 자리엔 없다.
+        val actions = if (directionsEntryAllowed && rowNav != null) listOf(
+            CustomAccessibilityAction(toHere) { rowNav.openDirections(DirectionsPrefill(DirectionsPrefillRole.to, stop.name, stop.lat, stop.lng, stop.nameRoman)); true },
+        ) else emptyList()
         Text(
             heading.visual,
-            Modifier.fillMaxWidth().mergedRow(key, heading.spoken.takeIf { it != heading.visual }, focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().mergedRow(key, heading.spoken.takeIf { it != heading.visual }, focus = requesterFor(key)).semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         when {
@@ -358,11 +390,22 @@ private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> Focu
 }
 
 @Composable
-private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place, returnKey: String) -> Unit) {
+private fun AroundBody(
+    payload: AroundPayload,
+    vm: NearbyScreenViewModel<AroundPayload>,
+    requesterFor: (String) -> FocusRequester,
+    directionsEntryAllowed: Boolean,
+    onOpenDetail: (Place, returnKey: String, PlaceDomain?, stationLineHint: String?) -> Unit,
+) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val visibleCount by vm.visibleCount.collectAsState()
     val overview = payload.overview
+    val onOpenPlace: (Place, String) -> Unit = { place, key -> onOpenDetail(place, key, null, null) }
+    // 「물어보기」(장소 줄·이 위치): 돌아오면 누른 줄로 착지한다. 행 묶음에 「여기까지 길찾기」가 들어 있어 길찾기 진입이 없는 자리에서는
+    // 묶음째 달지 않는다(iOS `directionsEntryAllowed`).
+    val rowNav = LocalPlaceRowNav.current?.takeIf { directionsEntryAllowed }
+    val askAbout: ((Place, String) -> Unit)? = rowNav?.let { nav -> { place, key -> vm.returnFocus.remember(key); nav.openChat(place) } }
 
     // 1. 위치 문장(헤딩, 첫 로드 착지 지점) — 내가 어디 서 있는지가 먼저 오는 질문이다. 수동 좌표로 조회했으면 "지정한 위치 기준"(spec §13-4, 완료 통지와 같은 술어).
     val placeName = overview?.place?.let { bilingualName(lang, it, en = null, roman = overview.placeRoman) }
@@ -375,8 +418,19 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
     val overviewHeading = stringResource(R.string.whereAmI_overview_heading)
     if (overview != null) {
         Text("$overviewHeading ${appLocalized(res, R.string.whereAmI_overview_radius, formatDistance(overview.radiusMeters))}", Modifier.fillMaxWidth().mergedRow("overview").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
-        buildOverviewLines(overview, lang).forEachIndexed { i, line ->
-            Text(line.display, Modifier.fillMaxWidth().mergedRow("overview-$i", line.text.takeIf { it != line.display }).padding(vertical = 8.dp))
+        overview.bullets.zip(buildOverviewLines(overview, lang)).forEachIndexed { i, (bullet, line) ->
+            // 문장이 부른 장소·역마다 「○○ 상세 보기」(B21 ⑥, iOS E65 — 채팅 산문·브리핑 동형, 문장 등장 순). 문장은 한 객체로 남는다.
+            // 화면에서 이름을 눌러 여는 길은 iOS E72 실기기 판정 뒤(B21 ⑨와 같은 판정).
+            val key = "overview-$i"
+            val actions = overviewDetailTargets(bullet, lang).map { target ->
+                val label = appLocalized(res, if (target.isStation) R.string.transitGuide_openStation else R.string.android_chat_openPlace, target.name)
+                CustomAccessibilityAction(label) { onOpenDetail(target.place, key, target.event?.let { PlaceDomain.Event(it) }, target.lineHint); true }
+            }
+            Text(
+                line.display,
+                Modifier.fillMaxWidth().mergedRow(key, line.text.takeIf { it != line.display }, focus = requesterFor(key))
+                    .semantics { if (actions.isNotEmpty()) customActions = actions }.padding(vertical = 8.dp),
+            )
         }
     } else if (payload.overviewFailed) {
         Text(overviewHeading, Modifier.fillMaxWidth().mergedRow("overview").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
@@ -384,9 +438,17 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
     }
 
     // 3. 주변 상황(M4 자동 펼침) — 한눈에 보기 다음, 가게 목록 앞(iOS 순서). 조용히 나타나는 섹션이라 헤딩이 발견 경로.
-    SceneAutoSection(payload, vm, requesterFor, onOpenPlace)
+    SceneAutoSection(payload, vm, requesterFor, askAbout, onOpenPlace)
 
-    // 4. 주변 가게와 시설 — 장소 행은 버튼(상세), 더 보기
+    // 4. 이 위치에 관해 물어보기(B21 ⑦, iOS `ios.nearby.whereAmIChat`). 조망이 있을 때만(앵커 이름이 그 문장 재료다).
+    if (rowNav != null && overview != null) {
+        Button(
+            onClick = { vm.returnFocus.remember(WHERE_AM_I_CHAT_KEY); rowNav.openChat(overviewAnchorPlace(overview, payload.lat, payload.lng, lang)) },
+            Modifier.fillMaxWidth().tapTarget().testTag(WHERE_AM_I_CHAT_KEY).landingTarget(requesterFor(WHERE_AM_I_CHAT_KEY)),
+        ) { Text(stringResource(R.string.android_nearby_whereAmIChat)) }
+    }
+
+    // 5. 주변 가게와 시설 — 장소 행은 버튼(상세) + 장소 줄 동작(B21 ③), 더 보기
     Text(stringResource(R.string.android_nearby_aroundPlacesHeading), Modifier.fillMaxWidth().mergedRow("places").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
     val places = payload.places
     if (places == null) {
@@ -402,12 +464,69 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
                 distance = { appLocalized(res, R.string.place_distance, it) },
             )
             val place = surroundingPlaceToPlace(p)
-            PlaceRow(place, lang, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.landingTarget(requesterFor("place-${place.id}")))
+            val key = "place-${place.id}"
+            val actions = if (askAbout != null) placeRowActions(place) { askAbout(place, key) } else emptyList()
+            PlaceRow(place, lang, actions, secondaryOverride = secondary, onClick = { onOpenPlace(place, key) }, modifier = Modifier.landingTarget(requesterFor(key)))
         }
         if (places.size > visibleCount) {
             Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
         }
     }
+}
+
+/** 둘러보기 「이 위치에 관해 물어보기」 버튼의 testTag이자 복귀 착지 키. */
+private const val WHERE_AM_I_CHAT_KEY = "whereAmIChat"
+
+/**
+ * 역 제목(헤딩) + 작업 메뉴(B21 ④, iOS `StationTitleActions` E65 → E72): 전화 걸기 → 여기까지 길찾기 → 상세 보기. 좌표(옵트인 `coords=1`)가 없는
+ * 응답이면 셋 다 없다. 전화 동작은 늘 있고 라벨만 직통·대표번호로 갈린다(E45 판정 ④) — 결과(없음·찾는 중·실패)는 화면 통지 창구로 문장·진동.
+ * **전화 저장소는 이 하위 컴포저블만 관찰한다** — 목록 본문이 읽으면 번호 도착·재확인마다 목록 전체가 다시 그려진다(`BriefingStationRow` 동형).
+ * 좌표 유무로 본문을 가르지 않는다(가르면 좌표가 생기는 순간 헤딩 노드가 바뀌어 커서가 풀린다).
+ */
+@Composable
+private fun StationTitle(
+    station: NearbySubwayStation,
+    visual: String,
+    spoken: String?,
+    key: String,
+    focus: FocusRequester,
+    spokenName: String,
+    directionsEntryAllowed: Boolean,
+    onOpenStation: (Place, returnKey: String, lineHint: String?) -> Unit,
+    store: StationPhoneStore = StationPhoneStore.shared,
+) {
+    val context = LocalContext.current
+    val res = context.resources
+    val rowNav = LocalPlaceRowNav.current
+    val results by store.results.collectAsState()
+    val lineHint = nearbyStationLineHint(station.lines)
+    val lat = station.lat
+    val lng = station.lng
+    // 목록이 보이는 동안(STARTED) 이 역의 번호를 신선하게 유지한다(저장소는 갱신되지 않은 값을 6분에 지운다, 브리핑 E45 동형).
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    if (lat != null && lng != null) LaunchedEffect(station.stationName, lineHint, lat, lng, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { store.keepFresh(station.stationName, lat, lng, lineHint.orEmpty()) }
+    }
+    val actions = if (lat == null || lng == null) emptyList() else {
+        val stop = TransitLegStop(name = station.stationName, lat = lat, lng = lng, nameEn = station.nameEn)
+        val looked = StationPhoneStore.key(station.stationName, lat, lng, lineHint.orEmpty())?.let { results[it] }
+        buildList {
+            add(CustomAccessibilityAction(appLocalized(res, if (looked is StationPhoneResult.Representative) R.string.transitGuide_callStationRepresentative else R.string.transitGuide_callStation, spokenName)) {
+                callStationPhone(store, stop, lineHint.orEmpty(), context::dial)?.let { AppNotices.post(res.getString(it.text), haptic = it.haptic) }
+                true
+            })
+            if (directionsEntryAllowed && rowNav != null) add(CustomAccessibilityAction(res.getString(R.string.directions_toHere)) {
+                rowNav.openDirections(DirectionsPrefill(DirectionsPrefillRole.to, station.stationName, lat, lng, station.nameEn))
+                true
+            })
+            add(CustomAccessibilityAction(appLocalized(res, R.string.transitGuide_openStation, spokenName)) { onOpenStation(transitStopPlace(stop), key, lineHint); true })
+        }
+    }
+    Text(
+        visual,
+        Modifier.fillMaxWidth().mergedRow(key, spoken, focus = focus).semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().padding(top = 12.dp, bottom = 4.dp),
+        style = MaterialTheme.typography.titleMedium,
+    )
 }
 
 /** 지하철 도착 한 줄(§3-7 `subwayArrivalLine`) — 내 주변 지하철 화면과 장소 상세 역 도착 섹션이 공유한다. */

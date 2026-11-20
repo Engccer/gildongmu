@@ -40,6 +40,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
+import space.dodoplanet.gildongmu.place.placeRowActions
 import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
 import space.dodoplanet.gildongmu.settings.SettingsAction
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -173,7 +175,10 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}, onOpenS
             }
 
             s.outcome?.let { outcome ->
-                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion) { place ->
+                // 장소 줄 「물어보기」(B21): 돌아오면 그 줄로 착지한다(상세 열기와 같은 복귀 키).
+                val rowNav = LocalPlaceRowNav.current
+                val onAskPlace: ((Place) -> Unit)? = rowNav?.let { nav -> { place -> vm.rememberReturnFocus("place-${place.id}"); nav.openChat(place) } }
+                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion, onAskPlace) { place ->
                     vm.rememberReturnFocus("place-${place.id}")
                     onOpenPlace(place)
                 }
@@ -223,6 +228,7 @@ private fun ResultSections(
     rowFocusFor: (String) -> FocusRequester,
     onBucket: (String?) -> Unit,
     onRegion: (String?) -> Unit,
+    onAskPlace: ((Place) -> Unit)?,
     onOpenPlace: (Place) -> Unit,
 ) {
     val sections = outcome.orderedSections
@@ -234,7 +240,7 @@ private fun ResultSections(
         when (section) {
             is SearchSection.Places -> {
                 if (showHeadings) SectionHeading(stringResource(R.string.search_placeSection))
-                PlacesSection(section.items, bucket, region, lang, onBucket, onRegion, ::rowModifier, onOpenPlace)
+                PlacesSection(section.items, bucket, region, lang, onBucket, onRegion, ::rowModifier, onAskPlace, onOpenPlace)
             }
             is SearchSection.Addresses -> {
                 if (showHeadings) SectionHeading(stringResource(R.string.search_addressSection))
@@ -263,6 +269,7 @@ private fun PlacesSection(
     onBucket: (String?) -> Unit,
     onRegion: (String?) -> Unit,
     rowModifier: (String) -> Modifier,
+    onAskPlace: ((Place) -> Unit)?,
     onOpenPlace: (Place) -> Unit,
 ) {
     val bucketItems = bucketsPresent(base).map { key -> ChipItem(key, bucketLabel(key, lang), filterPlacesByBucket(base, key).size) }
@@ -274,6 +281,6 @@ private fun PlacesSection(
         Text(stringResource(R.string.search_noFilterResults), Modifier.padding(vertical = 8.dp))
     } else {
         // 장소 행은 버튼 → 상세(M1 §9-3 해제)
-        for (place in filtered) PlaceRow(place, lang, onClick = { onOpenPlace(place) }, modifier = rowModifier("place-${place.id}"))
+        for (place in filtered) PlaceRow(place, lang, actions = placeRowActions(place, onAskPlace?.let { ask -> { ask(place) } }), onClick = { onOpenPlace(place) }, modifier = rowModifier("place-${place.id}"))
     }
 }
