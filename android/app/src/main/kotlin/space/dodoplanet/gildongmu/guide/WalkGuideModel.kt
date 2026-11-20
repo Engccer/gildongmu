@@ -980,6 +980,7 @@ class WalkGuideModel(
     /** 시작 실패 행 소거(해결 버튼 뒤·다른 시작 앞·승차 전 도보 재시작 줄 거두기 `GuideSession.retirePrewalkRestart`). */
     fun clearFailure() {
         if (!status.isFailure) return
+        pendingFailLanding = false  // 거둔 실패 행의 착지가 다음 실패 없는 화면에서 포커스를 당기지 않게
         status = GuideStatus.idle
         statusText = ""
         failResolution = FailResolution.none

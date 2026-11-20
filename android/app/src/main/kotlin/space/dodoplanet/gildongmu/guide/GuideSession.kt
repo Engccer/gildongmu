@@ -79,7 +79,7 @@ data class TransitStartRequest(val route: TransitRoute, val destinationLabel: St
  *
  * `attach`는 멱등이다(리뷰 N3-1). 도보 안내는 정식 기능이라 빌드 구성 게이트가 없다(E43 우선순위 4, iOS 2026-08-15 졸업 동형).
  * 공개 시작 함수는 수단마다 하나다(`startWalk`·`startCar`·`startTransit`, M5 spec §2-2·§6-6). 소스 가드가 호출부를 잠근다: `startWalk(`은
- * `WalkGuideStartButton.kt`와 이 파일의 자동차 도착 뒤 인계·하차 인계, `startCar(`는 `CarGuideStartButton.kt`, `startTransit(`은 아직 0(진입점 단계).
+ * `WalkGuideStartButton.kt`와 이 파일의 자동차 도착 뒤 인계·하차 인계, `startCar(`는 `CarGuideStartButton.kt`, `startTransit(`은 `TransitGuideStartButton.kt` 하나.
  *
  * 모델은 둘이다(M5 §6): 도보·자동차 `walk`와 대중교통 `transit`. 둘은 포커스·톤 재생기·TTS·진동·전경 서비스 컨트롤러 한 벌을 공유하고(§6-5), 서비스의
  * 다섯 경로는 `serviceOwner()` 한 지점이 세대를 대조해 고른 소유자에게 간다(§6-4). 둘이 동시에 추적하는 순간은 코디네이터 점유가 막는다.
@@ -157,11 +157,12 @@ object GuideSession {
     val isActive: Boolean get() = coordinator.isActive || (::walk.isInitialized && walk.ui.value.starting)
 
     /**
-     * 길찾기 대중교통 시작 버튼이 마지막으로 연 경로(`TransitRoute.routeKey`, iOS 화면 상태 `lastGuideStart = .transitAlt(routeKey)`의 안드로이드 자리) — 그 시작이
+     * 길찾기 대중교통 시작 버튼이 마지막으로 연 경로 객체(iOS 화면 상태 `lastGuideStart = .transitAlt(routeKey)`의 안드로이드 자리) — 그 시작이
      * 연 승차 전 도보가 실패하면 시작 실패 행을 그 경로 버튼 아래에 세운다. 도보·자동차의 공개 시작이 지운다.
+     * ⚠ `routeKey`(`p0`·`p1`…)는 한 응답 안에서만 유일하다 — 새 조회의 같은 키 경로 아래 옛 실패가 서지 않게 객체 동일성(`===`)으로 가른다.
      */
-    private val _transitStartRouteKey = MutableStateFlow<String?>(null)
-    val transitStartRouteKey: StateFlow<String?> = _transitStartRouteKey.asStateFlow()
+    private val _transitStartRoute = MutableStateFlow<TransitRoute?>(null)
+    val transitStartRoute: StateFlow<TransitRoute?> = _transitStartRoute.asStateFlow()
 
     /**
      * 띄울 시트(M5 §6-7, iOS `screen` 동형): 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 하차 인계
@@ -298,14 +299,14 @@ object GuideSession {
     /** 도보 안내 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
     fun startWalk(request: WalkStartRequest) {
         if (!isAttached || refuseIfActive()) return
-        _transitStartRouteKey.value = null
+        _transitStartRoute.value = null
         beginBeacon(request)
     }
 
     /** 자동차 안내 시작 진입점(M5) — 도보와 같은 거부 판정·같은 본문. 길찾기 자동차 결과의 「자동차 안내 시작」만 부른다. */
     fun startCar(request: CarStartRequest) {
         if (!isAttached || refuseIfActive()) return
-        _transitStartRouteKey.value = null
+        _transitStartRoute.value = null
         beginBeacon(request)
     }
 
@@ -400,10 +401,11 @@ object GuideSession {
     /** 같은 계층 두 시트의 단일 표시(앞 시트가 내려간 뒤 뒤 시트가 뜬다) — 하차 인계·승차 전 도보 도착·환승 도보가 같은 값(iOS 600ms). */
     private const val HANDOFF_GAP_MS = 600L
 
-    /** 대중교통 안내 시작 진입점(M5 §6-6). ① 거부 통지 ② 본문. 진입점(길찾기 대중교통 줄의 시작 버튼)은 다음 단계가 단다. */
+    /** 대중교통 안내 시작 진입점(M5 §6-6). ① 거부 통지 ② 본문. 진입점은 길찾기 대중교통 줄의 시작 버튼(`TransitGuideStartButton`). */
     fun startTransit(request: TransitStartRequest) {
         if (!isAttached || !hasTransit || refuseIfActive()) return
-        _transitStartRouteKey.value = request.route.routeKey
+        walk.clearFailure()  // 지난 도보(인계 도보 등)의 실패가 이 경로 버튼 아래 서지 않게 — 승차 전 도보가 없는 경로는 `retirePrewalkRestart`를 지나지 않는다
+        _transitStartRoute.value = request.route
         beginTransit(request)
     }
 

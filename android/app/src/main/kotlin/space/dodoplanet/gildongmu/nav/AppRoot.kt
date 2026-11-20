@@ -123,8 +123,9 @@ fun AppRoot(factories: AppFactories) {
     // 판정은 프로세스 수명 1회(iOS `.task`가 `.id` 재생성 밖이라 언어 전환에 다시 돌지 않는 것과 같다) — 닫은 공지가 언어 전환의 액티비티 재생성에 다시 뜨지 않게.
     LaunchedEffect(releaseNotice) {
         if (ReleaseNotice.judgedThisProcess) return@LaunchedEffect
+        val confirmed = releaseNotice.isConfirmed()  // 읽는 사이 재생성되면 이 잡은 취소되고 새 화면이 다시 판정한다 — 표식은 읽은 뒤에 세운다
         ReleaseNotice.judgedThisProcess = true
-        if (!releaseNotice.isConfirmed()) releaseNoticeOpen = true
+        if (!confirmed) releaseNoticeOpen = true
     }
 
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {

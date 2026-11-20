@@ -36,20 +36,20 @@ fun TransitGuideStartButton(route: TransitRoute, name: String, dest: BeaconDest,
     val res = LocalContext.current.resources
     val strings = remember(res) { guideStrings(res) }
     val ui by GuideSession.walk.ui.collectAsState()
-    val startedKey by GuideSession.transitStartRouteKey.collectAsState()
+    val started by GuideSession.transitStartRoute.collectAsState()
     Column(Modifier.fillMaxWidth()) {
         Button(
             // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(iOS 같은 자리, `accessible: false`).
             onClick = { GuideSession.startTransit(TransitStartRequest(route, label, dest, accessible = false)) },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-start-transit-${route.routeKey}").padding(vertical = 4.dp),
         ) { Text(strings.get("beacon.guideStartTransitAlt", name)) }
-        if (transitStartFailureShown(ui, startedKey, route.routeKey)) GuideStartFailureRow(ui, strings)
+        if (transitStartFailureShown(ui, started, route)) GuideStartFailureRow(ui, strings)
     }
 }
 
 /** 이 경로의 시작 버튼 아래 시작 실패 행을 세우는가 — 승차 전 도보(줄 없는 도보 시작)가 이 경로의 대중교통 시작에서 나왔을 때만. */
-fun transitStartFailureShown(ui: WalkGuideUiState, startedRouteKey: String?, routeKey: String): Boolean =
-    startedRouteKey == routeKey && ui.lastStartKind == GuideSessionKind.walk && ui.lastStartLine == null
+fun transitStartFailureShown(ui: WalkGuideUiState, startedRoute: TransitRoute?, route: TransitRoute): Boolean =
+    startedRoute === route && ui.lastStartKind == GuideSessionKind.walk && ui.lastStartLine == null
 
 /**
  * 대중교통 시작 버튼 조립: 도착 좌표가 있을 때만(도착 = `promotedDestination ?: (to as Place)`, 도보·자동차 슬롯과 같은 규칙, `to == Current`면 없음).

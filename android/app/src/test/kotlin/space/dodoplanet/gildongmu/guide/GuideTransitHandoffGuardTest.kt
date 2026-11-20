@@ -33,8 +33,18 @@ class GuideTransitHandoffGuardTest {
         // 진입점이 열렸으니 두 모델 훅이 배선돼 있어야 한다(⑥) — 비어 있으면 `completeOrAdvance`가 환승 도보를 건너뛴다.
         assertTrue(body("private fun wireTransitHooks(").contains("model.onTransferWalk = ::transitTransferWalk"))
         // 시작 실패 행 표식: 대중교통 시작만 세우고 도보·자동차 공개 시작은 지운다(거부 판정 뒤).
-        assertTrue(body("fun startTransit(").let { it.indexOf("refuseIfActive()") < it.indexOf("_transitStartRouteKey.value = request.route.routeKey") })
-        for (fn in listOf("fun startWalk(", "fun startCar(")) assertTrue(body(fn).contains("_transitStartRouteKey.value = null"), fn)
+        // 지난 도보의 실패도 거둔다 — 승차 전 도보 없는 경로가 인계 도보의 옛 실패 행을 물려받지 않게(리뷰 지적 1).
+        assertTrue(body("fun startTransit(").let { b -> b.indexOf("refuseIfActive()").let { r -> r >= 0 && r < b.indexOf("walk.clearFailure()") && b.indexOf("walk.clearFailure()") < b.indexOf("_transitStartRoute.value = request.route") } })
+        for (fn in listOf("fun startWalk(", "fun startCar(")) assertTrue(body(fn).let { b -> b.indexOf("refuseIfActive()").let { r -> r >= 0 && r < b.indexOf("_transitStartRoute.value = null") } }, fn)
+        // 버튼은 키가 아니라 경로 객체로 가른다 — `routeKey`는 한 응답 안에서만 유일하다(리뷰 지적 2).
+        assertTrue(button.contains("startedRoute === route"), "객체 동일성")
+        // 슬롯 배선: 길찾기 화면이 넘기고 대중교통 펼침 본문의 첫 항목으로 그린다(null로 바꾸면 버튼이 조용히 사라진다).
+        val dirs = pkg.resolve("directions")
+        assertTrue(code(dirs.resolve("DirectionsScreen.kt").readText()).contains("guideStart = transitGuideStartSlot(s)"), "길찾기 화면 배선")
+        val rows = dirs.resolve("RouteRows.kt").readLines()
+        val open = rows.indexOfFirst { "DisclosureRow(" in it && "tag = \"transit-\$key\"" in it }
+        val first = rows.drop(open + 1).first { it.isNotBlank() && !it.trim().startsWith("//") }
+        assertEquals("guideStart?.invoke(entry.route, entry.name)", first.trim(), "펼침 본문 첫 항목")
         assertEquals(1, Regex("""\bstartTransit\(""").findAll(code(session)).count(), "정의 한 곳뿐")
         assertTrue(body("fun startTransit(").contains("refuseIfActive()"), "공개 시작은 거부 판정을 먼저 지난다")
     }

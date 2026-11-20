@@ -21,6 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /** 도보 워치독이 무한 루프라 `advanceUntilIdle`은 끝나지 않는다 — 현재 시각의 태스크만 소진한다. */
@@ -253,19 +254,19 @@ class GuideTransitHandoffTest {
         val request = t.request()
         GuideSession.startTransit(request)
         settle()
-        val key = request.route.routeKey
-        assertEquals(key, GuideSession.transitStartRouteKey.value)
+        val route = request.route
+        assertSame(route, GuideSession.transitStartRoute.value)
         val ui = w.model.ui.value
         assertTrue(ui.status.isFailure)
-        assertTrue(transitStartFailureShown(ui, GuideSession.transitStartRouteKey.value, key))
-        assertFalse(transitStartFailureShown(ui, GuideSession.transitStartRouteKey.value, key + "-other"), "다른 경로 버튼 아래엔 없다")
+        assertTrue(transitStartFailureShown(ui, GuideSession.transitStartRoute.value, route))
+        assertFalse(transitStartFailureShown(ui, GuideSession.transitStartRoute.value, route.copy()), "키가 같은 새 조회의 경로 객체 아래엔 없다")
         after(9_000)
         t.model.stop(playStopTone = false)
         // 도보 공개 시작은 표식을 지운다 — 그 도보의 실패가 대중교통 버튼 아래로 가지 않게.
         GuideSession.startWalk(WalkStartRequest(t.dest, "목적지", accessible = false, variant = null, line = null, alternate = null, waypoint = null, exitLead = null))
         settle()
-        assertNull(GuideSession.transitStartRouteKey.value)
-        assertFalse(transitStartFailureShown(w.model.ui.value, GuideSession.transitStartRouteKey.value, key))
+        assertNull(GuideSession.transitStartRoute.value)
+        assertFalse(transitStartFailureShown(w.model.ui.value, GuideSession.transitStartRoute.value, route))
     }
 
     @Test fun `탔다 신호는 승차 전 도보 재시작 줄을 거둔다`() = joint { w, t ->
