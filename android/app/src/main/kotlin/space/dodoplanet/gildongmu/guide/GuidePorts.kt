@@ -35,7 +35,7 @@ interface GuideServiceOwner {
     /** 서비스가 열 위치 스트림의 모양. null = 서비스가 필요 없다. 바뀌면 서비스가 스트림을 다시 연다. */
     val locationProfile: StateFlow<GuideLocationProfile?>
 
-    /** 지금 상태의 알림 (제목, 본문). 알림을 낼 상태가 아니면(추적 아님) null. 서비스는 [notificationChanges]마다 다시 읽고 `distinctUntilChanged`만 한다. */
+    /** 지금 상태의 알림 (제목, 본문). 알림을 낼 상태가 아니면 null(도보는 추적 아님, 대중교통은 keep-alive 가동 아님 — 세션이 이어져도 서비스가 내려가면 null). 서비스는 [notificationChanges]마다 다시 읽고 `distinctUntilChanged`만 한다. */
     fun notificationText(strings: Strings): Pair<String, String>?
 
     /** 알림 문장이 바뀔 수 있는 상태 변화 신호(관찰 상태 그대로). */

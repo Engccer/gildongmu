@@ -335,9 +335,13 @@ class TransitGuideModel(
 
     override val locationProfile: StateFlow<GuideLocationProfile?> get() = keepAliveWanted
 
-    /** 알림 (제목, 본문) — 제목은 시트 제목(`beacon.transitHeading` + 목적지), 본문은 띠바 문장(iOS `GildongmuApp` 띠바 대중교통 갈래). */
+    /**
+     * 알림 (제목, 본문) — 제목은 시트 제목(`beacon.transitHeading` + 목적지), 본문은 띠바 문장(iOS `GildongmuApp` 띠바 대중교통 갈래).
+     * keep-alive가 가동 중일 때만 낸다: 세션이 이어지는 채 서비스만 내리는 전이(arrived·다음 구간 대기)에서 서비스의 알림 갱신이
+     * 내려간 서비스 뒤에 알림을 다시 게시해 남기지 않게(단계 4 리뷰 지적).
+     */
     override fun notificationText(strings: Strings): Pair<String, String>? =
-        ui.value.takeIf { it.isTracking }?.let { transitNotificationTitleText(it, strings) to transitBandSummaryText(it, strings) }
+        ui.value.takeIf { it.isTracking && keepAliveRunning }?.let { transitNotificationTitleText(it, strings) to transitBandSummaryText(it, strings) }
 
     override val notificationChanges: Flow<*> get() = ui
 

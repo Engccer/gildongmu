@@ -210,10 +210,13 @@ class TransitGuideRidingTest {
         assertEquals(GuideLocationProfile.keepAliveBus, h.model.locationProfile.value, "버스 riding은 프로파일만 올린다 — 서비스가 스트림을 다시 연다")
         assertEquals(1, h.controller.starts, "프로파일 전환은 서비스를 다시 켜지 않는다")
         assertEquals(generation, h.model.serviceGeneration)
+        assertNotNull(h.model.notificationText(h.catalog), "가동 중엔 알림 문장이 있다")
         h.model.declareArrived()
         assertNull(h.model.serviceGeneration)
         assertEquals(1, h.controller.stops, "원함이 지면 그 세대를 내린다")
         assertNull(h.controller.current)
+        assertTrue(h.model.ui.value.isTracking, "arrived는 세션이 이어진다")
+        assertNull(h.model.notificationText(h.catalog), "서비스가 내려간 뒤 알림 갱신이 알림을 되살리지 않는다")
     }
 
     @Test fun `keep-alive 시작 거부는 세션을 끝내지 않고 원함을 남기며 전경 복귀가 다시 켠다`() = transitTest(dispatcher) { h ->
