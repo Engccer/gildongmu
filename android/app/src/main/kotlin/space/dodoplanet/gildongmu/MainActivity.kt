@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,6 +38,7 @@ import space.dodoplanet.gildongmu.kit.WalkInfraService
 import space.dodoplanet.gildongmu.nearby.NearbyServices
 import space.dodoplanet.gildongmu.location.LocationPermission
 import space.dodoplanet.gildongmu.nav.AppFactories
+import space.dodoplanet.gildongmu.nav.AppSession
 import space.dodoplanet.gildongmu.nav.AppRoot
 import space.dodoplanet.gildongmu.nearby.busRouteStopsFactory
 import space.dodoplanet.gildongmu.nearby.nearbyFactory
@@ -58,6 +60,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 앱 바로가기(B22 ④): 정적 바로가기는 새 태스크로 이 액티비티를 다시 만든다. 구성 변경 재생성은 같은 인텐트를 다시 들고 오므로 첫 생성만 받는다.
+        if (savedInstanceState == null) AppSession.offer(intent?.action)
         // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).
         val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             AppConfig.permissionGate.deliver()
@@ -111,6 +115,11 @@ class MainActivity : ComponentActivity() {
                 AppRoot(factories)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        AppSession.offer(intent.action)
     }
 
     override fun onDestroy() {

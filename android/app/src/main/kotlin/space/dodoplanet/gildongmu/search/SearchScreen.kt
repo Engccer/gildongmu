@@ -42,6 +42,10 @@ import android.util.Log
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.place.LocalPlaceRowNav
 import space.dodoplanet.gildongmu.place.placeRowActions
+import space.dodoplanet.gildongmu.chat.DictationControls
+import space.dodoplanet.gildongmu.chat.dictationNoticeText
+import space.dodoplanet.gildongmu.chat.rememberDictation
+import space.dodoplanet.gildongmu.nav.AppSession
 import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
 import space.dodoplanet.gildongmu.settings.SettingsAction
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -66,16 +70,31 @@ import space.dodoplanet.gildongmu.kit.regionsPresent
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}, onOpenSettings: () -> Unit = {}, takeSettingsReturn: () -> String? = { null }) {
+fun SearchScreen(
+    vm: SearchViewModel,
+    onOpenPlace: (Place) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    takeReturn: () -> String? = { null },
+    onPickLocation: () -> Unit = {},
+) {
     val settingsFocus = remember { FocusRequester() }
+    val dictationFocus = remember { FocusRequester() }
     // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1; 결과 행 슬롯과 별개 — 결과 없는 첫 진입에서도 살아 있다)
     LaunchedEffect(Unit) {
-        if (takeSettingsReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        if (takeReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
         withFrameNanos { }
         runCatching { settingsFocus.requestFocus() }.onFailure { Log.w("SearchScreen", "설정 복귀 착지 실패", it) }
     }
     val s by vm.state.collectAsState()
     val res = LocalContext.current.resources
+    // 받아쓰기(B22 ①, iOS `SearchView` 마이크 행): 탭 토글, 전사를 다듬어 바로 검색. 통지는 `submit`의 "‘…’ 검색 중"이 전사를 싣고,
+    // 포커스는 옮기지 않는다 — 다음 행동(결과 확인)의 목적지는 결과 도착의 첫 결과 착지다(iOS 동형). 게이트 미충족이면 null = 버튼 0.
+    val dictation = rememberDictation(
+        onTranscript = vm::submitVoice,
+        onNotice = { vm.announce(dictationNoticeText(res, it)) },
+    )
+    val voiceStart by AppSession.voiceStartRequested.collectAsState()
+    LaunchedEffect(voiceStart) { if (dictation == null && voiceStart) AppSession.voiceStartRequested.value = false } // 받아쓰기 없는 기기 — 신호만 버린다
     val lang = remember(res) { AppLocale.current(res) }
     val fieldFocus = remember { FocusRequester() }
     val buttonFocus = remember { FocusRequester() }
@@ -149,6 +168,17 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}, onOpenS
                     // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
                     .semantics { if (s.isSearching) stateDescription = searchingLabel },
             ) { Text(stringResource(R.string.search_button)) }
+
+            if (dictation != null) {
+                DictationControls(
+                    dictation,
+                    onNoApp = { vm.announce(res.getString(R.string.android_common_noAppToOpen)) },
+                    tag = "search-dictation",
+                    focus = dictationFocus,
+                    autoStart = voiceStart,
+                    onAutoStartConsumed = { AppSession.voiceStartRequested.value = false },
+                )
+            }
 
             StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
 

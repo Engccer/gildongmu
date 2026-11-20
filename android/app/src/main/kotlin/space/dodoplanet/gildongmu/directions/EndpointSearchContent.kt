@@ -35,18 +35,23 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.chat.DictationControls
+import space.dodoplanet.gildongmu.chat.dictationNoticeText
+import space.dodoplanet.gildongmu.chat.rememberDictation
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.joinText
 
 /**
  * 끝점 검색(spec §3-2, iOS `DirectionsEndpointSearchView` 대응). 폼을 덮는 모달 콘텐츠 — 상단 바의 뒤로 버튼이 닫기(취소)이고
- * 진입 착지는 검색 입력, 후보 도착은 첫 후보. 받아쓰기 행은 없다(D9 — 마이크 마일스톤이 검색 버튼 뒤에 넣는다).
+ * 진입 착지는 검색 입력, 후보 도착은 첫 후보. 받아쓰기는 검색 버튼 뒤(B22 ②, iOS 마이크 행 동형 — 탭 토글): 전사를 다듬어 입력에 넣고
+ * 원문을 통지한 뒤 바로 후보 검색, 후보 수 통지는 `submitCandidates`가 낸다. 포커스는 옮기지 않는다(선택은 후보 목록 스와이프, iOS 동형).
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -60,6 +65,10 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
     val searchingLabel = strings.get("android.search.searching")
+    val dictation = rememberDictation(
+        onTranscript = picker::submitVoice,
+        onNotice = { picker.postNotice(dictationNoticeText(res, it)) },
+    )
 
     // 진입 착지 = 검색 입력(커서가 최상단에 머물면 필드까지 스와이프해 내려가야 한다는 실기기 확인).
     LaunchedEffect(Unit) {
@@ -124,6 +133,9 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                     .landingTarget(searchButtonFocus)
                     .semantics { if (p.isSearching) stateDescription = searchingLabel },
             ) { Text(strings.get("search.button")) }
+            if (dictation != null) {
+                DictationControls(dictation, onNoApp = { picker.postNotice(res.getString(R.string.android_common_noAppToOpen)) }, tag = "ep-dictation")
+            }
 
             // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정에서는 지정 해제를 뜻한다. 도착지는 스왑이 담당하고 경유지는 장소만.
             when (p.target) {

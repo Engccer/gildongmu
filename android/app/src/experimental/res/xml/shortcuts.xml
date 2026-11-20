@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 바로가기(B22 ④, iOS AppShortcuts.swift의 「음성 검색」·「내 주변」). 액션 문자열은 AppSession.ACTION_* 와 같아야 한다(AppShortcutsTest).
+     targetPackage는 applicationId라 실험판(.dev 접미)은 src/experimental/res/xml/shortcuts.xml이 덮는다 — 두 파일은 패키지만 다르다. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="voiceSearch"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/android_shortcut_voiceSearch_title"
+        android:shortcutLongLabel="@string/android_shortcut_voiceSearch_desc">
+        <intent
+            android:action="space.dodoplanet.gildongmu.action.VOICE_SEARCH"
+            android:targetPackage="space.dodoplanet.gildongmu.dev"
+            android:targetClass="space.dodoplanet.gildongmu.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="nearby"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/android_shortcut_nearby_title"
+        android:shortcutLongLabel="@string/android_shortcut_nearby_desc">
+        <intent
+            android:action="space.dodoplanet.gildongmu.action.NEARBY"
+            android:targetPackage="space.dodoplanet.gildongmu.dev"
+            android:targetClass="space.dodoplanet.gildongmu.MainActivity" />
+    </shortcut>
+</shortcuts>

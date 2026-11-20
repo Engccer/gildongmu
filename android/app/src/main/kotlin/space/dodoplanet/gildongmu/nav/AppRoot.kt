@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -76,6 +77,17 @@ fun AppRoot(factories: AppFactories) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val hapticsOn by AppConfig.settings.resultHapticsEnabled.collectAsState()
+    // 앱 바로가기 진입(B22 ④, iOS `consumeLaunchAction`): 진입 자체가 세션 리셋 — 모든 탭을 초기 상태로 되돌리고 목적 탭을 연다.
+    // 음성 검색은 `AppSession.voiceStartRequested`를 세워 새로 선 검색 화면이 받아쓰기를 시작한다.
+    val pendingLaunch by AppSession.pending.collectAsState()
+    LaunchedEffect(pendingLaunch) {
+        val action = AppSession.take() ?: return@LaunchedEffect
+        val target = when (action) {
+            LaunchAction.voiceSearch -> AppTab.search
+            LaunchAction.nearby -> AppTab.nearby
+        }
+        navController.resetAllTabs(tabs, AppTab.initial(experimental), target)
+    }
 
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
         Scaffold(
@@ -118,7 +130,13 @@ fun AppRoot(factories: AppFactories) {
                 // 탭 루트의 설정 버튼(spec §14-1): 복귀 슬롯은 엔트리 스코프 `ReturnFocusViewModel` — 검색 VM 슬롯은 결과 행 전용이라 쓰지 않는다.
                 composable<SearchRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
-                    SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
+                    SearchScreen(
+                        viewModel(factory = factories.search),
+                        onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) },
+                        onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } },
+                        takeReturn = rf.slot::take,
+                        onPickLocation = { rf.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
+                    )
                 }
                 composable<DirectionsRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)

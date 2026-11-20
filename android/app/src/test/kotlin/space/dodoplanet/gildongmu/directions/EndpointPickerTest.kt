@@ -112,4 +112,16 @@ class EndpointPickerTest {
         val (e, t) = selected.single(); assertEquals(DirectionsFieldTarget.from, t)
         assertEquals(DirectionsEndpoint.Place("강동역", 37.53, 127.13, "Gangdong"), e); assertNull(p.state.value)
     }
+
+    @Test fun `받아쓰기 전사는 다듬어 입력에 넣고 원문을 통지한 뒤 후보를 검색한다(B22 ②)`() = runTest(dispatcher) {
+        val t = Transport(onePlace); val p = picker(this, t)
+        p.open(DirectionsFieldTarget.from)
+        p.submitVoice("강동역.")
+        assertEquals("강동역", p.state.value!!.queryState.text.toString())
+        assertEquals("강동역", p.state.value!!.notice.text) // 전사 원문 통지(헌장 §6) — 후보 수 통지는 도착 뒤
+        assertTrue(p.state.value!!.isSearching)
+        testScheduler.advanceUntilIdle()
+        assertEquals("검색 결과 1건을 찾았습니다.", p.state.value!!.notice.text)
+        assertTrue(t.urls.any { pathOf(it) == "/api/places" && it.contains("%EA%B0%95%EB%8F%99%EC%97%AD") && !it.contains("%EC%97%AD.") })
+    }
 }

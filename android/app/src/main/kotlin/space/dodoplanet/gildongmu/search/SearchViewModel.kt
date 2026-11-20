@@ -25,6 +25,7 @@ import space.dodoplanet.gildongmu.nav.ReturnFocusSlot
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchOutcome
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.normalizeVoiceQuery
 
 /** 검색 화면 상태(iOS `SearchModel` 미러). 검색어는 여기 없다 — `SearchViewModel.queryState`(`TextFieldState`). */
 data class SearchUiState(
@@ -165,6 +166,18 @@ class SearchViewModel(
     }
 
     fun setQuery(text: String) = queryState.setTextAndPlaceCursorAtEnd(text)
+
+    /**
+     * 받아쓰기 전사로 바로 검색(B22 ①, iOS `SearchView` 동형): 후행 문장부호를 떼어(`normalizeVoiceQuery` — STT의 끝 마침표에 juso가 0건)
+     * 입력창·통지·질의가 같은 문자열이 되게 한다. 검색 중이면 진행 중 검색을 폐기하고 새로 낸다(`submit`과 같다).
+     */
+    fun submitVoice(transcript: String) {
+        setQuery(normalizeVoiceQuery(transcript))
+        submit()
+    }
+
+    /** 화면이 만든 문장(받아쓰기 안내 등)을 검색 화면의 단일 통지 창구로 낸다. */
+    fun announce(text: String, haptic: HapticKind? = null) = _state.update { it.copy(notice = next(text, haptic)) }
 
     fun setBucket(bucket: String?) = _state.update { it.copy(bucket = bucket) }
 

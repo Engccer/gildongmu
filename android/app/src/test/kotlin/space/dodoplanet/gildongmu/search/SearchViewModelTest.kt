@@ -249,4 +249,16 @@ class SearchViewModelTest {
         loaded.rememberReturnFocus("place-k1")
         assertEquals("place-k1", loaded.takeReturnFocus()); assertNull(loaded.takeReturnFocus())
     }
+
+    @Test fun `받아쓰기 전사는 후행 마침표를 떼어 입력창에 넣고 바로 검색한다(B22 ①, 통지는 검색 중 문장이 전사를 싣는다)`() = runTest(dispatcher) {
+        val m = vm(byPath("/api/places" to HttpResponse(200, places), "/api/address/search" to HttpResponse(200, emptyAddr), "/api/web" to HttpResponse(200, emptyWeb)))
+        m.submitVoice("강동.")
+        assertEquals("강동", m.queryState.text.toString())
+        assertTrue(m.state.value.isSearching)
+        assertEquals("'강동' 검색 중…", m.state.value.notice.text)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("강동"), m.state.value.recentQueries.map { it.text })
+        m.announce("음성 인식을 시작하지 못했습니다.")
+        assertEquals("음성 인식을 시작하지 못했습니다.", m.state.value.notice.text)
+    }
 }

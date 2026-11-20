@@ -35,6 +35,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 앱 바로가기 「음성 검색」·「내 주변」(B22 ④, iOS AppShortcuts). 런처 아이콘을 길게 누르면 나온다. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
         <!-- 도보 실시간 안내 전경 서비스(M4 §4-1). 전경에서만 시작되며 시작 실패는 서비스 안에서 잡아 모델로 되부른다. -->
         <service

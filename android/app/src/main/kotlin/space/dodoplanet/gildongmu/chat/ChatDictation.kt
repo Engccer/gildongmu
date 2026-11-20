@@ -10,15 +10,19 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
@@ -56,10 +60,20 @@ fun rememberDictation(onTranscript: (String) -> Unit, onNotice: (DictationNotice
 
 /**
  * 받아쓰기 버튼(탭 토글, 헌장 §6 ⓐ — 라벨 전환이 상태 신호, `enabled = false` 금지) + 거부 상태에서만 설정 열기.
- * 권한은 비활성 세션에서 누를 때 묻는다(허용 → 시작, 거부 → Denied 통지).
+ * 권한은 비활성 세션에서 누를 때 묻는다(허용 → 시작, 거부 → Denied 통지). 채팅·검색 탭·끝점 검색이 같은 버튼을 쓴다(`tag`로 가른다).
+ * `autoStart`는 앱 바로가기 「음성 검색」 진입(iOS `voiceStartRequested`): 버튼에 먼저 착지한 뒤 누른 것과 같은 경로로 시작한다 —
+ * 착지 낭독은 청취 시작의 스크린 리더 끊기(`DictationSession`)가 삼킨다. 소비는 [onAutoStartConsumed]로 한 번만.
  */
 @Composable
-fun DictationControls(session: DictationSession, onNoApp: () -> Unit, onPress: () -> Unit = {}) {
+fun DictationControls(
+    session: DictationSession,
+    onNoApp: () -> Unit,
+    onPress: () -> Unit = {},
+    tag: String = "chat-dictation",
+    focus: FocusRequester? = null,
+    autoStart: Boolean = false,
+    onAutoStartConsumed: () -> Unit = {},
+) {
     val context = LocalContext.current
     val phase by session.phase.collectAsState()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -70,22 +84,30 @@ fun DictationControls(session: DictationSession, onNoApp: () -> Unit, onPress: (
         DictationPhase.Listening -> stringResource(R.string.voice_stop)
         else -> stringResource(R.string.android_voice_start)
     }
+    fun press() {
+        onPress()
+        val idle = phase == DictationPhase.Idle || phase == DictationPhase.Denied
+        if (!idle || context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            session.toggle()
+        } else {
+            launcher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    LaunchedEffect(autoStart) {
+        if (!autoStart) return@LaunchedEffect
+        onAutoStartConsumed()
+        withFrameNanos { }
+        focus?.let { f -> runCatching { f.requestFocus() } }
+        if (session.phase.value == DictationPhase.Idle || session.phase.value == DictationPhase.Denied) press()
+    }
     OutlinedButton(
-        onClick = {
-            onPress()
-            val idle = phase == DictationPhase.Idle || phase == DictationPhase.Denied
-            if (!idle || context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                session.toggle()
-            } else {
-                launcher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        },
-        modifier = Modifier.tapTarget().testTag("chat-dictation"),
+        onClick = ::press,
+        modifier = Modifier.tapTarget().testTag(tag).let { m -> if (focus != null) m.landingTarget(focus) else m },
     ) { Text(label) }
     if (phase == DictationPhase.Denied) {
         OutlinedButton(
             onClick = { if (!context.tryStartActivity(appDetailsSettingsIntent(context))) onNoApp() },
-            modifier = Modifier.tapTarget().testTag("chat-dictation-settings"),
+            modifier = Modifier.tapTarget().testTag("$tag-settings"),
         ) { Text(stringResource(R.string.android_common_openSettings)) }
     }
 }

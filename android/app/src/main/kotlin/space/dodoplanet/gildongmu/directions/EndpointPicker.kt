@@ -18,6 +18,8 @@ import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentEndpoint
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.normalizeVoiceQuery
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 
@@ -67,6 +69,15 @@ class EndpointPicker(
         geocodeJob?.cancel()
         _state.value = null
         return target
+    }
+
+    /** 받아쓰기 전사로 바로 후보 검색(B22 ②, iOS 동형): 다듬은 검색어를 입력에 넣고 그 원문을 통지한 뒤 검색한다(출발·도착은 주소 비중이 높아 끝 마침표 하나에 juso가 0건). */
+    fun submitVoice(transcript: String) {
+        val picker = _state.value ?: return
+        val query = normalizeVoiceQuery(transcript)
+        picker.queryState.setTextAndPlaceCursorAtEnd(query)
+        postNotice(query)
+        submitCandidates()
     }
 
     fun submitCandidates() {
