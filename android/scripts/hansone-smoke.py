@@ -114,10 +114,16 @@ def dismiss_system_dialogs() -> None:
 
 
 def run(query: str) -> None:
+    started = h7.now()
     h7.launch(f"{PACKAGE}/.MainActivity", wait=5)
     if not in_app():
         return record("FAIL", "앱 실행", focus())
     record("PASS", "앱 실행")
+    # 앱 시작 새 소식 창(B27 ⑤)이 떠 있으면 「닫기」로 확인한다(다음 실행부터 안 뜬다). 머티리얼 「시트 닫기」는 저장하지 않아 고르지 않는다.
+    if any("길동무가 업데이트" in norm(o) for o in h7.lcd(started)) or find("길동무가 업데이트", first="prev", limit=12):
+        if find("닫기 버튼", limit=16):
+            enter(3)
+        record("INFO", "새 소식 창 닫기")
 
     if not find("검색 탭", first="prev"):
         return record("FAIL", "검색 탭 찾기")
