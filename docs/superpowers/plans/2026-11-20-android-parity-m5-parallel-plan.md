@@ -20,7 +20,7 @@
 - **A75의 처방을 화면의 모든 병합 줄에 적용한다.** 원인(`mergedRow`에 낭독용 이름을 얹으면 한소네가 이름과 글자를 이어 붙인다)이 길찾기 브리핑 줄·안내 시트 줄에도 같고, `android/README.md` §6이 이 풀어쓰기를 「실기기 판정 뒤 제거 가능」으로 적어 두었다. 세션마다 자기 소유 파일의 줄에서 걷어 낸다. 음성 발화와 상태 통지 채널(`WalkGuideModel.post`·`StatusLine`)의 풀어쓰기는 그대로 둔다. 낭독용 이름이 거리 말고 다른 이유로 보이는 글자와 다른 줄은 두고 판정 요청으로 보고한다.
 - **M5는 정식 기능 구성(`debug`·`release`)에 넣는다.** 동기화 기준이 iOS 정식판이고 iOS는 2.0에서 자동차·대중교통 안내를 정식판으로 졸업시켰다(도보 안내 정식판 이동과 같은 원칙, `android/README.md` 「배포 전 개발·검증 기준」). 운전자 모드 피커처럼 iOS 실험판에 남은 것은 범위 밖이다.
 - **M5는 자동차 → 대중교통 → 여정 순으로 직렬이다.** 셋 다 `GuideSession`의 시작 진입점·전경 서비스·시트 호스트를 고치고 대중교통은 도보 세션으로 인계하므로, 앞 세션이 정한 진입점 모양이 뒤 세션의 인터페이스다.
-- **이번 웨이브의 세션은 한소네에 설치하지 않는다.** 실기기 점검(`hansone-smoke.py`의 A75 경고 소멸 포함)은 웨이브 1 통합 뒤 코디네이터가 위원장에게 물어 한 번에 한다.
+- **실기기 점검은 세션이 통합 전에 한소네 7에서 직접 한다**(2026-11-20 위원장 지시, 착수 뒤 정정. 착수 프롬프트의 「실기기 설치 금지」를 이 문장이 대신한다). 절차는 §3 「한소네 실기기 점검」.
 
 ## §2 파일 소유권 (기준 `414419a3`)
 
@@ -63,7 +63,13 @@ main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gild
   개발 중 좁은 실행(`./gradlew :kit:test --tests …`)도 같은 락으로 감싸고 끝에 `--stop`을 붙인다.
 - 기준선 기록 `~/.claude/parallel-sessions/gildongmu/baseline-<worktree 기준 SHA 12자리>.log`(`:kit:test`·`:app:testDebugUnitTest`, 정확한 경로는 착수 프롬프트에 있다). 실패하면 먼저 이 기록과 대조하고, 기준선을 다시 재려고 `git stash`·`checkout`을 하지 않는다. rebase 뒤 처음 보는 실패는 자기 것으로 단정하지 말고 보고한다.
 - 리뷰: 전부 커밋한 뒤 `git diff origin/main...HEAD`로 별도 컨텍스트 리뷰어(`model: opus`)에게 맡긴다. 화면을 고쳤으면 접근성 감사를 붙인다(워크스페이스 `~/Mac-Projects/.claude/agents/a11y-auditor.md`를 Read해 지시를 준 `model: opus` 범용 에이전트). 리뷰가 도는 동안 rebase·커밋 금지, 결과는 보고 디렉터리의 파일로 받아 전문을 읽는다. 리뷰 반영분은 다시 리뷰하지 않는다.
-- 실기기 설치(`adb install`·`android install`·`hansone-smoke.py`)와 에뮬레이터 기동은 하지 않는다. 산출물 경로만 보고한다.
+- **한소네 실기기 점검**(통합 전, 코드 리뷰 반영 뒤. 에뮬레이터는 띄우지 않는다):
+  - 한 번에 한 세션만 기기를 쓴다: 설치·키 주입·판정을 한 덩어리로 `python3 ~/.claude/skills/parallel-sessions/scripts/gate-lock.py <이름>-device -- <명령>` 안에서 돌린다(Gradle 게이트와 같은 락이라 서로 겹치지 않는다). 락 안에서 `debug` APK를 다시 빌드해 `adb install -r`로 넣고 바로 점검한다(다른 세션이 그 사이 자기 빌드를 덮어썼을 수 있다).
+  - **시작 전마다 위원장이 기기를 쓰는 중인지 본다**: `adb shell dumpsys window | grep mCurrentFocus`가 `com.selvashc.connectivity`(터미널 모드)이면 시험하지 않는다. 15분 뒤 한 번 더 보고, 여전히 쓰는 중이면 「실기기 미확인」을 보고에 적고 통합한다(코디네이터가 뒤에 묶어 점검한다).
+  - 도구와 절차: `H7_SCRIPTS=~/_Aliases/KHY/Consulting/"11. 한소네7 베타테스터"/scripts`, 그 폴더 `CLAUDE.md`의 「맥에서 자동 시험하기」 절(키는 가상 키보드·점자 키 주입으로만, 판정은 `LCDOUT`·`BRLOUT` 출력으로, `uiautomator dump`·`android layout` 금지, 기기의 `wifi pw.txt`를 열지 않는다)과 `android/README.md` §2 「한소네 7 점자 흐름」. 그 절의 0단계(베타 패치 설치)는 하지 않는다. 한소네의 OS·설정·다른 앱·파일은 건드리지 않는다.
+  - 점검 내용: 기존 `android/scripts/hansone-smoke.py` 전 구간 통과(회귀)와 자기 변경의 점검. 자기 점검 대본은 `android/scripts/hansone-<이름>.py` 새 파일로 커밋한다(공용 `hansone-smoke.py`는 `and-rows`만 고친다). 점자·화면 출력에 같은 내용이 두 번 실리는 줄이 새로 생겼는지 함께 본다.
+  - 하지 않는 것: 실제 전화 발신(전화 걸기는 다이얼 화면이 뜨는 것까지만 본다), 메시지·메일 발신. 실내라 위치를 못 잡거나 주행이 필요한 항목은 확인하지 못한 것으로 적는다. 끝나면 안내를 끝내고 홈 메뉴로 돌려놓는다(`--cleanup`).
+  - 기기에서 드러난 결함은 통합 전에 고친다. 결과는 `device-<YYYYmmddHHMM>.md`(조작, 기대, 실제 출력, 판정)로 쓰고 통합 보고에 요약한다.
 - 사용자 판정은 `~/gildongmu-wt/<이름>-reports/judgment-<YYYYmmddHHMM>.md`로 쓰고 코디네이터에 통보한 뒤 기본값으로 계속한다. 하드 스톱(비용·외부 발신·파괴·아키텍처 양자택일)은 코디네이터에게 보고한다.
 
 ## §4 웨이브
