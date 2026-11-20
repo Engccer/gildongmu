@@ -113,7 +113,7 @@ class CarGuideModelTest {
         assertEquals(GuideSessionKind.car, ui.arrivalSessionKind)
         assertNull(ui.arrivalHealth)
         val handoff = h.model.takeCarWalkHandoff()
-        assertEquals(WalkStartRequest(dest, "길동역", accessible = false, variant = null, line = null, alternate = null, waypoint = null), handoff)
+        assertEquals(WalkStartRequest(dest, "길동역", accessible = false, variant = null, line = null, alternate = null, waypoint = null, exitLead = null), handoff)
         assertNull(h.model.ui.value.arrivalDest, "인계가 종료 화면을 지운다")
     }
 

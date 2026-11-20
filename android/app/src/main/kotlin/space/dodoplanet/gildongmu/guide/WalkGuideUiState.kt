@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.kit.BeaconDest
+import space.dodoplanet.gildongmu.kit.TransitLabel
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
@@ -103,6 +104,13 @@ data class WalkGuideUiState(
     val arrivalSessionKind: GuideSessionKind? = null,
     /** 시작 실패 행을 어느 수단의 시작 버튼 아래 그릴지(M5 — 도보는 `lastStartLine`이 줄까지 가른다). */
     val lastStartKind: GuideSessionKind? = null,
+    /**
+     * 승차 전 도보(A25)·환승 도보(E73)의 승차역 라벨(iOS `prewalkTarget`, ko·en 쌍). null이 아니면 이 도보 세션은 대중교통 안내의 앞 구간이다 — 종료
+     * 화면을 남기지 않고 잊힌 세션 안전망이 돌지 않으며, 시트가 「승차역 도착」 선언(`declarePrewalkArrival`)을 보일 자리다.
+     */
+    val prewalkTarget: TransitLabel? = null,
+    /** 열린 출구 대기 창의 출구 번호(E84, iOS `exitHoldActive`·`exitHoldLine`). null = 창 없음. 시트의 「N번 출구로 나가기」 줄과 「출구로 나왔어요」가 읽을 값. */
+    val exitHoldExit: String? = null,
 ) {
     val isTracking: Boolean get() = status == GuideStatus.tracking
 

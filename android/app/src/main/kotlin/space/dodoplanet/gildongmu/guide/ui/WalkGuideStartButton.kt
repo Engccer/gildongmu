@@ -52,7 +52,7 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, al
             // `onStart`는 시작 요청 직전에 — 화면이 "현재 위치에서 시작한다" 고지를 낸다(iOS `announceGuideStartIfManualOrigin` 자리).
             onClick = {
                 onStart()
-                GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, alternate, waypoint))
+                GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, alternate, waypoint, exitLead = null))
             },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
         ) { Text(strings.get(walkLineStartKey(line))) }
@@ -79,7 +79,7 @@ internal fun GuideStartFailureRow(ui: WalkGuideUiState, strings: Strings) {
             FailResolution.precise -> Button(
                 onClick = {
                     scope.launch {
-                        if (AppConfig.permissionGate.request() == LocationPermission.Fine) GuideSession.walk.restart()
+                        if (AppConfig.permissionGate.request() == LocationPermission.Fine) GuideSession.restartBeacon()
                         else GuideSession.walk.announceNow(strings.get("android.common.geoReducedDesc"), highPriority = true)
                     }
                 },

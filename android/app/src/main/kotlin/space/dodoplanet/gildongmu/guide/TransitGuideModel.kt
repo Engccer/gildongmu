@@ -224,8 +224,9 @@ class TransitGuideModel(
     private inline fun mutate(f: TransitGuideUiState.() -> TransitGuideUiState) = _ui.update { it.f() }
 
     /** 데이터 언어 축 — 비-ko 로케일은 전부 영문 데이터를 공유한다(iOS `transitGuideIsEn`). */
-    private val transitGuideIsEn: Boolean get() = transitGuideIsEn(dataLocale())
-    private val renderer = TransitGuideTextRenderer(strings) { transitGuideIsEn }
+    internal val transitGuideIsEn: Boolean get() = transitGuideIsEn(dataLocale())
+    /** 문장 렌더러 — `GuideSession`의 승차 전 도보 시작 문장(iOS `launchPrewalk`의 렌더)도 이 언어 축으로 조립한다. */
+    internal val renderer = TransitGuideTextRenderer(strings) { transitGuideIsEn }
 
     // ── 화면 상태(모두 `ui`로 유도 — 동반 변경에 기대지 않는다) ──
     private var state: TransitGuideState?
@@ -312,10 +313,10 @@ class TransitGuideModel(
     /** 여정이면 마지막 leg 버튼의 다음 단계가 걷기인가. null = 여정 아님. */
     var journeyNextIsWalk: Boolean? = null
 
-    // 단계 6: GuideSession.transitPassedPrewalk — 「탔다」(A68)를 세션 소유자에게 알리는 훅. GuideSession 배선(도보 인계 단계)이 건다.
+    /** 「탔다」·경로를 바꿨다(A68)를 세션 소유자에게 알리는 훅(iOS `GuideSession.transitPassedPrewalk()` 직접 호출 자리) — `GuideSession`이 배선한다(가드 `GuideTransitHandoffGuardTest`). */
     var onPassedPrewalk: (() -> Unit)? = null
     /**
-     * 환승 도보 인계 훅(E73 spec D3, iOS `GuideSession.transitTransferWalk` 자리) — 단계 6이 배선한다. ⚠ iOS와 다르게, 훅이 없으면 인계하지 않고 종전 전진을
+     * 환승 도보 인계 훅(E73 spec D3, iOS `GuideSession.transitTransferWalk` 자리) — `GuideSession`이 배선한다(가드 `GuideTransitHandoffGuardTest`). ⚠ iOS와 다르게, 훅이 없으면(세션 밖 단독 조립) 인계하지 않고 종전 전진을
      * 그대로 커밋한다(훅 없는 모델이 「다음 구간」을 삼켜 안내가 멈추지 않게).
      */
     var onTransferWalk: ((TransitTransferWalkHandoff) -> Unit)? = null
@@ -1774,7 +1775,7 @@ class TransitGuideModel(
         recoveryRetryOrigin = null
         val target = transitPrewalkTarget(guideRoute)
         val handoffHook = onTransferWalk
-        // ⚠ iOS와 다르게 훅이 없으면 인계하지 않고 경로 교체로 간다(`completeOrAdvance`와 같은 판단 — 훅 없는 모델이 안내를 삼키지 않게. 단계 6이 훅을 배선한다).
+        // ⚠ iOS와 다르게 훅이 없으면 인계하지 않고 경로 교체로 간다(`completeOrAdvance`와 같은 판단 — 훅 없는 모델이 안내를 삼키지 않게. 앱 조립은 `GuideSession`이 훅을 배선한다).
         if (target != null && handoffHook != null) {
             // 대중교통보다 도보가 먼저 세션을 갖는다(§8-1): 이 모델은 인계에서 정지음 없이 끝나고, 걸어서 닿으면 새 경로 0번 구간 대기부터 다시 연다(`startAfterPrewalk`). 대기
             // 착지·시작 통지를 먼저 내지 않는다.

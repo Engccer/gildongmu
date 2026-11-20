@@ -107,8 +107,19 @@ import space.dodoplanet.gildongmu.kit.rebaseBeaconState
 import space.dodoplanet.gildongmu.kit.relativeDirection
 import space.dodoplanet.gildongmu.kit.rerouteHeadClock
 import space.dodoplanet.gildongmu.kit.routeOriginStep
-import space.dodoplanet.gildongmu.kit.sessionIdleStationaryElapsed
-import space.dodoplanet.gildongmu.kit.sessionIdleStep
+import space.dodoplanet.gildongmu.kit.ExitHoldDecision
+import space.dodoplanet.gildongmu.kit.ExitHoldIdleFloors
+import space.dodoplanet.gildongmu.kit.ExitHoldSample
+import space.dodoplanet.gildongmu.kit.TransitLabel
+import space.dodoplanet.gildongmu.kit.exitHoldAwareSessionIdleStep
+import space.dodoplanet.gildongmu.kit.exitHoldIdleFloorsAfterClose
+import space.dodoplanet.gildongmu.kit.exitHoldIdleFloorsAfterFix
+import space.dodoplanet.gildongmu.kit.exitHoldRecentWindowSeconds
+import space.dodoplanet.gildongmu.kit.exitHoldStep
+import space.dodoplanet.gildongmu.kit.exitHoldStorable
+import space.dodoplanet.gildongmu.kit.exitHoldStorableRunStart
+import space.dodoplanet.gildongmu.kit.exitLeadPrefixNeeded
+import space.dodoplanet.gildongmu.kit.transitPrewalkArrivedLine
 import space.dodoplanet.gildongmu.kit.sessionProgressEpsilonMeters
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.spokenRemainingMeters
@@ -282,6 +293,51 @@ class WalkGuideModel(
 
     // ── 세션 인자 ──
     private var lastStartRequest: BeaconStartRequest? = null
+
+    // ── 승차 전 도보(prewalk, A25 spec 2026-08-30 §4.2 — iOS `BeaconModel` 같은 절) ──
+    /**
+     * 승차역 라벨(ko·en 쌍, iOS `prewalkTarget`). null이 아니면 이 도보 세션은 대중교통 안내의 승차 전 구간이다: 종료 화면을 남기지 않고(승차역은 여정의 끝이
+     * 아니다), 시트가 「승차역 도착」 선언 자리를 가지며, 잊힌 세션 안전망이 돌지 않는다(지하 진입 = fix 두절이 곧 그 선언이 필요한 순간). `stop()`이 비운다.
+     * ⚠ 종료 화면 분기는 `stop()` **뒤**에 도는데 `stop()`이 이 값을 지우므로, 확정·추정·`stopLeavingSummary` 세 경로는 `stop()` 앞에서 지역 변수로 캡처한다.
+     */
+    private var prewalkTarget: TransitLabel?
+        get() = _ui.value.prewalkTarget
+        set(v) = mutate { copy(prewalkTarget = v) }
+    /** 승차 전 도보 표식이 환승 도보(E73)인가 — 정지 꼬리가 「대중교통 안내도 종료했습니다」, 위치 상실 꼬리가 「도보 안내를 멈추고 승차 대기로 넘어갑니다」다. */
+    private var prewalkIsTransfer = false
+    /** 승차 전 도보 정지 꼬리(A54·E73). 판정은 표식에서 — 종료 분기는 `stop()` 앞에서 캡처한다. */
+    private val prewalkStopTail: PrewalkStopTail?
+        get() {
+            if (prewalkTarget == null) return null
+            return if (prewalkIsTransfer) PrewalkStopTail.transitAlsoEnded else PrewalkStopTail.transitNotStarted
+        }
+    /** 종료 화면 없이 끝나는 세션인가 — 승차 전 도보(iOS는 여정 단계도, 여정은 `and-journey`가 더한다). */
+    private val endsWithoutScreen: Boolean get() = prewalkTarget != null
+    /**
+     * 세션 종료 1회 콜백(iOS `onSessionEnd`). 발화점은 둘뿐 — `stop()` 정리 완료 뒤 다음 메인 턴, 그리고 `requestStart`의 시작 잡 말미(시작되지 않아
+     * `stop()`이 돌지 않는 경로: `startFailed`). 경로마다 부르지 않는다 — 종료 경로가 여럿이라 하나를 빠뜨리면 연결이 조용히 끊긴다.
+     */
+    var onSessionEnd: ((BeaconEndReason) -> Unit)? = null
+    /** `stop()`이 소비할 사유. `stop()` 직전에 대입하고 `stop()`·`requestStart`가 `ended`로 되돌린다. */
+    private var pendingEndReason = BeaconEndReason.ended
+    private val transitText = TransitGuideTextRenderer(strings) { transitGuideIsEn(dataLocale()) }
+
+    // ── 출구 대기(E84 — iOS `BeaconModel` 같은 절) ──
+    /** 열린 출구 대기 창. 값이 있는 동안 시작 경로 조회는 Kit `exitHoldStep`만 지난다(시계 없음). */
+    private class ExitHoldState(val lead: ExitLead, val openedAt: Double)
+    private var exitHold: ExitHoldState? = null
+        set(v) { field = v; if (_ui.value.exitHoldExit != v?.lead?.exit) mutate { copy(exitHoldExit = v?.lead?.exit) } }
+    /** 창 안에서 받은 보관 가능 fix(최근 창만 남긴다)와 첫 보관 가능 fix를 봤는지. */
+    private var exitHoldSamples: List<ExitHoldSample> = emptyList()
+    private var exitHoldSawStorable = false
+    /** 보관 가능 fix 연속 구간의 시작·마지막 표본 시각(상한 판정 재료, Kit `exitHoldStorableRunStart`). */
+    private var exitHoldStorableSince: Double? = null
+    private var exitHoldLastStorableAt: Double? = null
+    /** 잊힌 세션 안전망 시계의 하한(Kit `ExitHoldIdleFloors`). 관측 공백 뒤 첫 fix와 창이 닫히는 순간이 세운다. 출구 인계가 없는 세션은 끝까지 비어 있다. */
+    private var exitHoldIdleFloors = ExitHoldIdleFloors()
+    /** 단독 출구 통지의 게시 기록. 첫 시작류 통지(시작 요약·간략 강등)가 소비해 접두 여부를 정한다(Kit `exitLeadPrefixNeeded`). */
+    private class ExitLeadNotice(val text: String, val postedAt: Double) { var dropped = false }
+    private var exitLeadNotice: ExitLeadNotice? = null
     private var dest: BeaconDest? = null
         set(v) { field = v; if (_ui.value.dest != v) mutate { copy(dest = v) } }
     private var accessible = false
@@ -503,32 +559,48 @@ class WalkGuideModel(
         waypointPassedInSession = false
         lastStepFree = null
         pendingStepFreeNotice = null
+        pendingEndReason = BeaconEndReason.ended
         startGeneration += 1
         val generation = startGeneration
         startJob = scope.launch {
             try {
-                start(request.dest, request.label, request.kind)
+                start(request.dest, request.label, request.kind, (request as? WalkStartRequest)?.exitLead)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 // 포트(권한 손·서비스 시작)의 동기 throw가 스코프 밖으로 새면 프로세스가 죽고 토큰·starting이 세션 없이 남는다(리뷰 MAJOR).
                 GuideDiag.log("start failed ${e::class.simpleName}: ${e.message}")
+                // 이 도보 세션은 시작되지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(`onSessionEnd`, iOS 시작 실패 판정과 같은 사유).
+                pendingEndReason = BeaconEndReason.startFailed
                 stop()
                 fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
             } finally {
-                if (startGeneration == generation) starting = false
+                if (startGeneration == generation) {
+                    starting = false
+                    // 시작 실패 한 판정(권한 거부·정밀 위치·위치 서비스 꺼짐·점유 거부 전부, iOS `begin` 말미): 세션이 시작되지 않았으면 `stop()`이 돌지
+                    // 않으므로 여기서 콜백을 소비한다.
+                    if (!isTracking) onSessionEnd?.let { cb ->
+                        onSessionEnd = null
+                        prewalkTarget = null
+                        prewalkIsTransfer = false
+                        cb(BeaconEndReason.startFailed)
+                    }
+                }
             }
         }
     }
 
-    /** 같은 세션을 다시 시작한다(정밀 위치 허용 후 복구 경로). 저장된 인자가 없으면 아무것도 하지 않는다(A13). */
+    /**
+     * 같은 세션을 다시 시작한다(정밀 위치 허용 후 복구 경로). 저장된 인자가 없으면 아무것도 하지 않는다(A13). 호출자는 `GuideSession.restartBeacon` 하나다 —
+     * 승차 전 도보의 재시작은 이 인자만으로는 대중교통 연결을 재현하지 못해 그쪽이 연결(표식·종료 훅)을 먼저 다시 건다(A68).
+     */
     fun restart() {
         if (isTracking) return
         val request = lastStartRequest ?: return
         requestStart(request)
     }
 
-    private suspend fun start(dest: BeaconDest, label: String, kind: GuideSessionKind) {
+    private suspend fun start(dest: BeaconDest, label: String, kind: GuideSessionKind, exitLead: ExitLead?) {
         if (isTracking) return
         // 권한 게이트(§3-2 ②) — 위치 서비스 → 권한 → 정밀 순.
         if (!permissions.isLocationEnabled()) { fail(GuideStatus.unavailable, "beacon.weak"); return }
@@ -566,6 +638,7 @@ class WalkGuideModel(
         toneState = ToneLayerState.initial
         motionState = MotionJudgeState.initial
         lastFixAt = null
+        exitHoldIdleFloors = ExitHoldIdleFloors()
         lastStaleNoticeAt = null
         lastFixCoord = null
         lastFixCoordAt = null
@@ -589,11 +662,21 @@ class WalkGuideModel(
         // ⑨ 오디오 — 승격은 첫 톤보다 먼저.
         tones.beginSession()
         playTone(BeaconTone.start)   // 미디어 볼륨 0 판정은 playTone 안에서 1회
+        // 출구 인계(E84)면 시작 직후 출구 문장을 단독으로 말한다(iOS 동형). 버려지면(억제·백그라운드) 첫 시작류 통지가 접두로 다시 싣는다(`withExitLead`).
+        val exitSentence = if (kind == GuideSessionKind.walk) exitLead?.let { strings.get("guide.exitLeadStart", it.exit) } else null
+        exitLeadNotice = exitSentence?.let { ExitLeadNotice(it, clock()) }
+        if (exitSentence != null) announce(exitSentence, speechClass = GuideSpeechClass.actionable, onDropped = { exitLeadNotice?.dropped = true })
         // ⑩ 워치독·경로 조회 대기.
         startWatchdog()
         awaitingRoute = true
         routeFetchToken += 1
-        startFixWaitWatch(routeFetchToken)
+        if (kind == GuideSessionKind.walk && exitLead != null) {
+            // 출구 대기(E84): 종전 15초 시계를 걸지 않는다. 창은 fix 증거(`exitHoldStep`)와 사용자 선언(`declareExitedStation`)이 닫고, fix가 아예 없으면
+            // 잊힌 세션 안전망이 끝낸다.
+            openExitHold(exitLead)
+        } else {
+            startFixWaitWatch(routeFetchToken)
+        }
         // ⑪ TTS 초기화(보류 1문장은 재생기 몫). 이미 불가로 판정된 엔진이면 시트 행·진동을 지금 낸다(첫 게시를 기다리지 않는다).
         speaker.prepare()
         syncTtsUnavailable()
@@ -611,20 +694,35 @@ class WalkGuideModel(
         }
         GuideDiag.log("serviceStartFailed ${error::class.simpleName}: ${error.message}")
         val wasTracking = isTracking
+        // 도보 안내가 서지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(시작 실패와 같은 사유).
+        pendingEndReason = BeaconEndReason.startFailed
         stop(playStopTone = false)
         if (!wasTracking) return
         fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
     }
 
-    /** 시작 실패 한 판정(§7-6 표): 문장 + `failure` 진동 — 문장이 TalkBack 라벨 낭독이나 타 앱 전경에 삼켜져도 진동은 즉시 신호다. */
-    private fun fail(status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none) {
+    /**
+     * 시작 실패 한 판정(§7-6 표): 문장 + `failure` 진동 — 문장이 TalkBack 라벨 낭독이나 타 앱 전경에 삼켜져도 진동은 즉시 신호다.
+     *
+     * 승차 전 도보면 사유 뒤에 대중교통 꼬리를 **두 문장**으로 잇는다(`prewalkTail`, A54 — iOS `fail(with:…prewalkTail:)`). 승차 전 도보의 **시작** 실패
+     * (`starting` 중)는 통지에만 다리 문장(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)을 붙인다(A67) — 곧 대중교통 안내가 서고 그 시트로 커서가
+     * 옮겨 가므로 `highPriority`. 상태 줄은 원인만(대중교통이 끝난 뒤엔 「바로 넘어갑니다」가 거짓 진행형이 된다).
+     */
+    private fun fail(
+        status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none, prewalkTail: PrewalkStopTail? = null,
+        highPriority: Boolean = false,
+    ) {
         this.status = status
         failResolution = resolution
-        statusText = strings.get(key)
+        statusText = prewalkTail?.let { prewalkStopText(it, strings.get(key)) } ?: strings.get(key)
         pendingFailLanding = true
         mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
-        announce(statusText, speechClass = GuideSpeechClass.actionable)
+        val prewalkBridge = starting && prewalkTarget != null
+        announce(
+            if (prewalkBridge) strings.get("android.beacon.prewalkUnavailableWith", strings.get(key)) else statusText,
+            highPriority = highPriority || prewalkBridge, speechClass = GuideSpeechClass.actionable,
+        )
     }
 
     private var pendingFailLanding = false
@@ -724,12 +822,35 @@ class WalkGuideModel(
         // 수단은 도보로 되돌린다 — 종료 화면의 수단은 `stop()` **앞**에서 캡처한 `arrivalSessionKind`가 든다(iOS 설계 리뷰 B10).
         sessionKind = GuideSessionKind.walk
         syncOverview()
+        exitHold = null
+        resetExitHoldSamples()
+        exitHoldIdleFloors = ExitHoldIdleFloors()
+        exitLeadNotice = null
+        prewalkTarget = null
+        prewalkIsTransfer = false
+        // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료 문장(도착·유휴·권한)이 연결 문장보다 먼저 나가고, 정리 도중
+        // 다른 모델 시작이 재진입하지 않는다(iOS `Task { @MainActor in cb(reason) }`, spec 2026-08-30 §4.2).
+        val reason = pendingEndReason
+        pendingEndReason = BeaconEndReason.ended
+        onSessionEnd?.let { cb ->
+            onSessionEnd = null
+            scope.launch { cb(reason) }
+        }
     }
 
     /** 사용자 중지(시트·알림 "안내 종료"). 정지 톤 + 의미 있는 보행이면 `.stopped` 종료 화면(동기 판정). */
     fun stopByUser() {
         val text = strings.get("android.beacon.stopped")
-        if (stopLeavingSummary(playStopTone = true, text = text)) announce(text, highPriority = true, speechClass = GuideSpeechClass.actionable)
+        val prewalkTail = prewalkStopTail  // stop() 앞 캡처(A25 §4.2)
+        pendingEndReason = BeaconEndReason.userStopped
+        if (stopLeavingSummary(playStopTone = true, text = text)) {
+            announce(text, highPriority = true, speechClass = GuideSpeechClass.actionable)
+        } else if (prewalkTail != null) {
+            // 승차 전 도보는 종료 화면이 없다 — 정지 사유 뒤에 대중교통 꼬리를 마침표 두 문장으로(A54, 권한 상실 `stopAndFail`과 같은 문장 틀). 이 모델의
+            // 창구라 정지음 뒤에 나간다. `.high`: 시트가 닫혀 커서가 아래 화면으로 옮겨 간다(착지 라벨로 대체될 수 없다). 환승 도보(E73)면 「대중교통 안내도
+            // 종료했습니다」다(이미 돌던 안내).
+            announce(prewalkStopText(prewalkTail, strings.get("android.beacon.stoppedJoin")), highPriority = true, speechClass = GuideSpeechClass.actionable)
+        }
     }
 
     /**
@@ -742,8 +863,9 @@ class WalkGuideModel(
         val endedKind = sessionKind
         // 자동차는 걸음을 세지 않아 요약이 없다 — 앞 도보 세션의 남은 값을 읽지 않는다(걸음 센서는 값을 남긴다).
         val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
+        val noScreen = endsWithoutScreen  // stop() 앞 캡처(A25 §4.2) — 승차 전 도보는 종료 화면 없음
         stop(playStopTone)
-        if (!wasWalkSession || dest == null || sample == null) return false
+        if (noScreen || !wasWalkSession || dest == null || sample == null) return false
         if (!WalkHealth.isMeaningfulWalk(sample.steps, sample.distanceMeters)) return false
         presentEndScreen(dest, SessionEndKind.stopped, text, sample, endedKind)
         return true
@@ -840,10 +962,10 @@ class WalkGuideModel(
         if (_ui.value.arrivalSessionKind != GuideSessionKind.car) return null
         val label = destinationLabel
         clearArrival()
-        return WalkStartRequest(dest, label, accessible = false, variant = null, line = null, alternate = null, waypoint = null)
+        return WalkStartRequest(dest, label, accessible = false, variant = null, line = null, alternate = null, waypoint = null, exitLead = null)
     }
 
-    /** 시작 실패 행 소거(해결 버튼 뒤·다른 시작 앞). */
+    /** 시작 실패 행 소거(해결 버튼 뒤·다른 시작 앞·승차 전 도보 재시작 줄 거두기 `GuideSession.retirePrewalkRestart`). */
     fun clearFailure() {
         if (!status.isFailure) return
         status = GuideStatus.idle
@@ -851,12 +973,64 @@ class WalkGuideModel(
         failResolution = FailResolution.none
     }
 
+    /**
+     * 승차 전 도보 세션으로 표식(A25, iOS `markPrewalk`). `requestStart` **앞**에 건다 — 시작 잡의 실패 판정이 이 값을 함께 지운다.
+     * ⚠ `transfer`는 기본값 없음 — 환승 도보(E73)가 빠뜨리면 정지 꼬리가 이미 돌던 대중교통을 「시작하지 않았다」고 말한다.
+     */
+    fun markPrewalk(target: TransitLabel, transfer: Boolean) {
+        prewalkTarget = target
+        prewalkIsTransfer = transfer
+    }
+
+    /** 사유 뒤에 대중교통 꼬리를 잇는 두 문장(A54 문장 틀, iOS `prewalkStopText`). */
+    private fun prewalkStopText(tail: PrewalkStopTail, reason: String): String = when (tail) {
+        PrewalkStopTail.transitNotStarted -> strings.get("android.beacon.prewalkCancelledWith", reason)
+        PrewalkStopTail.transitAlsoEnded -> strings.get("android.beacon.transferWalkCancelledWith", reason)
+        PrewalkStopTail.transitResumes -> strings.get("android.beacon.transferWalkLostWith", reason)
+    }
+
+    /** 승차 전 도보 해제(연결 취소·다른 세션 시작, iOS `clearPrewalk`). 추적 중이면 세션은 그대로 두고 표식만 뗀다. */
+    fun clearPrewalk() {
+        prewalkTarget = null
+        prewalkIsTransfer = false
+        onSessionEnd = null
+    }
+
+    /**
+     * 「승차역 도착」 선언(A25 §4.3, iOS `declarePrewalkArrival`) — 도착 판정이 닿지 않는 경우(입구가 멀어 지하로 먼저 진입)의 사용자 행위. 확정 도착과 같은
+     * 모양: 종·`arrived` 사유·stop()·도착 문장(.high, 직접 응답).
+     */
+    fun declarePrewalkArrival() {
+        if (!isTracking) return
+        val station = prewalkTarget ?: return
+        val spoken = transitText.render(transitPrewalkArrivedLine(isEn = transitGuideIsEn(dataLocale()), station = station))
+        playTone(BeaconTone.nearby)
+        pendingEndReason = BeaconEndReason.arrived
+        stop()
+        statusText = spoken
+        lastGuidance = spoken
+        liveTopText = spoken
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable)
+    }
+
     /** 위치 제공자 꺼짐(스트림 콜백, §3-3) — 세션을 끝내고 실패 상태를 남긴다. */
     override fun handleProviderDisabled() {
         if (!isTracking) return
         GuideDiag.log("providerDisabled")
-        stopLeavingSummary(playStopTone = false, text = strings.get("beacon.weak"))
-        fail(GuideStatus.unavailable, "beacon.weak")
+        stopAndFail(GuideStatus.unavailable, "beacon.weak")
+    }
+
+    /**
+     * 세션 중 위치 상실 종료(iOS `stopAndFail`) — 종료 화면(요약)을 남기고 실패 상태·통지를 낸다. 승차 전 도보면 대중교통 꼬리를 **같은 통지**에 두 문장으로
+     * 붙인다(A54). 환승 도보(E73)는 걷기만 끝내고 그 구간 승차 대기로 넘어간다(위원장 판정 2026-10-19) — 꼬리가 「도보 안내를 멈추고 승차 대기로
+     * 넘어갑니다」이고 재개는 사유 `locationLost`를 받은 `GuideSession.endPrewalk`가 한다. 종료 화면이 남지 않으면 시트가 닫혀 커서가 아래 화면으로
+     * 옮겨 가므로 사유는 `highPriority`다.
+     */
+    private fun stopAndFail(status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none) {
+        val prewalkTail = prewalkStopTail.let { if (it == PrewalkStopTail.transitAlsoEnded) PrewalkStopTail.transitResumes else it }  // stop() 앞 캡처
+        pendingEndReason = BeaconEndReason.locationLost
+        val leftEndScreen = stopLeavingSummary(playStopTone = false, text = strings.get(key))
+        fail(status, key, resolution, prewalkTail = prewalkTail, highPriority = !leftEndScreen)
     }
 
     // ─────────────────────────── 전경 복귀 (§5-3) ───────────────────────────
@@ -936,8 +1110,104 @@ class WalkGuideModel(
         val jams: List<CarJam>?,
     )
 
+    // ─────────────────────────── 출구 대기(E84, iOS `BeaconModel` 같은 절) ───────────────────────────
+
+    private fun openExitHold(lead: ExitLead) {
+        fixWaitJob?.cancel(); fixWaitJob = null
+        routeOriginBest = null
+        routeOriginBestAt = null
+        resetExitHoldSamples()
+        exitHoldIdleFloors = ExitHoldIdleFloors()
+        exitHold = ExitHoldState(lead, clock())
+        GuideDiag.log("exitHold start exit=${lead.exit} station=${if (lead.stationLat != null && lead.stationLng != null) 1 else 0}")
+    }
+
+    private fun resetExitHoldSamples() {
+        exitHoldSamples = emptyList()
+        exitHoldSawStorable = false
+        exitHoldStorableSince = null
+        exitHoldLastStorableAt = null
+    }
+
+    /**
+     * 창을 닫는 한 자리. `keepLead` = 뒤따르는 시작류 통지가 출구 문장을 접두로 실을 수 있는가(fix로 풀린 경우만). 저장된 시작 요청에서도 출구를 내린다 —
+     * 한 번 풀린 세션의 재시작이 출구 대기를 다시 열지 않게.
+     */
+    private fun closeExitHold(reason: String, keepLead: Boolean, accuracy: Double? = null) {
+        val hold = exitHold ?: return
+        GuideDiag.log { "exitHoldRelease reason=$reason elapsed=${fmt("%.0f", clock() - hold.openedAt)} acc=${accuracy?.let { fmt("%.1f", it) } ?: "-"}" }
+        exitHold = null
+        resetExitHoldSamples()
+        // 안전망 시계는 창이 닫힌 지금부터 새로 흐른다: 창 안에서 흐른 두절·무이동 시간이 닫힌 직후의 종료 사유가 되지 않게.
+        exitHoldIdleFloors = exitHoldIdleFloorsAfterClose(now = clock())
+        if (!keepLead) exitLeadNotice = null
+        syncStartRequestWithSession()
+    }
+
+    /** 창 안 fix 한 건. true = 여기서 처리가 끝났다(대기·조회 착수), false = 창을 버렸으니 종전 판정으로 이어 간다. */
+    private fun handleExitHoldFix(candidate: RouteOriginFix, raw: GuideFixPayload, hold: ExitHoldState, dest: BeaconDest, now: Double): Boolean {
+        val storable = exitHoldStorable(candidate)
+        val first = storable && !exitHoldSawStorable
+        if (storable) {
+            exitHoldSawStorable = true
+            exitHoldStorableSince = exitHoldStorableRunStart(previousStart = exitHoldStorableSince, previousSampleAt = exitHoldLastStorableAt, now = now)
+            exitHoldLastStorableAt = now
+            exitHoldSamples = (exitHoldSamples + ExitHoldSample(candidate, now)).filter { now - it.at <= exitHoldRecentWindowSeconds }
+        }
+        val stationLat = hold.lead.stationLat
+        val stationLng = hold.lead.stationLng
+        val stationDistance = if (stationLat != null && stationLng != null) haversineMeters(candidate.lat, candidate.lng, stationLat, stationLng) else null
+        val elapsed = now - hold.openedAt
+        // 창 안 fix마다 한 줄(좌표 없음): 지하 fix의 정확도·속도 분포와 풀린 시각이 잠정 상수의 판정 재료다.
+        GuideDiag.log {
+            "routeOriginWait acc=${fmt("%.1f", candidate.accuracy)} age=${fmt("%.1f", candidate.ageSeconds)} speed=${raw.speed?.let { fmt("%.1f", it) } ?: "-"} " +
+                "speedAcc=${raw.speedAccuracy?.let { fmt("%.1f", it) } ?: "-"} holdT=${fmt("%.0f", elapsed)} station=${stationDistance?.let { fmt("%.0f", it) } ?: "-"}"
+        }
+        return when (
+            val decision = exitHoldStep(
+                elapsed = elapsed, fix = candidate, isFirstStorable = first, stationDistance = stationDistance,
+                recent = exitHoldSamples, storableSince = if (storable) exitHoldStorableSince else null, now = now,
+            )
+        ) {
+            ExitHoldDecision.Wait -> true
+            is ExitHoldDecision.Fetch -> {
+                closeExitHold(reason = decision.reason.rawValue, keepLead = true, accuracy = decision.fix.accuracy)
+                startRouteFetch(decision.fix, "exitHold-${decision.reason.rawValue}", dest, routeFetchToken)
+                true
+            }
+            ExitHoldDecision.Abandon -> {
+                // 하차역 근처가 아니다(다른 역에서 내렸다): 출구 문장·줄을 거두고 종전 시작 대기로 간다.
+                closeExitHold(reason = "otherStation", keepLead = false, accuracy = candidate.accuracy)
+                startFixWaitWatch(routeFetchToken)
+                false
+            }
+        }
+    }
+
+    /**
+     * 「출구로 나왔어요」(E84, iOS `declareExitedStation`): 사용자가 창을 닫는다. 종전 시작 대기(수용 fix 즉시, 15초 안 최선값, 없으면 `guide.detailNoLocation`
+     * 강등)를 지금부터 새로 건다 — 창 안에서 모은 역 안 좌표는 쓰지 않는다.
+     */
+    fun declareExitedStation() {
+        if (!isTracking || !awaitingRoute || exitHold == null || routeFetchJob != null) return
+        closeExitHold(reason = "declared", keepLead = false)
+        startFixWaitWatch(routeFetchToken)
+        // 버튼이 사라지며 커서가 옮겨 간다: 활성화 응답은 착지 라벨로 대체될 수 없다.
+        announceNow(strings.get("android.guide.destChangedFetching"), highPriority = true, bypassSuppression = true)
+    }
+
+    /** 첫 시작류 통지 앞에 출구 문장을 다시 실을지 정하고 기록을 소비한다. 출구 인계가 없으면 문장을 그대로 돌려준다. */
+    private fun withExitLead(text: String): String {
+        val notice = exitLeadNotice ?: return text
+        exitLeadNotice = null
+        if (!exitLeadPrefixNeeded(hasExit = true, dropped = notice.dropped, secondsSincePosted = clock() - notice.postedAt)) return text
+        return "${notice.text} $text"
+    }
+
     /** 수용 fix가 15초 안에 오지 않으면 최선 fix로 조회하고, 그것도 없으면 간략 폴백(`guide.detailNoLocation`). */
     private fun startFixWaitWatch(token: Int) {
+        // 종전 대기 시계를 건다 = 출구 대기가 아니다(E84): 목적지 전환·경유지·재획득이 이 한 자리로 창을 닫는다.
+        closeExitHold(reason = "superseded", keepLead = false)
         fixWaitJob?.cancel()
         routeOriginBest = null
         routeOriginBestAt = null
@@ -1080,7 +1350,8 @@ class WalkGuideModel(
             val spoken = listOfNotNull(away, notice, summary).joinToString(" ")
             lastGuidance = text.unit(result.route, initial.firstIndices)
             statusText = spoken
-            announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
+            // 출구 인계(E84): 단독 출구 통지가 버려졌거나 방금 나갔으면(이 `.high` 통지가 끊는다) 앞에 다시 싣는다.
+            announce(withExitLead(spoken), highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
         } finally {
             if (token == routeFetchToken) { awaitingRoute = false; routeFetchJob = null }
         }
@@ -1112,7 +1383,7 @@ class WalkGuideModel(
         }
         syncOverview()
         statusText = spoken
-        announce(spoken, highPriority = droppedWaypoint, speechClass = GuideSpeechClass.actionable)   // 안내 방식이 바뀐 사실
+        announce(withExitLead(spoken), highPriority = droppedWaypoint, speechClass = GuideSpeechClass.actionable)   // 안내 방식이 바뀐 사실
     }
 
     private fun syncStartRequestWithSession() {
@@ -1122,7 +1393,7 @@ class WalkGuideModel(
         lastStartRequest = when (request) {
             is WalkStartRequest -> request.copy(
                 dest = dest, label = destinationLabel, accessible = accessible, variant = sessionVariant,
-                line = sessionLine, alternate = alternateLine, waypoint = waypoint,
+                line = sessionLine, alternate = alternateLine, waypoint = waypoint, exitLead = exitHold?.lead,
             )
             is CarStartRequest -> request.copy(dest = dest, label = destinationLabel, waypoint = waypoint)
         }
@@ -1281,10 +1552,24 @@ class WalkGuideModel(
         val motion = judgeMotion(fix, age, now)
 
         if (awaitingRoute) {
+            // 출구 대기(E84): 관측 공백 뒤 앵커에서 벗어난 fix(세션 첫 fix 포함)는 무이동 시계와 진행 앵커를 다시 세운다(직전 fix 시각을 덮기 전에 본다).
+            // 같은 자리 fix로는 세우지 않는다(Kit 주석).
+            val holdStartedAt = startedAt
+            if (exitHold != null && holdStartedAt != null) {
+                val step = exitHoldIdleFloorsAfterFix(
+                    exitHoldIdleFloors, now = now, previousFixAt = lastFixAt, startedAt = holdStartedAt,
+                    distanceFromAnchor = sessionProgressAnchor?.let { haversineMeters(it.lat, it.lng, fix.lat, fix.lng) },
+                )
+                exitHoldIdleFloors = step.floors
+                if (step.resumed) sessionProgressAnchor = RoutePoint(fix.lat, fix.lng)
+            }
             lastFixAt = now
             noteSessionProgress(fix.lat, fix.lng, now)
             if (routeFetchJob == null) {
                 val candidate = RouteOriginFix(fix.lat, fix.lng, fix.accuracy, age)
+                // 출구 대기(E84) 창이면 그 판정이 먼저다. 창을 버린 fix만 아래 종전 판정으로 이어 간다.
+                val hold = exitHold
+                if (hold != null && handleExitHoldFix(candidate, fix, hold, dest, now)) return
                 when (val decision = routeOriginStep(routeOriginBest, candidate)) {
                     is RouteOriginDecision.Fetch -> {
                         fixWaitJob?.cancel(); fixWaitJob = null
@@ -1830,13 +2115,18 @@ class WalkGuideModel(
             return
         }
         if (arrived) {
-            val spoken = strings.get("guide.arrived")
+            // prewalk(승차 전 도보)는 stop() 앞에서 캡처 — stop()이 지운다(A25 §4.2).
+            val prewalk = prewalkTarget
+            val spoken = prewalk?.let { transitText.render(transitPrewalkArrivedLine(isEn = transitGuideIsEn(dataLocale()), station = it)) }
+                ?: strings.get("guide.arrived")
             // 수단은 stop() **앞**에서 캡처한다 — stop()이 수단을 도보로 되돌린다(iOS 설계 리뷰 B10). 자동차는 걸음 요약이 없다.
             val endedKind = sessionKind
             val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
             playTone(BeaconTone.nearby)
+            pendingEndReason = BeaconEndReason.arrived
             stop()
-            presentEndScreen(dest, SessionEndKind.arrived, spoken, sample, endedKind)
+            // prewalk는 종료 화면을 남기지 않는다 — 승차역은 여정의 끝이 아니고, 남기면 `screen`의 도보 우선순위가 대중교통 시트를 영구 은폐한다.
+            if (prewalk == null) presentEndScreen(dest, SessionEndKind.arrived, spoken, sample, endedKind)
             statusText = spoken
             lastGuidance = spoken
             liveTopText = spoken
@@ -1870,17 +2160,20 @@ class WalkGuideModel(
 
     /** 국면 무관 안전망(A23). 워치독이 유일한 도달 경로. true = 끝냈다. */
     private fun maybeEndIdleSession(now: Double): Boolean {
-        if (!isTracking) return false
+        // 승차 전 도보(prewalk)는 제외 — fix 두절 5분은 대개 지하 역사 진입이고, 그때 끝내면 바로 그 경우를 위한 「승차역 도착」 선언까지 사라진다(A25 spec §2).
+        if (!isTracking || endsWithoutScreen) return false
         val startedAt = startedAt ?: return false
-        val fixRef = max(startedAt, lastFixAt ?: startedAt)
-        val progressRef = max(startedAt, sessionLastProgressAt ?: startedAt)
         // 무이동 축은 도착 추정이 발동할 수 있는 동안(도착 창 ∧ 마지막 확인 거리 ≤ 거리 캡) 늦게 켠다(`sessionIdleStationaryElapsed`,
         // 나들이 spec §9, iOS 동형) — 그대로면 추정 도착을 선점하고, 끄면 실내 지터가 10m 앵커를 밀어 두 판정 모두 영영 안 끝난다.
         // 두절 축은 그대로.
         val presumedArrivalCanFire = inArrivalWindow &&
             (tuning.presumedArrival?.let { (lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters } ?: false)
-        val stationary = if (tuning.sessionIdleStationaryAxis) sessionIdleStationaryElapsed(now - progressRef, presumedArrivalCanFire) else null
-        val reason = sessionIdleStep(now - fixRef, stationary, tuning.sessionIdleNoFixSeconds) ?: return false
+        // 판정은 Kit 한 자리(`exitHoldAwareSessionIdleStep`): 두절 임계는 수단별 데이터이고, 출구 대기(E84) 창과 그 하한이 없으면 종전 식(무이동 유예
+        // → `sessionIdleStep`)과 값이 같다. 창 동안은 두절 임계가 길고 관측이 끊긴 동안 무이동을 세지 않으며, 창이 닫히면 두 시계가 그 시각부터 새로 흐른다.
+        val reason = exitHoldAwareSessionIdleStep(
+            now = now, startedAt = startedAt, lastFixAt = lastFixAt, lastProgressAt = sessionLastProgressAt,
+            floors = exitHoldIdleFloors, holdActive = exitHold != null, tuning = tuning, presumedArrivalCanFire = presumedArrivalCanFire,
+        ) ?: return false
         GuideDiag.log("sessionIdleEnd reason=${reason.rawValue}")
         val spoken = strings.get("guide.endedIdle")
         stopLeavingSummary(playStopTone = env.isForeground(), text = spoken)
@@ -1901,16 +2194,20 @@ class WalkGuideModel(
         val progressRef = max(enteredAt, lastProgressAt ?: enteredAt)
         val reason = presumedArrivalStep(true, now - fixRef, now - progressRef, lastUsableDistanceToDest, thresholds) ?: return false
         GuideDiag.log { "presumedArrival reason=${reason.rawValue} dist=${lastUsableDistanceToDest?.let { fmt("%.1f", it) } ?: "-"} window=${if (inFinalApproach) "final" else "brief"}" }
-        val spoken = strings.get("guide.arrivedPresumed")
+        val prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
+        val spoken = prewalk?.let { transitText.render(transitPrewalkArrivedLine(isEn = transitGuideIsEn(dataLocale()), station = it)) }
+            ?: strings.get("guide.arrivedPresumed")
         val endedKind = sessionKind
         val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
         if (env.isForeground()) playTone(BeaconTone.nearby)
+        pendingEndReason = BeaconEndReason.arrived
         stop()
-        presentEndScreen(dest, SessionEndKind.presumed, spoken, sample, endedKind)
+        if (prewalk == null) presentEndScreen(dest, SessionEndKind.presumed, spoken, sample, endedKind)
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
-        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.deferrable)   // 사후 정리(도착 3~5분 뒤)
+        // 사후 정리(도착 3~5분 뒤)라 미룸. 단 승차 전 도보의 승차역 도착은 이어질 안내의 시작이라 행동 문장이다(spec §3.2 — prewalk 도착 행).
+        announce(spoken, highPriority = true, speechClass = if (prewalk == null) GuideSpeechClass.deferrable else GuideSpeechClass.actionable)
         return true
     }
 
@@ -2664,3 +2961,12 @@ class WalkGuideModel(
         const val carEtaStaleSeconds = 420.0
     }
 }
+
+/**
+ * 도보 세션이 끝난 사유(iOS `BeaconModel.EndReason`) — `onSessionEnd`로 `GuideSession`에 전달된다. `locationLost`는 걷던 중 위치 상실(`stopAndFail`) — 환승
+ * 도보(E73)는 이 사유에서만 대중교통으로 돌아간다(위원장 판정 2026-10-19). `ended`(그 밖의 정지)와 갈라 두어야 종료 경로가 늘어도 다른 정지가 재개로 새지 않는다.
+ */
+enum class BeaconEndReason { arrived, startFailed, userStopped, locationLost, ended }
+
+/** 승차 전 도보 정지 꼬리(A54·E73, iOS `PrewalkStopTail`). `transitResumes`는 환승 도보의 위치 상실 꼬리다 — `stopAndFail`만 고른다. */
+enum class PrewalkStopTail { transitNotStarted, transitAlsoEnded, transitResumes }

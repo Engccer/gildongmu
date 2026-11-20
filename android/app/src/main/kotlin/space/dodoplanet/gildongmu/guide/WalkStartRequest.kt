@@ -51,6 +51,15 @@ data class WalkStartRequest(
      */
     val alternate: WalkLineKind?,
     override val waypoint: GuideWaypoint?,
+    /**
+     * 출구 인계(E84, iOS `StartRequest.exitLead`). 지하철 말미 도보 인계가 출구 번호를 실어 왔을 때만 값이 있고, 그러면 시작 경로 조회 대기 창이
+     * 「출구 대기」로 열린다. ⚠ 기본값 없음: 값을 적는 곳은 `GuideSession.acceptWalkHandoff` 하나다(가드 `GuideTransitHandoffGuardTest`). 창이 한 번
+     * 풀리면 저장된 요청에서 내린다(재시작이 출구 대기를 다시 열지 않게).
+     */
+    val exitLead: ExitLead?,
 ) : BeaconStartRequest {
     override val kind: GuideSessionKind get() = GuideSessionKind.walk
 }
+
+/** 출구 인계 값(E84, iOS `BeaconModel.ExitLead`): 출구 번호와, 다른 역에서 내렸는지 가를 하차역 좌표(없으면 그 판정을 하지 않는다). */
+data class ExitLead(val exit: String, val stationLat: Double?, val stationLng: Double?)
