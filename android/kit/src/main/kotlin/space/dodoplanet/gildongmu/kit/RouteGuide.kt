@@ -269,6 +269,11 @@ data class GuideTuning(
     /** 국면 무관 세션 안전망의 두절 임계(초). walk 300 · car 900(2026-10-03 위원장 판정). Kit 미러. */
     val sessionIdleNoFixSeconds: Double,
     /**
+     * 출구 대기 창(E84, `ExitHold.kt`) 동안의 두절 임계(초, 잠정 900). 지하 역사를 걸어 나오는 몇 분은 fix가 없는 것이
+     * 정상이라 창 동안만 길게 잡는다. 창이 풀리면 `sessionIdleNoFixSeconds`로 돌아간다. Kit 미러(웹은 창이 없다).
+     */
+    val sessionIdleNoFixExitHoldSeconds: Double,
+    /**
      * 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러). 직전 fix 대비 진행거리 증가가
      * `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.
      *
@@ -314,6 +319,7 @@ data class GuideTuning(
             entersFinalApproachWithoutGeometry = false,
             sessionIdleStationaryAxis = true,
             sessionIdleNoFixSeconds = sessionIdleNoFixWalkSeconds,
+            sessionIdleNoFixExitHoldSeconds = exitHoldSessionIdleNoFixSeconds,
             maxSpeedMps = MotionConstants.maxWalkSpeedMps,
         )
 
@@ -354,6 +360,7 @@ data class GuideTuning(
             entersFinalApproachWithoutGeometry = true,
             sessionIdleStationaryAxis = false,
             sessionIdleNoFixSeconds = sessionIdleNoFixCarSeconds,
+            sessionIdleNoFixExitHoldSeconds = exitHoldSessionIdleNoFixSeconds,
             maxSpeedMps = MotionConstants.maxCarSpeedMps,
         )
 
