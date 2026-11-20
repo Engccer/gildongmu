@@ -85,7 +85,7 @@ main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gild
 
 ## §4 웨이브
 
-웨이브 1: `and-rows`·`and-common`·`and-route`·`and-m5-car`. 웨이브 2: `and-m5-transit`. 웨이브 3: `and-journey`. 그 뒤 doc-audit 세션과 한소네 실기기 점검.
+웨이브 1: `and-rows`·`and-common`·`and-route`·`and-m5-car`. 웨이브 2: `and-m5-transit`(2026-11-21 01:21 착수, 기준 `b03153c4`. 대중교통은 한 세션에 넘치므로 단계마다 통합하고, 문맥이 불어나면 남은 단계를 인계해 `and-m5-transit-2`가 잇는다. 시작 버튼은 본체가 완결된 단계에서 연다). 웨이브 3: `and-journey`. 그 뒤 doc-audit 세션과 한소네 실기기 점검.
 
 ## §5 착수 프롬프트·보고
 
@@ -96,3 +96,5 @@ main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gild
 | 세션 | 통합 SHA | 시각 | 자진 신고 | 남은 판정 |
 |---|---|---|---|---|
 | `and-route` | `9358346a` | 2026-11-20 23시대 | `K/TransitExitLines.kt`(노선 이름 조립, 착수 보고로 신고) | 영어 화면 대중교통 구간 줄의 낭독 이름(`and-rows`의 관측 뒤). 실기기 미확인: 정체 줄·노선 집합 줄 실물(해당 경로 필요), TalkBack 띠 빈 곳 짚기. 한소네 `hansone-smoke.py`·`hansone-and-route.py` 종료 0. 리뷰 서브에이전트 둘은 `claude-opus-5-5`로 실행됨(전사 확인) |
+| `and-m5-car` | `b03153c4` | 2026-11-21 01:18 | `guide/ui/GuideSheet.kt`(자동차 제목·현재 도로 줄·도보 인계 버튼), `directions/DirectionsScreen.kt` 시작 슬롯 한 줄, 알림 제목. 리뷰어는 Fable·high(작성자가 Opus) | 열린 판정 없음. 실기기 미확인: 주행 항목 전부, TalkBack 낭독·커서(BACKLOG §2 「E43 M5 자동차 안드로이드」 ①~⑨). 한소네 `hansone-smoke.py`·`hansone-and-m5-car.py` 통과 |
+| `and-rows` | `a88a0d54` | 2026-11-21 01:35 | `search/SearchScreen.kt`·`nav/AppRoot.kt`(`and-common` 소유) 배선, 채팅 `ChatScreen.kt`, 가드 둘, `:kit` `LocationNarrative.kt`·`StationPhone.kt` | A77(영어 화면 병기 줄이 한소네에서 두 번 출력, 위원장 판정 대기), A76(상세·물어보기에서 돌아오면 커서가 검색창, B21 이전부터). 인계: 채팅 `resolveAddress`·`AddressToPlace.kt` 계열이 죽은 코드. 한소네 `hansone-smoke.py`(A75 경고 소멸)·`hansone-and-rows.py` 통과 |
