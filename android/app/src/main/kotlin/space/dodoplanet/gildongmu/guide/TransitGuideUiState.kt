@@ -46,6 +46,10 @@ data class TransitGuideUiState(
     val boardOverrideIndex: Int? = null,
     val reboardPickerActive: Boolean = false,
     val aboardStep: TransitAboardStep? = null,
+    /** E71 R14: 지금 탄 열차에서 시작한 세션이 고른 방향(`updnLine` 원문). */
+    val aboardDirection: String? = null,
+    /** E71 R9: 시트 첫 착지가 질문 라벨이어야 하는 일회성 표식(`consumeAboardStartLanding`이 읽고 푼다). */
+    val aboardStartLandingPending: Boolean = false,
     val expressBlockedNote: String? = null,
 ) {
     val isTracking: Boolean get() = state != null

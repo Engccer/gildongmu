@@ -36,6 +36,15 @@ import space.dodoplanet.gildongmu.kit.TransitGuideRoute
 import space.dodoplanet.gildongmu.kit.TransitGuideState
 import space.dodoplanet.gildongmu.kit.TransitGuideTone
 import space.dodoplanet.gildongmu.kit.TransitLock
+import space.dodoplanet.gildongmu.kit.TransitExpressVerdict
+import space.dodoplanet.gildongmu.kit.transitUnreachableReason
+import space.dodoplanet.gildongmu.kit.transitLaneForItem
+import space.dodoplanet.gildongmu.kit.transitLegWithLane
+import space.dodoplanet.gildongmu.kit.transitReboardStopPickable
+import space.dodoplanet.gildongmu.kit.transitTransferWalkTarget
+import space.dodoplanet.gildongmu.kit.transitTransferWalkMeters
+import space.dodoplanet.gildongmu.kit.transitExpressSkipsAlightLine
+import space.dodoplanet.gildongmu.kit.subwayIdForOdsayLine
 import space.dodoplanet.gildongmu.kit.TransitOverview
 import space.dodoplanet.gildongmu.kit.TransitPhase
 import space.dodoplanet.gildongmu.kit.TransitPositionService
@@ -143,7 +152,7 @@ data class TransitTransferWalkHandoff(
  * - 세션 단일성: `GuideSessionCoordinator`(도보·자동차와 상호 배제).
  *
  * 단계 2-1(수명·폴·유휴·통지)까지 옮겼다. 단계 3 몫(승차 중 현재역 E35·버스 정류장 E48·재기준 E76·잘못 내림 복구 E78·목적지 전환·다른 경로)은
- * `// 단계 3: <iOS 함수 이름>` 표식으로 자리만 남겼고(grep으로 전수 회수), 서비스·세션 배선은 `// 단계 4:` 표식이다. 사용자 동작(2-2)은 다음 묶음이다.
+ * `// 단계 3: <iOS 함수 이름>` 표식으로 자리만 남겼고(grep으로 전수 회수), 서비스·세션 배선은 `// 단계 4:` 표식이다. 사용자 동작(2-2)은 이 파일 「사용자 액션」 절이다.
  *
  * ⚠ 동기화가 없다 — 메인 스레드에서만 부른다(`scope`도 메인, `DeferredAnnouncer` 계약). 시계는 둘이다: `clock`(단조 초 — 유휴·`DeferredAnnouncer`·계측)과
  * `wallClockMs`(벽시계 epoch ms — 서버 도착 시각·떠난 열차 보존 180초, iOS `nowMs()`·`Date()` 자리).
@@ -238,6 +247,11 @@ class TransitGuideModel(
 
     // 단계 6: GuideSession.transitPassedPrewalk — 「탔다」(A68)를 세션 소유자에게 알리는 훅. GuideSession 배선(도보 인계 단계)이 건다.
     var onPassedPrewalk: (() -> Unit)? = null
+    /**
+     * 환승 도보 인계 훅(E73 spec D3, iOS `GuideSession.transitTransferWalk` 자리) — 단계 6이 배선한다. ⚠ iOS와 다르게, 훅이 없으면 인계하지 않고 종전 전진을
+     * 그대로 커밋한다(훅 없는 모델이 「다음 구간」을 삼켜 안내가 멈추지 않게).
+     */
+    var onTransferWalk: ((TransitTransferWalkHandoff) -> Unit)? = null
 
     // ── keep-alive 판정 값(서비스는 단계 4) ──
     private val _keepAliveWanted = MutableStateFlow<GuideLocationProfile?>(null)
@@ -330,8 +344,12 @@ class TransitGuideModel(
     /** 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비. */
     private var refreshAnnounce = false
     // 단계 3: destChangeToken · altRoutesToken — 목적지 전환·다른 경로 조회의 latest-wins 토큰
-    private var aboardDirection: String? = null
-    private var aboardStartLandingPending = false
+    private var aboardDirection: String?
+        get() = _ui.value.aboardDirection
+        set(v) = mutate { copy(aboardDirection = v) }
+    private var aboardStartLandingPending: Boolean
+        get() = _ui.value.aboardStartLandingPending
+        set(v) = mutate { copy(aboardStartLandingPending = v) }
     /** 이 dispatch의 입력이 `boardAboard`였다 — `boarded(declared)` 통지에 선택 차량 조각을 붙일지의 판별(`firstObservationInStep` 동형). */
     private var aboardBoardInStep = false
     /** 이 세션이 시작한 구간(E73) — 승차 전 도보·처음 시작은 0, 환승 도보 뒤 재개는 그 구간. 「탔다」(A68)는 이 구간을 넘었을 때다. */
@@ -752,13 +770,103 @@ class TransitGuideModel(
     // 단계 3: ingestKeepAliveFix
     // 단계 3: announceAlightReached
 
-    /** 테스트 전용: 사용자 동작(2-2)이 아직 없어 boarding·riding에 닿을 길이 없으므로 상태를 직접 세워 keep-alive 판정을 밟는다. */
-    internal fun debugSetState(newState: TransitGuideState) {
-        state = newState
-        updateKeepAlive()
+    // MARK: - 사용자 액션
+
+    /** 현재 구간을 바꿔 끼운다(서울버스 노선 선택). */
+    private fun replaceCurrentLeg(leg: TransitGuideLeg) {
+        val r = route ?: return
+        val s = state ?: return
+        if (s.legIndex !in r.legs.indices) return
+        val legs = r.legs.toMutableList()
+        legs[s.legIndex] = leg
+        route = TransitGuideRoute(legs = legs, walkAfterMinutes = r.walkAfterMinutes)
     }
 
-    // MARK: - 사용자 액션 (공개 동작은 단계 2-2, 비공개 보조만 이번에)
+    /**
+     * "탑승" = 차량 선택(N3). 식별자 잠금은 boarding으로 들어가 승차 정류소 도착을 기다린다 — riding 승격은 상태 머신이 관측으로 한다. `description`은 선택 차량의
+     * 안정 설명(행선·방향 — 폴마다 바뀌는 완성 문장은 제외)으로 상시 표시·통지에 쓴다. dispatch **전에** 동기로 보관해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
+     */
+    fun board(item: TransitTrackItem, description: TransitLabel?) {
+        val s = state ?: return
+        if (s.phase != TransitPhase.waiting || s.signal == TransitSignal.untrackable) return
+        var leg = currentLeg ?: return
+        val trackMode = leg.trackMode ?: return
+        // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3): 시트 버튼 유무에만 기대면 다른 호출 경로가 결정적 미도달 열차를 잠근다. 같은 술어로 여기서도 거른다.
+        if (transitUnreachableReason(item, leg) != null) {
+            GuideDiag.log { "transit board rejected unreachable vehicle=${item.vehicleId ?: "-"}" }
+            return
+        }
+        // 지방버스 집합의 키는 노선 번호라 `routeId`로 쓸 수 없다 — 노선 교체는 서울버스만(E76 후속 ⓓ).
+        if (trackMode == TransitTrackMode.seoulBus) {
+            val lane = transitLaneForItem(leg, item)
+            if (lane != null) {
+                leg = transitLegWithLane(leg, lane)
+                replaceCurrentLeg(leg)
+            }
+        }
+        val lock = TransitLock(
+            mode = trackMode,
+            routeId = leg.routeId ?: subwayIdForOdsayLine(leg.lineName) ?: "",
+            direction = item.direction,
+            vehicleId = item.vehicleId ?: "",
+        )
+        selectedDescription = description
+        logVehiclePick(kind = "board", chosen = item, leg = leg)
+        dispatch(TransitGuideInput.Board(lock))
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * 차량을 고르는 순간의 계측(A74, 실험판) — 그때 화면에 있던 후보 전부와 고른 항목을 한 줄씩. 사후에 "고른 열차가 이미 떠난 열차였는가"를 가르는 유일한 증거다.
+     * 좌표·개인 정보는 싣지 않는다(열차 번호·문장·나이·판정만).
+     */
+    private fun logVehiclePick(kind: String, chosen: TransitTrackItem, leg: TransitGuideLeg) {
+        GuideDiag.log {
+            fun row(item: TransitTrackItem): String =
+                "train=${item.vehicleId ?: "-"} code=${item.arrivalCode ?: "-"} msg=${item.message}" +
+                    " age=${item.dataAgeSeconds ?: "-"}" +
+                    " departedLikely=${item.departedLikely ?: "-"}" +
+                    " platformAge=${item.platformAgeSeconds ?: "-"}"
+            val shown = classifyTransitBoardingCandidates(waitingCandidatesPool(), leg).candidates
+            // 대기 목록에서 빠진(떠난 것으로 판정된) 열차도 함께 남긴다 — 걸러낸 판정이 맞았는지 사후에 가른다.
+            val hidden = (waitingLive + waitingDeparted.map { it.item }).filter { it.departedLikely == true }
+            "vehiclePick kind=$kind chosen[${row(chosen)}] shown=${shown.size} hidden=${hidden.size}" +
+                shown.withIndex().joinToString("") { "\n  shown[${it.index}] ${row(it.value.item)}" } +
+                hidden.withIndex().joinToString("") { "\n  hidden[${it.index}] ${row(it.value)}" }
+        }
+    }
+
+    /**
+     * "선택한 열차에 탔어요"(boarding → riding 사용자 선언). 종전 [탑승했습니다]와 같은 입력이고 **언제 낼 수 있는가**만 좁혔다(N3 ①).
+     */
+    fun confirmBoarded() {
+        if (state?.phase != TransitPhase.boarding) return
+        dispatch(TransitGuideInput.ConfirmBoarded)
+        restartPollLoop(immediate = true)
+    }
+
+    fun boardApprox() {
+        val leg = currentLeg ?: return
+        if (leg.trackMode != TransitTrackMode.tagoBus) return
+        dispatch(TransitGuideInput.Board(TransitLock(mode = TransitTrackMode.tagoBus, routeId = leg.lineName, direction = "", vehicleId = "")))
+        restartPollLoop(immediate = true)
+    }
+
+    fun advance() {
+        completeOrAdvance(announceDone = true)
+    }
+
+    /**
+     * 마지막 leg의 단일 버튼 "남은 도보 안내 시작"(E34, spec 2026-09-11 §4.3): `advance`와 같은 전이이되 완료 문장 `doneWalk`를 내지 않는다 — 그 문장은 어차피
+     * `acceptWalkHandoff`의 `stop()`이 지연 슬롯째 취소하고(설계 리뷰 M3), 도착 통지(`arrivedWalkNext`)가 이미 도보 분을 말했다. 반환 = 말미 도보 인계가 남았는가
+     * (false면 시트가 인계를 부르지 않는다 — 전이 실패 시 세션을 끊지 않는 가드).
+     */
+    fun advanceIntoWalkHandoff(): Boolean {
+        completeOrAdvance(announceDone = false)
+        val pending = pendingWalkHandoff != null
+        GuideDiag.log { "transit walkHandoffNow pending=$pending" }
+        return pending
+    }
 
     /** 마지막 leg인가(E70 여정 버튼 조건 — 잘린 경로는 말미 도보 분이 없다). */
     val isOnFinalLeg: Boolean
@@ -783,6 +891,299 @@ class TransitGuideModel(
             val leg = currentLeg ?: return null
             return leg.viaStops.getOrNull(i)?.name
         }
+
+    private fun completeOrAdvance(announceDone: Boolean) {
+        // 환승 도보(E73 spec D3): 리듀서를 순수하게 미리 돌려 다음 구간으로 넘어가는지 보고, 그 구간 앞 도보가 걷기 안내 대상이면 전진을 커밋하지 않고 세션 소유자에게
+        // 넘긴다. `legAdvanced` 통지(「도보 N분 이동 후 …」)는 즉시 창구라 뒤의 세대 증가로 취소되지 않는다 — 걷기 안내가 붙는 이 경우엔 내면 안 되는 문장이다.
+        val s = state
+        val r = route
+        val d = dest
+        val handoffHook = onTransferWalk
+        if (s != null && r != null && d != null && handoffHook != null) {
+            val event = transitGuideStep(state = s, input = TransitGuideInput.Advance, route = r, now = nowMs()).event
+            if (event is TransitGuideEvent.LegAdvanced && !event.final) {
+                val nextIndex = event.legIndex
+                val target = transitTransferWalkTarget(r, nextIndex)
+                // 실승차 판정 재료(spec §5-3): 걷기가 있는 전진은 대상 여부와 무관하게 직선 거리를 남긴다(`-` = 좌표 결손).
+                val minutes = r.legs[nextIndex].walkBeforeMinutes
+                if (minutes != null && minutes >= 1) {
+                    val meters = transitTransferWalkMeters(r, nextIndex)?.let { fmt1(it) } ?: "-"
+                    GuideDiag.log { "transit transferWalk leg=$nextIndex minutes=$minutes meters=$meters target=${if (target == null) 0 else 1}" }
+                }
+                if (target != null) {
+                    // 다음 구간으로 넘어간다 = 탔다(A68) — 전진을 커밋하지 않으니 `dispatch`의 전이 대신 여기서 알린다(구현·안전 리뷰 L1).
+                    onPassedPrewalk?.invoke()
+                    handoffHook(
+                        TransitTransferWalkHandoff(
+                            route = r, legIndex = nextIndex, target = target, destinationLabel = destinationLabel,
+                            dest = d, accessible = accessible, lead = null,
+                        ),
+                    )
+                    return
+                }
+            }
+        }
+        dispatch(TransitGuideInput.Advance)
+        if (state?.phase == TransitPhase.done) {
+            // 여정(E70 §6.3): 말미 도보와 무관하게 다음 단계로. 완료 문장은 다음 세션의 시작 통지가 대신한다(뻔한 꼬리 금지).
+            val rideCompleted = onJourneyRideCompleted
+            if (rideCompleted != null) {
+                onJourneyRideCompleted = null
+                onJourneyStopped = null
+                stop(playStopTone = false)
+                rideCompleted()
+                return
+            }
+            // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 자원만 회수한다. 말미 도보가 있으면 핸드오프 제안(§14.2)을 stop() **뒤에** 남긴다(stop()이
+            // pendingWalkHandoff까지 null로 지우는 단일 소거 경로라 순서 필수). ⚠ E34부터 이 값은 인계 화면의 근거가 아니라 **한 턴 수명 신호**다 — 같은 턴에
+            // `GuideSession.acceptWalkHandoff`가 소비한다. 출구·하차역 좌표(E84)는 `stop()`이 경로를 지우기 전에 마지막 구간에서 읽는다.
+            val finalLeg = route?.legs?.lastOrNull()
+            val handoff = route?.walkAfterMinutes?.let {
+                TransitWalkHandoff(
+                    destinationLabel = destinationLabel, walkMinutes = it,
+                    exitAlight = finalLeg?.exitAlight,
+                    alightLat = finalLeg?.alightStop?.lat, alightLng = finalLeg?.alightStop?.lng,
+                )
+            }
+            // 완료 문장은 stop() **뒤에** 낸다(BeaconModel 도착 문장 선례): `handle(event)`가 start 톤 뒤로 미룬 문장은 stop()의 세대 증가가 취소하므로, 그 자리는
+            // 발화하지 않고 여기서 stop()이 지우는 route를 지역 변수로 캡처해 새 세대에 게시한다.
+            val doneText = finalLegText()
+            stop(playStopTone = false)
+            pendingWalkHandoff = handoff
+            if (announceDone) announce(doneText, speechClass = GuideSpeechClass.actionable)
+        } else {
+            waitingLive = emptyList()
+            waitingDeparted = emptyList()
+            waitingReason = null
+            retained.clear()
+            restartPollLoop(immediate = true)
+        }
+    }
+
+    /**
+     * "탑승 변경" 진입. 지하철은 지금 있는 역을, 서울버스는 지금 있는 정류장을(E76 후속 ⓔ) 먼저 묻고, 그 밖은 종전대로 곧장 재선택으로 간다. 판정은
+     * `transitReboardStopPickable`. ⚠ 지하철은 조회 파라미터가 역 *이름*이라 표시 인덱스(`boardOverrideIndex`)를 덧씌우고, 서울버스는 정류소 ID를 쓰므로 leg
+     * 자체를 바꾼다(`changeBoarding(stopIndex)`, 단계 3).
+     */
+    fun beginReboard() {
+        // 단계 3: invalidateRecovery — 복구 중이었으면 폴을 즉시 다시 돌린다(`if (invalidateRecovery()) restartPollLoop(immediate = true)`)
+        touchUserAction()
+        // 단계 3: reanchor — 승차 중의 새 [탑승 변경]은 새 원본을 잡는다(`if (state.phase != .waiting) reanchor = nil`)
+        val leg = currentLeg
+        if (leg == null || !transitReboardStopPickable(leg)) {
+            changeBoarding()
+            return
+        }
+        reboardPickerActive = true
+    }
+
+    fun cancelReboard() {
+        reboardPickerActive = false
+    }
+
+    /**
+     * 하차역 선언(A37 ②, spec 2026-09-11 §4.1): 역 선택(승차 중 탑승 변경·"이미 탑승" 흐름 둘 다)에서 하차역을 고르면 그 leg를 확정 도착으로 끝낸다 — 대기 국면으로
+     * 되돌리지 않는다. 통지는 관측 도착과 같은 지연 창구(`.arrived` 이벤트, 도착 종 뒤 발화). 폴 주기 0(리듀서) + 즉폴 게이트로 폴이 나가지 않는다.
+     */
+    fun declareArrived() {
+        val s = state ?: return
+        if (s.phase != TransitPhase.waiting && s.phase != TransitPhase.riding) return
+        GuideDiag.log { "transit declareArrived from=${s.phase.rawValue} leg=${s.legIndex}" }
+        aboardDirection = null
+        aboardStartLandingPending = false
+        dispatch(TransitGuideInput.DeclareArrived)
+        waitingLive = emptyList()
+        waitingDeparted = emptyList()
+        waitingReason = null
+        restartPollLoop(immediate = false)
+    }
+
+    // MARK: - "이미 탔어요" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
+
+    /**
+     * E71 R9: 시트 첫 착지가 질문 라벨(`.waitingLabel`)이어야 하는 일회성 표식을 읽고 false로 돌린다. 띠바 복귀·일반 A34 둘째 단계의 시트 재열림은 E38 판정대로
+     * 상태 문장이다(`aboardStep`을 보면 그 둘도 질문 라벨로 간다).
+     */
+    fun consumeAboardStartLanding(): Boolean {
+        val pending = aboardStartLandingPending
+        aboardStartLandingPending = false
+        return pending
+    }
+
+    /**
+     * [이미 탔어요] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금(서울버스는 정류소 ID 조회라 역 이름 질문이 성립하지 않는다 —
+     * [탑승 변경]의 정류장 질문과 다른 흐름이다).
+     */
+    fun beginAboard() {
+        touchUserAction()
+        if (state?.phase != TransitPhase.waiting) return
+        val leg = currentLeg ?: return
+        if (leg.trackMode != TransitTrackMode.subway || leg.viaStops.isEmpty()) {
+            boardAlready(express = null)
+            return
+        }
+        aboardStep = TransitAboardStep.pickStation
+        GuideDiag.log { "transit aboard step=pickStation" }
+    }
+
+    fun cancelAboard() {
+        aboardStep = null
+        GuideDiag.log { "transit aboard step=cancel" }
+    }
+
+    /**
+     * 역 선택(pickStation) 응답. 하차역이면 도착 선언(§4.1), 그 밖은 그 역 기준 목록으로(스냅숏·3분 버퍼 소거 — 승차역 목록이 다른 역 목록에 섞이지 않게, 리뷰 m1).
+     */
+    fun pickAboardStation(stopIndex: Int) {
+        touchUserAction()
+        val leg = currentLeg ?: return
+        if (aboardStep != TransitAboardStep.pickStation) return
+        if (stopIndex == leg.viaStops.size - 1) {
+            aboardStep = null
+            declareArrived()
+            return
+        }
+        boardOverrideIndex = stopIndex
+        aboardStep = TransitAboardStep.pickVehicle
+        waitingLive = emptyList()
+        waitingDeparted = emptyList()
+        waitingReason = null
+        retained.clear()
+        GuideDiag.log { "transit aboard step=pickVehicle station=$stopIndex" }
+        restartPollLoop(immediate = true)
+    }
+
+    fun pickAnotherAboardStation() {
+        if (aboardStep != TransitAboardStep.pickVehicle) return
+        aboardStep = TransitAboardStep.pickStation
+        GuideDiag.log { "transit aboard step=pickStation again" }
+    }
+
+    /** pickVehicle 목록에서 고른 열차로 riding 직행(식별 잠금, 선언). boarding을 지나지 않는다 — 이미 탔다. 차단 재판정은 `board()`와 같은 술어. */
+    fun boardAboard(item: TransitTrackItem, description: TransitLabel?) {
+        if (aboardStep != TransitAboardStep.pickVehicle) return
+        val leg = currentLeg ?: return
+        val trackMode = leg.trackMode ?: return
+        // E71 R14: 시작 때 고른 방향과 다른 열차로는 식별 잠금을 세우지 않는다(조회와 시작 사이에 열차가 바뀌어도).
+        val locked = aboardDirection
+        if (locked != null && item.direction != locked) {
+            GuideDiag.log { "transit boardAboard rejected direction vehicle=${item.vehicleId ?: "-"} locked=$locked" }
+            return
+        }
+        if (transitUnreachableReason(item, leg) != null) {
+            GuideDiag.log { "transit boardAboard rejected unreachable vehicle=${item.vehicleId ?: "-"}" }
+            return
+        }
+        val lock = TransitLock(
+            mode = trackMode,
+            routeId = leg.routeId ?: subwayIdForOdsayLine(leg.lineName) ?: "",
+            direction = item.direction,
+            vehicleId = item.vehicleId ?: "",
+        )
+        selectedDescription = description
+        GuideDiag.log { "transit boardAboard vehicle=${item.vehicleId ?: "-"}" }
+        logVehiclePick(kind = "boardAboard", chosen = item, leg = leg)
+        aboardBoardInStep = true
+        dispatch(TransitGuideInput.BoardAboard(lock))
+        aboardBoardInStep = false
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 — 이름을 받는 판을 남기면 그것이 다시 동명 역 모호 경로가 된다(spec §3.6).
+     */
+    fun changeBoarding(stopIndex: Int) {
+        val leg = currentLeg
+        if (state != null && leg != null && leg.trackMode == TransitTrackMode.seoulBus) {
+            reboardPickerActive = false
+            // 단계 3: reseatSeoulBus — 고른 정류장 기준 leg로 바꾸고 다시 기다린다(E76 후속 ⓔ). 그 전까지는 원래 승차 정류장 기준 대기로 돌아간다(iOS가 첫 정류장에서 하는 것과 같다).
+            changeBoarding()
+            return
+        }
+        boardOverrideIndex = stopIndex
+        reboardPickerActive = false
+        changeBoarding()
+    }
+
+    // 단계 3: fetchReanchorLanes
+
+    fun changeBoarding() {
+        dispatch(TransitGuideInput.ChangeBoarding)
+        // §13.1: 소실 항목 3분 버퍼(retained)는 비우지 않는다 — 잘못 잠근 채 이동한 뒤 돌아온 목록에서 원래 열차가 사라지던 경로. 스냅숏만 비우고 즉폴이 재구성.
+        waitingLive = emptyList()
+        waitingDeparted = emptyList()
+        waitingReason = null
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * 탑승 변경 취소(§13.1) — 직전 잠금·국면으로 복귀(머신이 previousLock·previousPhase 소유). ⚠ `Board(previousLock)`으로 돌리면 식별자 잠금은 boarding으로
+     * 가서 이미 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
+     */
+    fun cancelChangeBoarding() {
+        val s = state ?: return
+        if (s.phase != TransitPhase.waiting) return
+        val previous = s.previousLock ?: return
+        // 단계 3: reanchor — 정류장 재기준(E76 후속 ⓔ)을 취소하면 [탑승 변경] 직전 leg(원래 정류장·집합)로 되돌린다(`reanchor = nil` 포함)
+        val leg = currentLeg
+        if (previous.mode == TransitTrackMode.seoulBus && leg != null) {
+            val lane = leg.lanes?.firstOrNull { it.key == previous.routeId }
+            if (lane != null) replaceCurrentLeg(transitLegWithLane(leg, lane))
+        }
+        dispatch(TransitGuideInput.RestoreBoarding)
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * "이미 탔어요"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
+     *
+     * `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 위원장 판정 — 급행 집합이 있는 노선에서만 시트가 묻는다)의 답. true면 하차역 정차를 판정해 통과 급행이면
+     * 잠그지 않고 차단 문장(결정적 문장 재사용)을 남기고, 정차하면 급행 선언 잠금. 프롬프트가 없는 노선은 null로 종전 그대로. ⚠ 기본값 없음 — 호출부가 밝힌다.
+     */
+    fun boardAlready(express: Boolean?) {
+        val leg = currentLeg ?: return
+        val trackMode = leg.trackMode ?: return
+        if (trackMode == TransitTrackMode.tagoBus) return
+        if (express == true && transitDeclaredExpressVerdict(leg) == TransitExpressVerdict.skips) {
+            val note = renderer.render(transitExpressSkipsAlightLine(isEn = transitGuideIsEn, leg = displayLeg(leg, useOverride = false)))
+            expressBlockedNote = note
+            GuideDiag.log { "transit boardAlready rejected express skips alight" }
+            // 통지는 시트의 착지가 대신한다(문장 행 착지 = 답). 착지 실패 폴백만 `announceLandingFallback`(전 대상 공용, A35).
+            return
+        }
+        expressBlockedNote = null
+        val direction = when (leg.wayCode) { 1 -> "상행"; 2 -> "하행"; else -> "" }
+        dispatch(
+            TransitGuideInput.Board(
+                TransitLock(
+                    mode = trackMode,
+                    routeId = leg.routeId ?: subwayIdForOdsayLine(leg.lineName) ?: "",
+                    direction = direction,
+                    vehicleId = "",
+                    express = if (express == true) true else null,
+                ),
+            ),
+        )
+        restartPollLoop(immediate = true)
+    }
+
+    /**
+     * 착지 실패 폴백(A35 spec §4.1): 시트가 대상에 커서를 앉히지 못했을 때 **그 자리에서 낭독됐을 라벨**을 즉시 `.high`로 통지한다(헌장 §5 — 착지 못 하면 통지가 유일한
+     * 증거). 착지가 성공하면 부르지 않는다(같은 문장 이중 낭독 금지). 빈 문장은 내지 않는다.
+     */
+    fun announceLandingFallback(text: String) {
+        if (text.isEmpty()) return
+        announceNow(text, highPriority = true)
+    }
+
+    /** 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외). */
+    fun refreshWaiting() {
+        if (state?.phase != TransitPhase.waiting) return
+        touchUserAction()
+        refreshAnnounce = true
+        restartPollLoop(immediate = true)
+    }
+
 
     /**
      * 대기 목록의 입력 풀(시트·새로고침 응답 공용). "이미 탑승" pickVehicle 단계는 그 역에 있는 열차만(`transitAboardCandidates`, A34 ② 후보 필터) — 두

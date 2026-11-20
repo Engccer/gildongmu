@@ -152,15 +152,20 @@ class TransitGuideModelTest {
     }
 
     @Test fun `권한이 없으면 keepAlive를 원하지 않고 있으면 원한다`() = transitTest(dispatcher) { h ->
+        h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
+        h.perms.location = LocationPermission.None
         h.begin()
         settle()
-        val riding = h.model.ui.value.state!!.copy(phase = TransitPhase.riding)
         assertNull(h.model.keepAliveWanted.value, "대기 국면은 원하지 않는다")
-        h.perms.location = LocationPermission.None
-        h.model.debugSetState(riding)
-        assertNull(h.model.keepAliveWanted.value)
+        h.model.board(h.model.ui.value.waitingLive.single(), null)
+        assertEquals(TransitPhase.boarding, h.model.ui.value.state?.phase)
+        assertNull(h.model.keepAliveWanted.value, "권한이 없으면 원하지 않는다")
+        h.model.stop(playStopTone = false)
+        h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
         h.perms.location = LocationPermission.Fine
-        h.model.debugSetState(riding)
+        h.begin()
+        settle()
+        h.model.board(h.model.ui.value.waitingLive.single(), null)
         assertEquals(GuideLocationProfile.keepAlive, h.model.keepAliveWanted.value)
         h.model.stop(playStopTone = false)
         assertNull(h.model.keepAliveWanted.value)
