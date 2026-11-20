@@ -19,8 +19,10 @@ import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.TransitGuideUiState
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
 import space.dodoplanet.gildongmu.guide.bandSummaryText
+import space.dodoplanet.gildongmu.guide.transitBandSummaryText
 import space.dodoplanet.gildongmu.kit.joinText
 
 /**
@@ -29,7 +31,18 @@ import space.dodoplanet.gildongmu.kit.joinText
  */
 @Composable
 fun GuideBand(ui: WalkGuideUiState, strings: Strings, focus: FocusRequester) {
-    val summary = bandSummaryText(ui, strings)
+    GuideBandRow(bandSummaryText(ui, strings), strings, focus)
+}
+
+/** 대중교통 띠바(M5 §6-7, iOS `GuideBandView` 대중교통 갈래) — 요약은 알림 본문과 같은 문장(`transitBandSummaryText`), 모양·착지·복귀는 도보 띠바 그대로. */
+@Composable
+fun TransitGuideBand(ui: TransitGuideUiState, strings: Strings, focus: FocusRequester) {
+    GuideBandRow(transitBandSummaryText(ui, strings), strings, focus)
+}
+
+/** 띠바 한 줄(두 수단 공용) — 낭독은 요약 + 「안내 시트 펼치기」 한 문장. */
+@Composable
+private fun GuideBandRow(summary: String, strings: Strings, focus: FocusRequester) {
     val returnLabel = strings.get("guide.band.return")
     val spoken = joinText(summary, returnLabel)
     Row(

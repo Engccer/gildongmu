@@ -365,5 +365,12 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "transitGuide.waitContextWalk" -> R.string.transitGuide_waitContextWalk
     "transitGuide.waitContextWalkBus" -> R.string.transitGuide_waitContextWalkBus
     "transitGuide.waitingCount" -> R.string.transitGuide_waitingCount
+    // 대중교통 시트(단계 5-A) — 착지 폴백 문장(그 자리에서 낭독됐을 라벨과 같은 키)
+    "transitGuide.waitingLabel" -> R.string.transitGuide_waitingLabel
+    "transitGuide.waitingLabelAboard" -> R.string.transitGuide_waitingLabelAboard
+    "transitGuide.aboardStationPrompt" -> R.string.transitGuide_aboardStationPrompt
+    "transitGuide.reboardStopPrompt" -> R.string.transitGuide_reboardStopPrompt
+    "transitGuide.expressPrompt" -> R.string.transitGuide_expressPrompt
+    "android.transitGuide.destChangeNone" -> R.string.android_transitGuide_destChangeNone
     else -> null
 }

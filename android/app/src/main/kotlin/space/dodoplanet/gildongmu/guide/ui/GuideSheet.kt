@@ -440,7 +440,7 @@ private fun InfoBandColumn(viewportHeight: Int, modifier: Modifier = Modifier, c
  * 제목으로 되돌린다(팝업이 닫힌 뒤 커서가 어디로 갈지 시스템에 맡기지 않는다). 착지 requester는 clickable의 focusable 앞.
  */
 @Composable
-private fun GuideTitleMenu(title: String, strings: Strings, items: List<GuideTitleMenuItem>, focus: FocusRequester, onSelect: (GuideTitleMenuItem) -> Unit, onDismissWithoutChoice: () -> Unit) {
+internal fun GuideTitleMenu(title: String, strings: Strings, items: List<GuideTitleMenuItem>, focus: FocusRequester, onSelect: (GuideTitleMenuItem) -> Unit, onDismissWithoutChoice: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val firstItemFocus = remember { FocusRequester() }
     // 메뉴가 열리면 첫 항목에 착지한다 — 팝업 윈도로 커서를 옮기는 것은 TalkBack 관례이지 보장이 아니다(설계 리뷰 #10).

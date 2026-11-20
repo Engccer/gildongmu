@@ -18,12 +18,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import space.dodoplanet.gildongmu.guide.GuideScreenKind
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.guideScreenKind
 import space.dodoplanet.gildongmu.guide.guideStrings
 
 /**
  * `AppRoot`의 `bottomBar` 삽입 한 자리(spec §7-2): 세션 조립(멱등) → 권한 손 → 전경 관찰자 → 띠바(최소화 시) + 탭 → 시트
- * (`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에 0 기여). `nav`는 시트가 앱 골격에 요청하는 이동(종료 화면 [체중 입력하기](E31)의 설정 push·장소 상세 중첩(M4b)). 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
+ * (`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에 0 기여). 시트·띠바는 `guideScreenKind`가 고른 화면 하나(도보·자동차 `GuideSheet` 또는 대중교통 `TransitGuideSheet`). `nav`는 시트가 앱 골격에 요청하는 이동(종료 화면 [체중 입력하기](E31)의 설정 push·장소 상세 중첩(M4b)). 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
  */
 @Composable
 fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
@@ -33,15 +35,19 @@ fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
     val strings = remember(context.resources) { guideStrings(context.resources) }
     GuidePermissionsLauncher()
     ForegroundObserver()
+    // 두 모델의 `ui`를 함께 수집해 같은 규칙(`guideScreenKind`)으로 고른다 — `GuideSession.screen`은 `StateFlow.value`를 읽는 계산 속성이라 Compose가
+    // 관찰하지 못한다. 시트는 한 호스트가 하나만 띄운다(iOS `.sheet(item:)` 하나, 설계 리뷰 M2).
     val ui by GuideSession.walk.ui.collectAsState()
-    val hasScreen = ui.hasScreen
+    val transitUi by GuideSession.transit.ui.collectAsState()
+    val screen = guideScreenKind(ui, transitUi)
+    val hasScreen = screen != null
     val minimized = GuideSession.isMinimized
     val showsSheet = hasScreen && !minimized
     KeepScreenOn(showsSheet)
     val bandFocus = remember { FocusRequester() }
     Column {
         if (hasScreen && minimized) {
-            GuideBand(ui, strings, bandFocus)
+            if (screen == GuideScreenKind.transit) TransitGuideBand(transitUi, strings, bandFocus) else GuideBand(ui, strings, bandFocus)
             // 최소화 직후·백그라운드를 거친 전경 복귀(알림 탭) → 띠바 착지.
             LaunchedEffect(GuideSession.bandLandingSeq) {
                 if (GuideSession.suppressNextBandLanding) GuideSession.suppressNextBandLanding = false else land(bandFocus, "띠바")
@@ -49,7 +55,13 @@ fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
         }
         tabs()
     }
-    if (showsSheet) GuideSheet(ui, strings, nav)
+    if (showsSheet) {
+        when (screen) {
+            GuideScreenKind.beacon -> GuideSheet(ui, strings, nav)
+            GuideScreenKind.transit -> TransitGuideSheet(transitUi, strings, nav)
+            null -> Unit
+        }
+    }
 }
 
 /**
@@ -62,8 +74,9 @@ fun guideSheetShowing(): Boolean {
     val app = LocalContext.current.applicationContext
     GuideSession.attach(app) // 멱등 — `GuideBottomBar`와 같은 이유로 동기 호출.
     val ui = GuideSession.walk.ui.collectAsState()
-    // 결과가 바뀔 때만 읽는 자리를 재구성한다 — 안내 상태는 fix마다 바뀌어, 그대로 읽으면 탭 콘텐츠 블록이 매초 다시 돈다(리뷰 m4).
-    val showing by remember { derivedStateOf { ui.value.hasScreen && !GuideSession.isMinimized } }
+    val transitUi = GuideSession.transit.ui.collectAsState()
+    // 결과가 바뀔 때만 읽는 자리를 재구성한다 — 안내 상태는 fix마다 바뀌어, 그대로 읽으면 탭 콘텐츠 블록이 매초 다시 돈다(리뷰 m4). 시트 선택은 호스트와 같은 규칙.
+    val showing by remember { derivedStateOf { guideScreenKind(ui.value, transitUi.value) != null && !GuideSession.isMinimized } }
     return showing
 }
 
