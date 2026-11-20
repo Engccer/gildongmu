@@ -26,6 +26,50 @@ class GuideSourceGuardTest {
     }
 
     /**
+     * M5 시작 진입점(spec §2-2, iOS guidance-gate-drift 동형): 자동차 시작은 길찾기 자동차 결과의 버튼 한 곳, 세션 안의 `startWalk`는 자동차 도착 뒤
+     * 인계 한 곳, 모델의 요청 창구는 거부 판정 없는 본문 한 곳이다. 대중교통 세션이 시작 함수를 더하면 이 표를 넓힌다.
+     */
+    @Test fun `①-2 startCar 호출부는 CarGuideStartButton 한 곳, 세션 안 startWalk는 자동차 인계뿐`() {
+        val callers = allSources.filter { it.name != "GuideSession.kt" && it.readText().contains("GuideSession.startCar(") }.map { it.name }
+        assertEquals(listOf("CarGuideStartButton.kt"), callers)
+        val session = guide.resolve("GuideSession.kt").readText()
+        assertEquals(1, Regex("""\bstartWalk\(request\)""").findAll(session).count(), "세션 안 startWalk 호출은 인계 한 곳")
+        assertTrue(session.substringAfter("fun acceptCarWalkHandoff()").substringBefore("\n    }\n").contains("startWalk(request)"))
+        assertEquals(1, Regex("""walk\.requestStart\(""").findAll(session).count(), "요청 창구는 beginBeacon 한 곳")
+        assertTrue(session.substringAfter("private fun beginBeacon(").contains("walk.requestStart(request)"))
+        // 공개 시작 함수는 둘 다 거부 판정을 먼저 지난다.
+        for (fn in listOf("fun startWalk(", "fun startCar(")) {
+            assertTrue(session.substringAfter(fn).substringBefore("\n    }\n").contains("refuseIfActive()"), fn)
+        }
+        // 길찾기 자동차 슬롯도 시작 고지를 잇는다(도보 슬롯과 같은 배선).
+        val directions = pkg.resolve("directions/DirectionsScreen.kt").readText()
+        assertTrue(directions.contains("carGuideStartSlot(s, dataLocale.rawValue, outcome.briefing.provider, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) })"), "길찾기 자동차 시작 슬롯 배선")
+    }
+
+    /**
+     * 자동차 실행 안내의 정숙 시간 기준(iOS `car-waypoint-approach-guard.test.ts`의 안드로이드 판, M5 §4-3): 리듀서 밖에서 갚는 발화 두 자리(억제 복구·전경
+     * 복귀 상환)는 자동차 세션에서 `lastAnnouncedAt`을 적는다 — 빠지면 경유지 접근 예고가 갚은 회전 명령을 다음 fix에 끊는다.
+     */
+    @Test fun `①-4 자동차 갚은 발화 두 자리는 lastAnnouncedAt을 적는다`() {
+        val model = guide.resolve("WalkGuideModel.kt").readText()
+        val sites = Regex("""if \(sessionKind == GuideSessionKind\.car\) noteRepaidAnnouncement\(\)""").findAll(model).count()
+        assertEquals(2, sites)
+        assertEquals(3, Regex("""noteRepaidAnnouncement\(\)""").findAll(model).count(), "정의 1 + 호출 2")
+        assertTrue(model.substringAfter("private fun noteRepaidAnnouncement()").substringBefore("\n    }\n").contains("lastAnnouncedAt = clock()"))
+        assertTrue(model.substringAfter("var outputSuppressed: Boolean").substringBefore("\n        }\n").contains("noteRepaidAnnouncement()"), "억제 복구 자리")
+        assertTrue(model.substringAfter("fun setForeground(foreground: Boolean) {").substringBefore("\n    }\n").contains("noteRepaidAnnouncement()"), "전경 복귀 자리")
+    }
+
+    /** 안내의 자동차 조회는 정체 재료(E80 §5)와 기하를 함께 받는다 — `traffic`을 빠뜨리면 새 정체 판정이 조용히 0이 된다. */
+    @Test fun `①-3 안내의 자동차 조회는 traffic = true`() {
+        val model = guide.resolve("WalkGuideModel.kt").readText()
+        val calls = Regex("""routes\.car\([^\n]*\)""").findAll(model).map { it.value }.toList()
+        assertEquals(2, calls.size, calls.toString())
+        assertTrue(calls.all { it.contains("traffic = true") }, calls.toString())
+        assertTrue(calls.any { it.contains("includeGeometry = true") }, calls.toString())
+    }
+
+    /**
      * 도보 안내는 정식 기능이다(E43 우선순위 4, iOS 2026-08-15 졸업 동형) — 진입점·세션·띠바가 빌드 구성 게이트를 보지 않는다.
      * 예외는 진단 로그(`GuideDiag`, iOS도 `DEBUG || EXPERIMENTAL`)뿐. 게이트가 되살아나면 정식판에서 진입점이 조용히 0이 된다.
      * 밖의 배선 두 자리(길찾기 슬롯·띠바)는 줄 그대로 잠근다. M5(자동차·대중교통) 게이트가 `guide/` 공유 파일에 들어오면 이 스캔을 도보 파일·함수 단위로 좁힌다.

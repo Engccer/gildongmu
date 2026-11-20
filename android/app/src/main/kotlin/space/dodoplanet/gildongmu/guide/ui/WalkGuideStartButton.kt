@@ -25,6 +25,8 @@ import space.dodoplanet.gildongmu.guide.FailResolution
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.GuideWaypoint
 import space.dodoplanet.gildongmu.guide.WalkStartRequest
+import space.dodoplanet.gildongmu.guide.WalkGuideUiState
+import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.guide.guideStrings
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
@@ -40,12 +42,9 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  */
 @Composable
 fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, alternate: WalkLineKind?, waypoint: GuideWaypoint?, onStart: () -> Unit) {
-    val context = LocalContext.current
-    val res = context.resources
+    val res = LocalContext.current.resources
     val strings = remember(res) { guideStrings(res) }
     val ui by GuideSession.walk.ui.collectAsState()
-    val scope = rememberCoroutineScope()
-    val failFocus = remember { FocusRequester() }
     val tag = "guide-start-walk-${line.rawValue}"
     Column(Modifier.fillMaxWidth()) {
         Button(
@@ -57,28 +56,40 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, al
             },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
         ) { Text(strings.get(walkLineStartKey(line))) }
-        val showsFailure = ui.status.isFailure && ui.statusText.isNotEmpty() && ui.lastStartLine == line
-        if (showsFailure) {
-            // `BodyLine`은 `focus`를 받지 않고 `a11y/`는 m1 소유라 `mergedRow` 직접(리뷰 N3-6).
-            Text(ui.statusText, Modifier.fillMaxWidth().mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
-            // 실패 **전이**에만 착지(모델이 발급한 1회 표식) — 탭 복귀 재컴포지션이 커서를 빼앗지 않는다.
-            LaunchedEffect(ui.failSeq) { if (GuideSession.walk.takeFailLanding()) land(failFocus, "시작 실패 문장") }
-            when (ui.failResolution) {
-                FailResolution.precise -> Button(
-                    onClick = {
-                        scope.launch {
-                            if (AppConfig.permissionGate.request() == LocationPermission.Fine) GuideSession.walk.restart()
-                            else GuideSession.walk.announceNow(strings.get("android.common.geoReducedDesc"), highPriority = true)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-fail-precise"),
-                ) { Text(strings.get("android.common.allowPrecise")) }
-                FailResolution.settings -> Button(
-                    onClick = { context.tryStartActivity(appDetailsSettingsIntent(context)) },
-                    modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-fail-settings"),
-                ) { Text(strings.get("android.common.openSettings")) }
-                FailResolution.none -> Unit
-            }
+        if (ui.lastStartLine == line) GuideStartFailureRow(ui, strings)
+    }
+}
+
+/**
+ * 시작 실패 행(§7-1) — 실패 전이에 문장 착지 + 해결 버튼(정확한 위치 허용 / 설정 열기). 시작 버튼 바로 아래, 그 버튼이 낸 시작일 때만
+ * 부른다(도보는 줄, 자동차는 수단으로 가른다). 시트·띠바는 `hasScreen` 조건이라 실패 상태를 그리지 않는다 — 이 행이 유일한 자리다.
+ */
+@Composable
+internal fun GuideStartFailureRow(ui: WalkGuideUiState, strings: Strings) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val failFocus = remember { FocusRequester() }
+    if (!(ui.status.isFailure && ui.statusText.isNotEmpty())) return
+    Column(Modifier.fillMaxWidth()) {
+        // `BodyLine`은 `focus`를 받지 않고 `a11y/`는 m1 소유라 `mergedRow` 직접(리뷰 N3-6).
+        Text(ui.statusText, Modifier.fillMaxWidth().mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
+        // 실패 **전이**에만 착지(모델이 발급한 1회 표식) — 탭 복귀 재컴포지션이 커서를 빼앗지 않는다.
+        LaunchedEffect(ui.failSeq) { if (GuideSession.walk.takeFailLanding()) land(failFocus, "시작 실패 문장") }
+        when (ui.failResolution) {
+            FailResolution.precise -> Button(
+                onClick = {
+                    scope.launch {
+                        if (AppConfig.permissionGate.request() == LocationPermission.Fine) GuideSession.walk.restart()
+                        else GuideSession.walk.announceNow(strings.get("android.common.geoReducedDesc"), highPriority = true)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-fail-precise"),
+            ) { Text(strings.get("android.common.allowPrecise")) }
+            FailResolution.settings -> Button(
+                onClick = { context.tryStartActivity(appDetailsSettingsIntent(context)) },
+                modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-fail-settings"),
+            ) { Text(strings.get("android.common.openSettings")) }
+            FailResolution.none -> Unit
         }
     }
 }

@@ -95,6 +95,14 @@ data class WalkGuideUiState(
     val awaitingRoute: Boolean = false,
     /** 전환 채택 성공 세대 — 증가가 이벤트(시트가 조망·프리뷰를 닫고 제목에 착지). */
     val variantAdoptedSeq: Int = 0,
+    /** 지금 세션의 수단(M5) — 시트 제목 헤딩·현재 도로 줄이 본다. 세션 밖에선 walk. */
+    val sessionKind: GuideSessionKind = GuideSessionKind.walk,
+    /** 자동차 "현재 도로, {이름}"(E56). 이름을 모르면 null(줄 없음). */
+    val currentRoadText: String? = null,
+    /** 종료 화면을 남긴 세션의 수단 — 자동차면 「여기서 도보 안내 시작」이 선다(K2 §6.4). 종료 화면이 없으면 null. */
+    val arrivalSessionKind: GuideSessionKind? = null,
+    /** 시작 실패 행을 어느 수단의 시작 버튼 아래 그릴지(M5 — 도보는 `lastStartLine`이 줄까지 가른다). */
+    val lastStartKind: GuideSessionKind? = null,
 ) {
     val isTracking: Boolean get() = status == GuideStatus.tracking
 

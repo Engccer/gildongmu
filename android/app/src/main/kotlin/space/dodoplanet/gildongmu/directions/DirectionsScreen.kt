@@ -53,6 +53,7 @@ import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideNotice
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideNoticeSheet
 import space.dodoplanet.gildongmu.guide.ui.land
+import space.dodoplanet.gildongmu.guide.ui.carGuideStartSlot
 import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -376,7 +377,11 @@ private fun DirectionsForm(
                             viaLabel = s.via?.label, strings = strings, failedLines = s.walkLinesFailed,
                             guideStart = walkGuideStartSlot(s, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) }),
                         )
-                        is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
+                        is DirectionsModeOutcome.Car -> {
+                            // 자동차 안내 시작(M5) — 수단 heading 착지 뒤 첫 스와이프 거리, 경로 행보다 앞(iOS 동형).
+                            carGuideStartSlot(s, dataLocale.rawValue, outcome.briefing.provider, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) })?.invoke()
+                            CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
+                        }
                         DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")
                         DirectionsModeOutcome.Error -> TextRow(
                             strings.get(

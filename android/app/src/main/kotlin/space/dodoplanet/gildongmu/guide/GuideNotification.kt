@@ -30,7 +30,7 @@ fun notificationBodyText(ui: WalkGuideUiState, strings: Strings): String =
 
 /** 알림 제목 = 시트 제목과 같은 문장("도보 안내, {dest}"). */
 fun notificationTitleText(ui: WalkGuideUiState, strings: Strings): String =
-    joinText(strings.get("beacon.walkHeading"), ui.destinationLabel)
+    joinText(strings.get(if (ui.sessionKind == GuideSessionKind.car) "beacon.carHeading" else "beacon.walkHeading"), ui.destinationLabel)
 
 /**
  * 지속 알림(spec §4-3). 플랫폼 `Notification.Builder`만(androidx 없음). 채널 `IMPORTANCE_LOW` — 소리·진동 없음.

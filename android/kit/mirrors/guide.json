@@ -331,8 +331,10 @@
     },
     {
       "swift": "CarTrafficAhead.swift",
-      "status": "pending",
-      "note": "E80 주행 중 새 정체 판정(웹·iOS 선행). 공유 fixture car-jams-ahead-cases.json. 안드로이드에 자동차 실시간 안내 세션이 생길 때 이식한다(spec 2026-11-07-e80-car-traffic-design.md)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CarTrafficAhead.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CarTrafficAheadTest.kt",
+      "note": "E80 주행 중 새 정체 판정. 공유 fixture car-jams-ahead-cases.json(spec 2026-11-07-e80-car-traffic-design.md §5). 앱 소비는 자동차 안내 ETA 재조회(M5)"
     }
   ]
 }

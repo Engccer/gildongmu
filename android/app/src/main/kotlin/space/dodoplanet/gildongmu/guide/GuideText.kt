@@ -13,6 +13,10 @@ import space.dodoplanet.gildongmu.kit.OffRouteSide
 import space.dodoplanet.gildongmu.kit.RelativeDirection
 import space.dodoplanet.gildongmu.kit.RerouteProposalGate
 import space.dodoplanet.gildongmu.kit.WalkAction
+import space.dodoplanet.gildongmu.kit.CarLandmark
+import space.dodoplanet.gildongmu.kit.hasHangul
+import space.dodoplanet.gildongmu.kit.models.CarJam
+import space.dodoplanet.gildongmu.kit.carSpokenLandmark
 import space.dodoplanet.gildongmu.kit.WalkHealth
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.clockHour
@@ -28,7 +32,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * 상세 안내 이벤트 → 낭독 문장 조립(iOS `GuideText.swift`의 **walk 함수만** 1:1, spec §6). 원칙 둘: ① 스텝 문장
+ * 상세 안내 이벤트 → 낭독 문장 조립(iOS `GuideText.swift` 1:1 — 도보 spec §6, 자동차 동승자 갈래 M5 spec §4. 운전자 문장은 실험판이라 없다). 원칙 둘: ① 스텝 문장
  * (description)은 낭독 정본이라 재조합하지 않는다 — 그대로 싣거나 통독 틀(`guide.bundle`)에 담기만 한다 ② 거리 문자열은
  * `formatDistance` 정본 + 확신도 3단 래핑만 거친다. 낭독 채널(`spokenDistanceUnits`)은 `WalkGuideModel.post`가 담당.
  *
@@ -140,6 +144,25 @@ class GuideText(private val s: Strings) {
         // 인자 순서는 ko 플레이스홀더 순서(`android/i18n/arg-order.json`) — 할 일 먼저, 요약은 뒤(E62 문안 라).
         s.get("guide.detailStart", destination, unit(route, firstIndices), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
 
+    /** 자동차 시작 원자 발화(B1·E40, iOS `carStart`) — 할 일(첫 안내)이 먼저, 규모 요약은 뒤(인자 순서는 ko 문장 순서). */
+    fun carStart(route: GuideRoute, firstIndices: List<Int>, destination: String): String =
+        s.get("guide.carStart", destination, unit(route, firstIndices), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
+
+    /** 자동차 원거리 예고(B1 §4.7, iOS `farNotice`) — 크로싱 시점 실측 잔여 + 그 유닛 문장. */
+    fun farNotice(route: GuideRoute, indices: List<Int>, remainingMeters: Int): String =
+        s.get("guide.farNotice", formatDistance(remainingMeters), unit(route, indices))
+
+    /**
+     * 주행 중 새 정체 한 문장(E80 §5, iOS `carNewJamText`). `aheadMeters`는 지금 위치에서 정체 시작까지. `english`(데이터 언어 en)면 한글
+     * 도로 이름을 뺀다(조회 화면 정체 줄과 같은 규칙).
+     */
+    fun carNewJam(jam: CarJam, aheadMeters: Int, english: Boolean): String {
+        val distance = formatDistance(aheadMeters)
+        val length = formatDistance(jam.lengthMeters)
+        val road = jam.road?.takeIf { it.isNotEmpty() && !(english && hasHangul(it)) }
+        return road?.let { s.get("guide.carNewJam", distance, it, length) } ?: s.get("guide.carNewJamUnnamed", distance, length)
+    }
+
     /** 재조회 성공 원자 발화 — "출발지가 현재 위치로 바뀌었다"를 전할 채널은 이 문장뿐이다. */
     fun reroute(route: GuideRoute, firstIndices: List<Int>): String =
         // 인자 순서는 ko 플레이스홀더 순서 — 할 일 먼저, 요약은 뒤(E63 문안 라).
@@ -222,17 +245,23 @@ class GuideText(private val s: Strings) {
     }
 
     /**
-     * 이탈 문장(E63 문안 다·마 + 위원장 판정 J2·J3, iOS `offRoute`의 walk 갈래 — 안드로이드에 자동차 안내는 없다). 벗어난 쪽(낱말) + 돌아갈
-     * 쪽(시계). 보류(`hold`)는 null — 이미 경로 쪽으로 걷는 사람에게 말하지 않는다. 6시는 "뒤로 도세요".
+     * 이탈 문장(E63 문안 다·마 + 위원장 판정 J2·J3, iOS `offRoute`). 벗어난 쪽(낱말) + 돌아갈 쪽(시계). 보류(`hold`)는 null — 이미 경로
+     * 쪽으로 걷는 사람에게 말하지 않는다. 도보 6시는 "뒤로 도세요", 자동차(동승자)는 "경로는 N시 방향입니다"·"경로는 뒤쪽입니다".
      */
-    fun offRoute(guidance: OffRouteGuidance, side: OffRouteSide?, returnRelDeg: Double?): String? = when (guidance) {
-        OffRouteGuidance.hold -> null
-        OffRouteGuidance.sideOnly -> offRouteSide(side)
-        OffRouteGuidance.opposite -> s.get("guide.offRouteWith", s.get("guide.offRouteOpposite"), s.get("guide.offRouteTurnBack"))
-        OffRouteGuidance.turn -> if (side == null || returnRelDeg == null) offRouteSide(side) else {
-            val clock = clockHour(returnRelDeg)
-            val action = if (clock == 6) s.get("guide.offRouteTurnBack") else s.get("guide.offRouteReturnClock", clockDirection(clock))
-            s.get("guide.offRouteWith", offRouteSide(side), action)
+    fun offRoute(guidance: OffRouteGuidance, side: OffRouteSide?, returnRelDeg: Double?, kind: GuideSessionKind): String? {
+        val car = kind == GuideSessionKind.car
+        val back = s.get(if (car) "guide.carOffRouteBehind" else "guide.offRouteTurnBack")
+        return when (guidance) {
+            OffRouteGuidance.hold -> null
+            OffRouteGuidance.sideOnly -> offRouteSide(side)
+            OffRouteGuidance.opposite -> s.get("guide.offRouteWith", s.get("guide.offRouteOpposite"), back)
+            OffRouteGuidance.turn -> if (side == null || returnRelDeg == null) offRouteSide(side) else {
+                val clock = clockHour(returnRelDeg)
+                val action = if (clock == 6) back
+                else if (car) s.get("guide.carOffRouteClock", clockDirection(clock))
+                else s.get("guide.offRouteReturnClock", clockDirection(clock))
+                s.get("guide.offRouteWith", offRouteSide(side), action)
+            }
         }
     }
 
@@ -259,6 +288,57 @@ class GuideText(private val s: Strings) {
         return s.get("guide.periodicStraight", target, distance)
     }
 
+    /**
+     * 자동차 주기 통지 단문(K2 §6.3·E61, iOS `periodicCar`): 다음 스텝에 투영 행동이 있으면 "{거리} 직진하다가 [{지점}에서 ]{명령}"(방면은
+     * 싣지 않는다), 없으면(터널·톨게이트·직진 갈래) 종전 틀, 마지막은 목적지 틀. `english`는 데이터 로케일 en — 한글 지점 이름을 뺀다.
+     */
+    fun periodicCar(route: GuideRoute, stepIndex: Int, remainingMeters: Int, accuracy: Double, destinationLabel: String, english: Boolean): String {
+        val distance = confidenceDistance(remainingMeters.toDouble(), accuracy)
+        val next = route.steps.getOrNull(stepIndex + 1) ?: return s.get("guide.nextDestination", destinationLabel, distance)
+        val action = next.action ?: return s.get("guide.next", distance, next.description)
+        val at = carSpokenLandmark(next.carLandmark, english)?.at
+        return if (at != null) s.get("guide.carPeriodicAt", distance, at, carCommand(action)) else s.get("guide.carPeriodic", distance, carCommand(action))
+    }
+
+    /** 자동차 명령 단어("우회전") — 주기 단문의 꼬리(iOS `carCommand`). 도보 행동은 자동차 경로에 오지 않지만 exhaustive `when`이 키를 강제한다. */
+    fun carCommand(action: WalkAction): String = when (action) {
+        WalkAction.left -> s.get("guide.carCommand.left")
+        WalkAction.right -> s.get("guide.carCommand.right")
+        WalkAction.back -> s.get("guide.carCommand.back")
+        WalkAction.keepLeft -> s.get("guide.carCommand.keepLeft")
+        WalkAction.keepRight -> s.get("guide.carCommand.keepRight")
+        WalkAction.crosswalk -> s.get("guide.liveAction.crosswalk")
+        WalkAction.underpass -> s.get("guide.liveAction.underpass")
+    }
+
+    /**
+     * 자동차 동승자 임박 문장(K2 §6.3·E61, iOS `carImminentText(_:landmark:)`): "잠시 후 [{지점}에서 ][{방면} 방면으로 ]{행동구}". 비-ko
+     * 데이터면 한글 이름을 뺀다(`carSpokenLandmark`). 남는 것이 없으면 종전 문장.
+     */
+    fun carImminentText(action: WalkAction, landmark: CarLandmark?, english: Boolean): String {
+        val lm = carSpokenLandmark(landmark, english) ?: return carImminentText(action)
+        val phrase = liveActionPhrase(action, GuideSessionKind.car)
+        val at = lm.at
+        val toward = lm.toward
+        return when {
+            at != null && toward != null -> s.get("guide.carImminentAtToward", at, toward, phrase)
+            at != null -> s.get("guide.carImminentAt", at, phrase)
+            toward != null -> s.get("guide.carImminentToward", toward, phrase)
+            else -> carImminentText(action)
+        }
+    }
+
+    /** 자동차 임박 단문("잠시 후 우회전하세요") — 지점·방면이 없을 때와 하단 2행 "잠시 후" 윗줄. */
+    fun carImminentText(action: WalkAction): String = when (action) {
+        WalkAction.left -> s.get("guide.carImminent.left")
+        WalkAction.right -> s.get("guide.carImminent.right")
+        WalkAction.back -> s.get("guide.carImminent.back")
+        WalkAction.keepLeft -> s.get("guide.carImminent.keepLeft")
+        WalkAction.keepRight -> s.get("guide.carImminent.keepRight")
+        WalkAction.crosswalk -> s.get("guide.imminent.crosswalk")
+        WalkAction.underpass -> s.get("guide.imminent.underpass")
+    }
+
     /** 진행 상황 서두(서수 + 잔여). 잔여 시간은 근거가 있을 때만(3-state). */
     fun progressFrame(route: GuideRoute, state: GuideState, etaMinutes: Int?): String {
         val total = formatDistance(max(0.0, route.totalMeters - state.d).roundToInt())
@@ -267,8 +347,19 @@ class GuideText(private val s: Strings) {
         return "$ordinal. $remaining"
     }
 
-    /** 행동구("왼쪽으로 도세요"). keep*는 자동차 갈래라 walk 키가 없다 — 도달하지 않지만 exhaustive `when`이 키를 강제한다. */
-    fun liveActionPhrase(action: WalkAction): String = when (action) {
+    /**
+     * 행동구 — 수단별이다(K2 §4, iOS `liveActionPhrase(_:kind:)`): 도보 "왼쪽으로 도세요" / 자동차 "좌회전하세요"·"왼쪽 길로 가세요". 도보의
+     * keep*는 도달하지 않는 가지라 도보 문구로 둔다(안드로이드 종전값 유지).
+     */
+    fun liveActionPhrase(action: WalkAction, kind: GuideSessionKind): String = if (kind == GuideSessionKind.car) when (action) {
+        WalkAction.left -> s.get("guide.carLiveAction.left")
+        WalkAction.right -> s.get("guide.carLiveAction.right")
+        WalkAction.back -> s.get("guide.carLiveAction.back")
+        WalkAction.keepLeft -> s.get("guide.carLiveAction.keepLeft")
+        WalkAction.keepRight -> s.get("guide.carLiveAction.keepRight")
+        WalkAction.crosswalk -> s.get("guide.liveAction.crosswalk")
+        WalkAction.underpass -> s.get("guide.liveAction.underpass")
+    } else when (action) {
         WalkAction.left -> s.get("guide.liveAction.left")
         WalkAction.right -> s.get("guide.liveAction.right")
         WalkAction.back -> s.get("guide.liveAction.back")
@@ -309,25 +400,25 @@ class GuideText(private val s: Strings) {
     }
 
     /** 하단 2행 윗줄 렌더 — 매핑 규칙은 공유 fixture 러너(`GuideLiveRowsTest`)와 동일해야 한다. */
-    fun liveTop(row: LiveTopRow): String = when (row) {
+    fun liveTop(row: LiveTopRow, kind: GuideSessionKind): String = when (row) {
         LiveTopRow.OffRoute -> s.get("guide.offRoute")
         LiveTopRow.Uncertain -> s.get("guide.uncertain")
         LiveTopRow.Reacquiring -> s.get("guide.reacquiring")
         is LiveTopRow.Crossing -> row.text
-        is LiveTopRow.TurnSoon -> imminentText(row.action)
-        is LiveTopRow.TurnIn -> s.get("guide.liveTurnIn", row.meters.toString(), liveActionPhrase(row.action))
+        is LiveTopRow.TurnSoon -> if (kind == GuideSessionKind.car) carImminentText(row.action) else imminentText(row.action)
+        is LiveTopRow.TurnIn -> s.get("guide.liveTurnIn", row.meters.toString(), liveActionPhrase(row.action, kind))
         is LiveTopRow.Straight -> row.target?.let { s.get("guide.liveStraight", it, row.meters.toString()) }
             ?: s.get("guide.liveStraightNoName", row.meters.toString())
     }
 
     /** 하단 2행 아랫줄 렌더 — "다음 안내," 라벨까지 포함한 완성 문자열. */
-    fun liveNext(row: LiveNextRow): String {
+    fun liveNext(row: LiveNextRow, kind: GuideSessionKind): String {
         val step = when (row) {
-            is LiveNextRow.Action -> row.anchor?.let { s.get("guide.nextAction", it, liveActionPhrase(row.action)) } ?: liveActionPhrase(row.action)
+            is LiveNextRow.Action -> row.anchor?.let { s.get("guide.nextAction", it, liveActionPhrase(row.action, kind)) } ?: liveActionPhrase(row.action, kind)
             is LiveNextRow.Straight -> row.target?.let { s.get("guide.nextStraight", it, row.meters.toString()) }
                 ?: s.get("guide.nextStraightNoName", row.meters.toString())
-            is LiveNextRow.Crossing -> liveActionPhrase(row.action)
-            is LiveNextRow.Turn -> liveActionPhrase(row.action)
+            is LiveNextRow.Crossing -> liveActionPhrase(row.action, kind)
+            is LiveNextRow.Turn -> liveActionPhrase(row.action, kind)
         }
         return s.get("guide.progressNext", step)
     }
@@ -337,7 +428,7 @@ class GuideText(private val s: Strings) {
      * 직선거리). uncertain 계열엔 서수를 붙이지 않는다. `currentBody`: 현재 스텝의 방향 구절을 뗀 문장(E62 `parts.body`) — 이미
      * 들어선 스텝이라 돈 회전을 다시 지시하지 않는다. null이면 문장 전체(iOS 동형).
      */
-    fun progress(route: GuideRoute, state: GuideState, destinationLabel: String, lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?): String =
+    fun progress(route: GuideRoute, state: GuideState, destinationLabel: String, lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?, walk: Boolean): String =
         when (state.phase) {
             GuidePhase.following -> {
                 val cur = route.steps[state.stepIndex]
@@ -351,7 +442,8 @@ class GuideText(private val s: Strings) {
                     "$frame. $current. " + s.get("guide.progressNext", next.description)
                 }
             }
-            GuidePhase.bundle -> {
+            // 자동차는 종전대로 유닛 전체(iOS `walk` 인자 — E62 확인 리뷰).
+            GuidePhase.bundle -> if (!walk) "${progressFrame(route, state, etaMinutes)}. " + unit(route, unitAt(route, state.stepIndex)) else {
                 // 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(`currentBody`, 없으면 원문, iOS walk 갈래 동형).
                 val descs = unitAt(route, state.stepIndex).filter { it >= state.stepIndex }
                     .map { if (it == state.stepIndex) currentBody ?: route.steps[it].description else route.steps[it].description }

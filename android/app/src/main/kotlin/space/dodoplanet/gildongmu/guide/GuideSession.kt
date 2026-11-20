@@ -42,7 +42,8 @@ import java.util.IdentityHashMap
  * 제스처는 최소화이고 소거는 "닫기"뿐(N1). 서비스·스트림·알림은 `walk`를 매 호출 시점에 조회하고 인스턴스를 붙들지 않는다.
  *
  * `attach`는 멱등이다(리뷰 N3-1). 도보 안내는 정식 기능이라 빌드 구성 게이트가 없다(E43 우선순위 4, iOS 2026-08-15 졸업 동형).
- * 소스 가드가 `startWalk(` 호출부를 `WalkGuideStartButton.kt` 한 곳으로 잠근다.
+ * 공개 시작 함수는 수단마다 하나다(`startWalk`·`startCar`, M5 spec §2-2). 소스 가드가 호출부를 잠근다: `startWalk(`은
+ * `WalkGuideStartButton.kt`와 이 파일의 자동차 도착 뒤 인계, `startCar(`는 `CarGuideStartButton.kt`.
  */
 object GuideSession {
     var coordinator = GuideSessionCoordinator()
@@ -155,13 +156,37 @@ object GuideSession {
         )
     }
 
-    /** 유일한 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
+    /** 도보 안내 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
     fun startWalk(request: WalkStartRequest) {
+        if (!isAttached || refuseIfActive()) return
+        beginBeacon(request)
+    }
+
+    /** 자동차 안내 시작 진입점(M5) — 도보와 같은 거부 판정·같은 본문. 길찾기 자동차 결과의 「자동차 안내 시작」만 부른다. */
+    fun startCar(request: CarStartRequest) {
+        if (!isAttached || refuseIfActive()) return
+        beginBeacon(request)
+    }
+
+    /**
+     * 자동차 도착 뒤 도보 인계(K2 §6.4, iOS `acceptCarWalkHandoff`): 종료 화면 소거 → 같은 목적지로 도보 시작(경유지·계단 회피·줄 없음).
+     * 같은 모델이라 대중교통 인계의 600ms 지연이 없다. 자동차 세션은 이미 끝났으므로 공개 `startWalk`의 거부 판정을 그대로 지난다.
+     */
+    fun acceptCarWalkHandoff() {
         if (!isAttached) return
-        if (isActive) {
-            walk.announceNow(walk.strings.get("guide.alreadyActive"), highPriority = true, bypassSuppression = true)
-            return
-        }
+        val request = walk.takeCarWalkHandoff() ?: return
+        startWalk(request)
+    }
+
+    /** 공개 시작 함수가 공유하는 거부 판정(iOS `refuseIfActive`) — 다른 안내가 돌면 알리고 true. 대중교통 세션도 이 판정을 지난다(§3). */
+    private fun refuseIfActive(): Boolean {
+        if (!isActive) return false
+        walk.announceNow(walk.strings.get("guide.alreadyActive"), highPriority = true, bypassSuppression = true)
+        return true
+    }
+
+    /** 거부 판정 없는 시작 본문(iOS `beginBeacon`) — 공개 함수가 판정 뒤 부른다. 대중교통 세션의 내부 인계도 이 자리를 쓴다(§3). */
+    private fun beginBeacon(request: BeaconStartRequest) {
         walk.clearFailure()          // 새 시작이 직전 실패 행을 지운다(§7-1)
         pendingSheetReturn = null
         suppressNextBandLanding = false

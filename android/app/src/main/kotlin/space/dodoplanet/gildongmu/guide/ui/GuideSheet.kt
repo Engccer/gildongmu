@@ -76,6 +76,7 @@ import space.dodoplanet.gildongmu.guide.GuideDiag
 import space.dodoplanet.gildongmu.guide.GuideFormSync
 import space.dodoplanet.gildongmu.guide.GuideMode
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.GuideSessionKind
 import space.dodoplanet.gildongmu.guide.GuideText
 import space.dodoplanet.gildongmu.guide.SessionEndKind
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
@@ -283,7 +284,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
                     GuideTitleMenu(
-                        title = joinText(strings.get("beacon.walkHeading"), ui.destinationLabel),
+                        title = joinText(strings.get(if (ui.sessionKind == GuideSessionKind.car) "beacon.carHeading" else "beacon.walkHeading"), ui.destinationLabel),
                         strings = strings,
                         items = guideTitleMenuItems(destinationPhone),
                         focus = titleFocus,
@@ -343,6 +344,10 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             // 정보 띠(E81): 남은 거리 1 : 지금 할 행동(윗줄 또는 상태 문장) 2 : 다음 예고 1. 줄을 더하지 않고 키우기만 한다.
             val detail = ui.mode == GuideMode.detail
             if (sheetRowExists(ui, SheetRow.remaining)) InfoRow(ui.remainingText.orEmpty(), SheetRow.remaining, detail, rowFocus)
+            // 자동차 "현재 도로, {이름}"(E56, iOS 동형) — 주행 중 "지금 어느 도로"가 정보다. 착지 후보·정보 띠가 아닌 고정 줄이고, 이탈 중엔 숨긴다.
+            if (detail && ui.sessionKind == GuideSessionKind.car && !ui.offRoute) {
+                ui.currentRoadText?.let { BodyLine(it, "guide-current-road") }
+            }
             if (sheetRowExists(ui, SheetRow.liveTop)) InfoRow(ui.liveTopText.orEmpty(), SheetRow.liveTop, detail, rowFocus)
             if (detail) {
                 ui.liveNextText?.takeIf { it.isNotEmpty() }?.let { BandText(it, "guide-live-next", InfoBand.next, detail, focus = null) }
@@ -647,6 +652,13 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
                     modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(enterWeightFocus).testTag("guide-end-enter-weight"),
                 ) { Text(strings.get("android.beacon.healthEnterWeight")) }
             }
+        }
+        // 자동차 도착 → 도보 인계(K2 §6.4, iOS 동형): 같은 목적지로 도보 안내를 이어 시작한다. 걸음 요약은 없다.
+        if (ui.arrivalSessionKind == GuideSessionKind.car) {
+            Button(
+                onClick = { GuideSession.acceptCarWalkHandoff() },
+                modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-end-car-walk-handoff"),
+            ) { Text(strings.get("android.beacon.carWalkHandoffStart")) }
         }
         val arrival = ui.arrivalDest
         if (ui.endKind != SessionEndKind.stopped && arrival != null) {

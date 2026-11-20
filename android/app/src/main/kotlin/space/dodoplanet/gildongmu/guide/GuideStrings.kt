@@ -31,6 +31,39 @@ fun guideStrings(res: () -> Resources): Strings = Strings { key, args ->
 @StringRes
 internal fun guideStringId(key: String): Int? = when (key) {
     "beacon.walkHeading" -> R.string.beacon_walkHeading
+    "guide.carNewJam" -> R.string.guide_carNewJam
+    "guide.carNewJamUnnamed" -> R.string.guide_carNewJamUnnamed
+    "beacon.carHeading" -> R.string.beacon_carHeading
+    "beacon.guideStartCar" -> R.string.beacon_guideStartCar
+    "guide.carStart" -> R.string.guide_carStart
+    "guide.farNotice" -> R.string.guide_farNotice
+    "guide.carOffRouteBehind" -> R.string.guide_carOffRouteBehind
+    "guide.carOffRouteClock" -> R.string.guide_carOffRouteClock
+    "guide.next" -> R.string.guide_next
+    "guide.carPeriodic" -> R.string.guide_carPeriodic
+    "guide.carPeriodicAt" -> R.string.guide_carPeriodicAt
+    "guide.carCommand.left" -> R.string.guide_carCommand_left
+    "guide.carImminent.left" -> R.string.guide_carImminent_left
+    "guide.carLiveAction.left" -> R.string.guide_carLiveAction_left
+    "guide.carCommand.right" -> R.string.guide_carCommand_right
+    "guide.carImminent.right" -> R.string.guide_carImminent_right
+    "guide.carLiveAction.right" -> R.string.guide_carLiveAction_right
+    "guide.carCommand.back" -> R.string.guide_carCommand_back
+    "guide.carImminent.back" -> R.string.guide_carImminent_back
+    "guide.carLiveAction.back" -> R.string.guide_carLiveAction_back
+    "guide.carCommand.keepLeft" -> R.string.guide_carCommand_keepLeft
+    "guide.carImminent.keepLeft" -> R.string.guide_carImminent_keepLeft
+    "guide.carLiveAction.keepLeft" -> R.string.guide_carLiveAction_keepLeft
+    "guide.carCommand.keepRight" -> R.string.guide_carCommand_keepRight
+    "guide.carImminent.keepRight" -> R.string.guide_carImminent_keepRight
+    "guide.carLiveAction.keepRight" -> R.string.guide_carLiveAction_keepRight
+    "guide.carImminentAt" -> R.string.guide_carImminentAt
+    "guide.carImminentAtToward" -> R.string.guide_carImminentAtToward
+    "guide.carImminentToward" -> R.string.guide_carImminentToward
+    "guide.currentRoad" -> R.string.guide_currentRoad
+    "guide.carRoadNow" -> R.string.guide_carRoadNow
+    "guide.etaStale" -> R.string.guide_etaStale
+    "android.beacon.carWalkHandoffStart" -> R.string.android_beacon_carWalkHandoffStart
     "beacon.stop" -> R.string.beacon_stop
     "beacon.first" -> R.string.beacon_first
     "beacon.closer" -> R.string.beacon_closer

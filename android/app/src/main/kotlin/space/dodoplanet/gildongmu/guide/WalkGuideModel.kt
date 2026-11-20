@@ -113,6 +113,18 @@ import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.spokenRemainingMeters
 import space.dodoplanet.gildongmu.kit.toneLayerStep
 import space.dodoplanet.gildongmu.kit.walkTurnApproachMeters
+import space.dodoplanet.gildongmu.kit.CarRoadSpan
+import space.dodoplanet.gildongmu.kit.KnownCarJam
+import space.dodoplanet.gildongmu.kit.newCarJamsAhead
+import space.dodoplanet.gildongmu.kit.models.CarJam
+import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
+import space.dodoplanet.gildongmu.kit.LocationFixPolicy
+import space.dodoplanet.gildongmu.kit.buildCarGuide
+import space.dodoplanet.gildongmu.kit.canReuseCachedFix
+import space.dodoplanet.gildongmu.kit.carArrivalStep
+import space.dodoplanet.gildongmu.kit.roadNameAt
+import space.dodoplanet.gildongmu.kit.turnApproachMeters
+import space.dodoplanet.gildongmu.kit.unitAt
 import space.dodoplanet.gildongmu.location.LocationPermission
 import java.util.Locale
 import kotlin.math.abs
@@ -120,7 +132,9 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * 도보 실시간 안내 오케스트레이터(iOS `BeaconModel`의 walk 갈래 미러, spec 2026-09-16-android-m4 §3·§6). 판정은 전부
+ * 도보·자동차 실시간 안내 오케스트레이터(iOS `BeaconModel` 미러 — 도보 spec 2026-09-16-android-m4 §3·§6, 자동차 M5 spec
+ * 2026-11-20 §2-1·§4). 자동차는 같은 모델의 `sessionKind = car` 세션이다: 임계는 `GuideTuning` 데이터, 문장·조회 대상이 갈리는 행동은
+ * iOS `sessionKind == .car` 분기를 같은 자리·같은 조건으로 옮긴다. 이름은 병렬 rebase 충돌을 피하려고 그대로 둔다. 판정은 전부
  * `:kit` 순수 함수이고 여기는 **입력 조립·순서·수명**만 든다. 플랫폼은 포트(`GuidePorts.kt`)로만 본다.
  *
  * ⚠ 동기화가 없다 — 메인 스레드에서만 부른다(`scope`도 메인, `DeferredAnnouncer` 계약). 시계는 `clock`(elapsedRealtime 초)
@@ -144,7 +158,8 @@ class WalkGuideModel(
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val text = GuideText(strings)
-    private val tuning = GuideTuning.walk
+    /** 수단에서 유도한다(iOS `tuning` getter). 운전자 프로파일(`carDriver`)은 실험판 전용이라 두지 않는다(듣는 사람은 동승자 고정). */
+    private val tuning: GuideTuning get() = if (sessionKind == GuideSessionKind.car) GuideTuning.car else GuideTuning.walk
 
     private val _ui = MutableStateFlow(WalkGuideUiState())
     val ui: StateFlow<WalkGuideUiState> = _ui.asStateFlow()
@@ -204,6 +219,14 @@ class WalkGuideModel(
     private var failResolution: FailResolution
         get() = _ui.value.failResolution
         set(v) = mutate { copy(failResolution = v) }
+    /** 지금 세션의 수단 — `start`가 점유 뒤 정하고 `stop`이 walk로 되돌린다(종료 뒤 수단은 `arrivalSessionKind`가 든다, iOS 동형). */
+    private var sessionKind: GuideSessionKind
+        get() = _ui.value.sessionKind
+        set(v) { if (_ui.value.sessionKind != v) mutate { copy(sessionKind = v) } }
+    /** 자동차 "현재 도로" 행(E56). 같은 값이면 대입하지 않는다 — 커서 위에서 다시 읽히지 않게. */
+    private var currentRoadText: String?
+        get() = _ui.value.currentRoadText
+        set(v) { if (_ui.value.currentRoadText != v) mutate { copy(currentRoadText = v) } }
 
     val isTracking: Boolean get() = status == GuideStatus.tracking
 
@@ -231,11 +254,14 @@ class WalkGuideModel(
                 }
                 pendingRecoveryEntered = null
                 announce(entered ?: recovery, speechClass = GuideSpeechClass.actionable)   // 보관 대상(예고·경유지 도착)은 전부 행동 문장
+                // 자동차: 갚은 실행 안내도 발화다 — 리듀서의 정숙 시간(경유지 접근 예고)이 다음 fix에 이 문장을 끊지 않게 직전 발화 시각으로
+                // 적는다(iOS 동형, 전경 복귀 상환도 같다). 도보는 주기 시각 불변이라 적지 않는다.
+                if (sessionKind == GuideSessionKind.car) noteRepaidAnnouncement()
             }
         }
 
     // ── 세션 인자 ──
-    private var lastStartRequest: WalkStartRequest? = null
+    private var lastStartRequest: BeaconStartRequest? = null
     private var dest: BeaconDest? = null
         set(v) { field = v; if (_ui.value.dest != v) mutate { copy(dest = v) } }
     private var accessible = false
@@ -254,6 +280,21 @@ class WalkGuideModel(
      * "목적지 {dest}까지"로 둔다 — 같은 행이 이유 없이 "남은 거리"로 되돌아가지 않게. 시작·중지에서 false, 경유지 도착에서 true.
      */
     private var waypointPassedInSession = false
+
+    // ── 자동차 세션(M5 spec §4) ──
+    /** 현재 경로의 도로명 스팬(E56). 자동차 경로만 채운다. */
+    private var roadSpans: List<CarRoadSpan> = emptyList()
+    /** 이미 아는 정체(E80 §5) — 좌표로 들고 판정 때마다 지금 경로에 다시 투영한다. null = 기준선 없음(다음 정보를 말없이 기준선으로). */
+    private var knownCarJams: List<KnownCarJam>? = null
+    /** 재조회 ETA(초)와 받은 시각(clock). 경유지 목표에는 쓰지 않는다(날조 금지). */
+    private var etaSeconds: Double? = null
+    private var etaUpdatedAt: Double? = null
+    /** 세션 누적 자동차 조회 횟수(시작 조회 포함, 상한 `carEtaCallCap`). */
+    private var etaCallCount = 0
+    private var etaJob: Job? = null
+    /** 마지막 상세 fix의 정확도·측정 시각(elapsedRealtime 초) — ETA 재조회 원점의 재사용 게이트(iOS `currentCoordinate` 추적 중 갈래). */
+    private var lastFixAccuracy: Double? = null
+    private var lastFixMeasuredAt: Double? = null
     private var sessionToken: Int? = null
     private var startJob: Job? = null
     private var startGeneration = 0
@@ -413,16 +454,18 @@ class WalkGuideModel(
 
     // ─────────────────────────── 시작 (§3-2) ───────────────────────────
 
-    /** 유일한 시작 요청 창구(`GuideSession.startWalk`가 부른다). `starting` 재진입 가드. */
-    fun requestStart(request: WalkStartRequest) {
+    /** 유일한 시작 요청 창구(`GuideSession.beginBeacon`이 부른다). `starting` 재진입 가드. 수단은 요청 타입이 든다(M5 §2-2). */
+    fun requestStart(request: BeaconStartRequest) {
         if (starting || isTracking) return   // 추적 중 재요청이 살아 있는 세션의 인자(경유지·계단 회피)를 갈아엎지 않게
         starting = true
         lastStartRequest = request
-        mutate { copy(lastStartLine = request.line) }
-        accessible = request.accessible
-        sessionVariant = request.variant
-        sessionLine = request.line
-        alternateLine = request.alternate
+        val walk = request as? WalkStartRequest
+        mutate { copy(lastStartLine = walk?.line, lastStartKind = request.kind) }
+        // 자동차는 도보 축(계단 회피·줄·대안)이 없다(iOS `carRequest` — accessible false, variant·line·alternate nil).
+        accessible = walk?.accessible ?: false
+        sessionVariant = walk?.variant
+        sessionLine = walk?.line
+        alternateLine = walk?.alternate
         waypoint = request.waypoint
         routeWaypointLabel = null
         waypointPassedInSession = false
@@ -432,7 +475,7 @@ class WalkGuideModel(
         val generation = startGeneration
         startJob = scope.launch {
             try {
-                start(request.dest, request.label)
+                start(request.dest, request.label, request.kind)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -453,7 +496,7 @@ class WalkGuideModel(
         requestStart(request)
     }
 
-    private suspend fun start(dest: BeaconDest, label: String) {
+    private suspend fun start(dest: BeaconDest, label: String, kind: GuideSessionKind) {
         if (isTracking) return
         // 권한 게이트(§3-2 ②) — 위치 서비스 → 권한 → 정밀 순.
         if (!permissions.isLocationEnabled()) { fail(GuideStatus.unavailable, "beacon.weak"); return }
@@ -466,7 +509,8 @@ class WalkGuideModel(
         }
         // ③ 알림·걸음 권한 — 거부는 차단이 아니다.
         permissions.requestNotifications()
-        val stepsGranted = permissions.requestActivityRecognition()
+        // 걸음은 도보만 센다 — 자동차엔 만보계·걸음 요약이 없다(iOS `sessionStart = kind == .walk ? … : nil`).
+        val stepsGranted = kind == GuideSessionKind.walk && permissions.requestActivityRecognition()
         // ④ 세션 단일성 — 권한 대기 중 뒤집힌 경합의 최종 게이트. 토큰은 stop()이 반납한다.
         val token = coordinator.claim { stop() }
         if (token == null) {
@@ -474,6 +518,8 @@ class WalkGuideModel(
             return
         }
         sessionToken = token
+        // 수단은 점유 **뒤**에 바꾼다 — 거부된 시작이 살아 있는 세션의 임계(`tuning`)를 바꾸지 않게.
+        sessionKind = kind
         // ⑤ 상태 초기화(iOS `start` 대입 목록 그대로).
         deferredAnnouncer.advanceGeneration()
         deviceSpeech.reset()
@@ -502,7 +548,7 @@ class WalkGuideModel(
         // ⑥ 걸음 센서(허가 시). 기준값은 첫 이벤트, 거리는 항상 null(보폭 환산은 :kit).
         if (stepsGranted) steps.start()
         // ⑦
-        GuideDiag.log("session kind=walk")
+        GuideDiag.log(if (kind == GuideSessionKind.car) "session kind=car listener=passenger" else "session kind=walk")
         // ⑧ 전경 서비스 — 시작 실패는 서비스 안에서 잡혀 `onServiceStartFailed`로 돌아온다(§4-1).
         controller.start()
         if (!isTracking) return  // 서비스 시작 실패 콜백이 동기로 왔으면(테스트·즉시 실패) 이미 접혔다
@@ -626,6 +672,17 @@ class WalkGuideModel(
         offRouteConfirmedAt = null
         offRouteConfirmCoord = null
         offRouteEndedByReroute = false
+        etaJob?.cancel(); etaJob = null
+        etaSeconds = null
+        etaUpdatedAt = null
+        etaCallCount = 0
+        roadSpans = emptyList()
+        knownCarJams = null
+        currentRoadText = null
+        lastFixAccuracy = null
+        lastFixMeasuredAt = null
+        // 수단은 도보로 되돌린다 — 종료 화면의 수단은 `stop()` **앞**에서 캡처한 `arrivalSessionKind`가 든다(iOS 설계 리뷰 B10).
+        sessionKind = GuideSessionKind.walk
         syncOverview()
     }
 
@@ -642,19 +699,26 @@ class WalkGuideModel(
     private fun stopLeavingSummary(playStopTone: Boolean, text: String): Boolean {
         val dest = this.dest
         val wasWalkSession = isTracking
-        val sample = steps.liveSample
+        val endedKind = sessionKind
+        // 자동차는 걸음을 세지 않아 요약이 없다 — 앞 도보 세션의 남은 값을 읽지 않는다(걸음 센서는 값을 남긴다).
+        val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
         stop(playStopTone)
         if (!wasWalkSession || dest == null || sample == null) return false
         if (!WalkHealth.isMeaningfulWalk(sample.steps, sample.distanceMeters)) return false
-        presentEndScreen(dest, SessionEndKind.stopped, text, sample)
+        presentEndScreen(dest, SessionEndKind.stopped, text, sample, endedKind)
         return true
     }
 
-    private fun presentEndScreen(dest: BeaconDest, kind: SessionEndKind, text: String, sample: StepSample?) {
+    private fun presentEndScreen(dest: BeaconDest, kind: SessionEndKind, text: String, sample: StepSample?, sessionKind: GuideSessionKind) {
         endedAt = clock()
         arrivalHealthSample = sample?.takeIf { WalkHealth.isMeaningfulWalk(it.steps, it.distanceMeters) }
         val health = arrivalHealthSample?.let { WalkHealth.summary(it.steps, it.distanceMeters, storedWeight()) }
-        mutate { copy(arrivalDest = dest, endKind = kind, endText = text, arrivalHealth = health, weightPromptShown = showsWeightPrompt(health)) }
+        mutate {
+            copy(
+                arrivalDest = dest, endKind = kind, endText = text, arrivalHealth = health, weightPromptShown = showsWeightPrompt(health),
+                arrivalSessionKind = sessionKind,
+            )
+        }
     }
 
     private fun storedWeight(): Double? = WalkHealth.normalizedWeight(store.getString(WalkHealth.weightStorageKey)?.toDoubleOrNull())
@@ -722,9 +786,21 @@ class WalkGuideModel(
         arrivalHealthSample = null
         pendingWeightSettingsReturn = false
         weightPromptEngaged = false
-        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, liveTopText = null) }
+        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, liveTopText = null, arrivalSessionKind = null) }
         if (!status.isFailure) statusText = ""   // 종료 문장이 상환 꼬리로 맥락 밖에서 되읽히지 않게(iOS 동형)
         endedAt = null
+    }
+
+    /**
+     * 자동차 도착 뒤 도보 인계 요청(K2 §6.4, iOS `acceptCarWalkHandoff`의 앞 절반): 자동차 종료 화면이면 그 화면을 지우고 같은 목적지 도보
+     * 요청을 돌려준다(경유지·계단 회피·줄 없음). 자동차 종료 화면이 아니면 null.
+     */
+    fun takeCarWalkHandoff(): WalkStartRequest? {
+        val dest = arrivalDest ?: return null
+        if (_ui.value.arrivalSessionKind != GuideSessionKind.car) return null
+        val label = destinationLabel
+        clearArrival()
+        return WalkStartRequest(dest, label, accessible = false, variant = null, line = null, alternate = null, waypoint = null)
     }
 
     /** 시작 실패 행 소거(해결 버튼 뒤·다른 시작 앞). */
@@ -768,7 +844,10 @@ class WalkGuideModel(
             val intro = pendingFinalApproachIntro
             // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행 안내가 남지 않는다) 마지막 안내가 곧 현재 상태다(안드로이드
             // 고유 대체 — iOS 도보엔 없다). 이미 그 스텝에 들어섰으면 회전 문장을 뗀 문장으로(E62 — 화면을 켜며 지난 회전을 다시 지시하지 않는다).
-            val current = statusText.ifEmpty { currentGuidance().orEmpty() }
+            // 자동차는 하단 2행 윗줄, 없으면 현재 도로 행이다(iOS `liveTopText ?? currentRoadText`).
+            val current = statusText.ifEmpty {
+                if (sessionKind == GuideSessionKind.car) (liveTopText ?: currentRoadText).orEmpty() else currentGuidance().orEmpty()
+            }
             // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다(낭독 정정 뒤끼리 비교).
             // 상태 행이 채택 문장이면 인계된 음성 쪽(머리말 있음)과도 비교한다(A57 — 두 모양이 연달아 들리지 않게).
             val spokenMeters = strings.get("android.unit.spokenMeters")
@@ -788,6 +867,7 @@ class WalkGuideModel(
                     pendingFinalApproachIntro = intro
                     handed.undelivered()
                 }
+                if (sessionKind == GuideSessionKind.car) noteRepaidAnnouncement()
             }
         }
     }
@@ -810,6 +890,10 @@ class WalkGuideModel(
         val liveSteps: List<LiveStepInput>,
         /** 받은 경로의 줄 종류(응답 `kind`) — 전환 문장·프리뷰 헤더가 요청이 아니라 받은 성질로 부른다(E42 설계 리뷰 MAJOR 1). */
         val lineKind: WalkLineKind?,
+        /** 자동차 도로명 스팬(E56). 도보는 빈 목록. */
+        val roadSpans: List<CarRoadSpan>,
+        /** 자동차 조회가 본 정체(E80 §5 기준선). null = 정보 없음(도보·정체 정보 결손). */
+        val jams: List<CarJam>?,
     )
 
     /** 수용 fix가 15초 안에 오지 않으면 최선 fix로 조회하고, 그것도 없으면 간략 폴백(`guide.detailNoLocation`). */
@@ -846,6 +930,7 @@ class WalkGuideModel(
      * 빠뜨리면 walk 프로파일에서 임박 큐가 전면 침묵한다(E16 축3). 경유지를 보냈는데 응답에 표지가 없으면 null.
      */
     private suspend fun fetchDetailData(origin: RoutePoint, dest: BeaconDest, variant: WalkRouteVariant?, accessible: Boolean, waypoint: GuideWaypoint?): DetailFetchResult? {
+        if (sessionKind == GuideSessionKind.car) return fetchCarDetailData(origin, dest, waypoint)
         val via = waypoint?.let { RoutePoint(it.dest.lat, it.dest.lng) }
         // ⚠ 블록 값을 상자에 담는다 — 그대로 두면 서버의 정상 "경로 없음"(null)이 만료 null과 같은 값이 된다. 시간 초과는 경로 없음이 아니라 조회 실패다
         // (3-state — 프리뷰가 "대안 없음"으로 읽지 않게, 길찾기 VM `timed` 동형).
@@ -867,6 +952,29 @@ class WalkGuideModel(
             route, briefing.durationSeconds, briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice, briefing.finalApproach,
             liveStepsFrom(route, briefing.steps.map { LiveStepFields(it.live?.target, it.live?.anchor, it.crossing ?: false, body = it.parts?.body, crossingClock = it.crossingClock) }),
             briefing.lineKind,
+            roadSpans = emptyList(), jams = null,
+        )
+    }
+
+    /**
+     * 자동차 상세 조회(iOS `fetchDetailData`의 car 갈래, M5 §4-2): Tmap 기하 + 도로명 스팬. null = 상세 부적격(간략 강등) — 경유지를
+     * 보냈는데 표지가 없다 / 카카오 폴백(기하 미지원) / `buildCarGuide` 실패(기하 결손·종점 불일치). 걸음 축(계단 회피·최종 접근 기하·
+     * 라이브 조각)은 없다. 시간 초과는 경로 없음이 아니라 조회 실패다(도보와 같은 3-state).
+     */
+    private suspend fun fetchCarDetailData(origin: RoutePoint, dest: BeaconDest, waypoint: GuideWaypoint?): DetailFetchResult? {
+        val via = waypoint?.let { RoutePoint(it.dest.lat, it.dest.lng) }
+        val briefing = withTimeoutOrNull(queryTimeoutMs) {
+            withContext(io) {
+                // 정체(E80 §5): 시작·재경로 조회가 본 정체가 아는 정체의 기준선이다.
+                routes.car(origin.lat, origin.lng, dest.lat, dest.lng, lang = dataLocale().rawValue, includeGeometry = true, via = via, traffic = true)
+            }
+        } ?: throw DetailFetchTimeout()
+        if (via != null && briefing.waypoint == null) return null
+        if (briefing.provider != "tmap") return null
+        val guide = buildCarGuide(briefing) ?: return null
+        return DetailFetchResult(
+            guide.route, briefing.durationSeconds, stepFreeRaw = null, stepFree = null, stepFreeNotice = null, finalApproach = null,
+            liveStepsFrom(guide.route, emptyList()), lineKind = null, roadSpans = guide.roadSpans, jams = briefing.congestion?.jams,
         )
     }
 
@@ -901,6 +1009,8 @@ class WalkGuideModel(
             guideRoute = result.route
             routeWaypointLabel = waypointAtFetch?.label
             guideRouteDurationSeconds = result.durationSeconds
+            roadSpans = result.roadSpans
+            knownCarJams = result.jams?.map { KnownCarJam(it.start, it.end) }
             resetFinalApproach(result.finalApproach)
             val initial = initialGuideState(
                 result.route, clock(), hasFinalApproachGeometry = result.finalApproach != null,
@@ -910,12 +1020,20 @@ class WalkGuideModel(
             guideState = initial.state
             mode = GuideMode.detail
             offRoute = false
+            if (sessionKind == GuideSessionKind.car) {
+                // 시작 조회가 ETA 1회차다(§4-5) — 남은 시간 행이 이 값을 깎아 쓰므로 `updateRemaining`보다 먼저.
+                etaCallCount = 1
+                result.durationSeconds?.takeIf { it > 0 }?.let { etaSeconds = it.toDouble(); etaUpdatedAt = clock() }
+                startEtaTimer()
+            }
             updateRemaining(result.route, initial.state)
             displayUnits = buildDisplayUnits(result.liveSteps)
             liveSteps = result.liveSteps
             resetLiveRowsBaseline(initial.state)
+            if (sessionKind == GuideSessionKind.car) refreshCurrentRoad(initial.state) else currentRoadText = null
             syncOverview()
-            val summary = text.start(result.route, initial.firstIndices, destinationLabel)
+            val summary = if (sessionKind == GuideSessionKind.car) text.carStart(result.route, initial.firstIndices, destinationLabel)
+            else text.start(result.route, initial.firstIndices, destinationLabel)
             val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
             // 출발점 고지(A70 §2.3)가 맨 앞 — 첫 문장이 "경로가 여기서 시작하지 않는다"를 말한다. 계단 회피 문장은 그다음이다.
             val away = routeStartAwayNotice(result.route, origin)
@@ -938,6 +1056,7 @@ class WalkGuideModel(
         carriedCourseDerivation = null   // 소비되지 못한 유도기 버퍼가 다음 재조회로 옛 위치 이력을 옮기지 않게
         mode = GuideMode.brief
         remainingText = null
+        currentRoadText = null      // 간략엔 링크가 없다(iOS 동형)
         clearLiveRows()
         lastStepFree = null
         pendingStepFreeNotice = null
@@ -960,10 +1079,13 @@ class WalkGuideModel(
         val request = lastStartRequest ?: return
         val dest = dest ?: return
         // 요청 축·줄 종류도 세션 현재값 — 수동 전환(E42)이 넷을 함께 바꾸므로 시작 시점 값은 낡는다(iOS 동형, A13).
-        lastStartRequest = request.copy(
-            dest = dest, label = destinationLabel, accessible = accessible, variant = sessionVariant,
-            line = sessionLine, alternate = alternateLine, waypoint = waypoint,
-        )
+        lastStartRequest = when (request) {
+            is WalkStartRequest -> request.copy(
+                dest = dest, label = destinationLabel, accessible = accessible, variant = sessionVariant,
+                line = sessionLine, alternate = alternateLine, waypoint = waypoint,
+            )
+            is CarStartRequest -> request.copy(dest = dest, label = destinationLabel, waypoint = waypoint)
+        }
     }
 
     /**
@@ -986,7 +1108,7 @@ class WalkGuideModel(
             val meters = max(0, target.meters.roundToInt())
             if (shownWaypointMeters?.let { abs(it - meters) >= 10 } != false) shownWaypointMeters = meters
             distancePart = strings.get("directions.viaRemaining", viaLabel, formatDistance(shownWaypointMeters ?: meters))
-            minutes = etaMinutes(route, target.meters)
+            minutes = etaMinutes(route, target.meters, toWaypoint = true)
         } else if ((target.kind == GuideNextTargetKind.destination && viaLabel != null) || waypointPassedInSession) {
             shownWaypointMeters = null
             distancePart = strings.get("directions.viaDestRemaining", destinationLabel, formatDistance(shownMeters))
@@ -1014,14 +1136,21 @@ class WalkGuideModel(
 
     /** 총 잔여까지의 시간(분) — 상시 표시와 진행 상황 조망이 같은 산식을 쓴다(사본 금지). */
     private fun etaMinutesNow(route: GuideRoute, state: GuideState): Int? =
-        etaMinutes(route, max(0.0, route.totalMeters - state.d))
+        etaMinutes(route, max(0.0, route.totalMeters - state.d), toWaypoint = false)
 
     /**
      * 목표 잔여(m)까지의 시간(분) — 총 소요의 잔여 비례(iOS `etaMinutes`의 walk 갈래). 근거 없으면 null(3-state). 목표를 이미 밟은
      * 값(1m 미만)에 "약 1분"을 붙이지 않는다(N4 설계 리뷰 #11).
      */
-    private fun etaMinutes(route: GuideRoute, remainingMeters: Double): Int? {
+    private fun etaMinutes(route: GuideRoute, remainingMeters: Double, toWaypoint: Boolean): Int? {
         if (remainingMeters < 1) return null
+        if (sessionKind == GuideSessionKind.car) {
+            // 자동차는 재조회 ETA 카운트다운이다(iOS 동형). 그 ETA는 목적지까지라 경유지 목표에는 없다(N4 §4.1 — 날조 금지).
+            if (toWaypoint) return null
+            val eta = etaSeconds ?: return null
+            val at = etaUpdatedAt ?: return null
+            return max(1, (max(0.0, eta - (clock() - at)) / 60).roundToInt())
+        }
         val dur = guideRouteDurationSeconds ?: return null
         if (dur <= 0 || route.totalMeters <= 0) return null
         return max(1, (dur.toDouble() * remainingMeters / route.totalMeters / 60).roundToInt())
@@ -1039,11 +1168,14 @@ class WalkGuideModel(
     // ─────────────────────────── 하단 2행·조망 ───────────────────────────
 
     private fun refreshLiveRows(state: GuideState) {
-        val out = guideLiveRows(liveRowsState, displayUnits, state.d, liveBaselineD, state.phase, walkTurnApproachMeters)
+        val kind = sessionKind
+        // 자동차는 임박 임계(속도 함수)와 같은 시점에 "잠시 후"로 넘어간다(K2 §4, iOS `turnApproachMeters`). 도보는 상수 그대로.
+        val turnApproach = if (kind == GuideSessionKind.car) turnApproachMeters(state.speedSamples, tuning) else walkTurnApproachMeters
+        val out = guideLiveRows(liveRowsState, displayUnits, state.d, liveBaselineD, state.phase, turnApproach)
         liveRowsState = out.state
         // 돌아가기 국면의 윗줄은 벗어난 쪽(E63, 상태 행과 같은 문장) — 없으면 종전 문장.
-        liveTopText = out.top?.let { if (it == LiveTopRow.OffRoute) offRouteLine ?: text.liveTop(it) else text.liveTop(it) }
-        liveNextText = out.next?.let(text::liveNext)
+        liveTopText = out.top?.let { if (it == LiveTopRow.OffRoute) offRouteLine ?: text.liveTop(it, kind) else text.liveTop(it, kind) }
+        liveNextText = out.next?.let { text.liveNext(it, kind) }
         // 횡단 중 남은 거리 행(E62 판정 4) — `updateRemaining`이 남은 거리 행에 쓴다(같은 fix에서 뒤에 불린다).
         liveCrossingText = out.crossingRemaining?.let(text::crossingRemaining)
     }
@@ -1078,10 +1210,18 @@ class WalkGuideModel(
 
     private fun judgeMotion(fix: GuideFixPayload, ageSeconds: Double, now: Double): MotionState {
         if (abs(ageSeconds) > BeaconConstants.freshnessWindow) return MotionState.speedUnknown
-        val out = motionStep(motionState, MotionSample(fix.lat, fix.lng, fix.accuracy, now), fix.speed, fix.speedAccuracy, MotionConstants.maxWalkSpeedMps)
+        val out = motionStep(motionState, MotionSample(fix.lat, fix.lng, fix.accuracy, now), fix.speed, fix.speedAccuracy, maxSpeedMps)
         motionState = out.state
         return out.motion
     }
+
+    /** 수단별 물리 상한(정지 판정 폴백의 산출 속도 가드, iOS `maxSpeedMps`). */
+    private val maxSpeedMps: Double
+        get() = if (sessionKind == GuideSessionKind.car) MotionConstants.maxCarSpeedMps else MotionConstants.maxWalkSpeedMps
+
+    /** 수단별 closer 최소 간격 — 차량은 데드밴드를 매 fix 넘어 2초 창에 매번 걸린다(iOS `closerIntervalSeconds`). */
+    private val closerIntervalSeconds: Double
+        get() = if (sessionKind == GuideSessionKind.car) ToneLayerConstants.carCloserIntervalSeconds else ToneLayerConstants.walkCloserIntervalSeconds
 
     private val arrivedNow: Boolean get() = mode == GuideMode.brief && beaconState.nearby
 
@@ -1168,7 +1308,7 @@ class WalkGuideModel(
                     deadBand = max(BeaconConstants.baseDeadBand, fix.accuracy),
                     deadBandFloor = fix.accuracy,
                     motion = motion,
-                    closerIntervalSeconds = ToneLayerConstants.walkCloserIntervalSeconds,
+                    closerIntervalSeconds = closerIntervalSeconds,
                 ),
                 arrived = beaconState.nearby,
             ),
@@ -1198,6 +1338,8 @@ class WalkGuideModel(
         lastStaleNoticeAt = null
         lastFixCoord = RoutePoint(fix.lat, fix.lng)
         lastFixCoordAt = now
+        lastFixAccuracy = fix.accuracy
+        lastFixMeasuredAt = fix.elapsedRealtimeMs / 1000.0
         noteSessionProgress(fix.lat, fix.lng, now)
 
         // 멈추면 침묵(E62 판정 3) — `speedUnknown`은 정지가 아니다(E55 3-state).
@@ -1218,6 +1360,10 @@ class WalkGuideModel(
             else -> Unit
         }
         refreshLiveRows(out.state)
+        // 자동차 "현재 도로" 행(E56) — 진행거리를 믿을 수 있는 국면에서만 옮긴다(iOS 동형).
+        if (sessionKind == GuideSessionKind.car && (out.state.phase == GuidePhase.following || out.state.phase == GuidePhase.bundle)) {
+            refreshCurrentRoad(out.state)
+        }
         syncOverview()
         GuideDiag.log {
             val votes = out.state.courseVotes
@@ -1258,7 +1404,7 @@ class WalkGuideModel(
                 eventOwned = out.event != null,
                 trend = if (trendable) TrendInput(
                     distance = remaining, deadBand = detailDeadBand, deadBandFloor = detailDeadBandFloor,
-                    motion = motion, closerIntervalSeconds = ToneLayerConstants.walkCloserIntervalSeconds,
+                    motion = motion, closerIntervalSeconds = closerIntervalSeconds,
                 ) else null,
             ),
             now,
@@ -1313,7 +1459,8 @@ class WalkGuideModel(
                 val first = event.indices.firstOrNull()?.let { route.steps.getOrNull(it) }
                 val unit = text.unit(route, event.indices)
                 // 늦은 전문(E62 R4·R5 — 실위치가 이미 첫 스텝에 들어섰다)엔 머리말이 없다(램프인 구간 누출 차단).
-                val spoken = if (!event.late && state != null && first != null) {
+                // 머리말은 도보만 — 자동차는 유닛 문장 원문이다(iOS `sessionKind == .walk` 조건).
+                val spoken = if (!event.late && state != null && first != null && sessionKind == GuideSessionKind.walk) {
                     text.announceAhead(route, event.indices, spokenRemainingMeters(first.startD - state.d, state.d, liveBaselineD))
                 } else unit
                 // 억제 복구 시점에 이미 들어섰으면 회전 문장을 뗀 문장으로 갚는다(E62).
@@ -1326,19 +1473,34 @@ class WalkGuideModel(
                 if (event.stage > 0) return
                 // 횡단 임박은 건너는 방향을 싣는다(E62 — 서버 `crossingClock`, 없으면 종전 문장).
                 val clock = event.indices.firstOrNull()?.let { liveSteps.getOrNull(it)?.crossingClock }
-                val spoken = text.imminentText(event.action, clock)
+                // 자동차 동승자는 그 결정 지점 스텝의 지점·방면을 싣는다(K2 §6.3·E61, iOS 동형).
+                val spoken = if (sessionKind == GuideSessionKind.car) {
+                    text.carImminentText(event.action, event.indices.firstOrNull()?.let { route.steps.getOrNull(it)?.carLandmark }, dataLocale() == DataLocale.en)
+                } else text.imminentText(event.action, clock)
                 statusText = spoken
                 // 이 문장은 그 지점 앞에서만 참이다 — 그 스텝에 들어서면 상태 행에서 지운다(`handleDetail`, E62 a11y M1).
                 imminentStatus = event.indices.firstOrNull()?.let { it to spoken }
                 if (!outputSuppressed) announce(spoken, speechClass = cls)
             }
-            is GuideEvent.FarNotice -> Unit // walk 프로파일은 내지 않는다(farNoticeM = null)
+            is GuideEvent.FarNotice -> {
+                // 원거리 예고(자동차만 — walk 프로파일은 farNoticeM = null). 크로싱 시점 실측 잔여를 낭독하고, 실행 안내와 같은 취급(억제
+                // 복구 대상, iOS 동형).
+                val spoken = text.farNotice(route, event.indices, event.remainingMeters)
+                lastGuidance = spoken
+                statusText = spoken
+                if (outputSuppressed) { pendingRecovery = spoken; pendingRecoveryEntered = null } else announce(spoken, speechClass = cls)
+            }
             is GuideEvent.Periodic -> {
                 // 낭독 숫자는 실위치 잔여다(위원장 판정 2026-10-03 — 하단 2행과 같은 기준, iOS 동형).
-                val meters = guideState?.let {
-                    max(0, spokenRemainingMeters(event.remainingMeters.toDouble(), it.d, liveBaselineD).roundToInt())
-                } ?: event.remainingMeters
-                val spoken = text.periodicWalk(route, event.stepIndex, meters, event.accuracy, destinationLabel, liveSteps.getOrNull(event.stepIndex)?.target)
+                // 자동차는 리듀서 잔여 그대로 단문(K2 §6.3 — "{거리} 직진하다가 [지점에서 ]우회전").
+                val spoken = if (sessionKind == GuideSessionKind.car) {
+                    text.periodicCar(route, event.stepIndex, event.remainingMeters, event.accuracy, destinationLabel, dataLocale() == DataLocale.en)
+                } else {
+                    val meters = guideState?.let {
+                        max(0, spokenRemainingMeters(event.remainingMeters.toDouble(), it.d, liveBaselineD).roundToInt())
+                    } ?: event.remainingMeters
+                    text.periodicWalk(route, event.stepIndex, meters, event.accuracy, destinationLabel, liveSteps.getOrNull(event.stepIndex)?.target)
+                }
                 lastGuidance = spoken
                 mutate { copy(statusText = spoken, statusIsNextPreview = true) }
                 announce(spoken, speechClass = cls)
@@ -1380,7 +1542,7 @@ class WalkGuideModel(
                     offRouteStillSince = null
                 }
                 offRoute = true
-                val spoken = text.offRoute(event.guidance, event.side, event.returnRelDeg)
+                val spoken = text.offRoute(event.guidance, event.side, event.returnRelDeg, sessionKind)
                 // 보류는 말하지 않는다 — 상태 행은 `handleDetail`이 먼저 정한 문장(벗어난 쪽만).
                 statusText = offRouteLine.orEmpty()
                 logOffRouteNotice(event, signedPerp?.let(::abs), spoken = spoken != null)
@@ -1423,7 +1585,17 @@ class WalkGuideModel(
                 }
             }
             GuideEvent.UncertainEnter -> { statusText = strings.get("guide.uncertain"); announce(statusText, speechClass = cls) }
-            GuideEvent.UncertainExit, GuideEvent.Reacquired -> { statusText = strings.get("guide.uncertainRecovered"); announce(statusText, speechClass = cls) }
+            GuideEvent.UncertainExit, GuideEvent.Reacquired -> {
+                statusText = strings.get("guide.uncertainRecovered")
+                // 자동차는 **재획득** 뒤 지금 유닛 전문을 함께 읽는다 — 전역 재투영 뒤라 다음 경계까지 침묵하지 않게(K2 §3.4). 복귀(uncertainExit)엔
+                // 붙이지 않는다(복귀 fix는 d를 갱신하지 않아 stepIndex가 공백 전 스텝이다, iOS spec 리뷰 B2).
+                val gs = guideState
+                if (event == GuideEvent.Reacquired && sessionKind == GuideSessionKind.car && gs != null) {
+                    announce("$statusText ${text.unit(route, unitAt(route, gs.stepIndex))}", speechClass = GuideSpeechClass.actionable)
+                } else {
+                    announce(statusText, speechClass = cls)
+                }
+            }
             GuideEvent.Reacquiring -> { statusText = strings.get("guide.reacquiring"); announce(statusText, speechClass = cls) }
             GuideEvent.SpeedSuggest -> Unit
         }
@@ -1510,6 +1682,8 @@ class WalkGuideModel(
         resetAlternativePreview()   // 문 앞에서 다른 줄로 전환하면 최종 접근이 풀린다(iOS 동형)
         abandonReroute()            // 이미 떠난 전환(낡음 폴백)·재조회가 진입 뒤 커밋되면 같은 이유로 최종 접근이 풀린다
         remainingText = null
+        currentRoadText = null      // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐(iOS 동형)
+        etaJob?.cancel(); etaJob = null
         clearLiveRows()
         rebaseForAxisChange()
         if (entry == FinalApproachEntry.offRoute) {
@@ -1538,7 +1712,9 @@ class WalkGuideModel(
             return
         }
         val usable = finalApproachGeometry?.takeIf { it.unavailableReason != BearingUnavailable.tooClose }
-        if (usable == null) {
+        // 자동차는 기하 없이도 국면에 들어간다(`entersFinalApproachWithoutGeometry`, iOS spec 2026-08-31 §2) — 아니면 `carArrivalStep`에
+        // 영영 닿지 않는다(K2-a 실사고). 진입 서술은 기하가 있어야 성립하므로 `handleFinalApproach`가 null 기하에서 스스로 건너뛴다.
+        if (usable == null && !tuning.entersFinalApproachWithoutGeometry) {
             GuideDiag.log("briefHandoff reason=${if (finalApproachGeometry == null) "noGeometry" else "tooClose"}")
             resetArrivalWindow()
             mode = GuideMode.brief
@@ -1558,7 +1734,7 @@ class WalkGuideModel(
         val d = dest
         if (c != null && d != null) lastUsableDistanceToDest = haversineMeters(c.lat, c.lng, d.lat, d.lng)
         syncOverview()
-        GuideDiag.log { "finalEnter offset=${fmt("%.1f", usable.offsetMeters)}" }
+        GuideDiag.log { "finalEnter offset=${usable?.let { fmt("%.1f", it.offsetMeters) } ?: "-"}" }
     }
 
     /** 이탈 중 입구의 유일한 발화(A70 §4.2) — 기하 서술도 도착도 아니다. 억제로 못 낸 문장은 진입 서술과 같은 상환 칸으로 갚는다. */
@@ -1586,13 +1762,15 @@ class WalkGuideModel(
         val anchorStep = advanceProgressAnchor(progressAnchor, RoutePoint(fix.lat, fix.lng))
         progressAnchor = anchorStep.anchor
         if (anchorStep.progressed) lastProgressAt = now
-        val arrived = walkFinalApproachArrived(distance, fix.accuracy) // 정확도 상한 50m(A70 안전 검토 M1)
+        // 자동차는 "부근 정차"가 도착이다(K2 §6.4 — 40m·정지·정확도 ≤ 30, 15m 무조건 분기 없음).
+        val arrived = if (sessionKind == GuideSessionKind.car) carArrivalStep(distance, fix.accuracy, motion)
+        else walkFinalApproachArrived(distance, fix.accuracy) // 정확도 상한 50m(A70 안전 검토 M1)
         GuideDiag.log { "final t=${fmt("%.1f", now)} dist=${fmt("%.1f", distance)} acc=${fmt("%.1f", fix.accuracy)} arrived=$arrived introSpoken=$finalApproachIntroSpoken" }
         routeTone(
             ToneLayerInput(
                 trend = TrendInput(
                     distance = distance, deadBand = max(BeaconConstants.baseDeadBand, fix.accuracy), deadBandFloor = fix.accuracy,
-                    motion = motion, closerIntervalSeconds = ToneLayerConstants.walkCloserIntervalSeconds,
+                    motion = motion, closerIntervalSeconds = closerIntervalSeconds,
                 ),
                 arrived = arrived,
             ),
@@ -1613,10 +1791,12 @@ class WalkGuideModel(
         }
         if (arrived) {
             val spoken = strings.get("guide.arrived")
-            val sample = steps.liveSample
+            // 수단은 stop() **앞**에서 캡처한다 — stop()이 수단을 도보로 되돌린다(iOS 설계 리뷰 B10). 자동차는 걸음 요약이 없다.
+            val endedKind = sessionKind
+            val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
             playTone(BeaconTone.nearby)
             stop()
-            presentEndScreen(dest, SessionEndKind.arrived, spoken, sample)
+            presentEndScreen(dest, SessionEndKind.arrived, spoken, sample, endedKind)
             statusText = spoken
             lastGuidance = spoken
             liveTopText = spoken
@@ -1682,10 +1862,11 @@ class WalkGuideModel(
         val reason = presumedArrivalStep(true, now - fixRef, now - progressRef, lastUsableDistanceToDest, thresholds) ?: return false
         GuideDiag.log { "presumedArrival reason=${reason.rawValue} dist=${lastUsableDistanceToDest?.let { fmt("%.1f", it) } ?: "-"} window=${if (inFinalApproach) "final" else "brief"}" }
         val spoken = strings.get("guide.arrivedPresumed")
-        val sample = steps.liveSample
+        val endedKind = sessionKind
+        val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
         if (env.isForeground()) playTone(BeaconTone.nearby)
         stop()
-        presentEndScreen(dest, SessionEndKind.presumed, spoken, sample)
+        presentEndScreen(dest, SessionEndKind.presumed, spoken, sample, endedKind)
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
@@ -1708,6 +1889,97 @@ class WalkGuideModel(
         return haversineMeters(c.lat, c.lng, d.lat, d.lng)
     }
 
+    // ─────────────────────────── 자동차 (M5 spec §4) ───────────────────────────
+
+    /**
+     * "현재 도로" 행(E56) — 현재 진행거리가 속한 링크에서 직접 유도한다(스텝 문장을 읽지 않는다, 한 안내 구간 안에서 도로가 바뀌는 스텝이
+     * 있다). 진행 상황의 "{도로} 주행 중"과 같은 함수라 두 곳이 어긋나지 않는다. 이름을 모르면 null(줄 없음).
+     */
+    private fun refreshCurrentRoad(state: GuideState) {
+        currentRoadText = roadNameAt(roadSpans, state.d)?.let { strings.get("guide.currentRoad", it) }
+    }
+
+    /** 갚은 발화(억제 복구·전경 복귀 상환)도 리듀서의 직전 발화로 적는다 — 정숙 시간(경유지 접근 예고)이 그 문장을 끊지 않게(자동차만). */
+    private fun noteRepaidAnnouncement() {
+        guideState = guideState?.copy(lastAnnouncedAt = clock())
+    }
+
+    /** 자동차 ETA 주기 재조회 타이머(6분, E80 §4.6). 상한 소진·간략 전환·최종 접근이면 그 회차가 아무것도 하지 않는다. */
+    private fun startEtaTimer() {
+        etaJob?.cancel()
+        etaJob = scope.launch {
+            while (true) {
+                delay(carEtaIntervalSeconds * 1000)
+                refreshCarEta()
+            }
+        }
+    }
+
+    /**
+     * 6분 재조회 한 회차(iOS `refreshCarEta`). 이탈 중엔 동결한다(낡은 경로 기준 ETA는 거짓). 횟수는 조회 전에 센다(원점을 못 얻은 회차도 한
+     * 회, iOS 동형). 원점은 세션의 마지막 상세 fix이고 iOS `currentCoordinate()` 추적 중 재사용 게이트와 같은 술어(정확도 ≤ 30m·측정 뒤
+     * 60초 이내)를 지나야 한다 — 못 지나면 조용히 직전 값 유지(낡음 판정은 `etaUpdatedAt`이 맡는다). 응답은 세대 토큰이 같을 때만 커밋한다.
+     */
+    private suspend fun refreshCarEta() {
+        if (sessionKind != GuideSessionKind.car || !isTracking || mode != GuideMode.detail) return
+        if (etaCallCount >= carEtaCallCap) return
+        if (guideState?.phase == GuidePhase.offRoute) return
+        val dest = dest ?: return
+        etaCallCount += 1
+        val token = routeFetchToken
+        val origin = lastFixCoord
+        val measuredAt = lastFixMeasuredAt
+        if (origin == null || !canReuseCachedFix(lastFixAccuracy, measuredAt?.let { clock() - it }, LocationFixPolicy.freshTTL)) {
+            GuideDiag.log("carEta origin=stale")
+            return
+        }
+        val via = waypoint?.let { RoutePoint(it.dest.lat, it.dest.lng) }
+        val briefing = runCatching {
+            withTimeoutOrNull(queryTimeoutMs) {
+                withContext(io) { routes.car(origin.lat, origin.lng, dest.lat, dest.lng, lang = dataLocale().rawValue, via = via, traffic = true) }
+            }
+        }.getOrNull() ?: return
+        // 세대 일치 커밋 — 중지·재조회·목적지 변경 뒤 도착한 응답은 버린다.
+        if (token != routeFetchToken || !isTracking || mode != GuideMode.detail || this.dest != dest || briefing.durationSeconds <= 0) return
+        etaSeconds = briefing.durationSeconds.toDouble()
+        etaUpdatedAt = clock()
+        val route = guideRoute ?: return
+        val state = guideState ?: return
+        updateRemaining(route, state)
+        announceNewCarJam(route, state, briefing)
+    }
+
+    /**
+     * 새 정체 한 문장(E80 spec §5, iOS `announceNewCarJam`): 지금 경로 위·앞쪽이고 아는 정체와 겹치지 않는 것 중 가장 가까운 하나만. 순서가
+     * 계약이다 — ① 정보는 Tmap만 센다(카카오 폴백은 코드표·경로가 달라 오보) ② 응답을 기다리는 사이 이탈했으면 아무것도 바꾸지 않는다
+     * ③ 기준선이 없으면 이번 정보를 말없이 기준선으로 ④ 보류 중인 통지가 있거나 안내 음성이 말하는 중이면 건너뛴다(아는 정체에 넣지 않아
+     * 다음 재조회가 다시 판정 — 회전 명령을 6분 재조회 문장이 자르면 안 된다). 버려지면 알린 하나를 되돌린다.
+     */
+    private fun announceNewCarJam(route: GuideRoute, state: GuideState, briefing: CarRouteBriefing) {
+        if (briefing.provider != "tmap") return
+        val fresh = briefing.congestion?.jams ?: return
+        if (state.phase == GuidePhase.offRoute) return
+        val known = knownCarJams
+        if (known == null) {
+            knownCarJams = fresh.map { KnownCarJam(it.start, it.end) }
+            GuideDiag.log("carJams baseline=${fresh.size}")
+            return
+        }
+        val out = newCarJamsAhead(route.polyline, route.totalMeters, state.d, known, fresh)
+        val busy = !announcementsSettled()
+        GuideDiag.log("carJams fresh=${fresh.size} new=${if (out.nearest == null) 0 else 1} busy=$busy")
+        val nearest = out.nearest ?: return
+        if (busy) return
+        val added = out.known.lastOrNull() ?: return
+        knownCarJams = out.known
+        GuideDiag.log("carNewJam ahead=${nearest.aheadMeters} len=${nearest.jam.lengthMeters}")
+        announce(text.carNewJam(nearest.jam, nearest.aheadMeters, dataLocale() == DataLocale.en), speechClass = GuideSpeechClass.actionable, onDropped = {
+            val list = knownCarJams ?: return@announce
+            val i = list.lastIndexOf(added)
+            if (i >= 0) knownCarJams = list.toMutableList().also { it.removeAt(i) }
+        })
+    }
+
     // ─────────────────────────── 시트 컨트롤 ───────────────────────────
 
     fun progressText(): String {
@@ -1715,7 +1987,18 @@ class WalkGuideModel(
         val state = guideState
         if (mode == GuideMode.detail && route != null && state != null) {
             val straight = if (state.phase == GuidePhase.offRoute || state.phase == GuidePhase.finalApproach) freshStraightLineMeters() else null
-            return text.progress(route, state, destinationLabel, lastGuidance, straight, etaMinutesNow(route, state), liveSteps.getOrNull(state.stepIndex)?.body)
+            val base = text.progress(
+                route, state, destinationLabel, lastGuidance, straight, etaMinutesNow(route, state), liveSteps.getOrNull(state.stepIndex)?.body,
+                walk = sessionKind == GuideSessionKind.walk,
+            )
+            if (sessionKind != GuideSessionKind.car || !(state.phase == GuidePhase.following || state.phase == GuidePhase.bundle)) return base
+            // 자동차(§4-7): 현재 링크 도로명 + 진행 + ETA 낡음 병기(3-state — 낡은 값을 지금 값처럼 말하지 않는다).
+            val etaAge = etaUpdatedAt?.let { clock() - it }
+            return joinText(
+                roadNameAt(roadSpans, state.d)?.let { strings.get("guide.carRoadNow", it) },
+                base,
+                etaAge?.takeIf { it > carEtaStaleSeconds }?.let { strings.get("guide.etaStale", (it / 60).roundToInt().toString()) },
+            )
         }
         freshStraightLineMeters()?.let { return strings.get("beacon.first", formatDistance(it.roundToInt())) }
         return lastGuidance ?: strings.get("guide.noGuidanceYet")
@@ -1798,6 +2081,14 @@ class WalkGuideModel(
         guideRoute = fetched.route
         routeWaypointLabel = if (fetched.route.waypointStepIndex == null) null else waypoint?.label
         guideRouteDurationSeconds = fetched.durationSeconds
+        roadSpans = fetched.roadSpans
+        // 새 경로가 본 정체도 아는 정체다(E80 §5) — 재경로 문장이 이미 나간 자리라 따로 말하지 않는다.
+        fetched.jams?.let { jams -> knownCarJams = knownCarJams.orEmpty() + jams.map { KnownCarJam(it.start, it.end) } }
+        if (sessionKind == GuideSessionKind.car) {
+            // 재조회도 ETA 캡에 든다(iOS §4.6) + 새 경로 기준 원자 교체.
+            etaCallCount = minOf(carEtaCallCap, etaCallCount + 1)
+            fetched.durationSeconds?.takeIf { it > 0 }?.let { etaSeconds = it.toDouble(); etaUpdatedAt = clock() }
+        }
         resetFinalApproach(fetched.finalApproach)
         val initial = initialGuideState(
             fetched.route, clock(), hasFinalApproachGeometry = fetched.finalApproach != null,
@@ -1813,6 +2104,7 @@ class WalkGuideModel(
         displayUnits = buildDisplayUnits(fetched.liveSteps)
         liveSteps = fetched.liveSteps
         resetLiveRowsBaseline(initial.state)
+        if (sessionKind == GuideSessionKind.car) refreshCurrentRoad(initial.state)
         syncOverview()
         lastGuidance = text.unit(fetched.route, initial.firstIndices)
         return initial.firstIndices
@@ -1874,7 +2166,8 @@ class WalkGuideModel(
             return
         }
         // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시.
-        val headClock = guideState?.let { rerouteHeadClock(it, result.route, clock(), tuning) }
+        // 도보만 — 자동차의 진행 방위로 도는 방향을 말하지 않는다(iOS `sessionKind == .walk` 조건).
+        val headClock = if (sessionKind == GuideSessionKind.walk) guideState?.let { rerouteHeadClock(it, result.route, clock(), tuning) } else null
         GuideDiag.log("rerouteAdopt source=$source result=adopted headClock=${headClock ?: "-"}")
         val firstIndices = commitReroutedRoute(result)
         val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
@@ -1920,6 +2213,12 @@ class WalkGuideModel(
         displayUnits = emptyList()
         liveSteps = emptyList()
         liveBaselineD = 0.0
+        // 자동차 경로 종속 상태(iOS `reacquireRoute` 동형) — 옛 목적지의 도로·정체·ETA가 새 목적지로 새지 않게.
+        currentRoadText = null
+        roadSpans = emptyList()
+        knownCarJams = null
+        etaJob?.cancel(); etaJob = null
+        etaSeconds = null; etaUpdatedAt = null; etaCallCount = 0
         pendingRecovery = null
         pendingStepFreeNotice = null
         lastStepFree = null
@@ -2314,5 +2613,9 @@ class WalkGuideModel(
         /** 재조회 origin·직선거리 단정의 fix 신선도 상한(웹 PROGRESS_FIX_MAX_AGE_S 미러). */
         const val freshFixSeconds = 15.0
         const val queryTimeoutMs = 15_000L
+        /** 자동차 ETA 재조회 주기·세션 상한(시작 조회 포함)·낡음 판정(iOS `carEta*`, E80 §4.6). */
+        const val carEtaIntervalSeconds = 360L
+        const val carEtaCallCap = 10
+        const val carEtaStaleSeconds = 420.0
     }
 }

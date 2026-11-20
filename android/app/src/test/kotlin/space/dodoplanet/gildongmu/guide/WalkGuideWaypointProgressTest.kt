@@ -137,9 +137,10 @@ class WalkGuideWaypointProgressTest {
         assertTrue(h.model.ui.value.remainingText!!.startsWith("남은 거리 "), h.model.ui.value.remainingText)
     }
 
-    @Test fun `프로파일 — 도보 튜닝 원본을 쓴다(경유지 접근 예고를 끄는 사본 금지)`() {
+    @Test fun `프로파일 — 수단별 튜닝 원본을 쓴다(경유지 접근 예고를 끄는 사본 금지)`() {
         val model = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/WalkGuideModel.kt").readText()
-        assertTrue(model.contains("private val tuning = GuideTuning.walk\n"))
+        // 수단에서 유도하되 원본 둘 중 하나다(M5 — 운전자 프로파일 없음, iOS `tuning` getter 동형).
+        assertTrue(model.contains("private val tuning: GuideTuning get() = if (sessionKind == GuideSessionKind.car) GuideTuning.car else GuideTuning.walk\n"))
         // 사본은 생성자나 copy로만 만들어진다(경유지 접근 예고 필드는 non-null이라 값으로는 가를 수 없다).
         // 줄을 바꾼 `.copy(` 체인도 잡도록 공백을 건너뛴다.
         val copying = Regex("""GuideTuning[ \t\n]*\(|GuideTuning\.walk[ \t\n]*\.copy[ \t\n]*\(|tuning[ \t\n]*\.copy[ \t\n]*\(""")
