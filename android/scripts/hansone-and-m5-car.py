@@ -90,7 +90,7 @@ def run(query: str) -> None:
     for o in out[-12:]:
         print(f"   > {o}", flush=True)
     spoken_start = next((o for o in out if "자동차 안내 시작" in o and "까지" in o), None)
-    record("PASS" if spoken_start else "INFO", "시작 문장(「…까지 자동차 안내 시작」)", (spoken_start or "위치를 못 잡아 간략·실패로 끝났을 수 있다")[:70])
+    record("PASS" if spoken_start else "INFO", "시작 문장(「…까지 자동차 안내 시작」)", (spoken_start or "안내 음성은 앱 TTS라 화면 출력 기록에 실리지 않을 수 있다(실기기 귀로 확인)")[:70])
     lines = sheet_lines()
     for line in lines:
         print(f"   | {line}", flush=True)
