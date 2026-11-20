@@ -27,9 +27,13 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="false"
         android:theme="@android:style/Theme.DeviceDefault.DayNight">
+        <!-- singleTop: 바로가기(NEW_TASK|CLEAR_TASK)와 안내 알림은 태스크의 기준 인텐트를 자기 인텐트로 바꾼다. standard면 그 뒤
+             런처 아이콘(MAIN+LAUNCHER)이 기준 인텐트와 달라 기존 화면 위에 새 MainActivity를 쌓는다. singleTop은 맨 위의 기존 화면에
+             onNewIntent로 넘겨 보던 화면 그대로 돌아온다(iOS와 같다). 바로가기의 CLEAR_TASK 재생성은 그대로다. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

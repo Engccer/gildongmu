@@ -8,6 +8,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.location.LocationPermission
+import space.dodoplanet.gildongmu.location.OwnedSlot
 
 /**
  * 안내 권한 손(spec §3-4). 위치는 M2 손(`AppConfig.permissionGate`·`locationStore`)을 그대로 지나고, 알림(33+)·걸음 센서는 자기
@@ -16,7 +17,7 @@ import space.dodoplanet.gildongmu.location.LocationPermission
  */
 class GuidePermissionsImpl(context: Context) : GuidePermissions {
     private val app = context.applicationContext
-    private var launch: ((Array<String>) -> Unit)? = null
+    private val hand = OwnedSlot<(Array<String>) -> Unit>()
     /** 대기 중인 다이얼로그(권한, 완료 신호) — 다른 권한의 요청은 그 다이얼로그가 끝난 뒤 자기 것을 띄운다. */
     private var waiter: Pair<String, CompletableDeferred<Unit>>? = null
 
@@ -39,7 +40,7 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
 
     /** 다이얼로그 1회 — 손이 없으면(Activity 없음) 묻지 못하니 그대로 돌아온다. 동시 요청은 같은 결과를 기다린다. */
     private suspend fun ask(permission: String) {
-        val launcher = launch ?: return
+        val launcher = hand.value ?: return
         val existing = waiter
         if (existing != null) {
             existing.second.await()
@@ -52,11 +53,11 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
         try { withTimeoutOrNull(askTimeoutMs) { deferred.await() } } finally { if (waiter?.second === deferred) waiter = null }
     }
 
-    fun attach(launch: (Array<String>) -> Unit) { this.launch = launch }
+    fun attach(owner: Any, launch: (Array<String>) -> Unit) = hand.attach(owner, launch)
 
-    /** 손 해제 — 대기 중인 요청은 지금 값으로 재판정하게 완료시킨다(Activity 소멸에 대기가 남지 않는다). */
-    fun detach() {
-        launch = null
+    /** 손 해제(붙인 주인만, `OwnedSlot`) — 대기 중인 요청은 지금 값으로 재판정하게 완료시킨다(Activity 소멸에 대기가 남지 않는다). */
+    fun detach(owner: Any) {
+        if (!hand.detach(owner)) return
         waiter?.second?.complete(Unit)
         waiter = null
     }

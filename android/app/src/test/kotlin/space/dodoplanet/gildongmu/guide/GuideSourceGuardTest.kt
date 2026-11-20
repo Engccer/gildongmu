@@ -149,13 +149,15 @@ class GuideSourceGuardTest {
         assertEquals(listOf("GuideLocationStream.kt"), files)
     }
 
-    @Test fun `⑦ 매니페스트 — location 전경 서비스 1개, 배경 위치 0, MainActivity launchMode 무변경`() {
+    @Test fun `⑦ 매니페스트 — location 전경 서비스 1개, 배경 위치 0, MainActivity launchMode는 singleTop만`() {
         // 전경 서비스 선언은 정식 매니페스트에(세 구성 공통 — `AppSourceGuardTest`가 다른 소스셋 중복을 막는다).
         val manifest = app.resolve("AndroidManifest.xml").readText()
         assertEquals(1, Regex("""foregroundServiceType="location"""").findAll(manifest).count())
         assertTrue(manifest.contains("android:name=\".guide.GuideForegroundService\""))
         assertTrue(!manifest.contains("ACCESS_BACKGROUND_LOCATION"))
-        assertTrue(!manifest.contains("launchMode"))
+        // 알림 탭은 인텐트 플래그(SINGLE_TOP)로 기존 화면을 앞으로 가져온다(M4 §4-3). singleTop은 바로가기·알림 뒤 런처 아이콘 복귀의
+        // 화면 겹침을 막으려 더했다(재리뷰 지적 1) — 같은 기존 화면 재사용이라 알림 경로와 어긋나지 않는다. 다른 값(singleTask 등)은 들이지 않는다.
+        assertEquals(listOf("singleTop"), Regex("""launchMode="(\w+)"""").findAll(manifest).map { it.groupValues[1] }.toList())
     }
 
     @Test fun `⑧ guide·audio 소스의 문자열 키는 전부 매핑 표에 있다`() {

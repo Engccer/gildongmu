@@ -78,20 +78,39 @@ class AppSessionTest {
         assertFalse(AppSession.takeRefreshLanding())
     }
 
-    /** 정식·실험 바로가기 XML: 액션은 `AppSession` 상수와 같고, 패키지는 각 구성의 applicationId다(실험판 `.dev`). */
+    /**
+     * 정식·실험 바로가기 XML: 액션은 `AppSession` 상수와 같고, 패키지는 각 구성의 applicationId다(실험판 `.dev`).
+     * 「음성 검색」은 받아쓰기 게이트의 정책선(API 33, `isDictationAvailable`)을 넘는 기기의 `xml-v33`에만 있다(재리뷰 지적 4).
+     */
     @Test fun `바로가기 XML 두 벌은 패키지만 다르고 액션이 AppSession과 같다`() {
         val res = Fixtures.repoRoot.resolve("android/app/src")
         for ((set, pkg) in listOf("main" to "space.dodoplanet.gildongmu", "experimental" to "space.dodoplanet.gildongmu.dev")) {
-            val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder().parse(res.resolve("$set/res/xml/shortcuts.xml"))
-            val intents = doc.getElementsByTagName("intent")
-            val actions = (0 until intents.length).map { intents.item(it) as Element }.map { e ->
-                assertEquals(pkg, e.getAttributeNS(ANDROID, "targetPackage"), set)
-                assertEquals("space.dodoplanet.gildongmu.MainActivity", e.getAttributeNS(ANDROID, "targetClass"), set)
-                e.getAttributeNS(ANDROID, "action")
+            for ((dir, expected) in listOf(
+                "xml" to listOf(AppSession.ACTION_NEARBY),
+                "xml-v33" to listOf(AppSession.ACTION_VOICE_SEARCH, AppSession.ACTION_NEARBY),
+            )) {
+                val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder().parse(res.resolve("$set/res/$dir/shortcuts.xml"))
+                val intents = doc.getElementsByTagName("intent")
+                val actions = (0 until intents.length).map { intents.item(it) as Element }.map { e ->
+                    assertEquals(pkg, e.getAttributeNS(ANDROID, "targetPackage"), "$set/$dir")
+                    assertEquals("space.dodoplanet.gildongmu.MainActivity", e.getAttributeNS(ANDROID, "targetClass"), "$set/$dir")
+                    e.getAttributeNS(ANDROID, "action")
+                }
+                assertEquals(expected, actions, "$set/$dir")
             }
-            assertEquals(listOf(AppSession.ACTION_VOICE_SEARCH, AppSession.ACTION_NEARBY), actions, set)
         }
+        assertFalse(space.dodoplanet.gildongmu.speech.isDictationAvailable(32) { true }) // v33 선이 게이트의 정책선과 같다
+        assertTrue(space.dodoplanet.gildongmu.speech.isDictationAvailable(33) { true })
         assertTrue(res.resolve("main/AndroidManifest.xml").readText().contains("android:resource=\"@xml/shortcuts\""))
+    }
+
+    /** 바로가기·안내 알림이 태스크의 기준 인텐트를 바꾼 뒤 런처 아이콘으로 돌아올 때 화면이 겹쳐 쌓이지 않는다(재리뷰 지적 1, 한소네 재현). */
+    @Test fun `MainActivity는 singleTop이다`() {
+        val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder()
+            .parse(Fixtures.repoRoot.resolve("android/app/src/main/AndroidManifest.xml"))
+        val activities = doc.getElementsByTagName("activity")
+        val main = (0 until activities.length).map { activities.item(it) as Element }.single { it.getAttributeNS(ANDROID, "name") == ".MainActivity" }
+        assertEquals("singleTop", main.getAttributeNS(ANDROID, "launchMode"))
     }
 
     private val owner = Any()

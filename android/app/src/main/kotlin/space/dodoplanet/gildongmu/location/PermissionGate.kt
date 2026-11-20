@@ -26,7 +26,7 @@ interface PermissionGate {
  */
 class AndroidPermissionGate(context: Context) : PermissionGate {
     private val app = context.applicationContext
-    private var launch: ((Array<String>) -> Unit)? = null
+    private val hand = OwnedSlot<(Array<String>) -> Unit>()
     private val waiters = ArrayList<CompletableDeferred<LocationPermission>>()
 
     override fun current(): LocationPermission = when {
@@ -36,7 +36,7 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
     }
 
     override suspend fun request(): LocationPermission {
-        val launcher = launch ?: return current() // 손이 없다(Activity 없음) — 묻지 못하니 현재값
+        val launcher = hand.value ?: return current() // 손이 없다(Activity 없음) — 묻지 못하니 현재값
         val deferred = CompletableDeferred<LocationPermission>()
         val first = waiters.isEmpty()
         waiters += deferred
@@ -46,12 +46,10 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
         return try { deferred.await() } finally { waiters.remove(deferred) }
     }
 
-    fun attach(launch: (Array<String>) -> Unit) {
-        this.launch = launch
-    }
+    fun attach(owner: Any, launch: (Array<String>) -> Unit) = hand.attach(owner, launch)
 
-    fun detach() {
-        launch = null
+    fun detach(owner: Any) {
+        hand.detach(owner)
     }
 
     /** 시스템 결과 도착. 값은 결과 맵이 아니라 `checkSelfPermission` 재판정(맵은 요청한 둘만 담고 "대략" 선택을 구분하지 못한다). */
@@ -67,4 +65,27 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
     }
 
     private fun granted(permission: String) = app.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+}
+
+/**
+ * 앱 싱글턴이 쥐는 액티비티 손 한 칸. **붙인 주인만 뗀다**: 새 액티비티가 붙인 뒤 옛 액티비티의 `onDestroy`·컴포지션 해제가 늦게 오면
+ * (바로가기가 옛 화면이 보이는 채 실행될 때 등) 주인을 보지 않는 해제가 새 손을 지워 권한 창이 조용히 뜨지 않는다(`AppSession.take(owner)`와 같은 대조).
+ */
+class OwnedSlot<T : Any> {
+    private var owner: Any? = null
+    var value: T? = null
+        private set
+
+    fun attach(owner: Any, value: T) {
+        this.owner = owner
+        this.value = value
+    }
+
+    /** 그 주인이 붙인 손일 때만 뗀다. 뗐으면 true. */
+    fun detach(owner: Any): Boolean {
+        if (this.owner !== owner) return false
+        this.owner = null
+        value = null
+        return true
+    }
 }

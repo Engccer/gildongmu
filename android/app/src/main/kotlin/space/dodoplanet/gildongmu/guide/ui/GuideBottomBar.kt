@@ -72,8 +72,8 @@ fun guideSheetShowing(): Boolean {
 private fun GuidePermissionsLauncher() {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { GuideSession.permissions.deliver() }
     DisposableEffect(launcher) {
-        GuideSession.permissions.attach { launcher.launch(it) }
-        onDispose { GuideSession.permissions.detach() }
+        GuideSession.permissions.attach(launcher) { launcher.launch(it) }
+        onDispose { GuideSession.permissions.detach(launcher) }
     }
 }
 

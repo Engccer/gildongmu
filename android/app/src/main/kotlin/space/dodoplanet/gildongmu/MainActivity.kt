@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
         val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             AppConfig.permissionGate.deliver()
         }
-        AppConfig.permissionGate.attach { permissions -> permissionLauncher.launch(permissions) }
+        AppConfig.permissionGate.attach(this) { permissions -> permissionLauncher.launch(permissions) }
         // 수동 위치 이동 판정 트리거 ①②(spec §13-2·판정 34): 앱 시작 겸 전경 복귀 = ON_START(단일 액티비티). 재생성 과발화는 판정의 30초 디바운스가 막는다.
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) lifecycleScope.launch { AppConfig.manualLocationJudge.run() }
@@ -136,13 +136,14 @@ class MainActivity : ComponentActivity() {
         AppSession.backgroundedAt?.let { outState.putDouble(BACKGROUNDED_AT_KEY, it) }
     }
 
+    /** singleTop(매니페스트)이라 런처 아이콘·안내 알림 복귀가 여기로 온다(액션 없음 → `offer`가 무시). 바로가기는 CLEAR_TASK라 새 액티비티의 `onCreate`로 간다. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         AppSession.offer(intent.action, this)
     }
 
     override fun onDestroy() {
-        AppConfig.permissionGate.detach()
+        AppConfig.permissionGate.detach(this)
         super.onDestroy()
     }
 }
