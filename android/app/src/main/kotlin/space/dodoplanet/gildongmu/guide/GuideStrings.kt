@@ -318,6 +318,21 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "transitGuide.noCandidatesUnavailable" -> R.string.transitGuide_noCandidatesUnavailable
     "transitGuide.openStation" -> R.string.transitGuide_openStation
     "transitGuide.overviewLeg" -> R.string.transitGuide_overviewLeg
+    "transitGuide.overviewOrdinal" -> R.string.transitGuide_overviewOrdinal
+    "transitGuide.overviewWalk" -> R.string.transitGuide_overviewWalk
+    "transitGuide.overviewLegDone" -> R.string.transitGuide_overviewLegDone
+    "transitGuide.overviewLegCurrent" -> R.string.transitGuide_overviewLegCurrent
+    "transitGuide.overviewLegUpcoming" -> R.string.transitGuide_overviewLegUpcoming
+    "transitGuide.overviewStopsUnavailable" -> R.string.transitGuide_overviewStopsUnavailable
+    "transitGuide.changeBoarding" -> R.string.transitGuide_changeBoarding
+    "transitGuide.viewAlternatives" -> R.string.transitGuide_viewAlternatives
+    "android.transitGuide.altHeading" -> R.string.android_transitGuide_altHeading
+    "android.transitGuide.altHeadingFrom" -> R.string.android_transitGuide_altHeadingFrom
+    "android.transitGuide.altFromBoardStop" -> R.string.android_transitGuide_altFromBoardStop
+    "android.transitGuide.altNone" -> R.string.android_transitGuide_altNone
+    "android.transitGuide.altNoLocation" -> R.string.android_transitGuide_altNoLocation
+    "android.transitGuide.altInvalid" -> R.string.android_transitGuide_altInvalid
+    "android.transitGuide.adoptRoute" -> R.string.android_transitGuide_adoptRoute
     "transitGuide.prewalkArrived" -> R.string.transitGuide_prewalkArrived
     "transitGuide.prewalkArrivedButton" -> R.string.transitGuide_prewalkArrivedButton
     "transitGuide.prewalkStart" -> R.string.transitGuide_prewalkStart
