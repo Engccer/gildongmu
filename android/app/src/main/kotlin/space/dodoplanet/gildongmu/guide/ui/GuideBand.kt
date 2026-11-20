@@ -22,7 +22,6 @@ import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
 import space.dodoplanet.gildongmu.guide.bandSummaryText
 import space.dodoplanet.gildongmu.kit.joinText
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 
 /**
  * 띠바(spec §7-2, iOS `GuideBand` 미러): 시트를 내린 세션을 대표하는 버튼 하나 = 객체 하나. 시각 두 줄(요약·"안내 시트 펼치기"),
@@ -32,7 +31,7 @@ import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 fun GuideBand(ui: WalkGuideUiState, strings: Strings, focus: FocusRequester) {
     val summary = bandSummaryText(ui, strings)
     val returnLabel = strings.get("guide.band.return")
-    val spoken = joinText(spokenDistanceUnits(summary, strings.get("android.unit.spokenMeters")), returnLabel)
+    val spoken = joinText(summary, returnLabel)
     Row(
         Modifier
             .fillMaxWidth()

@@ -41,13 +41,13 @@ import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 
 // 길찾기 행 렌더(spec §3 머리·§3-4, iOS `RouteBriefing.swift`·`outcomeRows` 대응). 문장은 `RouteText`·`TransitLegText`가 만들고
 // 여기는 시각·시맨틱 조립만. 행 관용구 둘: 비상호작용 행은 `mergedRow`, 상호작용 행은 `clickable + clearAndSetSemantics`(M1 `RecentRow`).
 
 /**
- * 비상호작용 한 줄 = 한 객체. 거리 표기가 든 줄은 낭독에서 단위를 풀어 쓴다(`spoken`). `actions`는 접근성 작업 메뉴(사용자 지정 액션) —
+ * 비상호작용 한 줄 = 한 객체. 낭독은 보이는 글자 그대로이고(A75 — 낭독용 이름을 얹으면 한소네가 이름과 글자를 이어 두 번 싣는다),
+ * `spoken`은 보이는 글자와 다른 이유가 있는 줄(영문 병기의 낭독 축소)만 넘긴다. `actions`는 접근성 작업 메뉴(사용자 지정 액션) —
  * 줄은 여전히 텍스트 한 객체로 남고 뷰 종류가 바뀌지 않는다(E45, 채팅 산문 블록 동형).
  */
 @Composable
@@ -159,7 +159,6 @@ fun TransitOutcomeRows(
     /** 수단 재조회(E50): 찾은 경로·축별 상태·버튼 동작·착지 요청자(키 = [requeryFocusKey]). */
     requery: TransitRequeryRowsState,
 ) {
-    val meters = strings.get("android.unit.spokenMeters")
     val requeriedKeys = requery.found.map { it.routeKey }.toSet()
     for (entry in transitRouteEntries(result, requery.found, strings)) {
         val key = entry.route.routeKey
@@ -171,7 +170,7 @@ fun TransitOutcomeRows(
             for (index in legs.indices) {
                 val line = transitLegLine(legs, index, destinationName, destinationRoman, lang, dataLocale, strings)
                 val legRow = if (legs[index].mode == "walk") TransitBriefingRow.Walk(index) else TransitBriefingRow.Transit(index)
-                StationRow(line.visual, "transit-$key-leg-$index", spokenDistanceUnits(line.spoken, meters), legs, legRow, dataLocale, stationEntry, strings)
+                StationRow(line.visual, "transit-$key-leg-$index", line.spoken.takeIf { it != line.visual }, legs, legRow, dataLocale, stationEntry, strings)
                 // 하차 줄은 별개 객체 — "무슨 열차"와 "어디로 내려 나가나"가 스와이프 한 번에 갈린다. 없으면 행 자체가 없다.
                 alightLine(legs[index], lang, dataLocale, strings)?.let {
                     StationRow(it, "transit-$key-alight-$index", null, legs, TransitBriefingRow.Alight(index), dataLocale, stationEntry, strings)
@@ -272,7 +271,6 @@ fun WalkOutcomeRows(
     /** 도보 안내 시작 버튼 슬롯(줄 종류) — 도착 좌표가 있을 때만 화면이 넘긴다. */
     guideStart: (@Composable (line: WalkLineKind) -> Unit)? = null,
 ) {
-    val meters = strings.get("android.unit.spokenMeters")
     // 모르는 종류를 먼저 거르고 인덱싱한다 — "첫 줄"이 하나여야 펼침 규칙이 맞다. 줄 정체성은 종류(`key`, iOS `id: \.kind`):
     // 새 조회에서 둘째 줄이 계단 회피 → 큰길로 바뀌면 자리 기준 상태를 이어받지 않는다.
     lines.mapNotNull { line -> line.lineKind?.let { it to line.route } }.forEachIndexed { index, (kind, route) -> key(kind) {
@@ -280,10 +278,10 @@ fun WalkOutcomeRows(
         val label = walkLineLabel(kind, route, strings)
         DisclosureRow(
             label = label, tag = "walk-line-${kind.rawValue}", expanded = expanded,
-            onToggle = if (index == 0) onWalkToggle else { { onLaterToggle(kind) } }, strings = strings, spoken = spokenDistanceUnits(label, meters),
+            onToggle = if (index == 0) onWalkToggle else { { onLaterToggle(kind) } }, strings = strings,
         ) {
             guideStart?.invoke(kind)
-            walkStepItems(route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }
+            walkStepItems(route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i") }
         }
     } }
     // 조회가 실패해 빠진 줄(E52 위원장 판정 (나)) — 줄 목록의 마지막 객체 하나, 평문(통지 없음 — 조회 완료 통지는 기존 창구).
@@ -293,10 +291,8 @@ fun WalkOutcomeRows(
 /** 자동차 본문: 요약 1행 + 정체 1행(E80, 있을 때만) + 안내 행(펼침 없음 — 경로 하나). */
 @Composable
 fun CarOutcomeRows(briefing: CarRouteBriefing, viaLabel: String?, lang: String, strings: Strings) {
-    val meters = strings.get("android.unit.spokenMeters")
-    val summary = carSummaryText(briefing, lang, strings)
-    TextRow(summary, "car-summary", spoken = spokenDistanceUnits(summary, meters))
+    TextRow(carSummaryText(briefing, lang, strings), "car-summary")
     // 정체(E80 §4): 요약 바로 뒤 한 행. 미요청·정보 없음은 행 없음, 정체 없음은 그렇다고 말한다(3-state). 데이터 언어는 화면과 같은 축(ko 밖은 en).
     carCongestionText(briefing.congestion, english = lang != "ko", strings)?.let { TextRow(it, "car-congestion") }
-    carStepItems(briefing, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "car-step-$i", spoken = spokenDistanceUnits(item, meters)) }
+    carStepItems(briefing, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "car-step-$i") }
 }
