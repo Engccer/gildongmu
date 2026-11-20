@@ -10,7 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.delay
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.Reorder
@@ -74,12 +76,19 @@ class MovedRowLanding {
 @Composable
 fun rememberMovedRowLanding(focusFor: (Any) -> FocusRequester?): MovedRowLanding {
     val landing = remember { MovedRowLanding() }
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(landing.pending) {
         val key = landing.pending ?: return@LaunchedEffect
         withFrameNanos { }
+        // 이미 입력 포커스를 쥔 행(삭제 뒤 착지·앞선 이동 착지)은 다시 요청해도 변화가 없어 커서가 따라오지 않는다(한소네 재현). 비우고,
+        // 접근성 이벤트가 묶여 나가므로 비운 상태가 한 번 나갈 만큼 기다린 뒤 준다(곧바로 주면 같은 묶음에서 상쇄돼 역시 따라오지 않았다).
+        focusManager.clearFocus()
+        delay(focusEventGapMs)
         runCatching { landing.bringFor(key).bringIntoView() }.onFailure { Log.w("Reorder", "옮긴 행 스크롤 실패", it) }
         runCatching { focusFor(key)?.requestFocus() }.onFailure { Log.w("Reorder", "옮긴 행 착지 실패", it) }
         landing.pending = null // 일을 마친 뒤 끈다(자기 키를 바꾸는 효과는 그 순간 취소된다)
     }
     return landing
 }
+
+private const val focusEventGapMs = 250L

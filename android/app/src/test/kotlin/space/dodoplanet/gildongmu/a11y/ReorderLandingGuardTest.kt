@@ -29,6 +29,9 @@ class ReorderLandingGuardTest {
         val bring = code.indexOf(".bringIntoView()")
         val focus = code.indexOf(".requestFocus()")
         val off = code.indexOf("landing.pending = null")
+        val clear = code.indexOf("focusManager.clearFocus()")
         assertTrue(bring in 0 until focus && focus < off, "가시화 → 포커스 → 신호 끄기 순서")
+        val gap = code.indexOf("delay(focusEventGapMs)")
+        assertTrue(clear in 0 until gap && gap < focus, "이미 포커스를 쥔 행도 커서가 따라오게 비우고 기다린 뒤 준다(리뷰 지적, 한소네 재현)")
     }
 }

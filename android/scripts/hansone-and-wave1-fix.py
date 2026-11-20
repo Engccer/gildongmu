@@ -236,8 +236,34 @@ def check_reorder() -> None:
         before = current(press("space 1", label="이전 줄(돌아옴)"))
         stayed = PIN_NAMES[0] in after and PIN_NAMES[-1] in before
         record("PASS" if stayed else "FAIL", "옮긴 줄에 커서가 남는다(재감사 1-2)", f"다음 {after[:30]} / 돌아온 줄 {before[:30]}")
+        check_move_after_delete()
     finally:
         restore_prefs()
+
+
+def run_action(name: str) -> list[str]:
+    for _ in range(10):
+        if name in current(press(ITEM_NEXT, label="작업 항목")):
+            return press(ITEM_RUN, wait=4, label=f"실행 {name}")
+    return []
+
+
+def check_move_after_delete() -> None:
+    """삭제 뒤 착지로 포커스를 이미 쥔 행을 바로 옮겨도 커서가 따라간다(리뷰 지적: 같은 행의 두 번째 포커스 요청은 변화가 없다)."""
+    if not find(PIN_NAMES[-2], limit=30):  # 첫 점검 뒤 맨 아래 줄
+        return record("FAIL", "삭제할 맨 아래 줄 찾기", PIN_NAMES[-2])
+    if not rotor_to("작업"):
+        return record("FAIL", "로터 「작업」 단위 없음")
+    landed = current(run_action("삭제"))
+    if not rotor_to("작업"):
+        return record("FAIL", "로터 「작업」 단위 없음(둘째)")
+    moved = run_action("맨 위로")
+    rotor_to("줄")
+    record("INFO", "삭제 뒤 착지 → 「맨 위로」", f"착지 {landed[:24]} / 실행 뒤 {current(moved)[:24]}")
+    after = current(press("space 4", label="다음 줄"))
+    before = current(press("space 1", label="이전 줄(돌아옴)"))
+    stayed = PIN_NAMES[-1] in after and PIN_NAMES[-3] in before
+    record("PASS" if stayed else "FAIL", "삭제 뒤 착지한 줄을 옮겨도 커서가 남는다(리뷰 지적)", f"다음 {after[:30]} / 돌아온 줄 {before[:30]}")
 
 
 # ── around ────────────────────────────────────────────────────────────
