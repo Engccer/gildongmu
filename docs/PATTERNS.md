@@ -694,3 +694,19 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 ### `clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다
 
 ⚠ **`clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다** — 한 노드의 시맨틱 수식어는 사슬 안쪽(뒤)부터 바깥쪽으로 접히고, 지우는 수식어를 만나면 그때까지 모은 것을 버린다. 그래서 `clickable`처럼 앞에 붙은 것은 살고 `.mergedRow(...).semantics { customActions = … }`·`.headingText()`처럼 뒤에 붙은 것은 사라진다(`RecentRow`는 액션을 같은 블록 안에 둔다). A77(한소네 영어 병기 줄 두 번 출력)을 `mergedRow` 한 곳에서 `clearAndSetSemantics`로 고치지 못한 이유가 이것이다 — 낭독 이름 + 뒤 시맨틱 자리가 `SearchRows.kt`·`NearbyKindScreen.kt`·`a11y/Lines.kt`·`directions/RouteRows.kt`에 있다(2026-11-21).
+
+### 화면 밖 행으로 옮기는 착지는 먼저 스크롤하고 기다린 뒤 포커스를 준다
+
+⚠ **화면 밖 행에 `requestFocus()`를 하면 요청은 `true`인데 한소네 커서가 따라가지 않는다**(2026-11-21 한소네 7 실측, B22·B27 ③). 검색 탭에 받아쓰기 줄과 위치 표시줄이 서자 한소네 화면(높이 576dp)에서 첫 결과 행이 화면 밖으로 밀렸고, 착지 요청은 성공했지만(진단 로그) 커서는 상태 줄에 남았다. 그래서 첫 결과·첫 후보 착지는 행에 `bringIntoViewRequester`를 달고 `bringIntoView()`를 기다린 뒤 포커스를 준다(`SearchScreen.kt`·`EndpointSearchContent.kt`). 스크롤이 끼면 한소네가 화면 밖으로 나간 커서를 옮겨 읽으며 바로 앞의 결과 수 통지를 덮으므로, 검색 탭은 스크롤이 실제로 일어났고 통지가 그대로일 때만 착지 뒤 같은 문장을 진동 없이 한 번 더 낸다(스크롤 없는 큰 화면은 한 번). 큰 TalkBack 폰에서는 재현되지 않으니 작은 화면 기기 점검이 유일한 검출 수단이다. 복귀 착지(BACKLOG A76)도 같은 뿌리로 추정한다.
+
+### 자기 키를 바꾸는 `LaunchedEffect`는 일을 하기 전에 취소된다
+
+⚠ **`LaunchedEffect(flag)` 안에서 `flag`를 먼저 끄면 그 재구성이 효과를 취소한다** — `withFrameNanos`처럼 프레임을 기다리는 지점에서 취소되어 본래 일(받아쓰기 자동 시작)을 하지 못했다(2026-11-20 리뷰, 앱 바로가기 「음성 검색」). 신호는 일을 마친 뒤 콜백(`onAutoStartConsumed`)으로 끄고, 여러 화면이 같은 1회 신호를 볼 수 있으면 화면이 처음 설 때 `remember { flow.value }`로 사진을 찍어 새로 선 화면만 반응하게 한다(`SearchScreen.kt` `voiceStart`).
+
+### 탭 전체 리셋은 시작 탭의 저장 스택부터 복원해 지운다
+
+⚠ **Navigation 2.10의 탭 전환(`popUpTo(start){saveState=true}`)은 시작 탭의 스택을 시작 목적지 id로 저장하므로, 다른 탭을 지우는 `clearBackStack`만으로는 시작 탭의 옛 화면(설정 등)이 되살아난다**(2026-11-20 리뷰, B22 ④·B27 ②). 리셋은 시작 탭으로 복원 이동 → `popUpTo(graph.id){inclusive=true}`로 새 뿌리 → 나머지 탭 `clearBackStack` → 목적 탭 이동 순서다(`nav/AppSession.kt` `resetAllTabs`). `clearBackStack(시작 탭)`은 새 뿌리를 지우므로 쓰지 않는다. 리셋·새로고침 요청은 카운터가 아니라 1회 소비 표식이다(액티비티 재생성이 옛 요청을 다시 실행하지 않게), 유휴 시각은 `onSaveInstanceState`로 프로세스 종료를 건넌다.
+
+### 전역 1회 신호는 받은 액티비티만 꺼낸다
+
+⚠ **앱이 떠 있을 때 바로가기는 옛 액티비티를 지우고 새로 여는데(`NEW_TASK|CLEAR_TASK`), 지워지는 옛 `AppRoot`도 같은 전역 `StateFlow`를 보고 있어 신호를 먼저 꺼내 간다** — 새 화면은 신호 없이 처음 탭으로 뜬다(2026-11-21 한소네 7 실측, 앱을 끈 뒤 실행하면 재현되지 않아 단위 테스트와 차가운 실행 점검이 둘 다 놓쳤다). 바로가기 액션은 `offer(action, owner = 액티비티)`로 받고 `take(owner)`는 그 액티비티의 `LocalActivity`만 꺼낸다(`nav/AppSession.kt`). 기기 점검 대본도 바로가기를 같은 플래그(`am start -f 0x10008000`)로 열고, 앱을 먼저 띄운 뒤 연다.
