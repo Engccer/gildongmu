@@ -43,6 +43,16 @@ class AppSessionTest {
         assertFalse(AppSession.resetPending.value)
     }
 
+    @Test fun `프로세스 종료 뒤 복원한 백그라운드 시각으로도 유휴 리셋한다, 살아 있는 기록은 덮지 않는다`() {
+        AppSession.restoreBackgroundedAt(0.0)
+        assertTrue(AppSession.onForeground(IdleReset.interval + 1, guideActive = false))
+        AppSession.onBackground(100.0)
+        AppSession.restoreBackgroundedAt(0.0) // 같은 프로세스의 재생성 — 메모리 기록이 정본
+        assertFalse(AppSession.onForeground(100.0 + IdleReset.interval, guideActive = false))
+        AppSession.restoreBackgroundedAt(null)
+        assertNull(AppSession.backgroundedAt)
+    }
+
     @Test fun `바로가기 진입은 같은 전경 전환의 유휴 판정을 무효화한다`() {
         AppSession.onBackground(0.0)
         AppSession.offer(AppSession.ACTION_NEARBY)

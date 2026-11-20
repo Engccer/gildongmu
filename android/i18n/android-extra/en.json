@@ -94,7 +94,7 @@
       "backgroundSpeechFooter": "Speaks guidance such as turns, going off route, and arrival in the device voice even while the screen is off or you are using another app."
     },
     "dataSources": {
-      "walkHealth": "Steps come from this device's step sensor; calories are an estimate from distance and weight"
+      "walkHealth": "Steps come from the step sensor; calories are an estimate from distance and weight"
     }
   },
   "search": {

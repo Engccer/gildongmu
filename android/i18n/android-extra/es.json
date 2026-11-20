@@ -94,7 +94,7 @@
       "backgroundSpeechFooter": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, incluso con la pantalla apagada o mientras usas otra app."
     },
     "dataSources": {
-      "walkHealth": "Los pasos vienen del sensor de pasos de este dispositivo; las calorías son una estimación según distancia y peso"
+      "walkHealth": "Los pasos vienen del sensor de pasos; las calorías son una estimación según distancia y peso"
     }
   },
   "search": {

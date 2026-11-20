@@ -114,7 +114,7 @@
     <string name="android_common_refresh">Refresh</string>
     <string name="android_common_unavailableHere_noBusData">Bus stop data is not provided for this area</string>
     <string name="android_common_unavailableHere_seoulOnly">Available in Seoul only</string>
-    <string name="android_dataSources_walkHealth">Steps come from this device\'s step sensor; calories are an estimate from distance and weight</string>
+    <string name="android_dataSources_walkHealth">Steps come from the step sensor; calories are an estimate from distance and weight</string>
     <string name="android_directions_searching">Searching</string>
     <string name="android_directions_walkNotice_body1">When you look up a route in the Directions tab, the walking section now shows a \"Start walking guidance\" button. Tap it to begin real-time guidance. While guidance is active, the screen shows the remaining distance to your destination, the distance left in the current segment, and the next instruction. Guidance keeps working in the background even when the screen is locked.</string>
     <string name="android_directions_walkNotice_body2">Guidance is based on map data from external APIs and on GPS, so it may differ from actual conditions.</string>

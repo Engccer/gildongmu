@@ -114,7 +114,7 @@
     <string name="android_common_refresh">새로고침</string>
     <string name="android_common_unavailableHere_noBusData">이 지역은 정류소 정보가 제공되지 않습니다</string>
     <string name="android_common_unavailableHere_seoulOnly">서울 지역에서만 제공됩니다</string>
-    <string name="android_dataSources_walkHealth">걸음 수는 이 기기의 걸음 센서 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다</string>
+    <string name="android_dataSources_walkHealth">걸음 수는 걸음 센서 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다</string>
     <string name="android_directions_searching">조회 중</string>
     <string name="android_directions_walkNotice_body1">이제 길찾기 탭에서 경로를 조회하면 도보 섹션에 \"도보 안내 시작\" 버튼이 나와요. 버튼을 누르면 실시간 안내가 시작돼요. 안내를 받는 동안 도착지까지 남은 거리, 현재 구간의 남은 거리, 다음 안내 등을 화면에서 바로 확인하실 수 있어요. 안내 중에는 화면을 잠가도 백그라운드에서 작동해요.</string>
     <string name="android_directions_walkNotice_body2">안내는 API가 주는 지도 데이터와 GPS를 기반으로 이루어져요. 따라서 실제 상황과는 차이가 있을 수 있어요.</string>

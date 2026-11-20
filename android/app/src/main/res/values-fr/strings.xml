@@ -114,7 +114,7 @@
     <string name="android_common_refresh">Actualiser</string>
     <string name="android_common_unavailableHere_noBusData">Les données d\'arrêts de bus ne sont pas fournies dans cette zone</string>
     <string name="android_common_unavailableHere_seoulOnly">Disponible uniquement à Séoul</string>
-    <string name="android_dataSources_walkHealth">Les pas viennent du capteur de pas de cet appareil ; les calories sont une estimation d\'après la distance et le poids</string>
+    <string name="android_dataSources_walkHealth">Les pas viennent du capteur de pas ; les calories sont une estimation d\'après la distance et le poids</string>
     <string name="android_directions_searching">Recherche en cours</string>
     <string name="android_directions_walkNotice_body1">Désormais, lorsque vous recherchez un itinéraire dans l\'onglet Itinéraire, la section à pied affiche le bouton \"Démarrer le guidage à pied\". Appuyez dessus pour lancer le guidage en temps réel. Pendant le guidage, l\'écran affiche la distance restante jusqu\'à votre destination, la distance restante du tronçon en cours et la prochaine instruction. Le guidage continue de fonctionner en arrière-plan même lorsque l\'écran est verrouillé.</string>
     <string name="android_directions_walkNotice_body2">Le guidage repose sur les données cartographiques d\'API externes et sur le GPS ; il peut donc différer de la situation réelle.</string>

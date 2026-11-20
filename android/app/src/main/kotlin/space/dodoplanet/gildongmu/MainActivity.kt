@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // 앱 바로가기(B22 ④): 정적 바로가기는 새 태스크로 이 액티비티를 다시 만든다. 구성 변경 재생성은 같은 인텐트를 다시 들고 오므로 첫 생성만 받는다.
         if (savedInstanceState == null) AppSession.offer(intent?.action)
+        else AppSession.restoreBackgroundedAt(savedInstanceState.getDouble(BACKGROUNDED_AT_KEY, Double.NaN).takeIf { !it.isNaN() })
         // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).
         val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             AppConfig.permissionGate.deliver()
@@ -129,6 +130,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** API 28+에서 `onStop` 뒤에 불린다 — 그때 적힌 백그라운드 시각을 프로세스 종료 너머로 넘긴다(유휴 리셋, B27 ②). */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        AppSession.backgroundedAt?.let { outState.putDouble(BACKGROUNDED_AT_KEY, it) }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         AppSession.offer(intent.action)
@@ -151,3 +158,5 @@ fun searchStrings(res: () -> Resources): SearchStrings = SearchStrings(
     clearedExceptPinned = { res().getString(R.string.recent_clearedExceptPinned) },
     moved = { appLocalized(res(), R.string.android_reorder_moved, it) },
 )
+
+private const val BACKGROUNDED_AT_KEY = "gildongmu.backgroundedAt"

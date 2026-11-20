@@ -93,12 +93,13 @@ fun DictationControls(
             launcher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
+    // 신호는 착지·시작 뒤에 내린다 — 먼저 내리면 그 재구성이 이 효과를 프레임 대기 중에 취소해 착지·시작이 영영 오지 않는다.
     LaunchedEffect(autoStart) {
         if (!autoStart) return@LaunchedEffect
-        onAutoStartConsumed()
         withFrameNanos { }
         focus?.let { f -> runCatching { f.requestFocus() } }
         if (session.phase.value == DictationPhase.Idle || session.phase.value == DictationPhase.Denied) press()
+        onAutoStartConsumed()
     }
     OutlinedButton(
         onClick = ::press,

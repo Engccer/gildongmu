@@ -40,8 +40,13 @@ object AppSession {
     /** 새로고침 뒤 새로 선 탭 루트가 「새로고침」 버튼에 착지하는 1회 신호(누른 버튼이 화면째 사라져 커서가 떨어지므로, 헌장 §5 복원). */
     private var refreshLandingPending = false
 
-    /** 백그라운드 진입 시각(초). null = 기록 없음. */
+    /** 백그라운드 진입 시각(초, `elapsedRealtime`). null = 기록 없음. 프로세스가 죽어도 액티비티 저장 상태로 넘어온다(`MainActivity`). */
     internal var backgroundedAt: Double? = null
+
+    /** 프로세스 종료 뒤 복원(리뷰 지적): 백그라운드 사이 프로세스가 죽으면 메모리 기록이 사라져 복귀가 리셋되지 않는다. 새 프로세스일 때만 받는다. */
+    fun restoreBackgroundedAt(saved: Double?) {
+        if (backgroundedAt == null && saved != null) backgroundedAt = saved
+    }
 
     fun actionFor(intentAction: String?): LaunchAction? = when (intentAction) {
         ACTION_VOICE_SEARCH -> LaunchAction.voiceSearch
@@ -104,9 +109,18 @@ object AppSession {
 
 /**
  * 모든 탭을 초기 상태로 되돌리고 `target` 탭을 연다(유휴 리셋·바로가기, iOS `resetSession` + 탭 선택).
- * 현재 스택을 상태 저장 없이 비워(그 엔트리의 ViewModel 폐기 — 채팅 스트림도 함께 취소된다) 시작 탭을 새로 세우고, 다른 탭의 저장된 백스택을 지운다.
+ *
+ * 세 단계다. ① 탭 바처럼 시작 탭으로 가며 그 탭의 저장된 백스택을 되살린다 — 탭 전환이 시작 탭 위 화면을 시작 목적지 id로 저장해 두므로,
+ * 되살려 살아 있는 스택으로 만들지 않으면 ②가 지우지 못하고 나중에 시작 탭을 누를 때 옛 화면이 돌아온다(리뷰 지적).
+ * ② 살아 있는 스택 전부를 상태 저장 없이 빼고 시작 탭을 새로 세운다(엔트리 ViewModel 폐기 — 채팅 스트림도 함께 취소된다).
+ * ③ 다른 탭의 저장된 백스택을 지운다. 시작 탭에 `clearBackStack`을 쓰지 않는 이유: 저장분을 복원한 뒤 그 목적지까지 빼므로 새 루트까지 지운다.
  */
 fun NavController.resetAllTabs(tabs: List<AppTab>, initial: AppTab, target: AppTab) {
+    navigate(initial.route()) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
     navigate(initial.route()) { popUpTo(graph.id) { inclusive = true } }
     for (tab in tabs) if (tab != initial) clearBackStack(tab.route())
     if (target != initial) {

@@ -108,8 +108,10 @@ fun SearchScreen(
         onTranscript = vm::submitVoice,
         onNotice = { vm.announce(dictationNoticeText(res, it)) },
     )
-    val voiceStart by AppSession.voiceStartRequested.collectAsState()
-    LaunchedEffect(voiceStart) { if (dictation == null && voiceStart) AppSession.voiceStartRequested.value = false } // 받아쓰기 없는 기기 — 신호만 버린다
+    // 바로가기 음성 검색 신호는 이 화면이 처음 설 때 한 번만 읽는다(iOS `.task` 동형): 리셋으로 사라지는 옛 검색 화면은 이미 선 뒤라
+    // false를 쥐고 있어 새 화면 하나만 받아쓰기를 시작한다. 받아쓰기 없는 기기면 신호만 버린다.
+    val voiceStart = remember { AppSession.voiceStartRequested.value }
+    LaunchedEffect(Unit) { if (dictation == null && voiceStart) AppSession.voiceStartRequested.value = false }
     val lang = remember(res) { AppLocale.current(res) }
     val fieldFocus = remember { FocusRequester() }
     val buttonFocus = remember { FocusRequester() }
