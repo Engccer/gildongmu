@@ -9,6 +9,9 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.TransitLabel
 import space.dodoplanet.gildongmu.kit.TransitPhase
+import space.dodoplanet.gildongmu.kit.TransitWaitingEmptyReason
+import space.dodoplanet.gildongmu.kit.buildTransitGuideRoute
+import space.dodoplanet.gildongmu.kit.transitUnreachableReason
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
@@ -100,6 +103,20 @@ class TransitGuideUserActionsTest {
         assertEquals(TransitPhase.boarding, h.phase)
         h.model.board(item, null)
         assertEquals(TransitPhase.boarding, h.phase, "boarding 중 재선택은 무시")
+    }
+
+    @Test fun `내릴 역 앞에서 끝나는 도달 불가 차량은 탑승을 거부한다`() = transitTest(dispatcher) { h ->
+        val r = route(subwayLeg("천호", "여의도"))
+        // 경유역 [천호, 강동, 올림픽공원, 여의도]에서 강동행은 내릴 역에 닿지 않는다.
+        h.trackReplies += TransitGuideHarness.okTrack("v1", destinationName = "강동") to 0L
+        h.begin(r)
+        settle()
+        val item = h.model.ui.value.waitingLive.single()
+        val leg = buildTransitGuideRoute(r)!!.legs.first()
+        assertNotNull(transitUnreachableReason(item, leg), "입력이 실제로 도달 불가여야 한다")
+        h.model.board(item, null)
+        assertEquals(TransitPhase.waiting, h.phase, "도달 불가 차량은 선택되지 않는다")
+        assertEquals(0, h.model.ui.value.userTransitionSeq)
     }
 
     @Test fun `선택한 열차에 탔어요는 boarding에서 riding으로 선언한다`() = transitTest(dispatcher) { h ->
@@ -313,6 +330,18 @@ class TransitGuideUserActionsTest {
         assertTrue(h.seenUrls.size > urls, "즉폴")
         assertTrue(h.speaker.texts.size > before, "직접 응답 통지: ${h.speaker.texts}")
         assertEquals(listOf("v9"), h.model.ui.value.waitingLive.map { it.vehicleId })
+        assertTrue(h.speaker.texts.contains(h.catalog.get("transitGuide.waitingCount", 1)), h.speaker.texts.toString())
+    }
+
+    @Test fun `새로고침이 조회 실패면 0개가 아니라 조회 실패 사유를 말한다`() = transitTest(dispatcher) { h ->
+        h.begin()
+        settle()
+        h.failNextTrack = true
+        h.model.refreshWaiting()
+        settle()
+        assertEquals(TransitWaitingEmptyReason.unavailable, h.model.ui.value.waitingReason)
+        assertTrue(h.speaker.texts.contains(h.catalog.get("transitGuide.noCandidatesUnavailable")), h.speaker.texts.toString())
+        assertFalse(h.speaker.texts.contains(h.catalog.get("transitGuide.waitingCount", 0)), h.speaker.texts.toString())
     }
 
     @Test fun `사용자 동작이 유휴 정지를 푼다`() = transitTest(dispatcher) { h ->
@@ -332,10 +361,9 @@ class TransitGuideUserActionsTest {
     @Test fun `탑승 변경 진입도 유휴 정지를 푼다`() = transitTest(dispatcher) { h ->
         h.begin()
         settle()
-        h.model.boardAlready(express = null)
-        advanceTimeBy(10 * 60 * 60_000L)
+        advanceTimeBy(90 * 60_000L)
         runCurrent()
-        // 근사 잠금 riding은 폴 주기 0이라 폴 루프가 유휴 판정을 하지 않을 수 있다 — 정지했다면 풀리고, 아니면 그대로 무사하다.
+        assertTrue(h.model.ui.value.idlePaused, "먼저 유휴 정지에 들어가 있어야 한다")
         h.model.beginReboard()
         assertFalse(h.model.ui.value.idlePaused)
         assertTrue(h.model.ui.value.reboardPickerActive)

@@ -38,11 +38,16 @@ class TransitGuideHarness(
     val env = FakeEnv()
     val coordinator = GuideSessionCoordinator()
     val store = InMemoryKeyValueStore()
+    /** 도보 모델의 「시작 대기」(`GuideSession.isActive`의 한 갈래) 흉내. */
+    var walkStarting = false
+    /** 켜면 다음 추적 호출이 HTTP 실패로 끝난다(`TransitTrackPoll.Failed`). */
+    var failNextTrack = false
     val seenUrls = mutableListOf<String>()
     val job = SupervisorJob()
     private val client = APIClient("https://example.test", object : HttpTransport {
         override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
             seenUrls += url
+            if (failNextTrack) { failNextTrack = false; return HttpResponse(500, "") }
             val (body, delayMs) = trackReplies.removeFirstOrNull() ?: (EMPTY_TRACK to 0L)
             if (delayMs > 0) withContext(NonCancellable) { delay(delayMs) }
             return HttpResponse(200, body)
@@ -63,6 +68,7 @@ class TransitGuideHarness(
         haptics = haptics,
         env = env,
         coordinator = coordinator,
+        isSessionActive = { coordinator.isActive || walkStarting },
         store = store,
         scope = CoroutineScope(job + dispatcher),
         clock = now,
@@ -91,8 +97,8 @@ class TransitGuideHarness(
 
     companion object {
         const val EMPTY_TRACK = """{"mode":"subway","status":"empty","rawCount":0}"""
-        fun okTrack(vehicleId: String) =
-            """{"mode":"subway","status":"ok","rawCount":1,"items":[{"vehicleId":"$vehicleId","direction":"하행","message":"전역 출발","remainingStops":null,"destinationName":"방화","express":false,"arrivalCode":"2"}]}"""
+        fun okTrack(vehicleId: String, destinationName: String = "방화") =
+            """{"mode":"subway","status":"ok","rawCount":1,"items":[{"vehicleId":"$vehicleId","direction":"하행","message":"전역 출발","remainingStops":null,"destinationName":"$destinationName","express":false,"arrivalCode":"2"}]}"""
     }
 }
 

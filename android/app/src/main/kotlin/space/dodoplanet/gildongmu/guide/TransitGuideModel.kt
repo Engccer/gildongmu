@@ -170,6 +170,8 @@ class TransitGuideModel(
     private val haptics: GuideHaptics,
     private val env: GuideEnvironment,
     private val coordinator: GuideSessionCoordinator,
+    /** 거부 판정용 「다른 안내가 있는가」(iOS `GuideSession.isActive` = 코디네이터 점유 ∨ 도보 `starting`). `GuideSession`이 `{ isActive }`를 넘긴다(단계 4). ⚠ 기본값 없음(안전 인자). */
+    private val isSessionActive: () -> Boolean,
     private val store: KeyValueStore,
     private val scope: CoroutineScope,
     private val clock: () -> Double,
@@ -426,7 +428,7 @@ class TransitGuideModel(
 
     /** 점유 게이트(iOS `guard !GuideSession.shared.isActive, let token = coordinator.claim`) — 다른 세션이 쥐고 있으면 null. */
     private fun claimSession(): Int? =
-        if (coordinator.isActive) null else coordinator.claim(stop = { stop(playStopTone = false) })
+        if (isSessionActive()) null else coordinator.claim(stop = { stop(playStopTone = false) })
 
     /**
      * 게이트를 지난 뒤의 세션 초기화 공통부(`start`·`startAfterPrewalk`). `startLeg`가 0이 아니면 환승 도보 뒤의 재개다(E73) — 상태는 그 구간의 대기 국면,

@@ -10,7 +10,11 @@ import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.DeviceSpeechDrop
 import space.dodoplanet.gildongmu.kit.GuideSpeechClass
+import space.dodoplanet.gildongmu.kit.TransitBackgroundToneSource
+import space.dodoplanet.gildongmu.kit.TransitBoardedCause
+import space.dodoplanet.gildongmu.kit.TransitGuideEvent
 import space.dodoplanet.gildongmu.kit.TransitPhase
+import space.dodoplanet.gildongmu.kit.transitToneAllowedInBackground
 import space.dodoplanet.gildongmu.kit.TransitWalkLegText
 import space.dodoplanet.gildongmu.location.LocationPermission
 import kotlin.test.Test
@@ -51,6 +55,16 @@ class TransitGuideModelTest {
         h.begin()
         settle()
         assertEquals(listOf(h.catalog.get("guide.alreadyActive")), h.speaker.texts)
+        assertFalse(h.model.ui.value.isTracking)
+        assertEquals(0, h.seenUrls.size)
+    }
+
+    @Test fun `도보가 시작 대기 중이면 대중교통 시작을 거부하고 이미 안내 중이라 말한다`() = transitTest(dispatcher) { h ->
+        h.walkStarting = true
+        h.begin()
+        settle()
+        assertEquals(listOf(h.catalog.get("guide.alreadyActive")), h.speaker.texts)
+        assertFalse(h.coordinator.isActive)
         assertFalse(h.model.ui.value.isTracking)
         assertEquals(0, h.seenUrls.size)
     }
@@ -135,6 +149,41 @@ class TransitGuideModelTest {
         assertTrue(h.model.ui.value.idlePaused)
         assertEquals(before, h.tones.played.size)
         assertFalse(h.tones.played.contains(BeaconTone.stop))
+    }
+
+    @Test fun `백그라운드에서는 허용 집합의 이벤트 톤만 울린다`() = transitTest(dispatcher) { h ->
+        // 허용 판정은 Kit이 정본이다 — 관측 승차는 허용, 선언 승차는 비허용.
+        assertTrue(transitToneAllowedInBackground(TransitBackgroundToneSource.Event(TransitGuideEvent.Boarded(1, TransitBoardedCause.observed))))
+        assertFalse(transitToneAllowedInBackground(TransitBackgroundToneSource.Event(TransitGuideEvent.Boarded(1, TransitBoardedCause.declared))))
+        h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
+        h.begin()
+        settle()
+        val item = h.model.ui.value.waitingLive.single()
+        h.env.foreground = false
+        h.model.setForeground(false)
+        // 선언 승차(비허용 톤 start)는 백그라운드에서 울리지 않는다.
+        val before = h.tones.played.size
+        h.model.board(item, null)
+        settle()
+        h.model.confirmBoarded()
+        settle()
+        assertEquals(TransitPhase.riding, h.model.ui.value.state?.phase)
+        assertEquals(before, h.tones.played.size, h.tones.played.toString())
+    }
+
+    @Test fun `백그라운드에서도 관측 승차의 톤은 울린다`() = transitTest(dispatcher) { h ->
+        h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
+        h.begin()
+        settle()
+        val item = h.model.ui.value.waitingLive.single()
+        h.env.foreground = false
+        h.model.setForeground(false)
+        val before = h.tones.played.size
+        h.trackReplies += "{\"mode\":\"subway\",\"status\":\"ok\",\"rawCount\":1,\"items\":[{\"vehicleId\":\"v1\",\"direction\":\"하행\",\"message\":\"진입\",\"remainingStops\":null,\"destinationName\":\"방화\",\"express\":false,\"arrivalCode\":\"0\"}]}" to 0L
+        h.model.board(item, null)
+        settle()
+        assertEquals(TransitPhase.riding, h.model.ui.value.state?.phase)
+        assertEquals(BeaconTone.start, h.tones.played.drop(before).lastOrNull(), h.tones.played.toString())
     }
 
     @Test fun `억제 중 버려진 마지막 문장은 해제 때 한 번 다시 나간다`() = transitTest(dispatcher) { h ->
