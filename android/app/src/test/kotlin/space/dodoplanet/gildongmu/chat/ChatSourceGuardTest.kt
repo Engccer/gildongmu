@@ -84,4 +84,10 @@ class ChatSourceGuardTest {
         iosTools.forEach { assertTrue(toolLabelId(it) != null, it) }
         iosSources.forEach { assertTrue(sourceLabelId(it) != null, it) }
     }
+
+    /** 답변 줄의 「○○ 상세 보기」는 라벨이 같으면 하나만 둔다(Compose는 라벨로 골라 둘째가 첫째를 연다). 영어 화면에서 로마자가 같은 두 장소(재감사 2-1). */
+    @Test fun `답변 줄의 상세 보기 동작은 라벨 중복을 거른다`() {
+        val block = code("ChatRenders.kt").substringAfter("fun AnswerBlock(").substringBefore("\n}\n")
+        assertTrue(Regex("""CustomAccessibilityAction\(label\) \{ onOpenPlace\(place, key\); true \}\s*\}\.distinctBy \{ it\.label \}""").containsMatchIn(block))
+    }
 }

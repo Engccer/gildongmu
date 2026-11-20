@@ -425,7 +425,7 @@ private fun AroundBody(
             val actions = overviewDetailTargets(bullet, lang).map { target ->
                 val label = appLocalized(res, if (target.isStation) R.string.transitGuide_openStation else R.string.android_chat_openPlace, target.name)
                 CustomAccessibilityAction(label) { onOpenDetail(target.place, key, target.event?.let { PlaceDomain.Event(it) }, target.lineHint); true }
-            }.distinctBy { it.label } // 같은 라벨은 첫 동작만 실행된다(Compose는 라벨로 고른다) — 둘째는 닿지 않는 죽은 항목이라 뺀다(채팅 `mentionOrder` 동형)
+            }.distinctBy { it.label } // 같은 라벨은 첫 동작만 실행된다(Compose는 라벨로 고른다) — 둘째는 닿지 않는 죽은 항목이라 뺀다(채팅 답변 줄 `AnswerBlock`과 같다)
             Text(
                 line.display,
                 Modifier.fillMaxWidth().mergedRow(key, line.text.takeIf { it != line.display }, focus = requesterFor(key))

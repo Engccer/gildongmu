@@ -79,7 +79,7 @@ fun AnswerBlock(
         val actions = mentions.map { place ->
             val label = appLocalized(res, R.string.android_chat_openPlace, bilingualName(lang, place.name, en = null, roman = place.nameRoman).primary)
             CustomAccessibilityAction(label) { onOpenPlace(place, key); true }
-        }
+        }.distinctBy { it.label } // 같은 라벨은 첫 동작만 실행된다(Compose는 라벨로 고른다). `mentionOrder`는 한글 이름으로만 걸러 영어 화면의 같은 로마자는 남는다
         base.mergedRow(key, focus = targets.row(key)).semantics { customActions = actions }
     }
     Text(
