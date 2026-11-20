@@ -418,7 +418,8 @@ private fun InfoBandColumn(viewportHeight: Int, modifier: Modifier = Modifier, c
         val total = (viewport - fixed.sumOf { it?.height ?: 0 }).coerceAtLeast(0)
         val placeables = measurables.mapIndexed { i, m ->
             fixed[i] ?: run {
-                m.measure(loose.copy(minHeight = total * infoBandWeight(bands[i]!!, present) / 4))
+                // 몫이 줄 하한(48dp)보다 작아도 하한은 지킨다 — 최소 제약이 0보다 크면 `mergedRow`의 `defaultMinSize`가 꺼진다.
+                m.measure(loose.copy(minHeight = maxOf(total * infoBandWeight(bands[i]!!, present) / 4, 48.dp.roundToPx())))
             }
         }
         val width = placeables.maxOfOrNull { it.width }?.coerceIn(constraints.minWidth, constraints.maxWidth) ?: constraints.minWidth
