@@ -121,7 +121,6 @@ fun AnswerExtras(
 ) {
     val context = LocalContext.current
     val res = context.resources
-    val spokenMeters = stringResource(R.string.android_unit_spokenMeters)
     Column(Modifier.fillMaxWidth()) {
         message.renders.forEachIndexed { r, render ->
             when (render) {
@@ -134,7 +133,7 @@ fun AnswerExtras(
                     for (place in render.places) {
                         key(place.id) {
                             val rowKey = "card-${message.id}-$r-${place.id}"
-                            PlaceRow(place, lang, spokenMeters, onClick = { onOpenPlace(place, rowKey) }, modifier = Modifier.landingTarget(targets.row(rowKey)))
+                            PlaceRow(place, lang, onClick = { onOpenPlace(place, rowKey) }, modifier = Modifier.landingTarget(targets.row(rowKey)))
                         }
                     }
                 }

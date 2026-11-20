@@ -52,7 +52,6 @@ import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.SurroundingsScene
 import space.dodoplanet.gildongmu.kit.sceneItemToPlace
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 
 /**
  * "주변 상황" 자동 펼침(iOS `SurroundingsSceneAutoSection`, spec §12-2). 부모(둘러보기) 커밋과 함께 나타나고 트리거·닫기·착지가 없다 —
@@ -90,7 +89,6 @@ private fun SceneGroups(
 ) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     val showMore = stringResource(R.string.actions_showMore)
     if (showPlace) scene.place?.let { place ->
         // 위치 문장은 주소라 로마자(주소 규칙)로 병기(E28).
@@ -107,7 +105,7 @@ private fun SceneGroups(
             val line = { nm: String -> sceneItemLine(item, nm, lang, { d, x, r -> appLocalized(res, R.string.surroundings_itemWithRoad, d, x, r) }) { d, x -> appLocalized(res, R.string.surroundings_item, d, x) } }
             val key = sceneItemKey(group.bucket, i)
             val visual = line(name.display)
-            val spoken = spokenDistanceUnits(line(name.primary), meters).takeIf { it != visual }
+            val spoken = line(name.primary).takeIf { it != visual }
             Text(
                 visual,
                 Modifier

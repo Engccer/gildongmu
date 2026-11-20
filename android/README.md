@@ -208,7 +208,7 @@ node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호�
 - 리소스 이름은 키의 `.`→`_`(`search.placeCount` → `R.string.search_placeCount`).
 - 언어 판정은 `AppLocale.current(res)` = 각 로케일 파일의 마커 `app_locale`(리소스 해석기가 고른 폴더가 곧 정답). `dataLocale`은 ko 외 전부 en.
 - ko 위치 인자 순서는 `android/i18n/arg-order.json`이 잠근다(iOS와 같은 게이트, 개명 키는 `ios.X` 순서와 대조). 드리프트 가드 `src/lib/__tests__/android-strings-drift.test.ts`(최신·arg-order·왕복·리소스 이름·ios-extra 문안 동일(의도된 차이 목록)·거부 키·도입/무시·개명 arg-order).
-- 문장은 ViewModel에 **호출 시점 람다**로 주입한다(`SearchStrings`·`NearbyStrings`·`PlaceStrings` — 앱별 언어 변경을 따라간다, JVM 테스트 가능). 낭독에 거리가 들면 `spokenDistanceUnits(text, "미터")`를 병합 컨테이너의 `contentDescription`에(실기기 판정 뒤 제거 가능).
+- 문장은 ViewModel에 **호출 시점 람다**로 주입한다(`SearchStrings`·`NearbyStrings`·`PlaceStrings` — 앱별 언어 변경을 따라간다, JVM 테스트 가능). 거리 풀어쓰기 `spokenDistanceUnits(text, "미터")`는 상태 통지·안내 음성 채널에만 쓴다. 검색·내 주변·채팅의 병합 줄은 거리를 보이는 글자 그대로 한 번만 낸다(A75 판정 ⓐ — 병합 노드에 글자와 다른 낭독 이름을 얹으면 한소네가 이름과 자식 글자를 이어 붙여 줄을 두 번 출력한다, 가드 `RowSpokenDistanceGuardTest`). 낭독 이름은 영문 병기처럼 글자와 달라야 할 때만 준다.
 
 ## 7. 게이트 락 절차
 

@@ -274,6 +274,6 @@ private fun PlacesSection(
         Text(stringResource(R.string.search_noFilterResults), Modifier.padding(vertical = 8.dp))
     } else {
         // 장소 행은 버튼 → 상세(M1 §9-3 해제)
-        for (place in filtered) PlaceRow(place, lang, spokenMeters = stringResource(R.string.android_unit_spokenMeters), onClick = { onOpenPlace(place) }, modifier = rowModifier("place-${place.id}"))
+        for (place in filtered) PlaceRow(place, lang, onClick = { onOpenPlace(place) }, modifier = rowModifier("place-${place.id}"))
     }
 }

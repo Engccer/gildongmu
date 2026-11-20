@@ -48,12 +48,11 @@ fun <T : Any, P : Any> PlaceListBody(
 ) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     val visibleCount by vm.visibleCount.collectAsState()
     header()
     for (item in items.take(visibleCount)) {
         val p = place(item)
-        PlaceRow(p, lang, spokenMeters = meters, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.landingTarget(requesterFor("place-${p.id}")))
+        PlaceRow(p, lang, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.landingTarget(requesterFor("place-${p.id}")))
     }
     if (items.size > visibleCount) {
         Button(onClick = { vm.revealMore(items.size) { i -> "place-${place(items[i]).id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }

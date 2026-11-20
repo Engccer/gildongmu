@@ -35,7 +35,6 @@ import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.kit.formatDistance
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.bilingualName
@@ -59,7 +58,6 @@ fun placeSecondaryLine(place: Place, lang: String, distanceLabel: (String) -> St
 fun PlaceRow(
     place: Place,
     lang: String,
-    spokenMeters: String,
     secondaryOverride: String? = null,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -68,9 +66,8 @@ fun PlaceRow(
     val res = LocalContext.current.resources
     // 도메인 화면(둘러보기)은 보조 줄을 대체한다.
     val secondary = secondaryOverride ?: placeSecondaryLine(place, lang) { appLocalized(res, R.string.place_distance, it) }
-    // 낭독: 비-ko 병기는 괄호 없이, 거리 단위는 풀어쓰기(TalkBack `m` 낭독은 §9-12 실기기 판정 — 오독 없으면 뺀다)
-    val spokenBase = if (name.secondary == null) joinText(name.display, secondary) else joinText(name.primary, secondary)
-    val spoken = spokenDistanceUnits(spokenBase, spokenMeters).takeIf { it != joinText(name.display, secondary) }
+    // 낭독: 비-ko 병기만 괄호 없이 따로 준다. 거리는 보이는 글자 그대로(A75 판정 ⓐ — 낭독 이름이 글자와 다르면 한소네가 둘을 이어 붙인다).
+    val spoken = if (name.secondary == null) null else joinText(name.primary, secondary)
     val base = modifier.fillMaxWidth()
     val rowModifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base
     Column(rowModifier.mergedRow("place-${place.id}", spoken).padding(vertical = 8.dp)) {

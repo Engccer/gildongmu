@@ -12,20 +12,14 @@ import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.OsmWalkData
 import space.dodoplanet.gildongmu.kit.models.WalkFeature
 import space.dodoplanet.gildongmu.kit.models.WalkSourceStatus
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
-
-/** 거리가 든 줄 — 낭독은 단위 풀어쓰기(시각과 같으면 덮지 않는다). */
-@Composable
-private fun distanceRow(text: String, key: String, meters: String) = BodyLine(text, key, spokenDistanceUnits(text, meters).takeIf { it != text })
 
 /**
  * 주변 보행 인프라 본문(iOS `WalkInfraNearbyView` 이식, spec §12-1): 조회 시각 헤딩(착지) → 그룹 3(음향신호기·횡단보도·점자블록,
- * 상태와 무관하게 **항상** 헤딩) → 각주(성공한 소스만 인용). 거리가 든 줄은 낭독에 단위 풀어쓰기.
+ * 상태와 무관하게 **항상** 헤딩) → 각주(성공한 소스만 인용). 거리는 보이는 글자 그대로(A75 판정 ⓐ).
  */
 @Composable
 fun WalkInfraBody(payload: WalkInfraPayload, requesterFor: (String) -> FocusRequester) {
     val res = LocalContext.current.resources
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     val direction: (String) -> String? = { bearingResId(it)?.let { id -> res.getString(id) } }
     val walk = payload.walk
 
@@ -37,11 +31,11 @@ fun WalkInfraBody(payload: WalkInfraPayload, requesterFor: (String) -> FocusRequ
     when (val s = walk.audioSignals) {
         is WalkSourceStatus.Ok -> if (s.data.deviceCount > 0) {
             // deviceCount는 sites(최대 5) 절단 전 총수 — 요약이 절단을 정직 표기
-            distanceRow(appLocalized(res, R.string.walkInfra_audioSummary, s.data.deviceCount), "audio-summary", meters)
+            BodyLine(appLocalized(res, R.string.walkInfra_audioSummary, s.data.deviceCount), "audio-summary")
             s.data.sites.forEachIndexed { i, site ->
-                distanceRow(walkAudioSiteText(site, direction) { d, dist, n -> appLocalized(res, R.string.walkInfra_audioSite, d, dist, n) }, "audio-$i", meters)
+                BodyLine(walkAudioSiteText(site, direction) { d, dist, n -> appLocalized(res, R.string.walkInfra_audioSite, d, dist, n) }, "audio-$i")
             }
-        } else distanceRow(stringResource(R.string.walkInfra_audioNone), "audio-none", meters) // "반경 300m"가 든다
+        } else BodyLine(stringResource(R.string.walkInfra_audioNone), "audio-none") // "반경 300m"가 든다
         is WalkSourceStatus.Unsupported -> BodyLine(stringResource(R.string.walkInfra_audioUnsupported), "audio-status")
         is WalkSourceStatus.Error -> BodyLine(stringResource(R.string.walkInfra_audioError), "audio-status")
     }
@@ -57,7 +51,7 @@ fun WalkInfraBody(payload: WalkInfraPayload, requesterFor: (String) -> FocusRequ
     when (val s = walk.osm) {
         is WalkSourceStatus.Ok -> if (s.data.crossings.isEmpty()) BodyLine(stringResource(R.string.walkInfra_crossingEmpty), "crossing-empty")
         else s.data.crossings.forEach { f ->
-            distanceRow(joinText(location(f), if (f.crossingSignal == "yes") hasSignal else null, if (f.tactilePaving) hasTactile else null), "crossing-${f.osmId}", meters)
+            BodyLine(joinText(location(f), if (f.crossingSignal == "yes") hasSignal else null, if (f.tactilePaving) hasTactile else null), "crossing-${f.osmId}")
         }
         is WalkSourceStatus.Unsupported -> BodyLine(stringResource(R.string.walkInfra_crossingUnsupported), "crossing-status")
         is WalkSourceStatus.Error -> BodyLine(stringResource(R.string.walkInfra_crossingError), "crossing-status")
@@ -73,7 +67,7 @@ fun WalkInfraBody(payload: WalkInfraPayload, requesterFor: (String) -> FocusRequ
     when (val s = walk.osm) {
         is WalkSourceStatus.Ok -> if (s.data.tactiles.isEmpty()) BodyLine(stringResource(R.string.walkInfra_tactileEmpty), "tactile-empty")
         else s.data.tactiles.forEach { f ->
-            distanceRow(joinText(location(f), if (f.hostFeature == "busStop") hostBusStop else null, if (f.hostFeature == "subwayEntrance") hostSubwayEntrance else null), "tactile-${f.osmId}", meters)
+            BodyLine(joinText(location(f), if (f.hostFeature == "busStop") hostBusStop else null, if (f.hostFeature == "subwayEntrance") hostSubwayEntrance else null), "tactile-${f.osmId}")
         }
         is WalkSourceStatus.Unsupported -> BodyLine(stringResource(R.string.walkInfra_tactileUnsupported), "tactile-status")
         is WalkSourceStatus.Error -> BodyLine(stringResource(R.string.walkInfra_tactileError), "tactile-status")

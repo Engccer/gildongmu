@@ -68,7 +68,6 @@ import space.dodoplanet.gildongmu.kit.models.BusStop
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.SubwayArrival
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
-import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.surroundingPlaceToPlace
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.location.locationSourceSettingsIntent
@@ -222,7 +221,7 @@ fun <P : Any> NearbyShell(
                 is NearbyLoadPhase.Loaded -> {
                     if (vm.isEmpty(p.payload)) {
                         val copy = vm.emptyCopy(p.payload)
-                        Text(copy, Modifier.fillMaxWidth().mergedRow("empty", spokenDistanceUnits(copy, stringResource(R.string.android_unit_spokenMeters))).padding(vertical = 8.dp))
+                        Text(copy, Modifier.fillMaxWidth().mergedRow("empty").padding(vertical = 8.dp))
                     } else {
                         body(p.payload, requesterFor)
                     }
@@ -267,21 +266,20 @@ fun <P : Any> NearbyShell(
     }
 }
 
-// ── 도메인 본문(spec §3-6~3-9). 한 줄 = 한 객체, 거리가 든 줄은 낭독에 단위 풀어쓰기.
+// ── 도메인 본문(spec §3-6~3-9). 한 줄 = 한 객체, 거리는 보이는 글자 그대로(A75 판정 ⓐ). 낭독 이름은 병기처럼 글자와 다를 때만.
 
 @Composable
 private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> FocusRequester) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val isEn = AppLocale.dataLocale(res) == "en"
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     for (station in result.stations) {
         val line = subwayStationLine(isEn, lang, station.stationName, station.nameEn, station.lines, station.linesEn)
         val distance = formatDistance(station.distanceMeters)
         val key = "station-${station.stationName}"
         Text(
             joinText(line.visual, distance),
-            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(joinText(line.spoken, distance), meters), focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().mergedRow(key, joinText(line.spoken, distance).takeIf { it != joinText(line.visual, distance) }, focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         // 4-state를 뭉개지 않는다: 조회 실패 / 운행 시간 밖 / 실시간 미제공 / 정상(0건 포함)
@@ -304,7 +302,6 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
 private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequester, onOpenRouteStops: (returnKey: String, BusRouteStopsRoute) -> Unit) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     val hint = stringResource(R.string.android_nearby_routeStopsHint)
     val lowFloor = stringResource(R.string.android_nearby_lowFloor)
     for (stop in stops) {
@@ -312,7 +309,7 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
         val key = "stop-${stop.nodeId}"
         Text(
             heading.visual,
-            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(heading.spoken, meters), focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().mergedRow(key, heading.spoken.takeIf { it != heading.visual }, focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         when {
@@ -348,7 +345,6 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
 private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> FocusRequester) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     for (station in stations) {
         val line = bikeLine(
             station, lang,
@@ -357,7 +353,7 @@ private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> Focu
         )
         val key = "bike-${station.stationId}"
         // 헤딩 없음 — 한 줄에 전부 흡수, 첫 행이 착지 지점.
-        Text(line.visual, Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(line.spoken, meters), focus = requesterFor(key)).padding(vertical = 8.dp))
+        Text(line.visual, Modifier.fillMaxWidth().mergedRow(key, line.spoken.takeIf { it != line.visual }, focus = requesterFor(key)).padding(vertical = 8.dp))
     }
 }
 
@@ -365,7 +361,6 @@ private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> Focu
 private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place, returnKey: String) -> Unit) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
-    val meters = stringResource(R.string.android_unit_spokenMeters)
     val visibleCount by vm.visibleCount.collectAsState()
     val overview = payload.overview
 
@@ -376,12 +371,12 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
     val hereSpoken = placeName?.let { appLocalized(res, hereRes, it.primary) }
     Text(hereVisual, Modifier.fillMaxWidth().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).headingText().padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
 
-    // 2. 한눈에 보기 — 헤딩 + 반경, 불릿 6개(각 한 객체, 낭독은 text + 단위 풀어쓰기, 시각은 한글 병기 꼬리)
+    // 2. 한눈에 보기 — 헤딩 + 반경, 불릿 6개(각 한 객체, 낭독은 text, 시각은 한글 병기 꼬리)
     val overviewHeading = stringResource(R.string.whereAmI_overview_heading)
     if (overview != null) {
         Text("$overviewHeading ${appLocalized(res, R.string.whereAmI_overview_radius, formatDistance(overview.radiusMeters))}", Modifier.fillMaxWidth().mergedRow("overview").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
         buildOverviewLines(overview, lang).forEachIndexed { i, line ->
-            Text(line.display, Modifier.fillMaxWidth().mergedRow("overview-$i", spokenDistanceUnits(line.text, meters)).padding(vertical = 8.dp))
+            Text(line.display, Modifier.fillMaxWidth().mergedRow("overview-$i", line.text.takeIf { it != line.display }).padding(vertical = 8.dp))
         }
     } else if (payload.overviewFailed) {
         Text(overviewHeading, Modifier.fillMaxWidth().mergedRow("overview").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
@@ -407,7 +402,7 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
                 distance = { appLocalized(res, R.string.place_distance, it) },
             )
             val place = surroundingPlaceToPlace(p)
-            PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.landingTarget(requesterFor("place-${place.id}")))
+            PlaceRow(place, lang, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.landingTarget(requesterFor("place-${place.id}")))
         }
         if (places.size > visibleCount) {
             Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
