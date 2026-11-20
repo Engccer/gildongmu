@@ -11,7 +11,9 @@ import space.dodoplanet.gildongmu.guide.GuideDiag
  * 위에 있었는가"를 읽는 자리). 직선거리 주석·아랫줄은 후보가 아니다(E57 spec §2.1).
  */
 enum class SheetRow(val tag: String) {
-    remaining("guide-remaining"), liveTop("guide-live-top"), status("guide-status"), reroute("guide-reroute");
+    remaining("guide-remaining"), liveTop("guide-live-top"), status("guide-status"), reroute("guide-reroute"),
+    /** 「출구로 나왔어요」(E84) — 착지 대상이 아니라 커서가 앉은 행을 아는 자리(iOS `.exitRelease`). */
+    exitRelease("guide-exit-release");
 
     companion object {
         val infoRows = listOf(remaining, liveTop, status)

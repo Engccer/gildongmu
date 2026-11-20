@@ -229,6 +229,8 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.beacon.transferWalkLostWith" -> R.string.android_beacon_transferWalkLostWith
     "android.beacon.prewalkUnavailableWith" -> R.string.android_beacon_prewalkUnavailableWith
     "guide.exitLeadStart" -> R.string.guide_exitLeadStart
+    "android.guide.exitHoldAction" -> R.string.android_guide_exitHoldAction
+    "android.guide.exitHoldRelease" -> R.string.android_guide_exitHoldRelease
     "android.beacon.arrivedHeading" -> R.string.android_beacon_arrivedHeading
     "android.beacon.arrivedPresumedHeading" -> R.string.android_beacon_arrivedPresumedHeading
     "android.beacon.endedHeading" -> R.string.android_beacon_endedHeading

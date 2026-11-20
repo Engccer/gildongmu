@@ -80,6 +80,8 @@ import space.dodoplanet.gildongmu.guide.GuideSessionKind
 import space.dodoplanet.gildongmu.guide.GuideText
 import space.dodoplanet.gildongmu.guide.SessionEndKind
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
+import space.dodoplanet.gildongmu.kit.TransitLabel
+import space.dodoplanet.gildongmu.kit.transitPrewalkArrivedButtonLine
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
@@ -148,7 +150,9 @@ fun sheetRowExists(ui: WalkGuideUiState, row: SheetRow): Boolean {
     return when (row) {
         SheetRow.remaining -> detail && !ui.offRoute && !ui.remainingText.isNullOrEmpty()
         SheetRow.liveTop -> detail && !ui.liveTopText.isNullOrEmpty()
-        SheetRow.status -> ui.statusText.isNotEmpty() && (!detail || ui.liveTopText.isNullOrEmpty())
+        // 출구 대기(E84) 동안은 출구 줄이 상태 행 자리를 쓴다(iOS `statusRowText`) — 모델의 statusText와 무관하게 선다.
+        SheetRow.status -> if (ui.exitHoldExit != null) !detail else ui.statusText.isNotEmpty() && (!detail || ui.liveTopText.isNullOrEmpty())
+        SheetRow.exitRelease -> !detail && ui.exitHoldExit != null
         // 자동 판정이 손을 든 자리에서만(E69) — 돌아가는 중에는 앱이 이미 판정하고 있다.
         SheetRow.reroute -> detail && ui.offRoute && ui.rerouteGaveUp
     }
@@ -178,7 +182,8 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         GuideSheetLanding(
             scope = scope,
             clock = { SystemClock.elapsedRealtime() / 1000.0 },
-            awaitingRoute = { GuideSession.walk.ui.value.awaitingRoute },
+            // 출구 대기(E84)는 몇 분짜리 창이라 조회를 기다리지 않는다: 출구 줄에 바로 앉는다(iOS `requestInfoLanding`).
+            awaitingRoute = { GuideSession.walk.ui.value.let { it.awaitingRoute && it.exitHoldExit == null } },
             announcementsSettled = { GuideSession.walk.announcementsSettled() },
             isForeground = { GuideSession.inForeground },
             isTracking = { GuideSession.walk.ui.value.let { it.isTracking && it.arrivalDest == null } },
@@ -342,7 +347,8 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                     modifier = Modifier.fillMaxWidth().tapTarget().testTag(SheetRow.reroute.tag),
                 ) { Text(strings.get(if (ui.isRerouting) "guide.rerouteBusy" else "guide.rerouteButton")) }
             }
-            if (ui.mode == GuideMode.brief) BodyLine(strings.get("beacon.straightLineNote"), "guide-brief-note")
+            // 직선거리 주석은 출구 대기(E84) 중 숨긴다: 아직 거리를 안내하지 않는다(iOS 동형).
+            if (ui.mode == GuideMode.brief && ui.exitHoldExit == null) BodyLine(strings.get("beacon.straightLineNote"), "guide-brief-note")
             // 정보 행 셋(첫 정보 행 후보, 이 순서가 곧 착지 우선순위) — 렌더 조건은 `sheetRowExists` 한 곳.
             // 정보 띠(E81): 남은 거리 1 : 지금 할 행동(윗줄 또는 상태 문장) 2 : 다음 예고 1. 줄을 더하지 않고 키우기만 한다.
             val detail = ui.mode == GuideMode.detail
@@ -356,11 +362,25 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                 ui.liveNextText?.takeIf { it.isNotEmpty() }?.let { BandText(it, "guide-live-next", InfoBand.next, detail, focus = null) }
             }
             if (sheetRowExists(ui, SheetRow.status)) InfoRow(statusLine(ui, strings), SheetRow.status, detail, rowFocus)
+            // 「출구로 나왔어요」(E84): 위치가 잡히기를 기다리지 않고 지금 경로를 조회한다. 출구 줄 바로 다음. 버튼이 사라지는 전이라 첫 정보 행에 앉는다.
+            if (sheetRowExists(ui, SheetRow.exitRelease)) {
+                Button(
+                    onClick = { GuideSession.walk.declareExitedStation(); landing.request("exitDeclared", expectsSystemPlacement = false) },
+                    modifier = Modifier.fillMaxWidth().tapTarget().testTag(SheetRow.exitRelease.tag),
+                ) { Text(strings.get("android.guide.exitHoldRelease")) }
+            }
             if (ui.soundDegraded) BodyLine(strings.get("android.guide.mediaVolumeZero"), "guide-sound-volume")
             if (ui.focusDenied) BodyLine(strings.get("android.guide.focusDenied"), "guide-sound-focus")
             if (ui.ttsUnavailable) BodyLine(strings.get("android.guide.ttsUnavailable"), "guide-sound-tts")
             if (ui.isSilenced) BodyLine(strings.get("android.beacon.soundUnavailable"), "guide-sound-silenced")
         }
+        }
+        // 승차 전 도보(A25 §4.3): 도착 판정이 닿지 않을 때의 사용자 선언. 라벨에 역명을 넣어 무엇을 선언하는지 말한다(오조작 방지의 1선).
+        ui.prewalkTarget?.let { station ->
+            Button(
+                onClick = { GuideSession.walk.declarePrewalkArrival() },
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).tapTarget().testTag("guide-prewalk-arrived"),
+            ) { Text(prewalkArrivedButtonLabel(station)) }
         }
         // 「안내 종료」는 두 배 높이(E81 판정 3·6) — 화면 맨 아래를 짚으면 바로 닿는다.
         Button(
@@ -370,9 +390,14 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
     }
 }
 
-/** 상태 행 문장 — 주기 예고면 "다음 안내," 라벨을 붙인다. */
-private fun statusLine(ui: WalkGuideUiState, strings: Strings): String =
-    if (ui.statusIsNextPreview) strings.get("guide.progressNext", ui.statusText) else ui.statusText
+/** 상태 행 문장 — 출구 대기면 「N번 출구로 나가기」(iOS `statusRowText`), 주기 예고면 "다음 안내," 라벨을 붙인다. */
+internal fun statusLine(ui: WalkGuideUiState, strings: Strings): String =
+    if (ui.exitHoldExit != null) strings.get("android.guide.exitHoldAction", ui.exitHoldExit)
+    else if (ui.statusIsNextPreview) strings.get("guide.progressNext", ui.statusText) else ui.statusText
+
+/** 승차 전 도보 「{역} 도착」 버튼 라벨(iOS `transitPrewalkArrivedButtonLine` + 렌더러). */
+private fun prewalkArrivedButtonLabel(station: TransitLabel): String =
+    GuideSession.transit.renderer.render(transitPrewalkArrivedButtonLine(GuideSession.transit.transitGuideIsEn, station))
 
 /** 착지 대상 정보 행 = 정보 띠(E81) 하나 + 착지 requester, 표식은 행의 고정 tag. 낭독은 보이는 글자 그대로(A75). */
 @Composable
