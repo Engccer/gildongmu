@@ -102,6 +102,8 @@ class CarGuideModelTest {
 
     @Test fun `도착 — 부근 정차가 도착이고 종료 화면이 도보 인계를 내준다(걸음 요약 없음)`() = guideTest(dispatcher, walkResponder = { HttpResponse(200, carJson()) }) { h ->
         startCar(h)
+        // 앞 도보 세션이 남긴 걸음 값처럼 센서에 표본이 있어도 자동차 종료 화면은 걸음 요약을 만들지 않는다.
+        h.steps.liveSample = StepSample(steps = 1200, distanceMeters = 900.0)
         drive(h, 8.0, 976.0, step = 24.0, speed = 3.0)
         // 목적지 부근에서 멈춘다(정지 판정은 속도 0 연속).
         repeat(6) { h.clock.now += 2.0; h.model.handleFix(h.carFix(985.0, speed = 0.0)); advanceTimeBy(2_000); runCurrent() }
