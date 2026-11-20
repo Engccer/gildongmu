@@ -69,4 +69,19 @@ class NearbyServiceTest {
         assertNull(svc.nearbyOverview(37.5, 127.0))
         assertNull(svc.surroundingsScene(37.5, 127.0))
     }
+
+    /** E65: 둘러보기의 상세 진입 재료(`places=1`)는 옵트인이다. */
+    @Test fun nearbyOverviewRequestsDetailPlaces() = runTest {
+        val (svc, t) = service("""{"data":null}""")
+        svc.nearbyOverview(37.5, 127.0)
+        assertTrue(t.lastQuery().has("places", "1"))
+    }
+
+    /** E65: 역 제목 로터의 재료(`coords=1`)는 옵트인이다 — lang은 비-ko만. */
+    @Test fun subwayArrivalsRequestsStationCoords() = runTest {
+        val (svc, t) = service("""{"stations":[]}""")
+        svc.subwayArrivals(37.5, 127.0, lang = "ko")
+        assertTrue(t.lastQuery().has("coords", "1"))
+        assertFalse(t.lastQuery().hasName("lang"))
+    }
 }

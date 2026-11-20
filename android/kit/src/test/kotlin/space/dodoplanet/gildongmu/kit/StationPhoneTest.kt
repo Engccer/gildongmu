@@ -251,4 +251,13 @@ class StationPhoneTest {
         }
         for (c in file.representativePhone) assertEquals(c.expected, isRepresentativePhone(c.phone), c.phone)
     }
+
+    @Test fun nearbyStationLineHintPrefersAKnownLine() {
+        // 노선 표가 모르는 노선이 앞에 와도 아는 노선을 고른다(전화 조회는 같은 노선 후보만 본다).
+        assertEquals("2호선", nearbyStationLineHint(listOf("미지선", "2호선")))
+        assertEquals("2호선", nearbyStationLineHint(listOf("2호선", "8호선")))
+        // 아는 노선이 없으면 첫 노선(조회는 "없음"으로 끝난다), 빈 목록은 null.
+        assertEquals("미지선", nearbyStationLineHint(listOf("미지선")))
+        assertNull(nearbyStationLineHint(emptyList()))
+    }
 }

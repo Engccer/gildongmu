@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.kit.models
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -54,6 +56,9 @@ data class NearbySubwayStation(
     val arrivals: List<SubwayArrival>,
     /** 다음 첫차 "HH:MM"(closed일 때만). */
     val firstTime: String? = null,
+    /** 역 좌표(옵트인 `coords=1`, E65) — 역 제목 로터의 재료. 구버전 응답은 null. */
+    val lat: Double? = null,
+    val lng: Double? = null,
 )
 
 /** 조회 반경 안에 역이 0건일 때만 실리는 최근접 역 1곳. */
@@ -280,7 +285,37 @@ data class OverviewPlace(
     val nameRoman: String? = null,
     val distanceMeters: Int,
     val bearing: String,
+    /** 상세 진입 재료(옵트인 `places=1`, E65) — 깨진 재료는 null로 받는다(문장 전체를 잃지 않는다). */
+    @Serializable(with = LenientPlaceSerializer::class) val place: Place? = null,
+    /** 상세 진입 재료(옵트인 `places=1`, E65) — 문화 행사 원본. */
+    @Serializable(with = LenientCultureEventSerializer::class) val event: CultureEvent? = null,
 )
+
+/** Swift `try? decodeIfPresent`: 모양이 깨진 옵트인 재료는 디코딩 실패가 아니라 null. */
+@OptIn(ExperimentalSerializationApi::class)
+internal abstract class LenientObjectSerializer<T : Any>(name: String, private val inner: KSerializer<T>) : KSerializer<T?> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor(name)
+
+    override fun deserialize(decoder: Decoder): T? {
+        val input = decoder as JsonDecoder
+        val element = input.decodeJsonElement()
+        if (element is JsonNull) return null
+        return try {
+            input.json.decodeFromJsonElement(inner, element)
+        } catch (_: SerializationException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: T?) {
+        throw UnsupportedOperationException("옵트인 재료는 디코딩 전용이다")
+    }
+}
+
+internal object LenientPlaceSerializer : LenientObjectSerializer<Place>("LenientPlace", Place.serializer())
+internal object LenientCultureEventSerializer : LenientObjectSerializer<CultureEvent>("LenientCultureEvent", CultureEvent.serializer())
 
 @Serializable
 data class OverviewStation(
@@ -289,6 +324,9 @@ data class OverviewStation(
     val line: String? = null,
     val bearing: String,
     val distanceMeters: Int,
+    /** seed 역 좌표(옵트인 `places=1`, E65) — 역 상세 진입 재료. */
+    val lat: Double? = null,
+    val lng: Double? = null,
 )
 
 /** Swift `OverviewBusStops` 미러 — 케이스는 PascalCase(`.empty` → `Empty`, JSON "none"). */

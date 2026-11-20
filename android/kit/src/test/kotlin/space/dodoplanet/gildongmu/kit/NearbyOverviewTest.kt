@@ -99,5 +99,81 @@ class NearbyOverviewTest {
             """{"stations":[{"stationName":"잠실","lines":["2호선"],"distanceMeters":120,"arrivalStatus":"unknown","arrivals":[],"lat":37.5133,"lng":127.1001}]}""")
         assertEquals("잠실", subway.stations.single().stationName)
     }
-}
 
+    // MARK: - E65 문장 속 상세 진입 대상(옵트인 `places=1`)
+
+    private val detailFixture = """
+{"data":{"place":null,"radiusMeters":1000,"bullets":[
+ {"kind":"transit","state":"ok","station":{"name":"시청","nameEn":"City Hall","line":"1호선","bearing":"ne","distanceMeters":262,"lat":37.5657,"lng":126.9769},
+  "busStops":{"state":"ok","count":1,"nearest":[{"name":"시청앞","distanceMeters":80,"bearing":"e"}]}},
+ {"kind":"food","state":"ok","count":3,"countCapped":false,"nearest":[
+   {"name":"가람식당","nameRoman":"Garam Sikdang","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당","category":"음식점 > 한식","address":"","roadAddress":"서울 중구 세종대로 1","lat":37.5,"lng":127.1,"phone":"02-000-0000"}},
+   {"name":"김밥천국","distanceMeters":60,"bearing":"e"}]},
+ {"kind":"events","state":"ok","count":1,"countCapped":false,"nearest":[
+   {"name":"가을 음악회","distanceMeters":300,"bearing":"w","event":{"id":"seoul-1","title":"가을 음악회","category":"콘서트","place":"구민회관","district":"중구","dateText":"2026-10-01~2026-10-31","timeText":"19:30","isFree":true,"target":"누구나","lat":37.53,"lng":127.13,"distanceMeters":300}}]},
+ {"kind":"kids","state":"none"}
+]}}
+"""
+
+    @Test fun overviewDetailTargetsFollowSentenceOrderAndSkipWhatHasNoDetail() {
+        val data = assertNotNull(decode(detailFixture).data)
+        val transit = overviewDetailTargets(data.bullets[0], "ko")
+        // 역만 대상이다 — 정류소는 상세 화면이 없다(죽은 액션 금지).
+        assertEquals(listOf("시청"), transit.map { it.name })
+        assertTrue(transit[0].isStation)
+        assertEquals("1호선", transit[0].lineHint)
+        assertTrue(transit[0].place.lat == 37.5657 && transit[0].place.category == "지하철역")
+        // 옵트인 재료가 없는 항목(김밥천국)은 빠진다. 있는 항목은 문장 순서대로.
+        val food = overviewDetailTargets(data.bullets[1], "ko")
+        assertEquals(listOf("k1"), food.map { it.place.id })
+        assertEquals(listOf("k1"), food.map { it.id })
+        assertEquals("02-000-0000", food[0].place.phone)
+        assertTrue(!food[0].isStation && food[0].event == null)
+        // 행사는 원본을 함께 싣는다(상세의 행사 섹션 재료).
+        val events = overviewDetailTargets(data.bullets[2], "ko")
+        assertEquals(listOf("seoul-1"), events.map { it.place.id })
+        assertEquals("2026-10-01~2026-10-31", events[0].event?.dateText)
+        assertTrue(overviewDetailTargets(data.bullets[3], "ko").isEmpty())
+    }
+
+    @Test fun overviewDetailTargetNamesMatchTheSentence() {
+        val data = assertNotNull(decode(detailFixture).data)
+        val lines = buildOverviewLines(data, "en")
+        for ((bullet, line) in data.bullets.zip(lines)) {
+            for (target in overviewDetailTargets(bullet, "en")) {
+                assertTrue(line.text.contains(target.name), "${target.name} not in ${line.text}")
+            }
+        }
+        assertEquals(listOf("Garam Sikdang"), overviewDetailTargets(data.bullets[1], "en").map { it.name })
+        assertEquals(listOf("City Hall"), overviewDetailTargets(data.bullets[0], "en").map { it.name })
+    }
+
+    @Test fun overviewWithoutDetailFieldsHasNoTargets() {
+        // 옵트인 이전 응답(스토어 웹 배포 전)은 대상 0 — 액션 없이 종전 화면 그대로.
+        val data = assertNotNull(decode(fixture).data)
+        assertTrue(data.bullets.all { overviewDetailTargets(it, "ko").isEmpty() })
+    }
+
+    @Test fun nearbySubwayStationDecodesOptionalCoords() {
+        val json = """{"stations":[{"stationName":"잠실","lines":["2호선","8호선"],"distanceMeters":120,"arrivalStatus":"unknown","arrivals":[],"lat":37.5133,"lng":127.1001},{"stationName":"잠실나루","lines":["2호선"],"distanceMeters":900,"arrivalStatus":"unknown","arrivals":[]}]}"""
+        val r = KitJson.decodeFromString(SubwayNearbyResponse.serializer(), json)
+        assertTrue(r.stations[0].lat == 37.5133 && r.stations[0].lng == 127.1001)
+        assertNull(r.stations[1].lat)
+    }
+
+    @Test fun brokenOptInDetailDropsOnlyThatActionNotTheSentences() {
+        // 옵트인 재료가 깨져도(필수 키 누락) 문장 재료는 살고, 그 장소의 상세 대상만 빠진다.
+        val json = """
+    {"data":{"place":null,"radiusMeters":1000,"bullets":[
+     {"kind":"food","state":"ok","count":2,"countCapped":false,"nearest":[
+       {"name":"가람식당","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당"}},
+       {"name":"김밥천국","distanceMeters":60,"bearing":"e","place":{"id":"k2","name":"김밥천국","category":"c","address":"","roadAddress":"","lat":37.5,"lng":127.1}}]}
+    ]}}
+    """
+        val data = assertNotNull(decode(json).data)
+        val bullet = assertIs<OverviewBullet.Place>(data.bullets[0])
+        val ok = assertIs<OverviewPlaceState.Ok>(bullet.state)
+        assertEquals(listOf("가람식당", "김밥천국"), ok.nearest.map { it.name })
+        assertEquals(listOf("k2"), overviewDetailTargets(data.bullets[0], "ko").map { it.place.id })
+    }
+}

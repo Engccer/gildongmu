@@ -33,7 +33,7 @@ private const val fetchLimit = 50
 class NearbyService(val client: APIClient) {
     /** `lang`(E27) — en이면 노선·도착 영문 필드를 additive로 받는다(비-ko만 파라미터, 기본값 없음). */
     suspend fun subwayArrivals(lat: Double, lng: Double, lang: String): SubwayNearbyResult {
-        val query = coordQuery(lat, lng).toMutableList()
+        val query = (coordQuery(lat, lng) + ("coords" to "1")).toMutableList()
         if (lang != "ko") query.add("lang" to lang)
         val response = client.get<SubwayNearbyResponse>("/api/station/subway-arrival/nearby", query)
         return SubwayNearbyResult(response.stations, response.nearest)
@@ -61,7 +61,7 @@ class NearbyService(val client: APIClient) {
 
     /** M4 한눈에 보기 — 공통 반경 1km 집계. null = data:null(전 키 부재, 구성 결함). */
     suspend fun nearbyOverview(lat: Double, lng: Double): NearbyOverview? =
-        client.get<NearbyOverviewResponse>("/api/nearby/overview", coordQuery(lat, lng)).data
+        client.get<NearbyOverviewResponse>("/api/nearby/overview", coordQuery(lat, lng) + ("places" to "1")).data
 
     /**
      * M1 부근 상황 재구성(요청형). 앵커 좌표 하나를 받아 입구 기준 좌우 묶음을 준다.

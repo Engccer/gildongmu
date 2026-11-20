@@ -1,11 +1,14 @@
 package space.dodoplanet.gildongmu.kit
 
+import space.dodoplanet.gildongmu.kit.models.CultureEvent
 import space.dodoplanet.gildongmu.kit.models.NearbyOverview
 import space.dodoplanet.gildongmu.kit.models.OverviewBullet
 import space.dodoplanet.gildongmu.kit.models.OverviewBusStops
 import space.dodoplanet.gildongmu.kit.models.OverviewPlace
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceKind
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceState
+import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 
 // "한눈에 보기" 문장 빌더 — 웹 `src/lib/overview-lines.ts` ↔ CLI `formatNearbyOverview` ↔ Kit
 // `LocationNarrative.swift` 미러. 템플릿은 `messages/*.json` whereAmI.overview.*(위치 인자), 방위 단어는
@@ -146,6 +149,65 @@ private fun overviewBulletText(bullet: OverviewBullet, lang: String, radius: Str
             OverviewPlaceState.UnavailableSeoulOnly ->
                 kitLocalized("whereAmI.overview.unavailableSeoulOnly", lang, withTopic(label, lang))
             OverviewPlaceState.Failed -> kitLocalized("whereAmI.overview.failedItem", lang, label)
+        }
+    }
+}
+
+// MARK: 한눈에 보기 문장 속 상세 진입(E65)
+
+/**
+ * 「한눈에 보기」 한 줄이 부른 장소 중 상세 화면을 열 수 있는 것 하나. 뷰가 장소마다 「○○ 상세 보기」 액션을 단다
+ * (채팅 산문·브리핑 동형 — 장소가 여럿인 문장은 장소마다 액션). Swift `OverviewDetailTarget` 미러(`id` = `place.id`).
+ */
+data class OverviewDetailTarget(
+    /** 그 문장이 부른 이름(`bilingualName`의 `primary`) — 액션 라벨이 문장과 같은 이름을 말한다. */
+    val name: String,
+    val place: Place,
+    /** 역 상세의 노선 힌트(E44 전화 조회는 같은 역·같은 노선 후보만 본다). 역만 있다. */
+    val lineHint: String?,
+    /** 문화 행사 원본 — 상세 화면의 행사 섹션 재료. 행사만 있다. */
+    val event: CultureEvent?,
+    /** 역 대상인가 — 라벨 키가 다르다(`transitGuide.openStation`). */
+    val isStation: Boolean,
+) {
+    val id: String get() = place.id
+}
+
+/**
+ * 한 불릿의 상세 진입 대상을 **문장 등장 순**으로(E65 spec §2). 문장을 파싱하지 않고 불릿 구조에서 뽑는다 —
+ * `buildOverviewLines`와 같은 순서(역 → 버스, `nearest` 배열 순)다. 상세 화면이 없는 종류(버스 정류소)와
+ * 옵트인 재료(`places=1`)가 없는 항목은 빠진다(죽은 액션을 달지 않는다).
+ */
+fun overviewDetailTargets(bullet: OverviewBullet, lang: String): List<OverviewDetailTarget> = when (bullet) {
+    is OverviewBullet.Transit -> {
+        val station = bullet.station
+        val lat = station?.lat
+        val lng = station?.lng
+        if (station == null || lat == null || lng == null) {
+            emptyList()
+        } else {
+            val stop = TransitLegStop(name = station.name, lat = lat, lng = lng, nameEn = station.nameEn)
+            val name = bilingualName(lang = lang, ko = station.name, en = station.nameEn, roman = null).primary
+            listOf(
+                OverviewDetailTarget(name = name, place = transitStopPlace(stop), lineHint = station.line, event = null, isStation = true),
+            )
+        }
+    }
+    is OverviewBullet.Place -> {
+        val state = bullet.state
+        if (state is OverviewPlaceState.Ok) {
+            state.nearest.mapNotNull { item ->
+                val name = bilingualName(lang = lang, ko = item.name, en = null, roman = item.nameRoman).primary
+                val event = item.event
+                val place = item.place
+                when {
+                    event != null -> OverviewDetailTarget(name = name, place = cultureEventToPlace(event), lineHint = null, event = event, isStation = false)
+                    place != null -> OverviewDetailTarget(name = name, place = place, lineHint = null, event = null, isStation = false)
+                    else -> null
+                }
+            }
+        } else {
+            emptyList()
         }
     }
 }
