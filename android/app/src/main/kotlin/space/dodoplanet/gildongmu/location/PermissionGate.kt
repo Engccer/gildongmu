@@ -72,7 +72,8 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
  * (바로가기가 옛 화면이 보이는 채 실행될 때 등) 주인을 보지 않는 해제가 새 손을 지워 권한 창이 조용히 뜨지 않는다(`AppSession.take(owner)`와 같은 대조).
  */
 class OwnedSlot<T : Any> {
-    private var owner: Any? = null
+    var owner: Any? = null
+        private set
     var value: T? = null
         private set
 

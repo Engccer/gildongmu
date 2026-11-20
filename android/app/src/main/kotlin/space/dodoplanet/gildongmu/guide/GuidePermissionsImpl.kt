@@ -20,6 +20,7 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
     private val hand = OwnedSlot<(Array<String>) -> Unit>()
     /** 대기 중인 다이얼로그(권한, 완료 신호) — 다른 권한의 요청은 그 다이얼로그가 끝난 뒤 자기 것을 띄운다. */
     private var waiter: Pair<String, CompletableDeferred<Unit>>? = null
+    private var waiterOwner: Any? = null // 그 대기의 권한 창을 띄운 손의 주인
 
     // 기기 상태 조회(좌표 아님) — `AppSourceGuardTest`의 좌표 호출·스토어 별칭 가드 밖의 모양(MainActivity의 `isLocationEnabled` 손과 같다).
     override fun isLocationEnabled(): Boolean { return AppConfig.locationStore.isLocationEnabled() }
@@ -48,24 +49,28 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
         }
         val deferred = CompletableDeferred<Unit>()
         waiter = permission to deferred
+        waiterOwner = hand.owner
         launcher(arrayOf(permission))
         // 결과가 유실되는 경로(런처 재등록 실패·OEM 변종)에서 `starting`이 영구 true가 되지 않게 상한을 둔다 — 만료는 거부와 같이 재판정.
-        try { withTimeoutOrNull(askTimeoutMs) { deferred.await() } } finally { if (waiter?.second === deferred) waiter = null }
+        try { withTimeoutOrNull(askTimeoutMs) { deferred.await() } } finally { if (waiter?.second === deferred) { waiter = null; waiterOwner = null } }
     }
 
     fun attach(owner: Any, launch: (Array<String>) -> Unit) = hand.attach(owner, launch)
 
-    /** 손 해제(붙인 주인만, `OwnedSlot`) — 대기 중인 요청은 지금 값으로 재판정하게 완료시킨다(Activity 소멸에 대기가 남지 않는다). */
+    /** 손 해제(붙인 주인만, `OwnedSlot`). 그 주인이 띄운 권한 창의 대기는 지금 값으로 재판정하게 완료시킨다(결과가 올 화면이 사라진다). */
     fun detach(owner: Any) {
-        if (!hand.detach(owner)) return
+        hand.detach(owner)
+        if (waiterOwner !== owner) return
         waiter?.second?.complete(Unit)
         waiter = null
+        waiterOwner = null
     }
 
     /** 시스템 결과 도착 — 값은 결과 맵이 아니라 `checkSelfPermission` 재판정. */
     fun deliver() {
         val pending = waiter ?: return
         waiter = null
+        waiterOwner = null
         pending.second.complete(Unit)
     }
 
