@@ -6,13 +6,15 @@ import kotlin.test.assertNull
 
 /** spec §14-1 — 행 목록(논리 항목)은 순수 함수(iOS `SettingsView` 순서), 진입 착지 대상도 순수. */
 class SettingsRowsTest {
-    @Test fun `정식판 10행 iOS 순서(백그라운드 음성 안내는 길 안내 맨 앞), 실험판은 체중 뒤에 결과 진동이 들어 11행`() {
+    @Test fun `정식판 9행 iOS 순서(받아쓰기 방식은 숨김 — B22, 백그라운드 음성 안내는 길 안내 맨 앞), 실험판은 체중 뒤에 결과 진동이 들어 10행`() {
         val release = listOf(
-            SettingsRow.Theme, SettingsRow.Language, SettingsRow.Dictation, SettingsRow.ListenSpeed, SettingsRow.BackgroundSpeech, SettingsRow.Weight,
+            SettingsRow.Theme, SettingsRow.Language, SettingsRow.ListenSpeed, SettingsRow.BackgroundSpeech, SettingsRow.Weight,
             SettingsRow.AiConsent, SettingsRow.PrivacyPolicy, SettingsRow.ReportProblem, SettingsRow.DataSources,
         )
         assertEquals(release, settingsRows(false))
         assertEquals(release.toMutableList().apply { add(indexOf(SettingsRow.Weight) + 1, SettingsRow.ResultHaptics) }, settingsRows(true))
+        // 「받아쓰기 방식」은 두 구성 모두에서 빠진다(B22 판정: 탭 방식만). 저장 키는 남아 있다(SettingsStoreTest).
+        for (experimental in listOf(false, true)) assert(SettingsRow.Dictation !in settingsRows(experimental))
     }
 
     @Test fun `묶음 다섯이 판정 순서로 한 번씩 이어진다(E59) — 헤딩은 묶음이 바뀌는 자리에만`() {

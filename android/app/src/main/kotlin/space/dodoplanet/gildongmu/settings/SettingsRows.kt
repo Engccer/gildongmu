@@ -20,13 +20,14 @@ val SettingsRow.group: SettingsGroup
     }
 
 /**
- * 순수 — iOS 순서(E59 묶음): 일반(테마 → 언어) · 음성(받아쓰기 → 듣기 속도) · 길 안내(백그라운드 음성 안내 → 체중 → 실험판 결과 진동) ·
- * AI 채팅(동의 → 개인정보 처리방침 → 문제 신고) · 앱 정보(정보 출처). 정식판 10·실험판 11.
+ * 순수 — iOS 순서(E59 묶음): 일반(테마 → 언어) · 음성(듣기 속도) · 길 안내(백그라운드 음성 안내 → 체중 → 실험판 결과 진동) ·
+ * AI 채팅(동의 → 개인정보 처리방침 → 문제 신고) · 앱 정보(정보 출처). 정식판 9·실험판 10.
+ * 「받아쓰기 방식」(`Dictation`)은 싣지 않는다(B22 위원장 판정 2026-11-20: 탭 방식만 둔다 — 「길게 누르기」 구현 전에는 골라도 동작이 같다).
+ * 행·저장 키(`SettingsStore.dictationStyle`)는 그 구현 때 다시 싣도록 남긴다.
  */
 fun settingsRows(experimental: Boolean): List<SettingsRow> = buildList {
     add(SettingsRow.Theme)
     add(SettingsRow.Language)
-    add(SettingsRow.Dictation)
     add(SettingsRow.ListenSpeed)
     add(SettingsRow.BackgroundSpeech)
     add(SettingsRow.Weight)

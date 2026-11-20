@@ -50,7 +50,7 @@ class SettingsScreenA11yTest {
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         rule.onNodeWithTag("settings-language").assertTextEquals("언어, 시스템 설정 따름")
-        rule.onNodeWithTag("settings-dictation").assertTextEquals("받아쓰기 방식, 탭해서 녹음 시작 또는 중지")
+        rule.onNodeWithTag("settings-dictation").assertDoesNotExist() // B22 판정: 탭 방식만 — 행을 숨긴다
         rule.onNodeWithTag("settings-datasources").assertTextEquals("정보 출처")
         rule.onNodeWithTag("settings-theme").assertTextEquals("테마, 시스템 설정 따름")
         rule.onNodeWithTag("settings-listenspeed").assertTextEquals("듣기 속도, 1배")
@@ -109,7 +109,7 @@ class SettingsScreenA11yTest {
     fun appNoticeWaitsWhileDialogIsOpenAndSpeaksAfterDismiss() {
         show()
         rule.waitForIdle()
-        rule.onNodeWithTag("settings-dictation").performClick()
+        rule.onNodeWithTag("settings-theme").performClick()
         rule.waitForIdle()
         AppNotices.post("이동이 감지되어 지정한 위치를 해제했습니다")
         rule.waitForIdle()
@@ -119,7 +119,7 @@ class SettingsScreenA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("status").assertTextEquals("이동이 감지되어 지정한 위치를 해제했습니다")
         assertNull(AppNotices.pending.value)
-        rule.onNodeWithTag("settings-dictation").assertIsFocused() // 닫힌 뒤 복귀 착지 = 연 행
+        rule.onNodeWithTag("settings-theme").assertIsFocused() // 닫힌 뒤 복귀 착지 = 연 행
     }
 
     @Test
