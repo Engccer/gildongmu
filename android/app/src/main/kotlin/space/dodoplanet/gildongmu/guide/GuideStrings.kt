@@ -260,6 +260,9 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.common.allowPrecise" -> R.string.android_common_allowPrecise
     "android.common.openSettings" -> R.string.android_common_openSettings
     "android.common.geoReducedDesc" -> R.string.android_common_geoReducedDesc
+    // 공용 펼침 줄(`directions/RouteRows.kt` `DisclosureRow`)의 상태 낱말 — 대중교통 시트 경유역 펼침이 이 표를 넘긴다.
+    "android.common.expanded" -> R.string.android_common_expanded
+    "android.common.collapsed" -> R.string.android_common_collapsed
     "directions.viaArrived" -> R.string.directions_viaArrived
     "directions.viaArrivedContinue" -> R.string.directions_viaArrivedContinue
     "directions.viaRemaining" -> R.string.directions_viaRemaining

@@ -179,6 +179,11 @@ class GuideSourceGuardTest {
         assertTrue("guide.detailStart" in used && "android.guide.serviceStartFailed" in used)
         val missing = used.filter { guideStringId(it) == null }.sorted()
         assertEquals(emptyList(), missing)
+        // 안내 시트가 `guideStrings`를 넘기는 공용 줄(`DisclosureRow`)의 키도 표에 있어야 한다 — 없으면 경유역 펼침을 그리는 순간 앱이 죽는다(한소네 실측).
+        val disclosure = pkg.resolve("directions/RouteRows.kt").readText().let { it.substring(it.indexOf("fun DisclosureRow("), it.indexOf("data class TransitRouteEntry")) }
+        val sharedKeys = Regex(""""(android\.common\.[A-Za-z]+)"""").findAll(disclosure).map { it.groupValues[1] }.toList()
+        assertEquals(listOf("android.common.expanded", "android.common.collapsed"), sharedKeys)
+        assertEquals(emptyList(), sharedKeys.filter { guideStringId(it) == null })
     }
 
     @Test fun `⑩ androidx_core 의존 0 — 플랫폼 API만`() {
