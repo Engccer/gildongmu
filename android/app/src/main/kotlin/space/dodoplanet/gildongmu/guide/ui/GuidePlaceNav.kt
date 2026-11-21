@@ -2,6 +2,8 @@ package space.dodoplanet.gildongmu.guide.ui
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import space.dodoplanet.gildongmu.guide.GuideSession
@@ -25,9 +27,18 @@ fun NavController.openGuidePlace(place: Place, showsDirectionsEntry: Boolean, re
         // `currentBackStack`은 라이브러리 그룹 한정 API다. 묻는 것이 "push한 **그 엔트리**가 아직 스택 어딘가에 있는가"인데 공개 API에 답이 없다:
         // `getBackStackEntry` 타입·목적지 조회는 다른 탭 스택의 상세를 잡고(위 ⚠), `visibleEntries`는 위에 화면이 쌓이면 빠지며, 엔트리
         // 생명주기(DESTROYED) 관찰은 전환 애니메이션 뒤로 늦고 액티비티 재생성에서도 발화해 동작이 바뀐다(D31). 내비게이션 판을 올릴 때 다시 본다.
-        @SuppressLint("RestrictedApi")
+        // ⚠ navigation 2.10은 이 통지를 `currentBackStack` 갱신보다 먼저 부른다: 통지 안에서 읽으면 pop 직전 목록이라 상세가 아직 있다고 보고 영영
+        // 재개하지 않는다(한소네 실측: 경유역 상세에서 뒤로 오면 시트 대신 띠바). 같은 호출 안에서 갱신이 끝나므로 메인 큐에 한 번 미뤄 읽는다.
+        private var done = false
+
         override fun onDestinationChanged(controller: NavController, destination: NavDestination, arguments: Bundle?) {
-            if (controller.currentBackStack.value.any { it.id == pushedId }) return
+            Handler(Looper.getMainLooper()).post { judge(controller) }
+        }
+
+        @SuppressLint("RestrictedApi")
+        private fun judge(controller: NavController) {
+            if (done || controller.currentBackStack.value.any { it.id == pushedId }) return
+            done = true
             controller.removeOnDestinationChangedListener(this)
             GuideSession.reopenAfterNestedScreen()
         }
