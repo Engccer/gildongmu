@@ -341,7 +341,7 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
         ) else emptyList()
         Text(
             heading.visual,
-            Modifier.fillMaxWidth().mergedRow(key, heading.spoken.takeIf { it != heading.visual }, focus = requesterFor(key)).semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().mergedRow(key, heading.spoken.takeIf { it != heading.visual }, focus = requesterFor(key)).padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         when {
@@ -412,7 +412,7 @@ private fun AroundBody(
     val hereRes = aroundHereResId(payload, hasPlace = placeName != null)
     val hereVisual = placeName?.let { appLocalized(res, hereRes, it.display) } ?: stringResource(hereRes)
     val hereSpoken = placeName?.let { appLocalized(res, hereRes, it.primary) }
-    Text(hereVisual, Modifier.fillMaxWidth().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).headingText().padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
+    Text(hereVisual, Modifier.fillMaxWidth().headingText().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
 
     // 2. 한눈에 보기 — 헤딩 + 반경, 불릿 6개(각 한 객체, 낭독은 text, 시각은 한글 병기 꼬리)
     val overviewHeading = stringResource(R.string.whereAmI_overview_heading)
@@ -428,8 +428,8 @@ private fun AroundBody(
             }.distinctBy { it.label } // 같은 라벨은 첫 동작만 실행된다(Compose는 라벨로 고른다) — 둘째는 닿지 않는 죽은 항목이라 뺀다(채팅 답변 줄 `AnswerBlock`과 같다)
             Text(
                 line.display,
-                Modifier.fillMaxWidth().mergedRow(key, line.text.takeIf { it != line.display }, focus = requesterFor(key))
-                    .semantics { if (actions.isNotEmpty()) customActions = actions }.padding(vertical = 8.dp),
+                Modifier.fillMaxWidth().semantics { if (actions.isNotEmpty()) customActions = actions }
+                    .mergedRow(key, line.text.takeIf { it != line.display }, focus = requesterFor(key)).padding(vertical = 8.dp),
             )
         }
     } else if (payload.overviewFailed) {
@@ -524,7 +524,7 @@ private fun StationTitle(
     }
     Text(
         visual,
-        Modifier.fillMaxWidth().mergedRow(key, spoken, focus = focus).semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().padding(top = 12.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth().semantics { if (actions.isNotEmpty()) customActions = actions }.headingText().mergedRow(key, spoken, focus = focus).padding(top = 12.dp, bottom = 4.dp),
         style = MaterialTheme.typography.titleMedium,
     )
 }

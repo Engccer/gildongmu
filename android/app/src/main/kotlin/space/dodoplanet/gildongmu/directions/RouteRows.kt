@@ -60,10 +60,11 @@ fun TextRow(
     /** 착지 대상이면(역 상세 복귀) — `mergedRow` 안 `focusable()` 앞에 붙는다. */
     focus: FocusRequester? = null,
 ) {
-    val row = modifier.fillMaxWidth().mergedRow(tag, spoken, focus)
+    // 작업 메뉴는 `mergedRow` 앞(A77 — 낭독 이름이 있는 줄은 자식 글자를 지우는데 그 지우기가 뒤에 붙은 시맨틱도 지운다).
+    val base = modifier.fillMaxWidth()
     Text(
         text,
-        (if (actions.isEmpty()) row else row.semantics { customActions = actions }).padding(vertical = 8.dp),
+        (if (actions.isEmpty()) base else base.semantics { customActions = actions }).mergedRow(tag, spoken, focus).padding(vertical = 8.dp),
         style = MaterialTheme.typography.bodyLarge,
     )
 }

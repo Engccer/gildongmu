@@ -21,6 +21,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -40,13 +41,17 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
  * ⚠ 착지 대상이면 `focus`를 **여기에** 준다. `FocusRequester`는 자기 뒤(자식 방향)의 포커스 타깃만 찾으므로
  * `.mergedRow(...).focusRequester(r)` 순서로 붙이면 안에 든 `focusable()`을 못 찾아 `requestFocus()`가 조용히 실패한다
  * (M2 리뷰 BLOCKER — 소스 가드 `AppSourceGuardTest`가 그 순서를 막는다).
+ *
+ * ⚠ `spoken`이 있으면 자식 글자를 지우고 낭독 이름만 남긴다(A77 — 병합하면 한소네가 낭독 이름 뒤에 자식 글자를 이어 붙여 한 줄을 두 번 낸다).
+ * 그 지우기(`clearAndSetSemantics`)는 같은 노드에서 **자기 뒤에** 붙은 시맨틱도 지우므로, 작업 메뉴·헤딩은 반드시 `mergedRow` **앞**에 둔다
+ * (`.semantics { customActions = … }.headingText().mergedRow(…)`, 소스 가드 `MergedRowOrderGuardTest`).
  */
 fun Modifier.mergedRow(tag: String, spoken: String? = null, focus: FocusRequester? = null): Modifier = this
     .let { m -> if (focus != null) m.focusRequester(focus) else m } // 반드시 focusable() 앞
     .testTag(tag)
     .defaultMinSize(minHeight = 48.dp)
     .focusable()
-    .semantics(mergeDescendants = true) { if (spoken != null) contentDescription = spoken }
+    .then(if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken } else Modifier.semantics(mergeDescendants = true) {})
 
 /** 터치 타깃 48dp(헌장). Material3 `Button` 기본 높이는 40dp라 버튼마다 건다. */
 fun Modifier.tapTarget(): Modifier = defaultMinSize(minHeight = 48.dp)

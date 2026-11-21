@@ -22,7 +22,7 @@ fun BodyLine(text: String, key: String, spoken: String? = null) {
 fun HeadingLine(text: String, key: String, focus: FocusRequester? = null, spoken: String? = null) {
     Text(
         text,
-        Modifier.fillMaxWidth().mergedRow(key, spoken, focus = focus).headingText().padding(top = 12.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth().headingText().mergedRow(key, spoken, focus = focus).padding(top = 12.dp, bottom = 4.dp),
         style = MaterialTheme.typography.titleMedium,
     )
 }

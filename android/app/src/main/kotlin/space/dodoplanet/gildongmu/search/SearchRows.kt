@@ -77,7 +77,7 @@ fun PlaceRow(
     val spoken = if (name.secondary == null) null else joinText(name.primary, secondary)
     val base = modifier.fillMaxWidth()
     val rowModifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base
-    Column(rowModifier.mergedRow("place-${place.id}", spoken).semantics { customActions = actions }.padding(vertical = 8.dp)) {
+    Column(rowModifier.semantics { customActions = actions }.mergedRow("place-${place.id}", spoken).padding(vertical = 8.dp)) {
         Text(name.display, style = MaterialTheme.typography.bodyLarge)
         if (secondary.isNotEmpty()) Text(secondary, style = MaterialTheme.typography.bodyMedium)
     }
@@ -92,7 +92,7 @@ fun AddressRow(address: JusoAddress, lang: String, modifier: Modifier = Modifier
     val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
     val spoken = if (name.secondary == null) null else "${name.primary}, ${address.zipNo}"
     val actions = addressCopyActions(address)
-    Column(modifier.fillMaxWidth().mergedRow("address-${address.roadAddr}", spoken).semantics { customActions = actions }.padding(vertical = 8.dp)) {
+    Column(modifier.fillMaxWidth().semantics { customActions = actions }.mergedRow("address-${address.roadAddr}", spoken).padding(vertical = 8.dp)) {
         Text("${name.display}, ${address.zipNo}", style = MaterialTheme.typography.bodyLarge)
     }
 }
