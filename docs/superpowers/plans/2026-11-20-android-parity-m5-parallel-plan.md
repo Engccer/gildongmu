@@ -91,7 +91,7 @@ main 직접 push(스킬 `parallel-sessions` Claude 지침 §3). worktree `~/gild
 
 ## §4 웨이브
 
-웨이브 1: `and-rows`·`and-common`·`and-route`·`and-m5-car`. 웨이브 2: `and-m5-transit`(2026-11-21 01:21 착수, 기준 `b03153c4`. 대중교통은 한 세션에 넘치므로 단계마다 통합하고, 문맥이 불어나면 남은 단계를 인계해 `and-m5-transit-2`가 잇는다. 시작 버튼은 본체가 완결된 단계에서 연다). 웨이브 3: `and-journey`. 그 뒤 doc-audit 세션과 한소네 실기기 점검.
+웨이브 1: `and-rows`·`and-common`·`and-route`·`and-m5-car`. 웨이브 2: `and-m5-transit`(2026-11-21 01:21 착수, 기준 `b03153c4`. 대중교통은 한 세션에 넘치므로 단계마다 통합하고, 문맥이 불어나면 남은 단계를 인계해 `and-m5-transit-2`가 잇는다. 시작 버튼은 본체가 완결된 단계에서 연다). 웨이브 3(2026-11-21 11:05 착수, 기준 `1cc5b813`, 둘 다 opus·high): `and-journey`(B26 여정. 대중교통처럼 단계마다 통합하고 문맥이 불어나면 `and-journey-2`가 잇는다. 첫 단계는 설계와 `:kit` 이식이라 앱 파일을 건드리지 않는다)와 `and-fix`(웨이브가 남긴 작은 수정: B28 인계 도보 시작 실패 표시, A77 병기 줄 여섯 자리, 「음성 검색」 동적 바로가기, 채팅 죽은 코드, A80·A81 원인 가르기, 대중교통 시트 복귀 착지 재측정, `android/README.md` §7 락 설명). 두 세션이 겹치는 파일은 `directions/DirectionsScreen.kt`·`directions/RouteRows.kt`·`guide/GuideSession.kt`이고, `and-fix`가 먼저 통합한 뒤 `and-journey`가 앱 단계 전에 그 위로 rebase한다. 그 뒤 doc-audit 세션과 계획 종료 기록.
 
 ## §5 착수 프롬프트·보고
 
