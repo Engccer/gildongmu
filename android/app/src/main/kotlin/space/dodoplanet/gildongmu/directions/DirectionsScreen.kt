@@ -15,6 +15,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.coroutines.delay
+import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -135,6 +140,32 @@ class FormUiState(
     val toFocus = FocusRequester()
     val viaFocus = FocusRequester()
     val submitFocus = FocusRequester()
+    // 여정 입력(B26 단계 5): 역 칸 둘·남은 쪽 추가 버튼 둘·지금 탄 열차 단계 줄·여정 결과 착지 줄. 입구 버튼은 `viaFocus`를 쓴다(iOS 접근성 포커스 대상 `.via`).
+    val boardFocus = FocusRequester()
+    val alightFocus = FocusRequester()
+    val addBoardFocus = FocusRequester()
+    val addAlightFocus = FocusRequester()
+    val aboardStepFocus = FocusRequester()
+    val journeyFocus = FocusRequester()
+    /** 지금 탄 열차 단계 줄을 커서가 쥐고 있는가(`onFocusChanged`) — 방면 조회가 끝났을 때 그 줄을 다시 읽힐지 가른다. */
+    var aboardStepHasFocus = false
+    /** 직전 방면 상태 — 조회 중에서 끝으로 넘어온 전이를 잡는다. null = 아직 본 적 없음(첫 관찰은 전이가 아니다). */
+    var previousAboardState: AboardDirectionsState? = null
+    /** 단계 줄 다시 읽기 요청 세대와 소비 세대(재진입 때 지난 요청을 다시 하지 않는다). */
+    var rereadAboardSeq by mutableIntStateOf(0)
+    var rereadAboardDone = 0
+
+    fun requester(row: InputRow): FocusRequester = when (row) {
+        InputRow.From -> fromFocus
+        InputRow.To -> toFocus
+        InputRow.Via, InputRow.ViaAdd, InputRow.ViaRemove -> viaFocus
+        InputRow.BoardStation -> boardFocus
+        InputRow.AlightStation -> alightFocus
+        InputRow.AddBoardStation -> addBoardFocus
+        InputRow.AddAlightStation -> addAlightFocus
+        InputRow.AboardStep -> aboardStepFocus
+        InputRow.Swap, InputRow.ClearStations, InputRow.Submit -> submitFocus
+    }
     val recentFocus = mutableMapOf<String, FocusRequester>()
     /** 수단 재조회 착지 대상(E50) — 키는 `requeryRouteFocusKey`·`requeryNoneFocusKey`. */
     val requeryFocus = mutableMapOf<String, FocusRequester>()
@@ -181,6 +212,8 @@ private fun DirectionsForm(
     val res = context.resources
     val lang = remember(res) { AppLocale.current(res) }
     val dataLocale = remember(lang) { if (lang == "ko") DataLocale.ko else DataLocale.en }
+    // 여정 입력(역 칸·입구 검색·지금 탄 열차)은 데이터 로케일이 ko일 때만 선다(iOS `journeyInputEnabled`).
+    val journeyEnabled = dataLocale == DataLocale.ko
     val strings = remember(res) { resourceStrings(res) }
     val stationEntry = remember(onOpenStation, vm, ui) {
         onOpenStation?.let { open ->
@@ -203,6 +236,43 @@ private fun DirectionsForm(
             value = System.currentTimeMillis() / 1000.0
         }
     }
+    // ko 밖으로 바뀌면 지금 탄 열차를 푼다(조회가 일반 세 수단으로 떨어져 aboard 역이 최근 경로에 저장되는 것 방지). 화면을 다시 띄울 때 끊긴 방면 조회를 잇는다.
+    LaunchedEffect(journeyEnabled) { vm.onJourneyInputEnabledChanged(journeyEnabled) }
+    LaunchedEffect(Unit) { vm.resumeAboardDirections() }
+    // 방면 조회가 끝나 미커버·열차 없음·실패가 되면(iOS `settleAboardArrival`) 진동 한 번 + 커서가 단계 줄이면 그 줄을 다시 읽히고, 아니면 polite 통지 한 번.
+    // 질문(노선·방면)은 통지하지 않는다. 라벨만 바뀐 포커스 노드는 TalkBack이 다시 읽지 않아 비우고 다시 앉힌다(`rereadAboardSeq` 효과).
+    LaunchedEffect(s.aboardDirectionsState) {
+        val current = s.aboardDirectionsState
+        val previous = ui.previousAboardState
+        ui.previousAboardState = current
+        val haptic = aboardArrivalHaptic(previous, current) ?: return@LaunchedEffect
+        if (ui.aboardStepHasFocus) {
+            vm.announceResult("", haptic)
+            ui.rereadAboardSeq += 1
+        } else {
+            vm.announceResult(aboardStepText(current, strings).orEmpty(), haptic)
+        }
+    }
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(ui.rereadAboardSeq) {
+        if (ui.rereadAboardSeq <= ui.rereadAboardDone) return@LaunchedEffect
+        ui.rereadAboardDone = ui.rereadAboardSeq
+        withFrameNanos { }
+        focusManager.clearFocus()
+        delay(REREAD_GAP_MS) // 비운 상태가 접근성 이벤트로 한 번 나갈 만큼(`MovedRowLanding`)
+        runCatching { ui.aboardStepFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "단계 줄 다시 읽기 실패", it) }
+    }
+    // 입구 검색에서 고른 역·정류장의 확인 질문(E77): 시트가 닫힌 뒤(이 폼이 다시 컴포즈된 뒤) 450ms 지나 띄운다. 그 사이 다른 시트가 열리면 이 폼이 컴포지션을 떠나 대기는 버려진다.
+    val ask = s.pendingTransfer
+    var askShown by remember { mutableStateOf(false) }
+    LaunchedEffect(ask) {
+        askShown = false
+        if (ask != null) {
+            delay(ASK_DELAY_MS)
+            askShown = true
+        }
+    }
+
     // 착지 요청(spec §3-5): 한 요청 = 한 착지, 재구성이 끝난 다음 프레임에 대입(M1 관용구).
     LaunchedEffect(s.landing) {
         val landing = s.landing ?: return@LaunchedEffect
@@ -213,12 +283,12 @@ private fun DirectionsForm(
             is LandingTarget.Field -> when (t.field) {
                 DirectionsFieldTarget.from -> ui.fromFocus
                 DirectionsFieldTarget.to -> ui.toFocus
-                DirectionsFieldTarget.via -> ui.viaFocus
-                // 착지 하나로 앱을 죽이지 않는다. 입구·역 칸은 다음 묶음(B26 단계 5 B)이 폼에 올리며 그때 요청자를 잇는다.
-                DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
-                    null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") }
+                DirectionsFieldTarget.manualLocation -> null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") }
+                // 입구·경유지·역 칸: 그 칸이 있으면 칸, 없으면 그 자리의 추가 버튼, 그것도 없으면 조회 버튼(현재 줄 목록 기준).
+                DirectionsFieldTarget.via, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
+                    ui.requester(inputLandingRow(t.field, directionsInputRows(vm.state.value, journeyEnabled)))
             }
-            LandingTarget.AboardStep -> null // 다음 묶음이 방면 단계 줄 요청자를 잇는다
+            LandingTarget.AboardStep -> ui.aboardStepFocus
             LandingTarget.Submit -> ui.submitFocus
             is LandingTarget.RecentRoute -> ui.recentFocus[t.id]
             is LandingTarget.RequeriedRoute -> ui.requeryFocus[requeryRouteFocusKey(t.routeKey)]
@@ -227,6 +297,18 @@ private fun DirectionsForm(
         runCatching { requester?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "착지 실패 ${landing.target}", it) }
     }
 
+    // 확인 질문이 떠 있는 동안 앱 통지를 집지 않는다(바깥 값과 OR — 안내 시트 등).
+    val askOpen = askShown && ask != null
+    CompositionLocalProvider(LocalModalOpen provides (askOpen || LocalModalOpen.current)) {
+    if (askOpen) {
+        TransferQuestionDialog(
+            title = vm.transferQuestionText(),
+            choices = vm.transferQuestionButtons(),
+            // 답: 새 칸(또는 경유지 줄)에 착지는 뷰모델이 싣는 `landing`이 한다. 닫기·뒤로·바깥: 아무것도 바꾸지 않고 입구 버튼으로.
+            onChoose = { c -> if (c.cancel) vm.cancelTransfer() else vm.answerTransfer(c.board) },
+            onDismiss = vm::cancelTransfer,
+        )
+    }
     AppScreenScaffold(strings.get("android.tab.directions"), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
         Column(
             Modifier
@@ -236,46 +318,87 @@ private fun DirectionsForm(
                 .padding(horizontal = 16.dp)
                 .semantics { testTagsAsResourceId = true },
         ) {
-            // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
-            ActionRow(
-                visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang, nowEpoch = now),
-                spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang, nowEpoch = now),
-                tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.landingTarget(ui.fromFocus),
-            )
-            Button(onClick = vm::swap, modifier = Modifier.tapTarget().testTag("swap")) { Text(strings.get("directions.swap")) }
-            ActionRow(
-                visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang, nowEpoch = now),
-                spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang, nowEpoch = now),
-                tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.landingTarget(ui.toFocus),
-            )
-            // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
-            if (s.via == null) {
-                Button(
-                    onClick = { vm.openPicker(DirectionsFieldTarget.via) },
-                    modifier = Modifier.tapTarget().testTag("via-add").landingTarget(ui.viaFocus),
-                ) { Text(vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang)) }
-            } else {
-                ActionRow(
-                    visual = vm.fieldText(DirectionsFieldTarget.via, accessible = false, lang = lang),
-                    spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
-                    tag = "field-via", onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.landingTarget(ui.viaFocus),
-                )
-                Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.tapTarget().testTag("via-remove")) {
-                    Text(strings.get("directions.removeVia"))
-                }
-            }
             val searchingLabel = strings.get("android.directions.searching")
             // 진행 표시는 조회 자신이 도는 동안만.
             val querying = s.phase == DirectionsPhase.Locating || s.phase == DirectionsPhase.Loading
-            Button(
-                onClick = { if (!s.isBusy) vm.runQuery() },
-                modifier = Modifier
-                    .tapTarget()
-                    .testTag("submit")
-                    .landingTarget(ui.submitFocus)
-                    // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
-                    .semantics { if (querying) stateDescription = searchingLabel },
-            ) { Text(strings.get("directions.submit")) }
+            // 입력 줄 — 순서와 조건은 `directionsInputRows`가 정본이고 여기는 그 목록을 그대로 그린다(iOS 같은 순서, 줄마다 한 접근성 객체).
+            for (row in directionsInputRows(s, journeyEnabled)) when (row) {
+                // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
+                InputRow.From -> ActionRow(
+                    visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang, nowEpoch = now),
+                    spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang, nowEpoch = now),
+                    tag = row.tag, onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.landingTarget(ui.fromFocus),
+                )
+                InputRow.AboardStep -> aboardStepSpec(s.aboardDirectionsState, strings)?.let { spec ->
+                    AboardStepRows(
+                        spec, ui.aboardStepFocus, ui.submitFocus,
+                        onStepFocusChanged = { ui.aboardStepHasFocus = it },
+                        onAction = { action ->
+                            when (action) {
+                                is AboardAction.Line -> vm.chooseAboardLine(action.line)
+                                is AboardAction.Direction -> vm.chooseAboardDirection(action.direction)
+                                AboardAction.Refresh -> vm.retryAboardDirections()
+                            }
+                        },
+                    )
+                }
+                InputRow.Swap -> Button(onClick = vm::swap, modifier = Modifier.tapTarget().testTag(row.tag)) { Text(strings.get("directions.swap")) }
+                InputRow.To -> ActionRow(
+                    visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang, nowEpoch = now),
+                    spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang, nowEpoch = now),
+                    tag = row.tag, onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.landingTarget(ui.toFocus),
+                )
+                // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
+                InputRow.ViaAdd -> Button(
+                    // 여정 입력이 켜져 있으면 입구 검색(경유지 또는 자동차 환승), 아니면 종전 경유지 추가.
+                    onClick = { vm.openPicker(if (journeyEnabled) DirectionsFieldTarget.transfer else DirectionsFieldTarget.via) },
+                    modifier = Modifier.tapTarget().testTag(row.tag).landingTarget(ui.viaFocus),
+                ) { Text(if (journeyEnabled) strings.get("android.journey.addMenu") else vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang)) }
+                InputRow.Via -> ActionRow(
+                    visual = vm.fieldText(DirectionsFieldTarget.via, accessible = false, lang = lang),
+                    spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
+                    tag = row.tag, onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.landingTarget(ui.viaFocus),
+                )
+                InputRow.ViaRemove -> Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.tapTarget().testTag(row.tag)) {
+                    Text(strings.get("directions.removeVia"))
+                }
+                // 역 칸: 채운 칸만 그리고(문장 `stationFieldText`) 누르면 그 칸 검색, 작업 메뉴 「삭제」 = 칸 비우기(iOS 밀기 삭제).
+                InputRow.BoardStation, InputRow.AlightStation -> {
+                    val board = row == InputRow.BoardStation
+                    ActionRow(
+                        visual = vm.stationFieldText(board), tag = row.tag,
+                        onClick = { vm.openPicker(if (board) DirectionsFieldTarget.boardStation else DirectionsFieldTarget.alightStation) },
+                        actions = listOf(CustomAccessibilityAction(strings.get("recent.delete")) { clearStationField(vm, ui, board); true }),
+                        modifier = Modifier.landingTarget(ui.requester(row)),
+                    )
+                }
+                InputRow.AddBoardStation, InputRow.AddAlightStation -> {
+                    val board = row == InputRow.AddBoardStation
+                    Button(
+                        onClick = { vm.openPicker(if (board) DirectionsFieldTarget.boardStation else DirectionsFieldTarget.alightStation) },
+                        modifier = Modifier.tapTarget().testTag(row.tag).landingTarget(ui.requester(row)),
+                    ) { Text(strings.get(if (board) "android.journey.addBoardStation" else "android.journey.addAlightStation")) }
+                }
+                // 지우기는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다.
+                InputRow.ClearStations -> Button(
+                    onClick = { ui.submitFocus.requestFocus(); vm.clearJourneyStations() },
+                    modifier = Modifier.tapTarget().testTag(row.tag),
+                ) { Text(strings.get("android.journey.clearStations")) }
+                InputRow.Submit -> Button(
+                    onClick = {
+                        if (s.isBusy) return@Button
+                        // 지금 탄 열차인데 방면이 아직 없으면 조회하지 않고 단계 줄로 커서를 보낸다(그 줄의 문장이 곧 통지).
+                        if (vm.aboardNeedsDirection) runCatching { ui.aboardStepFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "단계 줄 착지 실패", it) }
+                        else vm.runQuery()
+                    },
+                    modifier = Modifier
+                        .tapTarget()
+                        .testTag(row.tag)
+                        .landingTarget(ui.submitFocus)
+                        // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
+                        .semantics { if (querying) stateDescription = searchingLabel },
+                ) { Text(strings.get("directions.submit")) }
+            }
 
             StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
 
@@ -293,8 +416,8 @@ private fun DirectionsForm(
                 }
             }
 
-            // 최근 경로: 결과 없는 화면에서만(실패 phase에서는 보인다 — 우회로).
-            if (s.results == null && !s.isBusy && s.recentRoutes.isNotEmpty()) {
+            // 최근 경로: 결과 없는 화면에서만(실패 phase에서는 보인다 — 우회로). 여정 결과가 있으면 숨긴다(iOS `!journeyFound`).
+            if (s.results == null && !s.journeyFound && !s.isBusy && s.recentRoutes.isNotEmpty()) {
                 SectionHeading(strings.get("recentRoutes.title"))
                 val pinnedLabel = strings.get("recent.pinned")
                 val reorder = reorderLabels()
@@ -332,6 +455,18 @@ private fun DirectionsForm(
             }
             // 인계 도보의 시작 실패(B28, iOS 같은 선두 섹션) — 시작 버튼 없는 도보 시작이라 실패 문장과 해결 버튼이 설 자리가 여기뿐이다.
             if (guideUi != null && !guideUi.isTracking) GuideHandoffFailureRow { dest -> SectionHeading(joinText(strings.get("beacon.heading"), dest)) }
+
+            // 여정 결과(찾음만 줄을 그린다 — 경로 없음·조회 실패는 위 상태 줄이 말한다). 섹션 머리 없음.
+            (s.journeyOutcome as? JourneyQueryOutcome.Found)?.let { found ->
+                JourneyResultRows(
+                    result = found.result, board = s.boardStation, alight = s.alightStation, aboardOrigin = s.aboardOrigin,
+                    variantIndex = s.journeyVariantIndex, egressIndex = s.journeyEgressIndex,
+                    onSelectVariant = vm::selectJourneyVariant, onSelectEgress = vm::selectJourneyEgress,
+                    destination = journeyDestinationOf(s), destinationName = vm.destinationName, destinationRoman = vm.destinationRoman,
+                    lang = lang, dataLocale = dataLocale, strings = strings, stationEntry = stationEntry, landingFocus = ui.journeyFocus,
+                    onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) },
+                )
+            }
 
             val results = s.results
             if (results != null) {
@@ -396,4 +531,20 @@ private fun DirectionsForm(
             }
         }
     }
+    }
+}
+
+/** 입구 질문을 띄우기 전 시트가 닫히길 기다리는 시간(iOS 450ms). */
+private const val ASK_DELAY_MS = 450L
+
+/** 라벨만 바뀐 포커스 노드를 다시 읽히려 비운 상태가 접근성 이벤트로 한 번 나가길 기다리는 시간(`MovedRowLanding`과 같다). */
+private const val REREAD_GAP_MS = 250L
+
+/**
+ * 역 칸 비우기(iOS `clearStationField`): 칸이 사라지는 전이이므로 모델을 비우기 전에 커서를 계속 존재할 줄(다른 칸, 둘 다 비면 조회 버튼)로 옮긴다.
+ */
+private fun clearStationField(vm: DirectionsViewModel, ui: FormUiState, board: Boolean) {
+    val target = ui.requester(clearStationCursorRow(vm.state.value, board))
+    runCatching { target.requestFocus() }.onFailure { Log.w("DirectionsScreen", "칸 비우기 전 착지 실패", it) }
+    vm.clearJourneyStation(board)
 }

@@ -216,6 +216,10 @@ internal fun stringId(key: String): Int? = when (key) {
     "android.journey.boardField" -> R.string.android_journey_boardField
     "android.journey.alightField" -> R.string.android_journey_alightField
     "android.journey.addMenu" -> R.string.android_journey_addMenu
+    "android.journey.addBoardStation" -> R.string.android_journey_addBoardStation
+    "android.journey.addAlightStation" -> R.string.android_journey_addAlightStation
+    "android.journey.clearStations" -> R.string.android_journey_clearStations
+    "android.common.refresh" -> R.string.android_common_refresh
     "android.common.unavailableHere.noBusData" -> R.string.android_common_unavailableHere_noBusData
     "android.journey.designatedHeading" -> R.string.android_journey_designatedHeading
     "android.journey.designatedHeadingAlight" -> R.string.android_journey_designatedHeadingAlight
