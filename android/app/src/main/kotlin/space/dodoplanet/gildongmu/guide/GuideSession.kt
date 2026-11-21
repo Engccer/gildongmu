@@ -79,16 +79,19 @@ internal fun journeyStageEnd(reason: BeaconEndReason): JourneyStageEnd = when (r
     BeaconEndReason.locationLost, BeaconEndReason.ended -> JourneyStageEnd.ended
 }
 
-/** 띄울 안내 시트(M5 §6-7, iOS `GuideSession.screen` 동형) — 도보·자동차 `GuideSheet` 또는 대중교통 시트. 한 호스트가 고른다. */
-enum class GuideScreenKind { beacon, transit }
+/** 띄울 안내 시트(M5 §6-7·§7-5, iOS `GuideSession.screen` 동형) — 도보·자동차 `GuideSheet`, 대중교통 시트, 여정 단계 사이의 여정 시트. 한 호스트가 고른다. */
+enum class GuideScreenKind { beacon, transit, journey }
 
 /**
- * 띄울 시트를 고르는 규칙(iOS `screen` 동형) — 세션 [GuideSession.screen]과 시트 호스트 `GuideBottomBar`(두 모델의 `ui`를 수집해 Compose가 관찰한다)가 이 한
- * 함수를 읽는다. 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다), 아니면 대중교통이 추적 중이거나 하차 인계 신호가 남아 있으면 `transit`.
+ * 띄울 시트를 고르는 규칙(iOS `screen` 동형) — 세션 [GuideSession.screen]과 시트 호스트 `GuideBottomBar`(세 상태 흐름을 수집해 Compose가 관찰한다)가 이 한
+ * 함수를 읽는다. 순서: 도보 모델에 화면이 있으면 `beacon`(인계 600ms 창에서 도보가 이긴다) > 대중교통이 추적 중이거나 하차 인계 신호가 남아 있으면 `transit` >
+ * 여정이 단계 사이(준비 중·실패)면 `journey`. 여정이 `Running`이면 null이다(그 단계 세션의 시트가 덮는다 — 정지 직후 한 턴 여정 시트가 끼어 깜빡이지 않게).
+ * 세 인자 모두 기본값이 없다.
  */
-fun guideScreenKind(walk: WalkGuideUiState?, transit: TransitGuideUiState?): GuideScreenKind? = when {
+fun guideScreenKind(walk: WalkGuideUiState?, transit: TransitGuideUiState?, journey: JourneyUiState?): GuideScreenKind? = when {
     walk?.hasScreen == true -> GuideScreenKind.beacon
     transit != null && (transit.isTracking || transit.pendingWalkHandoff != null) -> GuideScreenKind.transit
+    journey != null && (journey.phase is JourneyPhase.Transitioning || journey.phase is JourneyPhase.Failed) -> GuideScreenKind.journey
     else -> null
 }
 
@@ -206,7 +209,7 @@ object GuideSession {
      * 신호가 남아 있으면 `transit`. 띠바·`hasScreen`·`reopenAfterNestedScreen`이 이 값을 본다.
      */
     val screen: GuideScreenKind?
-        get() = guideScreenKind(if (::walk.isInitialized) walk.ui.value else null, transitModel?.ui?.value)
+        get() = guideScreenKind(if (::walk.isInitialized) walk.ui.value else null, transitModel?.ui?.value, _journeyUi.value)
     val hasScreen: Boolean get() = screen != null
 
     // ── 전경 서비스 소유자(M5 §6-4) ──
@@ -725,6 +728,10 @@ object GuideSession {
     private val _journeyUi = MutableStateFlow<JourneyUiState?>(null)
     /** 여정 시트·띠바·보유자 알림이 관찰하는 값. null = 여정 없음. */
     val journeyUi: StateFlow<JourneyUiState?> = _journeyUi.asStateFlow()
+
+    /** androidTest 전용 — 여정 시트·띠바를 특정 상태로 띄운다(`_journeyUi`만 바꾼다, 여정 자체는 시작하지 않는다). 프로덕션 호출 0. */
+    @androidx.annotation.VisibleForTesting
+    fun debugSetJourneyUi(state: JourneyUiState?) { _journeyUi.value = state }
 
     private fun publishJourney() {
         _journeyUi.value = journey?.let { JourneyUiState(it.phase, journeyFailure) }

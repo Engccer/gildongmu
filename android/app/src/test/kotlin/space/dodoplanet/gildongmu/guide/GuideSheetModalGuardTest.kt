@@ -18,8 +18,8 @@ class GuideSheetModalGuardTest {
         val root = pkg.resolve("nav/AppRoot.kt").readText()
         assertTrue(Regex("""CompositionLocalProvider\(LocalModalOpen provides \(guideSheetShowing\(\) \|\| releaseNoticeOpen\)\) \{\s*NavHost\(""").containsMatchIn(root), "NavHost 바로 바깥이어야 한다")
         val signal = pkg.resolve("guide/ui/GuideBottomBar.kt").readText().substringAfter("fun guideSheetShowing(): Boolean {").substringBefore("\n}\n")
-        // 시트 선택은 호스트와 같은 규칙(`guideScreenKind` — 도보·대중교통 두 모델, M5 §6-7).
-        assertTrue(signal.contains("guideScreenKind(ui.value, transitUi.value) != null && !GuideSession.isMinimized"), signal)
+        // 시트 선택은 호스트와 같은 규칙(`guideScreenKind` — 도보·대중교통·여정 세 상태, M5 §6-7).
+        assertTrue(signal.contains("guideScreenKind(ui.value, transitUi.value, journeyUi.value) != null && !GuideSession.isMinimized"), signal)
         // 시트 표시 판정이 GuideBottomBar의 시트 렌더 조건과 같은 식이다.
         assertTrue(pkg.resolve("guide/ui/GuideBottomBar.kt").readText().contains("val showsSheet = hasScreen && !minimized"))
     }

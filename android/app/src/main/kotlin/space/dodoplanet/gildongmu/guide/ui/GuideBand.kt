@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.JourneyUiState
+import space.dodoplanet.gildongmu.guide.journeyStatusText
 import space.dodoplanet.gildongmu.guide.TransitGuideUiState
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
 import space.dodoplanet.gildongmu.guide.bandSummaryText
@@ -40,7 +42,13 @@ fun TransitGuideBand(ui: TransitGuideUiState, strings: Strings, focus: FocusRequ
     GuideBandRow(transitBandSummaryText(ui, strings), strings, focus)
 }
 
-/** 띠바 한 줄(두 수단 공용) — 낭독은 요약 + 「안내 시트 펼치기」 한 문장. */
+/** 여정 띠바(B26 §7-5, iOS `GuideBandView` 여정 갈래) — 요약은 시트 상태 문장·알림 본문과 같은 문장(`journeyStatusText`), 모양·착지·복귀는 도보 띠바 그대로. */
+@Composable
+fun JourneyGuideBand(ui: JourneyUiState?, strings: Strings, focus: FocusRequester) {
+    GuideBandRow(journeyStatusText(ui, strings), strings, focus)
+}
+
+/** 띠바 한 줄(세 수단 공용) — 낭독은 요약 + 「안내 시트 펼치기」 한 문장. */
 @Composable
 private fun GuideBandRow(summary: String, strings: Strings, focus: FocusRequester) {
     val returnLabel = strings.get("guide.band.return")

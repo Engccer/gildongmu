@@ -330,12 +330,12 @@ class TransitSheetLandingTest {
     @Test fun `시트 선택 — 도보가 먼저, 대중교통은 추적 중이거나 하차 인계 신호가 남았을 때`() {
         val walk = WalkGuideUiState(status = GuideStatus.tracking, destinationLabel = "길동역")
         val transit = waiting()
-        assertEquals(GuideScreenKind.beacon, guideScreenKind(walk, transit), "인계 창에서 도보가 이긴다")
-        assertEquals(GuideScreenKind.transit, guideScreenKind(WalkGuideUiState(), transit))
+        assertEquals(GuideScreenKind.beacon, guideScreenKind(walk, transit, null), "인계 창에서 도보가 이긴다")
+        assertEquals(GuideScreenKind.transit, guideScreenKind(WalkGuideUiState(), transit, null))
         val handoff = TransitGuideUiState(pendingWalkHandoff = TransitWalkHandoff("여의도", 5, null, null, null))
-        assertEquals(GuideScreenKind.transit, guideScreenKind(WalkGuideUiState(), handoff))
-        assertNull(guideScreenKind(WalkGuideUiState(), TransitGuideUiState()))
-        assertNull(guideScreenKind(null, null))
+        assertEquals(GuideScreenKind.transit, guideScreenKind(WalkGuideUiState(), handoff, null))
+        assertNull(guideScreenKind(WalkGuideUiState(), TransitGuideUiState(), null))
+        assertNull(guideScreenKind(null, null, null))
     }
 
     private val guideUi = File("src/main/kotlin/space/dodoplanet/gildongmu/guide/ui")
