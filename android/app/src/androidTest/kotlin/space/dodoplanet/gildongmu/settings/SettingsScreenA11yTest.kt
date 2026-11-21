@@ -16,8 +16,11 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
+import android.view.KeyEvent
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -93,7 +96,7 @@ class SettingsScreenA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("choice-system").assertIsDisplayed().assertIsNotSelected()
         rule.onNodeWithTag("choice-ko").assertIsNotSelected()
-        rule.onNodeWithTag("choice-ja").assertIsSelected().assertIsFocused() // 현재 값이 다섯째 행 — 첫 행 폴백과 갈린다
+        rule.onNodeWithTag("choice-ja").assertIsSelected().assertIsFocused() // 현재 값이 일곱째 행 — 첫 행 폴백과 갈린다
     }
 
     @Test
@@ -115,7 +118,8 @@ class SettingsScreenA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("status").assertTextEquals("") // 모달 뒤에서는 집지 않는다
         assertNotNull(AppNotices.pending.value)
-        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() } // 뒤로 = dismiss
+        // 뒤로 = dismiss. 대화상자는 별도 창이라 액티비티 디스패처로 보내면 대화상자가 아니라 액티비티가 닫힌다 — 키를 창에 보낸다.
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         rule.onNodeWithTag("status").assertTextEquals("이동이 감지되어 지정한 위치를 해제했습니다")
         assertNull(AppNotices.pending.value)
@@ -129,10 +133,11 @@ class SettingsScreenA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("title").assertIsFocused()
         rule.onNodeWithTag("source-0").assertIsDisplayed()
-        rule.onNodeWithTag("source-15").assertIsDisplayed()
         rule.onNodeWithTag("walk-health").assertExists() // B27 ④ 걸음·칼로리 방법 고지(화면 밖일 수 있어 존재만)
-        rule.onNodeWithTag("osm-link").assertIsDisplayed()
-        rule.onNodeWithTag("osm-copy").assertIsDisplayed()
+        // 아래쪽 줄은 작은 화면(한소네 576dp)에서 화면 밖이다 — 스크롤해 닿는지 본다.
+        rule.onNodeWithTag("source-15").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("osm-link").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("osm-copy").performScrollTo().assertIsDisplayed()
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 }
