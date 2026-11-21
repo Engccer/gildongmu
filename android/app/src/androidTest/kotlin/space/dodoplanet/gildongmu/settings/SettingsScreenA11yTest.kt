@@ -94,7 +94,7 @@ class SettingsScreenA11yTest {
         rule.onNodeWithTag("settings-language").assertTextEquals("언어, 日本語")
         rule.onNodeWithTag("settings-language").performClick()
         rule.waitForIdle()
-        rule.onNodeWithTag("choice-system").assertIsDisplayed().assertIsNotSelected()
+        rule.onNodeWithTag("choice-system").assertIsNotSelected() // 표시 단언은 하지 않는다: 작은 화면에서는 일곱째 행 착지가 목록을 스크롤해 첫 행이 화면 밖이다
         rule.onNodeWithTag("choice-ko").assertIsNotSelected()
         rule.onNodeWithTag("choice-ja").assertIsSelected().assertIsFocused() // 현재 값이 일곱째 행 — 첫 행 폴백과 갈린다
     }
