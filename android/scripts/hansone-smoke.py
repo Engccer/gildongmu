@@ -186,9 +186,9 @@ def run(query: str) -> None:
     if not find("도보 안내", first="prev"):
         return record("FAIL", "안내 시트 제목 찾기")
     menu = enter(7)  # 「팝업 창」 안내가 늦게 오면 다음 키 하나를 삼킨다 — 가라앉은 뒤 움직인다
-    first_item = current(menu)
-    # 메뉴 항목 줄은 「팝업 창」 안내와 겹쳐 늦게 오기도 한다 — 키마다 나온 출력을 모두 모은다.
-    items = [first_item]
+    # 메뉴 항목 줄은 「팝업 창」 안내와 겹쳐 늦게 오기도 한다 — 키마다 나온 출력을 모두 모은다. 여는 키의 출력도 전부다(첫 항목 뒤에
+    # 「팝업 창」이 오면 마지막 줄만 잡아 첫 항목을 잃고 순서를 거꾸로 읽었다, 2026-11-21 and-fix).
+    items = [o for o in menu if o]
     # 「팝업 창」 안내와 겹친 키는 항목 줄을 잃기도 한다(커서는 움직였다 — 다음 키가 첫 항목으로 돌아온다). 두 항목을 다 들을 때까지 한 바퀴 더 돈다.
     for _ in range(6):
         items += [o for o in press("space 4", wait=3, label="메뉴") if o]
@@ -200,10 +200,10 @@ def run(query: str) -> None:
         record("FAIL", "제목 메뉴", " / ".join(items)[:120])
     elif change is None or change > detail:  # 아이폰 순서: 전화 걸기 → 목적지 바꾸기 → 장소 상세 보기(2026-11-21 위원장 판정)
         record("FAIL", "제목 메뉴 순서(목적지 바꾸기 → 장소 상세 보기)", " / ".join(items)[:120])
-    elif "전화 걸기" in first_item:
+    elif any("전화 걸기" in i for i in items[:change]):
         record("PASS", "제목 메뉴, 첫 항목 전화 걸기")
     else:
-        record("INFO", "제목 메뉴(이 장소는 전화번호 없음)", first_item[:40])
+        record("INFO", "제목 메뉴(이 장소는 전화번호 없음)", items[change][:40])
     press("f4", wait=3, label="ESC")
 
 
