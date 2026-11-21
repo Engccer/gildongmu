@@ -133,20 +133,16 @@ fun SearchScreen(
 
     // 결과 도착 시 첫 결과 행 착지(한 프레임 뒤, 소비한 세대만 한 번). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
     // 행을 먼저 화면 안으로 스크롤하고(끝날 때까지 기다림) 포커스를 준다: 위에 받아쓰기·위치 표시줄이 서면서 작은 화면(한소네 576dp)에서는
-    // 첫 행이 화면 밖이고, 화면 밖 행의 포커스 이동은 한소네 커서가 따르지 않아 커서가 상태 줄에 남았다.
+    // 첫 행이 화면 밖이고, 화면 밖 행의 포커스 이동은 한소네 커서가 따르지 않아 커서가 상태 줄에 남았다. 이 스크롤에 결과 수 통지가 밀려나지
+    // 않도록 상태 줄은 스크롤 밖에 둔다(아래 배치).
     LaunchedEffect(s.resultsRevision) {
         if (s.resultsRevision > vm.consumedRevision) {
             vm.consumedRevision = s.resultsRevision
             if (s.totalCount > 0) {
                 withFrameNanos { }
                 s.outcome?.let { firstRowKey(it) }?.let { key ->
-                    val before = scroll.value
-                    val countNotice = vm.state.value.notice
                     runCatching { rowBring[key]?.bringIntoView() }.onFailure { Log.w("SearchScreen", "첫 결과 스크롤 실패", it) }
                     runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) }
-                    // 스크롤이 일어나면 한소네가 화면 밖으로 나간 커서를 옮겨 읽으며 결과 수 통지를 덮는다(실기기). 그때만 착지 뒤에
-                    // 같은 문장을 한 번 더 낸다(진동 없이). 스크롤이 없는 큰 화면은 종전 그대로 한 번이다.
-                    if (scroll.value != before && vm.state.value.notice.seq == countNotice.seq) vm.announce(countNotice.text)
                 }
             }
         }
@@ -166,91 +162,93 @@ fun SearchScreen(
     }
 
     AppScreenScaffold(stringResource(R.string.app_title), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(scroll)
-                .padding(horizontal = 16.dp)
-                .semantics { testTagsAsResourceId = true },
-        ) {
-            TextField(
-                state = vm.queryState,
-                lineLimits = TextFieldLineLimits.SingleLine,
-                label = { Text(stringResource(R.string.search_label)) },
-                placeholder = { Text(stringResource(R.string.android_search_prompt)) },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                // 하드웨어 Enter도 단일행 필드에선 이 경로로 온다(Compose 문서) — 별도 키 폴백을 두면 이중 제출이다.
-                onKeyboardAction = { if (!s.isSearching) vm.submit() },
-                trailingIcon = if (vm.queryState.text.isNotEmpty()) {
-                    {
-                        IconButton(onClick = { vm.clearQuery(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("clear")) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear))
-                        }
-                    }
-                } else null,
-                modifier = Modifier
+        Column(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }) {
+            // 상태 줄은 스크롤 밖, 상단 바 바로 아래에 고정한다(A82): 한소네는 화면 밖으로 나간 실시간 알림 영역을 읽지 않는다. 결과가 많아 정렬
+            // 버튼·분류 칩이 서면 첫 결과 착지 스크롤(547px, 576dp 화면)이 결과 수 통지를 낸 상태 줄을 화면 위로 밀어 통지가 통째로 빠졌다.
+            StatusLine(s.notice, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Column(
+                Modifier
                     .fillMaxWidth()
-                    .testTag("query")
-                    .landingTarget(fieldFocus),
-            )
-
-            Button(
-                onClick = { if (!s.isSearching) vm.submit() },
-                modifier = Modifier
-                    .tapTarget().testTag("submit")
-                    .landingTarget(buttonFocus)
-                    // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
-                    .semantics { if (s.isSearching) stateDescription = searchingLabel },
-            ) { Text(stringResource(R.string.search_button)) }
-
-            if (dictation != null) {
-                DictationControls(
-                    dictation,
-                    onNoApp = { vm.announce(res.getString(R.string.android_common_noAppToOpen)) },
-                    tag = "search-dictation",
-                    focus = dictationFocus,
-                    autoStart = voiceStart,
-                    onAutoStartConsumed = { AppSession.voiceStartRequested.value = false },
+                    .weight(1f)
+                    .verticalScroll(scroll)
+                    .padding(horizontal = 16.dp),
+            ) {
+                TextField(
+                    state = vm.queryState,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    label = { Text(stringResource(R.string.search_label)) },
+                    placeholder = { Text(stringResource(R.string.android_search_prompt)) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    // 하드웨어 Enter도 단일행 필드에선 이 경로로 온다(Compose 문서) — 별도 키 폴백을 두면 이중 제출이다.
+                    onKeyboardAction = { if (!s.isSearching) vm.submit() },
+                    trailingIcon = if (vm.queryState.text.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { vm.clearQuery(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("clear")) {
+                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear))
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("query")
+                        .landingTarget(fieldFocus),
                 )
-            }
 
-            // 위치 표시줄(B27 ③, iOS `SearchView`의 `LocationBarView` 섹션): 검색의 거리 정렬 기준(유효 위치)을 밝히고 누르면 위치 지정.
-            if (location != null) LocationBarRow(location.first, location.second, onPickLocation, barFocus)
+                Button(
+                    onClick = { if (!s.isSearching) vm.submit() },
+                    modifier = Modifier
+                        .tapTarget().testTag("submit")
+                        .landingTarget(buttonFocus)
+                        // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
+                        .semantics { if (s.isSearching) stateDescription = searchingLabel },
+                ) { Text(stringResource(R.string.search_button)) }
 
-            StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
-
-            if (s.outcome == null && !s.isSearching && s.recentQueries.isNotEmpty()) {
-                RecentSection(
-                    queries = s.recentQueries,
-                    requesterFor = { text -> recentFocus.getOrPut(text) { FocusRequester() } },
-                    onRun = { vm.setQuery(it); vm.submit() },
-                    onTogglePin = vm::togglePinRecent,
-                    onDelete = { text ->
-                        val target = vm.removeRecent(text)
-                        recentFocus.remove(text)
-                        if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
-                    },
-                    bringFor = { movedRecent.bringFor(it) },
-                    onMove = { text, move -> vm.moveRecent(text, move); movedRecent.pending = text },
-                    onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
-                )
-            }
-
-            // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
-            if (s.canSortByReview && s.outcome != null) {
-                Button(onClick = vm::toggleSort, modifier = Modifier.tapTarget().testTag("sort")) {
-                    Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+                if (dictation != null) {
+                    DictationControls(
+                        dictation,
+                        onNoApp = { vm.announce(res.getString(R.string.android_common_noAppToOpen)) },
+                        tag = "search-dictation",
+                        focus = dictationFocus,
+                        autoStart = voiceStart,
+                        onAutoStartConsumed = { AppSession.voiceStartRequested.value = false },
+                    )
                 }
-            }
 
-            s.outcome?.let { outcome ->
-                // 장소 줄 「물어보기」(B21): 돌아오면 그 줄로 착지한다(상세 열기와 같은 복귀 키).
-                val rowNav = LocalPlaceRowNav.current
-                val onAskPlace: ((Place) -> Unit)? = rowNav?.let { nav -> { place -> vm.rememberReturnFocus("place-${place.id}"); nav.openChat(place) } }
-                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, rowBringFor, vm::setBucket, vm::setRegion, onAskPlace) { place ->
-                    vm.rememberReturnFocus("place-${place.id}")
-                    onOpenPlace(place)
+                // 위치 표시줄(B27 ③, iOS `SearchView`의 `LocationBarView` 섹션): 검색의 거리 정렬 기준(유효 위치)을 밝히고 누르면 위치 지정.
+                if (location != null) LocationBarRow(location.first, location.second, onPickLocation, barFocus)
+
+                if (s.outcome == null && !s.isSearching && s.recentQueries.isNotEmpty()) {
+                    RecentSection(
+                        queries = s.recentQueries,
+                        requesterFor = { text -> recentFocus.getOrPut(text) { FocusRequester() } },
+                        onRun = { vm.setQuery(it); vm.submit() },
+                        onTogglePin = vm::togglePinRecent,
+                        onDelete = { text ->
+                            val target = vm.removeRecent(text)
+                            recentFocus.remove(text)
+                            if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
+                        },
+                        bringFor = { movedRecent.bringFor(it) },
+                        onMove = { text, move -> vm.moveRecent(text, move); movedRecent.pending = text },
+                        onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
+                    )
+                }
+
+                // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
+                if (s.canSortByReview && s.outcome != null) {
+                    Button(onClick = vm::toggleSort, modifier = Modifier.tapTarget().testTag("sort")) {
+                        Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+                    }
+                }
+
+                s.outcome?.let { outcome ->
+                    // 장소 줄 「물어보기」(B21): 돌아오면 그 줄로 착지한다(상세 열기와 같은 복귀 키).
+                    val rowNav = LocalPlaceRowNav.current
+                    val onAskPlace: ((Place) -> Unit)? = rowNav?.let { nav -> { place -> vm.rememberReturnFocus("place-${place.id}"); nav.openChat(place) } }
+                    ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, rowBringFor, vm::setBucket, vm::setRegion, onAskPlace) { place ->
+                        vm.rememberReturnFocus("place-${place.id}")
+                        onOpenPlace(place)
+                    }
                 }
             }
         }
