@@ -109,6 +109,7 @@ class DirectionsJourneyTest {
         lang: String = "ko",
         stale: StaleFix? = null,
         failLocation: Boolean = false,
+        saved: SavedStateHandle = SavedStateHandle(),
     ): DirectionsViewModel {
         val client = APIClient("https://example.test", net)
         val locator = object : EndpointLocator {
@@ -123,7 +124,7 @@ class DirectionsJourneyTest {
             override suspend fun requestPreciseLocation() = false
         }
         return DirectionsViewModel(
-            RouteService(client), SearchService(client), StationService(client), store, locator, { lang }, ko, SavedStateHandle(),
+            RouteService(client), SearchService(client), StationService(client), store, locator, { lang }, ko, saved,
             PlacePhoneBook(InMemoryKeyValueStore()),
             prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher,
             guideFormPending = MutableStateFlow(null),
@@ -137,6 +138,15 @@ class DirectionsJourneyTest {
     }
 
     // ── 배타 규칙 ────────────────────────────────────────────────────────────
+
+    @Test fun `지금 탄 열차의 역은 저장되지 않아 프로세스 재생성 뒤 출발지가 현재 위치로 돌아온다`() = runTest(dispatcher) {
+        val saved = SavedStateHandle()
+        val m = vm(net(), saved = saved)
+        m.startAboard(gangdong)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(DirectionsEndpoint.Current, vm(net(), saved = saved).state.value.from)
+    }
+
 
     @Test fun `역 칸을 세우면 경유지를 비운다`() = runTest(dispatcher) {
         val m = vm(net())

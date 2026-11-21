@@ -498,7 +498,9 @@ class DirectionsViewModel(
 
     private fun saveFields() {
         val s = _state.value
-        savedState[KEY_FROM] = s.from?.toJson() ?: ""
+        // 지금 탄 열차는 저장하지 않으므로(R11) 그 역 좌표를 든 `from`도 저장하지 않는다 — 프로세스 재생성 뒤 지나간 역이 일반 출발지로 되살아나 조회·최근 경로에 남지 않게 현재 위치로 쓴다.
+        val from = if (s.aboardOrigin != null) DirectionsEndpoint.Current else s.from
+        savedState[KEY_FROM] = from?.toJson() ?: ""
         savedState[KEY_TO] = s.to?.toJson() ?: ""
         savedState[KEY_VIA] = s.via?.toJson() ?: ""
     }
