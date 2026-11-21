@@ -39,20 +39,29 @@ import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.kit.DirectionsOutcomeClassifier
 import space.dodoplanet.gildongmu.kit.DirectionsResults
+import space.dodoplanet.gildongmu.kit.JourneyAboardDirection
+import space.dodoplanet.gildongmu.kit.JourneyStationQuery
 import space.dodoplanet.gildongmu.kit.KoreanParticle
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentEndpoint
 import space.dodoplanet.gildongmu.kit.RecentRoute
+import space.dodoplanet.gildongmu.kit.RecentStation
 import space.dodoplanet.gildongmu.kit.ReorderMove
 import space.dodoplanet.gildongmu.a11y.pinnedOrderAfterMove
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.StationService
+import space.dodoplanet.gildongmu.kit.journeyAboardDirections
+import space.dodoplanet.gildongmu.kit.journeyStationDisplayName
+import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.isInKorea
+import space.dodoplanet.gildongmu.kit.models.JourneyResponse
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.SubwayArrival
 import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
@@ -130,9 +139,29 @@ data class DirectionsUiState(
     val resultsOriginNeedsStartNotice: Boolean = false,
     /** 수단 재조회(E50). `results`와 같은 세대에만 산다 — 새 조회·결과 폐기가 비운다. */
     val transitRequery: Map<TransitModeAxis, TransitRequeryState> = emptyMap(),
+    /** 자동차로 갈아탈 역(E70). 칸은 역이 정해졌을 때만 있고 하나라도 있으면 조회가 여정만 한다. 경유지·지금 탄 열차와 배타다(D14·R12). */
+    val boardStation: RecentStation? = null,
+    val alightStation: RecentStation? = null,
+    /** 지금 탄 열차 출발(E71). 서 있는 동안 `from`은 그 역 좌표를 든다. */
+    val aboardOrigin: AboardOrigin? = null,
+    val aboardDirectionsState: AboardDirectionsState = AboardDirectionsState.Idle,
+    /** 여정 조회 결과 3-state. `results`와 같은 세대에만 산다(결과 폐기·재조회 시작이 비운다). */
+    val journeyOutcome: JourneyQueryOutcome? = null,
+    val journeyVariantIndex: Int = 0,
+    val journeyEgressIndex: Int = 0,
     val landing: LandingRequest? = null,
     val notice: Notice = Notice(0, ""),
 ) {
+    val hasJourneyStations: Boolean get() = boardStation != null || alightStation != null
+
+    /** 지금 탄 열차 출발인데 방면이 아직 없다 — 조회는 하지 않고 화면이 단계 줄로 커서를 보낸다. */
+    val aboardNeedsDirection: Boolean get() = aboardOrigin != null && aboardOrigin.direction == null
+
+    val journeyFound: Boolean get() = journeyOutcome is JourneyQueryOutcome.Found
+
+    /** 지금 탄 열차 출발의 경로 없음 갈래(`opposite`). 그 결과가 아니면 null. */
+    val journeyAboardNoRoute: Boolean? get() = (journeyOutcome as? JourneyQueryOutcome.AboardNoRoute)?.opposite
+
     val isBusy: Boolean get() = phase == DirectionsPhase.Locating || phase == DirectionsPhase.Loading
 
     /** 찾은 재조회 경로(서버 `requeryAxes` 순서) — 목록 끝에 대안으로 붙는다. */
@@ -150,6 +179,8 @@ data class DirectionsUiState(
 class DirectionsViewModel(
     private val routes: RouteService,
     private val search: SearchService,
+    /** 지금 탄 열차의 방면 조회(E71) — 역 도착 목록(`arrivals`). 기본값이 없다. */
+    private val stations: StationService,
     private val store: RecentSearchStore,
     private val locator: EndpointLocator,
     private val dataLocale: () -> String,
@@ -199,6 +230,18 @@ class DirectionsViewModel(
     /** 사용자가 최근 경로 목록을 건드렸으면 늦게 끝난 init 로드가 그 결과를 덮지 않는다. */
     private var recentRoutesTouched = false
 
+    /** 방면·노선 묶음의 원천 — 역 도착 목록 한 번분(노선을 고르면 같은 목록에서 다시 묶는다). */
+    private var aboardArrivals: List<SubwayArrival> = emptyList()
+    /** 방면 조회 세대 — 늦은 응답이 새 지정·해제 뒤의 상태를 덮지 않게 한다. */
+    private var aboardGeneration = 0
+    private var aboardJob: Job? = null
+
+    /** 여정 입력의 게이트(E70 D2) — 데이터 로케일 ko 하나(`canStartCarGuide`와 같은 관용구). 입력·조회 분기·최근 경로 문장·역 복원이 모두 이것을 본다. */
+    val journeyInputEnabled: Boolean get() = dataLocale() == "ko"
+
+    /** 지금 탄 열차 출발인데 방면이 아직 없다(화면이 조회 버튼에서 이것을 보고 단계 줄로 커서를 보낸다). */
+    val aboardNeedsDirection: Boolean get() = _state.value.aboardNeedsDirection
+
     private class QueryTimeout : Exception("query timeout")
 
     /** 조회 시점의 출발·도착 좌표와 데이터 언어 — 재조회가 **같은 출발지·같은 언어**로 부른다(현재 위치를 다시 재면 다른 출발지의 경로가 섞인다). `results`와 같은 순간에만 커밋. */
@@ -231,6 +274,8 @@ class DirectionsViewModel(
             (endpoint as? DirectionsEndpoint.Place)?.let(::setVia)
             return
         }
+        // 지금 탄 열차는 출발지 칸의 값이라 다른 끝점이 들어오면 사라진다(R12).
+        if (target == DirectionsFieldTarget.from) clearAboard()
         _state.update { if (target == DirectionsFieldTarget.from) it.copy(from = endpoint) else it.copy(to = endpoint) }
         recordRecent(endpoint, target)
         saveFields()
@@ -239,7 +284,9 @@ class DirectionsViewModel(
 
     /** 경유지 확정(N4) — 장소만(현재 위치는 경유지가 될 수 없다). */
     fun setVia(place: DirectionsEndpoint.Place) {
-        _state.update { it.copy(via = place) }
+        // 경유지와 갈아탈 역은 함께 쓰지 않는다(D14) — 경유지가 서면 역 칸을 비운다. 지금 탄 열차 출발도 같다(R12).
+        clearAboard()
+        _state.update { it.copy(via = place, boardStation = null, alightStation = null) }
         recordRecent(place, DirectionsFieldTarget.via)
         saveFields()
         clearResults()
@@ -250,6 +297,164 @@ class DirectionsViewModel(
         _state.update { it.copy(via = null) }
         saveFields()
         clearResults()
+    }
+
+    // ── 여정 입력(E70·E71, iOS `DirectionsModel` 여정 몫) ──────────────────────────
+
+    /** 역 칸 하나를 정한다. 역이 서는 순간 여정이 되므로 경유지를 비운다(D14). 승차 쪽 지정과 지금 탄 열차는 배타다(R12 — 화면은 이미 그 입구를 숨긴다). */
+    fun setJourneyStation(station: RecentStation, board: Boolean) {
+        if (board) clearAboard()
+        _state.update { if (board) it.copy(via = null, boardStation = station) else it.copy(via = null, alightStation = station) }
+        saveFields()
+        clearResults()
+    }
+
+    /** 「갈아탈 역 지우기」 — 두 칸을 함께 비워 세 수단 조회로 돌아간다(판정 21). */
+    fun clearJourneyStations() {
+        _state.update { it.copy(boardStation = null, alightStation = null) }
+        clearResults()
+    }
+
+    /** 칸 하나만 비운다(밀기 「삭제」·남은 쪽 정리). */
+    fun clearJourneyStation(board: Boolean) {
+        _state.update { if (board) it.copy(boardStation = null) else it.copy(alightStation = null) }
+        clearResults()
+    }
+
+    /** 최근 경로 복원(E70 §5.3) — 두 칸을 함께 정한다(없는 쪽은 비운다 — 이전 질의의 역이 딸려 가지 않게). 지금 탄 열차·경유지도 비운다. */
+    fun setJourneyStations(board: RecentStation?, alight: RecentStation?) {
+        clearAboard()
+        _state.update { it.copy(via = null, boardStation = board, alightStation = alight) }
+        saveFields()
+        clearResults()
+    }
+
+    /** 변형 선택(결과에 변형이 둘일 때). 고르면 출구 선택은 처음으로 돌아간다. 범위 밖 값과 여정 결과가 없을 때는 무시한다. */
+    fun selectJourneyVariant(index: Int) {
+        val found = _state.value.journeyOutcome as? JourneyQueryOutcome.Found ?: return
+        if (index !in found.result.variants.indices) return
+        _state.update { it.copy(journeyVariantIndex = index, journeyEgressIndex = 0) }
+    }
+
+    /** 출구 선택(결과에 출구가 둘 이상일 때). 개수는 고른 변형이 정하므로 음수만 거른다. */
+    fun selectJourneyEgress(index: Int) {
+        if (_state.value.journeyOutcome !is JourneyQueryOutcome.Found || index < 0) return
+        _state.update { it.copy(journeyEgressIndex = index) }
+    }
+
+    /**
+     * 데이터 로케일이 ko 밖으로 바뀌었을 때 화면이 부른다(iOS `onChange(of: journeyInputEnabled)`) — 지금 탄 열차를 푼다.
+     * 푼 뒤 조회가 일반 세 수단으로 떨어져 aboard 역이 최근 경로에 저장되는 일이 없게 한다.
+     */
+    fun onJourneyInputEnabledChanged(enabled: Boolean) {
+        if (!enabled) clearAboard()
+    }
+
+    /**
+     * 출발지를 지금 탄 열차로 바꾼다(E71). 출발지 칸을 대체하고 경유지·역 A는 비운다(열차 출발과 배타 — R12). 역 B는 그대로.
+     * 노선은 장소 힌트, 없으면 도착 목록의 노선이 하나일 때 그것, 둘 이상이면 질문한다(`Lines`).
+     */
+    fun startAboard(station: RecentStation) {
+        _state.update {
+            it.copy(
+                via = null, boardStation = null,
+                from = DirectionsEndpoint.Place(station.label, station.lat, station.lng, labelRoman = null),
+                aboardOrigin = AboardOrigin(station, station.line, direction = null),
+            )
+        }
+        saveFields()
+        clearResults()
+        loadAboardDirections()
+    }
+
+    fun chooseAboardLine(line: String) {
+        val s = _state.value
+        val origin = s.aboardOrigin ?: return
+        if (s.aboardDirectionsState !is AboardDirectionsState.Lines) return
+        _state.update {
+            it.copy(
+                aboardOrigin = origin.copy(line = line),
+                aboardDirectionsState = AboardDirectionsState.Loaded(journeyAboardDirections(aboardArrivals, line)),
+            )
+        }
+    }
+
+    fun chooseAboardDirection(direction: JourneyAboardDirection) {
+        val s = _state.value
+        val origin = s.aboardOrigin ?: return
+        val state = s.aboardDirectionsState as? AboardDirectionsState.Loaded ?: return
+        if (direction !in state.directions) return
+        _state.update { it.copy(aboardOrigin = origin.copy(direction = direction)) }
+    }
+
+    /** 실패와 오는 열차 없음(열차는 잠시 뒤 올 수 있다)에서 다시 조회한다. */
+    fun retryAboardDirections() {
+        val s = _state.value
+        if (s.aboardOrigin == null) return
+        if (s.aboardDirectionsState != AboardDirectionsState.Failed && s.aboardDirectionsState != AboardDirectionsState.Loaded(emptyList())) return
+        loadAboardDirections()
+    }
+
+    /**
+     * 지금 탄 열차 출발을 지운다 — 출발지 칸에 다른 끝점을 고르는 `setEndpoint(_, from)`가 부른다. 칸 값을 대신하던 `from`은 기본 출발지
+     * (현재 위치)로 되돌린다(호출부가 곧 다른 끝점을 넣는다).
+     */
+    fun clearAboard() {
+        if (_state.value.aboardOrigin == null) return
+        aboardGeneration += 1
+        aboardJob?.cancel()
+        aboardJob = null
+        aboardArrivals = emptyList()
+        _state.update { it.copy(aboardOrigin = null, aboardDirectionsState = AboardDirectionsState.Idle, from = DirectionsEndpoint.Current) }
+        saveFields()
+        clearResults()
+    }
+
+    /** 화면을 다시 띄울 때 로딩 중에 끊겼던 방면 조회를 이어 한다(`Idle`로 남은 것 — 실패와 미완료를 뭉개지 않는다). */
+    fun resumeAboardDirections() {
+        val s = _state.value
+        if (s.aboardOrigin == null || !s.aboardNeedsDirection || s.aboardDirectionsState != AboardDirectionsState.Idle) return
+        loadAboardDirections()
+    }
+
+    /** 방면 조회: 15초 상한·세대 가드. 응답 null(미커버)은 `Unavailable`, 예외(만료 포함)는 `Failed`, 취소는 무시한다. */
+    private fun loadAboardDirections() {
+        val origin = _state.value.aboardOrigin ?: return
+        aboardGeneration += 1
+        val generation = aboardGeneration
+        aboardJob?.cancel()
+        _state.update { it.copy(aboardDirectionsState = AboardDirectionsState.Loading) }
+        val name = journeyStationDisplayName(origin.station.label)
+        aboardJob = viewModelScope.launch {
+            val settled = withContext(io) { timed { stations.arrivals(name, "ko") } }
+            currentCoroutineContext().ensureActive()
+            if (generation != aboardGeneration) return@launch
+            settled.fold(
+                onSuccess = { response ->
+                    if (response == null) {
+                        _state.update { it.copy(aboardDirectionsState = AboardDirectionsState.Unavailable) }
+                    } else {
+                        aboardArrivals = response.arrivals
+                        val current = _state.value.aboardOrigin ?: return@fold
+                        val result = settleAboardDirections(aboardArrivals, current.line)
+                        _state.update { it.copy(aboardOrigin = current.copy(line = result.line), aboardDirectionsState = result.state) }
+                    }
+                },
+                onFailure = { _state.update { it.copy(aboardDirectionsState = AboardDirectionsState.Failed) } },
+            )
+        }
+    }
+
+    /** 단계 줄의 문장(`Idle`이면 줄이 없다). */
+    fun aboardStepText(): String? = space.dodoplanet.gildongmu.directions.aboardStepText(_state.value.aboardDirectionsState, strings)
+
+    fun aboardDirectionRowText(direction: JourneyAboardDirection): String =
+        space.dodoplanet.gildongmu.directions.aboardDirectionRowText(direction, strings)
+
+    /** 역 칸 한 줄(「칸 이름, 역 이름」) — 칸은 역이 정해졌을 때만 그려진다. */
+    fun stationFieldText(board: Boolean): String {
+        val s = _state.value
+        return space.dodoplanet.gildongmu.directions.stationFieldText(if (board) s.boardStation else s.alightStation, board, strings)
     }
 
     /**
@@ -277,7 +482,10 @@ class DirectionsViewModel(
 
     /** 출발↔도착 원자 교환(미확정 null도 그대로). 기록 없음 — 재배치일 뿐 새 확정이 아니다. */
     fun swap() {
-        _state.update { it.copy(from = it.to, to = it.from) }
+        // 지금 탄 열차는 출발지 전용이라 도착지와 바꿀 수 없다(R12 — 화면은 항목을 숨긴다).
+        if (_state.value.aboardOrigin != null) return
+        // 출발↔도착이 뒤집히면 역 칸의 방향도 뒤집힌다(웹 swapFields 동형).
+        _state.update { it.copy(from = it.to, to = it.from, boardStation = it.alightStation, alightStation = it.boardStation) }
         saveFields()
         clearResults()
     }
@@ -304,7 +512,7 @@ class DirectionsViewModel(
         _state.update {
             it.copy(
                 results = null, walkLines = emptyList(), walkLinesFailed = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false,
-                phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
+                journeyOutcome = null, phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
             )
         }
     }
@@ -318,6 +526,8 @@ class DirectionsViewModel(
     fun runQuery(silently: Boolean = false) {
         if (isInFlight) return
         silentQuery = silently
+        // 방면 전에는 조회하지 않는다(화면이 질문으로 안내한다).
+        if (_state.value.aboardNeedsDirection) return
         val s = _state.value
         val from = s.from
         val to = s.to
@@ -342,7 +552,8 @@ class DirectionsViewModel(
 
     private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
         cancelRequeries()
-        _state.update { it.copy(results = null, walkLines = emptyList(), walkLinesFailed = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false) }
+        // 여정 결과도 같은 스냅샷 교체(옛 결과의 「안내 시작」이 측위·조회 동안 남지 않게).
+        _state.update { it.copy(results = null, journeyOutcome = null, walkLines = emptyList(), walkLinesFailed = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false) }
         var current: NearbyCoord? = null
         // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장·안내 시작 고지).
         var staleAt: Double? = null
@@ -409,6 +620,18 @@ class DirectionsViewModel(
             return
         }
 
+        // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가 목적지까지 가므로 뜻이 없다.
+        // 지금 탄 열차인데 여정 조회가 막힌 조건(ko 밖)이면 일반 세 수단 조회로 떨어져 aboard 역이 최근 경로에 저장되지 않도록 조회하지 않는다(R11).
+        val journeyState = _state.value
+        if (journeyState.aboardOrigin != null && !journeyInputEnabled) {
+            setPhase(DirectionsPhase.Idle)
+            return
+        }
+        if (journeyInputEnabled && (journeyState.hasJourneyStations || journeyState.aboardOrigin != null)) {
+            performJourney(from, to, origin, queried, usedManualOrigin || (from == DirectionsEndpoint.Current && staleAt != null), staleAt)
+            return
+        }
+
         // 승격 왕복도 이 조회의 일부라 loading 안에서 돈다(직전 settled에 머물면서 결과만 빈 창 방지).
         val lang = dataLocale()
         var promoted: PromotedDestination? = null
@@ -452,7 +675,7 @@ class DirectionsViewModel(
         // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가 모순된다(위원장 판정 2026-09-23).
         val staleNotice = staleAt?.takeIf { results.successCount > 0 }?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
         initJob.join()
-        val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide)))
+        val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide), boardStation = null, alightStation = null))
         resultsCoords = ResultsCoords(origin, dest, lang)
         _state.update {
             it.copy(
@@ -472,6 +695,59 @@ class DirectionsViewModel(
                         staleNotice,
                     ).joinToString(" "),
                 ),
+            )
+        }
+    }
+
+    /**
+     * 여정 조회(E70 §5.2, iOS `performJourney`). 결과는 3-state(찾음·경로 없음·조회 실패)이고 완료 통지는 합산 한 문장(기존 창구)이다.
+     * 포커스는 옮기지 않는다 — 조회 완료 시 조회 버튼에 머무는 이 화면의 규칙(위원장 판정 2026-08-02) 그대로다. 이 시점 국면은 이미 Loading이다.
+     */
+    private suspend fun performJourney(from: DirectionsEndpoint, to: DirectionsEndpoint, origin: NearbyCoord, dest: NearbyCoord, originNeedsStartNotice: Boolean, staleAt: Double?) {
+        val s = _state.value
+        val aboard = s.aboardOrigin
+        // 지금 탄 열차(E71)는 승차 쪽 질의에 고른 방향을 싣는다(`boardKind=aboard`). 이름은 역 표시 이름, 좌표는 고른 역이다.
+        val board = aboard?.let { a ->
+            JourneyStationQuery(journeyStationDisplayName(a.station.label), a.station.lat, a.station.lng, a.line, kind = null, aboardDirection = a.direction?.direction)
+        } ?: s.boardStation?.let { JourneyStationQuery(it.label, it.lat, it.lng, it.line, it.kind, aboardDirection = null) }
+        val alight = s.alightStation?.let { JourneyStationQuery(it.label, it.lat, it.lng, it.line, it.kind, aboardDirection = null) }
+        val settled = withContext(io) { timed { routes.journey(origin.lat, origin.lng, dest.lat, dest.lng, board, alight) } }
+        currentCoroutineContext().ensureActive()
+        val outcome: JourneyQueryOutcome = settled.fold(
+            onSuccess = { response ->
+                when (response) {
+                    JourneyResponse.OutOfCoverage -> {
+                        setPhase(DirectionsPhase.OutOfCoverage)
+                        return
+                    }
+                    is JourneyResponse.Result -> when {
+                        response.result.variants.isNotEmpty() -> JourneyQueryOutcome.Found(response.result)
+                        aboard != null -> JourneyQueryOutcome.AboardNoRoute(opposite = response.result.designatedMissing?.oppositeDirection == true)
+                        else -> JourneyQueryOutcome.NoRoute
+                    }
+                }
+            },
+            onFailure = { JourneyQueryOutcome.Failed },
+        )
+        val found = outcome is JourneyQueryOutcome.Found
+        // 옛 위치로 찾았으면 같은 통지·상태 줄의 뒷문장으로 밝힌다(일반 조회와 같은 계약).
+        val staleNotice = staleAt?.takeIf { found }?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
+        // 지금 탄 열차 출발은 저장하지 않는다(R11 — 열차 위치는 그때뿐이다).
+        val recent = if (found && aboard == null) {
+            initJob.join()
+            store.recordRoute(RecentRoute(recentSide(from), recentSide(to), null, boardStation = s.boardStation, alightStation = s.alightStation))
+        } else null
+        val phase = DirectionsPhase.Settled(if (found) 1 else 0)
+        val text = journeyOutcomeText(outcome, strings)
+            ?: listOfNotNull(strings.get("directions.readySummary", 1), staleNotice).joinToString(" ")
+        _state.update {
+            val notice = queryNotice(it.notice, text, isFailure = !found)
+            it.copy(
+                journeyOutcome = outcome, journeyVariantIndex = 0, journeyEgressIndex = 0,
+                resultsOriginNeedsStartNotice = originNeedsStartNotice,
+                phase = phase, resultsRevision = it.resultsRevision + 1,
+                recentRoutes = recent ?: it.recentRoutes,
+                notice = if (notice === it.notice) notice else notice.copy(haptic = if (found) HapticKind.success else HapticKind.failure),
             )
         }
     }
@@ -755,6 +1031,8 @@ class DirectionsViewModel(
             DirectionsFieldTarget.via -> s.via
             DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
         }
+        // 지금 탄 열차(E71): 「출발지, 지금 탄 열차, {역 장소 이름}」, 방면이 정해지면 「…, {방면}」. 한 줄 = 한 객체.
+        if (target == DirectionsFieldTarget.from) s.aboardOrigin?.let { return joinText(label, aboardFieldValue(it, strings)) }
         return when (endpoint) {
             DirectionsEndpoint.Current -> "$label, ${currentLocationText(accessible, lang, nowEpoch)}"
             is DirectionsEndpoint.Place -> {
@@ -803,6 +1081,8 @@ class DirectionsViewModel(
     fun recentRouteLabel(route: RecentRoute, lang: String): String {
         val from = route.from?.label ?: strings.get("directions.currentLocation")
         val to = route.to?.label ?: strings.get("directions.currentLocation")
+        // 여정 경로(E70 판정 20)는 역이 있을 때만 여정 문장이다 — 활성화가 역을 쓰는 조건(ko)과 같다.
+        recentJourneyLabel(route, from, to, journeyInputEnabled, strings)?.let { return it }
         val via = route.via?.label ?: return strings.get("recentRoutes.item", from, to)
         // ko 목적격 조사는 받침에 따라 갈려 자원에 못 박는다 — 호출부가 붙이고 한글이 아니면 조사 없이.
         val viaText = if (lang == "ko") via + (KoreanParticle.objectMarker(via) ?: "") else via
@@ -814,6 +1094,12 @@ class DirectionsViewModel(
         setEndpoint(route.from?.let(::endpointOf) ?: DirectionsEndpoint.Current, DirectionsFieldTarget.from)
         setEndpoint(route.to?.let(::endpointOf) ?: DirectionsEndpoint.Current, DirectionsFieldTarget.to)
         route.via?.let { setVia(endpointOf(it)) } ?: clearVia()
+        // 여정(E70 §5.3): 역이 있으면 칸을 채워 조회, 없으면 비운다(이전 질의의 역이 딸려 가 조용히 여정이 되지 않게).
+        if (journeyInputEnabled && (route.boardStation != null || route.alightStation != null)) {
+            setJourneyStations(route.boardStation, route.alightStation)
+        } else if (_state.value.hasJourneyStations) {
+            clearJourneyStations()
+        }
         runQuery()
     }
 
@@ -842,7 +1128,7 @@ class DirectionsViewModel(
         if (index < 0) return
         val pinned = !list[index].pinned
         store.setRoutePinned(route, pinned)
-        list[index] = RecentRoute(route.from, route.to, route.via, pinned)
+        list[index] = route.copy(pinned = pinned)
         _state.update { it.copy(recentRoutes = list) }
     }
 
@@ -917,7 +1203,9 @@ class DirectionsViewModel(
         val place = DirectionsEndpoint.Place(prefill.label, prefill.lat, prefill.lng, prefill.labelRoman)
         val from = if (prefill.role == DirectionsPrefillRole.from) place else DirectionsEndpoint.Current
         val to = if (prefill.role == DirectionsPrefillRole.to) place else null
-        _state.update { it.copy(from = from, to = to, via = null) }
+        // iOS는 프리필마다 새 모델을 세운다 — 남아 있던 지금 탄 열차·역 칸이 딸려 가지 않게 비운다.
+        clearAboard()
+        _state.update { it.copy(from = from, to = to, via = null, boardStation = null, alightStation = null) }
         recordRecent(place, if (prefill.role == DirectionsPrefillRole.from) DirectionsFieldTarget.from else DirectionsFieldTarget.to)
         saveFields()
         clearResults()

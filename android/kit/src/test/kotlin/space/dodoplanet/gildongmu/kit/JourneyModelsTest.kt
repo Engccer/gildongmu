@@ -272,6 +272,21 @@ class RecentRouteStationTest {
         assertNull(routes[0].via)
     }
 
+    @Test fun legacyStoredRoutesDecodeThroughStoreAndKeepStationsOnPinToggle() {
+        // 기본값을 지운 뒤에도 옛 저장분(역 키 없음)이 null로 읽히고, 고정 토글(재구성)이 역 지정을 보존한다.
+        val kv = InMemoryKeyValueStore()
+        kv.putString(RecentSearchStore.routesKey, """[{"from":{"label":"출발지","lat":37.5,"lng":127.0},"to":{"label":"도착지","lat":37.6,"lng":127.1}}]""")
+        val store = RecentSearchStore(kv)
+        val legacy = store.routes().single()
+        assertNull(legacy.boardStation)
+        assertNull(legacy.alightStation)
+        store.recordRoute(route(ahyeon, gwanghwamun))
+        val pinned = store.setRoutePinned(route(ahyeon, gwanghwamun), true).first { it.boardStation != null }
+        assertTrue(pinned.pinned)
+        assertEquals(ahyeon, pinned.boardStation)
+        assertEquals(gwanghwamun, pinned.alightStation)
+    }
+
     @Test fun stationsRoundTripThroughStore() {
         val store = RecentSearchStore(InMemoryKeyValueStore())
         store.recordRoute(route(ahyeon, gwanghwamun))

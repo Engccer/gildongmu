@@ -66,10 +66,11 @@ data class RecentRoute(
     /**
      * 자동차로 갈아탈 역(E70). 둘 다 null이면 일반 세 수단 조회 경로다. 동일 판정·정체성에 포함된다. 기존 저장분(필드 없음)은 null.
      * Swift는 `via` 뒤·`pinned` 앞 인자지만 앱 호출이 `pinned`를 네 번째 위치 인자로 넘겨 와서 Kotlin은 `pinned` 뒤에 둔다
-     * (`labelRoman`과 같은 사정). ⚠ 고정 토글·재기록이 이 둘을 빠뜨리면 역 지정이 조용히 사라진다 — :kit 안의 재생성은 둘 다 넘긴다.
+     * (`labelRoman`과 같은 사정). ⚠ 이 둘은 **기본값이 없다**(안전 인자): 고정 토글·재기록이 빠뜨리면 역 지정이 조용히 사라지므로 호출마다 명시한다.
+     * 옛 저장분(키 부재)은 `explicitNulls=false`가 null로 읽는다.
      */
-    val boardStation: RecentStation? = null,
-    val alightStation: RecentStation? = null,
+    val boardStation: RecentStation?,
+    val alightStation: RecentStation?,
 ) {
     /** 출발·도착·경유·갈아탈 역 키 — sameRoute와 같은 축(null = 현재 위치, 경유·역 null = 없음). */
     val id: String get() = "${from?.id ?: "cur"}>${to?.id ?: "cur"}>${via?.id ?: "-"}>${boardStation?.id ?: "-"}>${alightStation?.id ?: "-"}"

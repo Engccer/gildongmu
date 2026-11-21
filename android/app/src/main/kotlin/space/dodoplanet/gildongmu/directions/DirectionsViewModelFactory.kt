@@ -11,6 +11,7 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
 /**
@@ -26,6 +27,7 @@ fun directionsViewModelFactory(context: Context): ViewModelProvider.Factory {
             DirectionsViewModel(
                 routes = RouteService(AppConfig.apiClient),
                 search = SearchService(AppConfig.apiClient),
+                stations = StationService(AppConfig.apiClient),
                 store = store,
                 locator = directionsLocator(),
                 dataLocale = { AppLocale.dataLocale(res()) },

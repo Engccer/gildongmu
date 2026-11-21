@@ -118,8 +118,8 @@ class RecentQueryTest {
         val home = RecentEndpoint("집", 37.5, 127.1)
         val toggled = RecentEndpoint("우리집", 37.50001, 127.09999, true)
         assertEquals(home.id, toggled.id)
-        assertEquals(RecentRoute(null, home).id, RecentRoute(null, toggled, pinned = true).id)
-        assertNotEquals(RecentRoute(home, null).id, RecentRoute(null, home).id)
+        assertEquals(RecentRoute(null, home, boardStation = null, alightStation = null).id, RecentRoute(null, toggled, pinned = true, boardStation = null, alightStation = null).id)
+        assertNotEquals(RecentRoute(home, null, boardStation = null, alightStation = null).id, RecentRoute(null, home, boardStation = null, alightStation = null).id)
     }
 }
 
@@ -189,31 +189,31 @@ class RecentRouteTest {
 
     @Test fun prependAndDedupeByPair() {
         val store = RecentSearchStore(fresh())
-        val a = RecentRoute(home, school)
-        val b = RecentRoute(null, school)
+        val a = RecentRoute(home, school, boardStation = null, alightStation = null)
+        val b = RecentRoute(null, school, boardStation = null, alightStation = null)
         assertEquals(listOf(a), store.recordRoute(a))
         assertEquals(listOf(b, a), store.recordRoute(b))
-        val relabeled = RecentRoute(RecentEndpoint("자택 아파트", home.lat, home.lng), school)
+        val relabeled = RecentRoute(RecentEndpoint("자택 아파트", home.lat, home.lng), school, boardStation = null, alightStation = null)
         assertEquals(listOf(relabeled, b), store.recordRoute(relabeled))
     }
 
     @Test fun rejectsBothCurrent() {
         val store = RecentSearchStore(fresh())
-        assertEquals(emptyList(), store.recordRoute(RecentRoute(null, null)))
+        assertEquals(emptyList(), store.recordRoute(RecentRoute(null, null, boardStation = null, alightStation = null)))
         assertEquals(emptyList(), store.routes())
     }
 
     @Test fun capAt20() {
         val store = RecentSearchStore(fresh())
-        for (i in 0 until 25) store.recordRoute(RecentRoute(null, RecentEndpoint("t$i", 37 + i * 0.01, 127.0)))
+        for (i in 0 until 25) store.recordRoute(RecentRoute(null, RecentEndpoint("t$i", 37 + i * 0.01, 127.0), boardStation = null, alightStation = null))
         assertEquals(20, store.routes().size)
     }
 
     @Test fun removeClearAndDecodeRecovery() {
         val kv = fresh()
         val store = RecentSearchStore(kv)
-        val a = RecentRoute(home, school)
-        val b = RecentRoute(null, school)
+        val a = RecentRoute(home, school, boardStation = null, alightStation = null)
+        val b = RecentRoute(null, school, boardStation = null, alightStation = null)
         store.recordRoute(a); store.recordRoute(b)
         assertEquals(listOf(a), store.removeRoute(b))
         store.clearRoutes()
@@ -225,13 +225,13 @@ class RecentRouteTest {
     @Test fun legacyDataWithoutPinnedDecodesUnpinned() {
         val kv = fresh()
         kv.putString("recentRoutes.v1", """[{"from":null,"to":{"label":"학교","lat":37.529,"lng":127.138}}]""")
-        assertEquals(listOf(RecentRoute(null, RecentEndpoint("학교", 37.529, 127.138))), RecentSearchStore(kv).routes())
+        assertEquals(listOf(RecentRoute(null, RecentEndpoint("학교", 37.529, 127.138), boardStation = null, alightStation = null)), RecentSearchStore(kv).routes())
     }
 
     @Test fun pinnedRouteStaysOnTopAcrossRecordsAndClear() {
         val store = RecentSearchStore(fresh())
-        val toSchool = RecentRoute(home, school)
-        val toWork = RecentRoute(null, RecentEndpoint("회사", 37.6, 127.0))
+        val toSchool = RecentRoute(home, school, boardStation = null, alightStation = null)
+        val toWork = RecentRoute(null, RecentEndpoint("회사", 37.6, 127.0), boardStation = null, alightStation = null)
         store.recordRoute(toSchool); store.recordRoute(toWork)
         store.setRoutePinned(toSchool, true)
         assertEquals("신명중학교", store.routes().first().to?.label)
@@ -250,16 +250,16 @@ class RecentRouteViaTest {
         val a = RecentEndpoint("A", 37.5, 127.1)
         val b = RecentEndpoint("B", 37.6, 127.2)
         val c = RecentEndpoint("C", 37.55, 127.15)
-        store.recordRoute(RecentRoute(a, b))
-        val list = store.recordRoute(RecentRoute(a, b, c))
+        store.recordRoute(RecentRoute(a, b, boardStation = null, alightStation = null))
+        val list = store.recordRoute(RecentRoute(a, b, c, boardStation = null, alightStation = null))
         assertEquals(2, list.size)
         assertEquals("C", list.first().via?.label)
-        assertNotEquals(RecentRoute(a, b).id, RecentRoute(a, b, c).id)
-        val pinned = store.setRoutePinned(RecentRoute(a, b, c), true)
+        assertNotEquals(RecentRoute(a, b, boardStation = null, alightStation = null).id, RecentRoute(a, b, c, boardStation = null, alightStation = null).id)
+        val pinned = store.setRoutePinned(RecentRoute(a, b, c, boardStation = null, alightStation = null), true)
         assertEquals("C", pinned.first().via?.label); assertTrue(pinned.first().pinned)
-        val again = store.recordRoute(RecentRoute(a, b, c))
+        val again = store.recordRoute(RecentRoute(a, b, c, boardStation = null, alightStation = null))
         assertEquals(2, again.size); assertEquals("C", again.first().via?.label); assertTrue(again.first().pinned)
-        val removed = store.removeRoute(RecentRoute(a, b, c))
+        val removed = store.removeRoute(RecentRoute(a, b, c, boardStation = null, alightStation = null))
         assertEquals(1, removed.size); assertNull(removed.first().via)
     }
 
@@ -303,7 +303,7 @@ class RecentEndpointRomanTest {
                 assertEquals(pinned, actual.pinned)
             }
         }
-        val route = RecentRoute(from, to, via)
+        val route = RecentRoute(from, to, via, boardStation = null, alightStation = null)
         store.recordRoute(route)
         store.setRoutePinned(route, pinned = true)
         val restored = RecentSearchStore(kv).routes().first()
@@ -312,7 +312,7 @@ class RecentEndpointRomanTest {
         assertTrue(restored.pinned)
         // 표기만 바뀌어도 같은 경로이며 고정 상태와 자리를 유지한다.
         val updatedTo = RecentEndpoint(to.label, to.lat, to.lng, labelRoman = "Destination")
-        store.recordRoute(RecentRoute(from, updatedTo, via))
+        store.recordRoute(RecentRoute(from, updatedTo, via, boardStation = null, alightStation = null))
         assertEquals(1, store.routes().size)
         assertEquals("Destination", store.routes().first().to?.labelRoman)
         assertEquals(true, store.routes().first().pinned)
@@ -409,9 +409,9 @@ class RecentPinnedReorderTest {
         val a = RecentEndpoint("A", 37.5, 127.1)
         val b = RecentEndpoint("B", 37.6, 127.2)
         val c = RecentEndpoint("C", 37.55, 127.15)
-        val direct = RecentRoute(a, b)
-        val viaC = RecentRoute(a, b, c)
-        val fromHere = RecentRoute(null, b)
+        val direct = RecentRoute(a, b, boardStation = null, alightStation = null)
+        val viaC = RecentRoute(a, b, c, boardStation = null, alightStation = null)
+        val fromHere = RecentRoute(null, b, boardStation = null, alightStation = null)
         for (route in listOf(direct, viaC, fromHere)) {
             store.recordRoute(route)
             store.setRoutePinned(route, pinned = true)

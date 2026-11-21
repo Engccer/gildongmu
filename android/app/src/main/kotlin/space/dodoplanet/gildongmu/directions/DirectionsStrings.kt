@@ -167,6 +167,27 @@ internal fun stringId(key: String): Int? = when (key) {
     "recentRoutes.itemVia" -> R.string.recentRoutes_itemVia
     "recentRoutes.clearAll" -> R.string.recentRoutes_clearAll
     "recentRoutes.cleared" -> R.string.recentRoutes_cleared
+    "android.journey.boardFieldStation" -> R.string.android_journey_boardFieldStation
+    "android.journey.boardFieldStop" -> R.string.android_journey_boardFieldStop
+    "android.journey.alightFieldStation" -> R.string.android_journey_alightFieldStation
+    "android.journey.alightFieldStop" -> R.string.android_journey_alightFieldStop
+    "android.journey.aboardField" -> R.string.android_journey_aboardField
+    "android.journey.aboardFieldDirection" -> R.string.android_journey_aboardFieldDirection
+    "android.journey.aboardLinePrompt" -> R.string.android_journey_aboardLinePrompt
+    "android.journey.aboardDirectionPrompt" -> R.string.android_journey_aboardDirectionPrompt
+    "android.journey.aboardDirectionRow" -> R.string.android_journey_aboardDirectionRow
+    "android.journey.aboardTerminal" -> R.string.android_journey_aboardTerminal
+    "android.journey.aboardDirectionsLoading" -> R.string.android_journey_aboardDirectionsLoading
+    "android.journey.aboardDirectionsEmpty" -> R.string.android_journey_aboardDirectionsEmpty
+    "android.journey.aboardDirectionsUnavailable" -> R.string.android_journey_aboardDirectionsUnavailable
+    "android.journey.aboardDirectionsFailed" -> R.string.android_journey_aboardDirectionsFailed
+    "android.journey.aboardMissing" -> R.string.android_journey_aboardMissing
+    "android.journey.aboardOpposite" -> R.string.android_journey_aboardOpposite
+    "android.journey.stationPlace" -> R.string.android_journey_stationPlace
+    "android.journey.recentRoute" -> R.string.android_journey_recentRoute
+    "android.journey.recentRouteBoth" -> R.string.android_journey_recentRouteBoth
+    "android.journey.recentRouteStop" -> R.string.android_journey_recentRouteStop
+    "android.journey.recentRouteBothPlaces" -> R.string.android_journey_recentRouteBothPlaces
     "transitGuide.exitBound" -> R.string.transitGuide_exitBound
     "transitGuide.openStation" -> R.string.transitGuide_openStation
     "transitGuide.callStation" -> R.string.transitGuide_callStation

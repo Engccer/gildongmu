@@ -38,7 +38,7 @@ class DirectionsAddressDeviceTest {
             override suspend fun get(url: String, timeoutMs: Long?) = replies.await()
         })
         val vm = DirectionsViewModel(
-            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()),
+            RouteService(client), SearchService(client), StationService(client), RecentSearchStore(InMemoryKeyValueStore()),
             object : EndpointLocator {
                 override suspend fun currentCoordinate(force: Boolean) = locations.await()
                 override suspend fun coordinateForRanking(): NearbyCoord? = null

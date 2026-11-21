@@ -41,7 +41,7 @@ class DirectionsAddressTest {
             }
         })
         val model = DirectionsViewModel(
-            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()),
+            RouteService(client), SearchService(client), StationService(client), RecentSearchStore(InMemoryKeyValueStore()),
             object : EndpointLocator {
                 override suspend fun currentCoordinate(force: Boolean) = locations.wait()
                 override suspend fun coordinateForRanking(): NearbyCoord? = null
