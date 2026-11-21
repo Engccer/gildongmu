@@ -185,9 +185,15 @@ def run(query: str) -> None:
 
     if not find("도보 안내", first="prev"):
         return record("FAIL", "안내 시트 제목 찾기")
-    menu = enter(4)
+    menu = enter(7)  # 「팝업 창」 안내가 늦게 오면 다음 키 하나를 삼킨다 — 가라앉은 뒤 움직인다
     first_item = current(menu)
-    items = [first_item] + [current(press("space 4", label="메뉴")) for _ in range(3)]
+    # 메뉴 항목 줄은 「팝업 창」 안내와 겹쳐 늦게 오기도 한다 — 키마다 나온 출력을 모두 모은다.
+    items = [first_item]
+    # 「팝업 창」 안내와 겹친 키는 항목 줄을 잃기도 한다(커서는 움직였다 — 다음 키가 첫 항목으로 돌아온다). 두 항목을 다 들을 때까지 한 바퀴 더 돈다.
+    for _ in range(6):
+        items += [o for o in press("space 4", wait=3, label="메뉴") if o]
+        if any("장소 상세 보기" in i for i in items) and any("목적지 바꾸기" in i for i in items):
+            break
     detail = next((n for n, i in enumerate(items) if "장소 상세 보기" in i), None)
     change = next((n for n, i in enumerate(items) if "목적지 바꾸기" in i), None)
     if detail is None:

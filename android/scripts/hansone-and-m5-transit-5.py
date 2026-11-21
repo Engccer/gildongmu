@@ -5,11 +5,13 @@
 
     H7_SCRIPTS=<h7.py가 있는 폴더> python3 android/scripts/hansone-and-m5-transit-5.py [검색어]
     H7_SCRIPTS=... python3 android/scripts/hansone-and-m5-transit-5.py --cleanup   # 안내만 끝내고 앱을 닫는다
+    H7_SCRIPTS=... python3 android/scripts/hansone-and-m5-transit-5.py --notice    # 새 소식 창 닫힘 길(확인 키만 지우고 다시 띄운다)
 
 판정은 점자·화면 출력 기록(LCD)과 `dumpsys`(창 초점·알림·화면 상태)만 쓴다. uiautomator·layout 덤프는 쓰지 않는다.
 각 단계의 LCD 원문은 `   > ` 접두로 출력한다(주 세션이 로그로 판정). 실제 승차 없이 닿는 범위까지만 본다.
-실행 순서: 새 소식 → 검색·길찾기 → 시작 버튼 → 시트 착지·줄 순서 → 띠바 → 차량 후보 20초 → 승차(이미 탔어요)
-→ 경유역·상세 → 화면 밖 왕복 → 화면 끔 15초 → 하차(다음 구간)와 알림 → 안내 종료.
+실행 순서: 새 소식 → 검색·길찾기 → 시작 버튼 → 시트 착지·줄 순서 → 띠바 → 차량 후보 20초 → 승차(이미 탔어요 → 역 → 차량)
+→ 갈래 H7_PHASE=ride(기본): 화면 끔 15초 → 탑승 변경으로 하차역 → 알림 → 남은 도보 안내 시작 / nav: 경유역 상세 왕복 → 탭 왕복 → 앱 밖 왕복
+→ 안내 종료. 한 번에 다 돌면 10분을 넘으므로 갈래를 나눠 점유를 따로 잡는다.
 종료 코드: 0 통과, 1 실패, 2 시작 조건 미충족. 전체 10분 안에 끝나게 시간 예산(BUDGET)을 둔다.
 """
 import importlib.util
@@ -32,9 +34,9 @@ enter = smoke.enter
 norm = smoke.norm
 
 SERIAL = os.environ.get("ANDROID_SERIAL", "000000000150")
-# 이미 확인한 단계를 건너뛰어 예산을 뒤 단계에 쓴다: H7_SKIP=notice,sheet (notice = 새 소식 창 확인, sheet = 대중교통 시트 줄·띠바).
+# 이미 확인한 단계를 건너뛰어 예산을 뒤 단계에 쓴다: H7_SKIP=notice,sheet,candidates,screenoff,menu,via (새 소식 창, 대중교통 시트 줄·띠바, 차량 후보 20초, 승차 중 화면 끔, 제목 메뉴), via(경유역 목록).
 SKIP = set(filter(None, os.environ.get("H7_SKIP", "").split(",")))
-BUDGET = 450.0  # 초. 마무리(안내 종료·홈)까지 10분 안에 끝낸다.
+BUDGET = 500.0  # 초. 마무리(안내 종료·홈)까지 10분 안에 끝낸다.
 T0 = time.time()
 SCAN_LIMIT = 60
 
@@ -53,6 +55,16 @@ L_BOARD_ALREADY = "이미 탔어요"  # transitGuide_boardAlready / boardApprox
 L_ADVANCE = "다음 구간"  # transitGuide_advance (하차 뒤 누르는 버튼; 「내렸어요」 버튼은 없다)
 L_VIA = "경유"  # transitGuide_viaStopsTrain 「경유역 N개」 / viaStopsBus 「경유 정류장 N개」
 L_PROGRESS = "진행 상황"  # guide_progressButton
+L_ABOARD_PROMPT = "지금 어느 역을 지나고 계신가요?"  # transitGuide_aboardStationPrompt
+L_ABOARD_VEHICLE = "타고 계신 차량을 선택하세요"  # transitGuide_waitingLabelAboard
+L_SELECT_TRAIN = "이 열차 선택"  # transitGuide_selectTrain
+L_NO_TRAIN = "열차 정보 없이 계속"  # transitGuide_continueWithoutTrain
+L_PICK_CANCEL = "역 선택 취소"  # transitGuide_reboardCancel
+L_CHANGE_BOARDING = "탑승 변경"  # transitGuide_changeBoarding
+L_HANDOFF = "남은 도보 안내 시작"  # transitGuide_walkHandoffStart
+L_ARRIVED = ("내리신 뒤", "내리셨으면", "하차 지점 도착")  # transitGuide_arrived* 통지·상태 문장(하차 선언 뒤 상태 줄은 「…하차 지점 도착.」)
+# 실행할 갈래: ride = 승차 중 → 화면 끔 → 탑승 변경으로 하차 → 남은 도보, nav = 승차 중 → 경유역 상세 왕복 → 탭 왕복 → 앱 밖 왕복.
+PHASE = os.environ.get("H7_PHASE", "ride")
 SEARCH_TAB = "검색 탭"
 PLACE_FIELD = "장소 검색"
 DIRECTIONS = "여기까지 길찾기"
@@ -188,6 +200,50 @@ def step_notice() -> bool:
     say(after, 6)
     record("INFO", "새 소식 창 닫은 뒤 커서 줄", (current(after) or "출력 없음")[:60])
     return True
+
+
+# ── 1b. 새 소식 창 닫힘 길(--notice) ────────────────────────────────
+def notice_on_relaunch() -> bool:
+    """앱을 새 프로세스로 띄워 새 소식 창이 서는가(한 프로세스에 한 번만 판정한다)."""
+    sh("am", "force-stop", smoke.PACKAGE)
+    started = h7.now()
+    h7.launch(f"{smoke.PACKAGE}/.MainActivity", wait=6)
+    time.sleep(3)  # 확인 여부를 디스크에서 읽은 뒤 창이 선다
+    out = lcd_since(started)
+    say(out, 4)
+    if any(L_NOTICE_TITLE in o for o in out):
+        return True
+    # 창이 섰으면 그 줄들(제목·「무엇이 달라졌나요」·「닫기」)이 위아래에 있다.
+    return bool(seek(lambda l: L_NOTICE_TITLE in l or "무엇이 달라졌나요" in l or "유의해야 할 것" in l, first="prev", limit=16))
+
+
+def check_notice_paths() -> None:
+    # 확인 키 하나만 지운다(앱 데이터 전체를 지우지 않는다). debug 빌드라 run-as가 된다.
+    sh("am", "force-stop", smoke.PACKAGE)
+    sh("run-as", smoke.PACKAGE, "sed", "-i", "/releaseNoticeV2/d", "shared_prefs/gildongmu.xml")
+    if not notice_on_relaunch():
+        record("FAIL", "확인 키를 지운 뒤 새 소식 창이 뜸")
+        return
+    lines: list[str] = []
+    for _ in range(16):
+        line = current(press("space 4", label="새 소식 줄"))
+        if lines and line == lines[-1]:
+            break
+        lines.append(line)
+    say(lines, 16)
+    close = any(L_NOTICE_CLOSE in l and "시트" not in l for l in lines)
+    scrim = any("시트 닫기" in l for l in lines)
+    record("PASS" if close and not scrim else "FAIL", "창 끝에 「닫기」 하나만(「시트 닫기」 없음)", f"닫기 {close}, 시트 닫기 {scrim}")
+    sh("input", "keyevent", "4")  # 뒤로 가기
+    time.sleep(2)
+    record("PASS" if notice_on_relaunch() else "FAIL", "뒤로 가기로 닫으면 다음 실행에 다시 뜸")
+    if not seek(lambda l: L_NOTICE_CLOSE in l and "시트" not in l, limit=16):
+        record("FAIL", "「닫기」 도달")
+        return
+    enter(4)
+    time.sleep(2)
+    record("PASS" if not notice_on_relaunch() else "FAIL", "「닫기」 뒤에는 다음 실행에 안 뜸")
+    sh("am", "force-stop", smoke.PACKAGE)
 
 
 # ── 2. 검색 → 길찾기 ─────────────────────────────────────────────────
@@ -346,25 +402,76 @@ def check_candidates_stay() -> None:
     record("PASS" if not moved else "WARN", "20초 머무는 동안 커서 줄 변화 없음", f"새 출력 {len(moved)}줄: {moved[0][:40] if moved else ''}")
 
 
-# ── 6a. 승차 ────────────────────────────────────────────────────────
-def step_board() -> bool:
-    if not guard("승차"):
+# ── 6a. 승차(책상에서 닿는 길: 「이미 탔어요」 → 역 → 차량) ──────────
+def pick_station(target: str) -> str | None:
+    """역 질문 화면에서 역 버튼을 모두 훑고(A80: 이름 없는 버튼) `target`(mid = 셋째 역, last = 하차역)을 누른다. 누른 뒤 출력의 시작 시각을 돌려준다."""
+    stations: list[str] = []
+    for _ in range(30):
+        line = current(press("space 4", label="역 버튼"))
+        if L_PICK_CANCEL in line or (stations and line == stations[-1]):
+            break
+        if line.endswith(("버튼 활성화하려면 ENTER 키를 누르세요", "버튼")) or " 버튼 " in line:
+            stations.append(line)
+    nameless = [n for n, l in enumerate(stations) if re.match(r"^BT 버튼", l)]
+    record("PASS" if not nameless else "FAIL", "역 버튼마다 이름이 있음(A80)", f"{len(stations)}개 중 이름 없음 순번 {[n + 1 for n in nameless]}")
+    if len(stations) < 3:
+        record("WARN", "역 버튼이 셋보다 적음", str(len(stations)))
+        return None
+    idx = len(stations) - 1 if target == "last" else 2
+    # 키 횟수로 세지 않고 줄로 찾는다(한소네 「이전」이 줄을 건너뛰는 일이 있다). 「… 버튼」까지 맞춰 경유역 목록의 같은 이름 줄과 가른다.
+    key = stations[idx].split(" 버튼")[0] + " 버튼"
+    if not find(key, first="prev", limit=len(stations) + 2):
+        record("WARN", "고를 역 버튼으로 커서를 옮기지 못함", f"{idx + 1}/{len(stations)}")
+        return None
+    record("INFO", "고른 역 순번", f"{idx + 1}/{len(stations)}")
+    started = h7.now()
+    enter(6)
+    return started
+
+
+def step_aboard(target: str) -> bool:
+    """대기 국면에서 「이미 탔어요」 → 역 고르기. mid면 차량까지 골라 승차 중으로, last면 하차역이라 곧장 하차로 간다."""
+    if not guard("이미 탔어요"):
         return False
-    btn = find(L_BOARD_ALREADY, limit=SCAN_LIMIT)
-    if not btn:
-        record("INFO", "「이미 탔어요」 못 찾음", "대기 국면이 아니거나 후보 선택 흐름(실승차 판정 몫)")
+    if not find(L_BOARD_ALREADY, limit=SCAN_LIMIT):
+        record("INFO", "「이미 탔어요」 못 찾음", "대기 국면이 아님")
         return False
     started = h7.now()
     enter(5)
-    # 급행 질문이 뜨면 일반 열차로 넘긴다.
-    pre = lcd_since(started)
-    if any("급행인가요" in o for o in pre):
-        if find("일반 열차", limit=8):
-            enter(5)
+    out = land_after(started, 3)
+    record("PASS" if any(L_ABOARD_PROMPT in o for o in out) else "WARN", "「이미 탔어요」 → 역 질문 헤딩 착지", current(out)[:50])
+    started = pick_station(target)
+    if not started:
+        return False
     out = land_after(started, 4)
-    ride = next((o for o in out if any(h in o for h in RIDE_HINTS)), None)
-    record("PASS" if ride else "WARN", "승차 국면 진입(탑승 중·남은 정거장)", (ride or "출력에 승차 낱말 없음")[:60])
-    return bool(ride)
+    if target == "last":
+        ok = any(h in o for o in out for h in L_ARRIVED)
+        record("PASS" if ok else "WARN", "하차역을 고르면 하차 상태 문장에 착지", current(out)[:60])
+        return ok
+    record("PASS" if any(L_ABOARD_VEHICLE in o for o in out) else "WARN", "역을 고르면 「타고 계신 차량을 선택하세요」 착지", current(out)[:50])
+    train = find(L_SELECT_TRAIN, limit=20) or find(L_NO_TRAIN, limit=20)
+    if not train:
+        record("WARN", "고를 열차 줄도 「열차 정보 없이 계속」도 못 찾음")
+        return False
+    record("INFO", "고른 열차 줄", train[:50])
+    started = h7.now()
+    enter(6)
+    out = land_after(started, 4)
+    ride = next((o for o in out if "탑승 중" in o), None)
+    record("PASS" if ride else "FAIL", "열차를 고르면 탑승 중 상태 문장에 착지", (ride or current(out))[:60])
+    # 착지가 어긋나도 국면은 넘어갔을 수 있다 — 승차 국면 점검은 상태 문장이 있으면 이어 간다.
+    return bool(ride) or bool(find("탑승 중", first="prev", limit=24))
+
+
+def check_riding_rows() -> None:
+    if not guard("탑승 중 시트 줄"):
+        return
+    find(L_TRANSIT_TITLE, first="prev", limit=24)
+    lines = sheet_lines(40)
+    say(lines, 40)
+    record("PASS" if not any(doubled(l) for l in lines) else "WARN", "탑승 중 시트 줄 한 번 출력", "")
+    record("PASS" if any(L_CHANGE_BOARDING in l for l in lines) else "WARN", "탑승 중 「탑승 변경」이 섬", "")
+    record("PASS" if not any(L_BOARD_ALREADY in l for l in lines) else "FAIL", "탑승 중 「이미 탔어요」가 없음", "")
 
 
 # ── 9a. 경유역 목록·상세 ─────────────────────────────────────────────
@@ -443,28 +550,96 @@ def check_screen_off(boarded: bool) -> None:
     record("PASS" if title else "FAIL", "화면 켠 뒤 시트가 남음", (title or "시트 제목 못 찾음")[:50])
 
 
-# ── 6b. 하차와 알림 ─────────────────────────────────────────────────
-def check_alight() -> None:
+# ── 6b. 하차(승차 중 「탑승 변경」에서 하차역)와 알림 ──────────────
+def check_alight() -> bool:
     if not guard("하차"):
-        return
-    adv = find(L_ADVANCE, limit=SCAN_LIMIT)
-    if not adv:
-        record("INFO", "「다음 구간」 못 찾음", "하차 선언 단추는 하차 근접 때만 선다: 실승차 판정 몫")
-        return
-    record("INFO", "하차 선언에 쓰는 단추", adv[:50])
-    if "도보" in adv:
-        record("INFO", "남은 도보 안내 시작 단추라 누르지 않음", adv[:50])
-        return
+        return False
+    before = guide_notification_lines()
+    record("PASS" if before else "WARN", "승차 중 상주 알림이 있음", f"알림 줄 {len(before)}개")
+    if not find(L_CHANGE_BOARDING, limit=SCAN_LIMIT):
+        record("WARN", "「탑승 변경」 못 찾음")
+        return False
     started = h7.now()
-    enter(6)
-    out = land_after(started, 4)
-    arrived = any("도착" in o or "내리" in o for o in out)
+    enter(5)
+    out = land_after(started, 3)
+    record("PASS" if any(L_ABOARD_PROMPT in o or "역" in o for o in out[-2:]) else "WARN", "「탑승 변경」 → 역 질문 착지", current(out)[:50])
+    started = pick_station("last")
+    if not started:
+        return False
+    out = land_after(started, 5)
+    ok = any(h in o for o in out for h in L_ARRIVED)
+    record("PASS" if ok else "FAIL", "하차역을 고르면 하차 상태 문장에 착지", current(out)[:60])
     time.sleep(4)
     notes = guide_notification_lines()
-    if arrived:
-        record("PASS" if not notes else "FAIL", "하차(arrived) 직후 안내 알림이 남지 않음", f"알림 줄 {len(notes)}개")
-    else:
-        record("INFO", "하차 직후 알림 판정 못 함(다음 구간이 이어짐, 실승차 판정 몫)", f"알림 줄 {len(notes)}개")
+    record("PASS" if not notes else "FAIL", "하차(arrived) 직후 안내 알림이 남지 않음", f"알림 줄 {len(notes)}개")
+    find(L_TRANSIT_TITLE, first="prev", limit=30)
+    lines = sheet_lines(40)
+    say(lines, 40)
+    record("PASS" if not any(doubled(l) for l in lines) else "WARN", "하차 뒤 시트 줄 한 번 출력", "")
+    return ok
+
+
+def check_walk_handoff() -> None:
+    if not guard("남은 도보"):
+        return
+    if not find(L_HANDOFF, limit=SCAN_LIMIT):
+        adv = find(L_ADVANCE, limit=SCAN_LIMIT)
+        record("INFO", "「남은 도보 안내 시작」 없음(환승이 남은 경로)", (adv or "")[:40])
+        return
+    started = h7.now()
+    enter(8)
+    for _ in range(2):
+        if not smoke.in_app():
+            smoke.dismiss_system_dialogs()
+    out = land_after(started, 6)
+    record("INFO", "남은 도보 시작 뒤 첫 커서 줄", current(out)[:60])
+    title = find(L_WALK_TITLE, first="prev", limit=16)
+    record("PASS" if title else "FAIL", "「남은 도보 안내 시작」 → 도보 시트", (title or "도보 시트 제목 못 찾음")[:50])
+
+
+def check_title_menu() -> None:
+    """제목 메뉴 항목 순서(2026-11-21 판정: 전화 걸기 → 목적지 바꾸기 → 장소 상세 보기). 키마다 출력이 늦게 올 수 있어 연 뒤 출력을 모두 모은다."""
+    if not guard("제목 메뉴"):
+        return
+    if not find(L_TRANSIT_TITLE, first="prev", limit=30):
+        record("WARN", "제목 줄 못 찾음")
+        return
+    started = h7.now()
+    enter(4)
+    for _ in range(3):
+        press("space 4", wait=4, label="메뉴")
+    time.sleep(2)
+    out = [o for o in lcd_since(started) if o]
+    say(out, 12)
+    change = next((n for n, o in enumerate(out) if "목적지 바꾸기" in o), None)
+    detail = next((n for n, o in enumerate(out) if "장소 상세 보기" in o), None)
+    ok = change is not None and detail is not None and change < detail
+    record("PASS" if ok else "FAIL", "제목 메뉴 순서(목적지 바꾸기 → 장소 상세 보기)", " / ".join(o[:16] for o in out)[:120])
+    press("f4", wait=3, label="ESC")
+
+
+def check_tab_return() -> None:
+    """시트를 접고 검색 탭으로 갔다가 띠바로 다시 펼친다(시트 착지: 상태 문장 행이 기대값)."""
+    if not guard("탭 왕복"):
+        return
+    if not find(L_MINIMIZE, first="prev", limit=30):
+        record("WARN", "「안내 시트 접기」 못 찾음")
+        return
+    enter(3)
+    if not find(SEARCH_TAB, limit=30):
+        record("WARN", "검색 탭 못 찾음")
+        return
+    enter(3)
+    band = find(L_RESTORE, limit=30)
+    if not band:
+        record("FAIL", "다른 탭에서 띠바 줄 못 찾음")
+        return
+    started = h7.now()
+    enter(4)
+    # 착지는 시트 등장 낭독이 끝난 뒤다(진단 로그 speechWait=settled) — 넉넉히 기다린다.
+    out = land_after(started, 8)
+    landing = next((o for o in reversed(out) if o), "")
+    record("PASS" if "탑승 중" in landing else "WARN", "다른 탭에서 띠바로 펼치면 상태 문장 행에 앉음", " / ".join(o[:20] for o in out if o)[:120])
 
 
 # ── 8. 안내 종료 ────────────────────────────────────────────────────
@@ -498,14 +673,25 @@ def run(query: str) -> None:
     if "sheet" not in SKIP:
         check_transit_sheet()
         check_band()
-    check_candidates_stay()
-    if step_board():
-        check_via_list()
-        check_leave_and_return()
-        check_screen_off(boarded=True)
-        check_alight()
-    else:
+    if "candidates" not in SKIP:
+        check_candidates_stay()
+    if not step_aboard("mid"):
         check_screen_off(boarded=False)
+        check_stop()
+        return
+    check_riding_rows()
+    if PHASE == "nav":
+        if "menu" not in SKIP:
+            check_title_menu()
+        if "via" not in SKIP:
+            check_via_list()
+        check_tab_return()
+        check_leave_and_return()
+    else:
+        if "screenoff" not in SKIP:
+            check_screen_off(boarded=True)
+        if check_alight():
+            check_walk_handoff()
     check_stop()
 
 
@@ -518,7 +704,10 @@ def main() -> int:
         print("한소네가 터미널 모드입니다. 화면 읽기 프로그램 연결을 끊은 뒤 다시 실행하세요.")
         return 2
     try:
-        if sys.argv[1:] != ["--cleanup"]:
+        if sys.argv[1:] == ["--notice"]:
+            check_notice_paths()
+            sh("input", "keyevent", "3")  # 홈
+        elif sys.argv[1:] != ["--cleanup"]:
             run(sys.argv[1] if len(sys.argv) > 1 else "국립중앙박물관")  # 역은 상세 배치가 길어 「여기까지 길찾기」가 아래에 있다 — 먼 비역 장소
     finally:
         smoke.cleanup()

@@ -726,6 +726,10 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 ⚠ **안드로이드 문자열 표(`guideStrings`·`resourceStrings`)는 표에 없는 키를 받으면 실행 중에 던진다** — 대중교통 시트의 경유역 펼침 줄이 길찾기 공용 `DisclosureRow`에 안내 표를 넘겼는데, 그 줄의 상태 낱말 `android.common.expanded`·`collapsed`가 안내 표에 없어 대중교통 시트가 서는 순간 앱이 죽었다(2026-11-21 한소네 실측, 단계 5부터 잠복). 가드 ⑧(`GuideSourceGuardTest`)은 `guide/`·`audio/` 소스의 문자열 상수만 훑어 다른 패키지 함수 안의 키를 보지 못했다. 안내 쪽이 다른 패키지의 컴포저블에 `strings`를 넘기는 자리를 새로 만들면 그 함수가 부르는 키를 안내 표에 더하고 가드 ⑧의 공용 줄 목록에 넣는다.
 
+### 누른 버튼이 사라지는 전이에서는 시스템이 옮긴 커서가 사용자 이동처럼 보인다
+
+⚠ **사용자가 누른 버튼이 전이로 사라지면 TalkBack이 커서를 이웃 노드로 옮기고, 그 이동이 접근성 초점 이벤트 두 번(47ms·82ms 간격 실측)으로 오기도 한다** — 대중교통 시트의 「이 열차 선택」을 누른 뒤 착지 대기가 이 이동을 사용자 이동으로 세 상태 문장 착지를 포기했고, 커서가 아래 헤딩에 남았다(2026-11-21 한소네 실측, 진단 로그 `reason=userMoved movedMs=47`, 고친 뒤 `movedMs=82`). 사용자 입력이 낸 전이·포커스를 잃은 전이·앞 착지를 물려받은 전이는 첫 이동 묶음(0.5초, `SYSTEM_PLACEMENT_BURST_SECONDS`)을 시스템 배치로 보고(`transitTransitionExpectsPlacement`), 그 뒤 이동만 사용자 이동으로 센다. JVM 테스트는 이벤트 두 번을 47·82ms로 넣어 단언한다(`TransitSheetLandingTest`).
+
 ### `MutableStateFlow`는 `equals`가 같은 값을 버린다
 
 ⚠ **객체 동일성(`===`)으로 가르려는 표식을 data class 그대로 `MutableStateFlow`에 넣으면, 내용이 같은 새 객체가 와도 갱신되지 않고 옛 객체가 남는다** — 대중교통 시작 버튼 표식(`GuideSession.transitStartRoute`)이 새 조회의 같은 경로를 저장하지 못해 실패 행이 그 버튼 아래 서지 않았다(2026-11-21 단계 7 리뷰 반영 중 단위 테스트가 잡음). 매번 다른 값이어야 하는 표식은 data class가 아닌 감싸개(`TransitStartMark`)로 싣는다.
