@@ -333,7 +333,7 @@ def main() -> int:
     only = None
     if args[:1] == ["--only"]:
         only, args = args[1], args[2:]
-    query = args[0] if args else "길동 치킨"
+    query = args[0] if args else "치킨"
     window = smoke.focus()
     if window == "?":
         print("adb로 한소네를 찾지 못했습니다.")
