@@ -435,7 +435,7 @@ object GuideSession {
 | 1 | §7, `:kit` 이식(§7-2) | `Journey.kt` 함수·타입, `RouteService.journey`·`journeyStops`, `RecentStation`·`RecentRoute` 역 필드 |
 | 2 세션 ✅ 2026-11-21 | §7-3·§7-4: `GuideSession` 여정 상태·전이·준비·단계 시작·종료·`isOccupied`·복귀 30초, 도보 `markChained`·`lastFailure`·`endsWithoutScreen`, 대중교통 `start(…, aboard)`·후보 방향 잠금, 서비스 보유자·넘김 | `GuideSession.startJourney(JourneyPlan)`(호출부 없음), `journeyAction(JourneyEvent)`, `journeyUi`, `isOccupied`, `JourneyPlan`·`TransitAboardStart`·`JourneyFailure`·`JourneyUiState` |
 | 3 화면(안내) ✅ 2026-11-21 | §7-5: `GuideScreenKind.journey`·`JourneySheet`·띠바·도보/자동차 시트 여정 버튼·대중교통 시트 「다음 구간」·여정 중 숨김 | 시트가 부르는 `journeyAction` |
-| 4 길찾기 모델 | §7-6 모델 몫: `DirectionsViewModel` 여정 상태·조회·aboard 방면·최근 경로 역 필드(기본값 제거·`togglePin` 수정) | 화면이 부를 모델 함수(iOS 이름) |
+| 4 길찾기 모델 ✅ 2026-11-21 | §7-6 모델 몫: `DirectionsViewModel` 여정 상태·조회·aboard 방면·최근 경로 역 필드(기본값 제거·`togglePin` 수정) | 화면이 부를 모델 함수(iOS 이름) |
 | 5 길찾기 화면(진입점 개방) | §7-6 화면 몫: 입구 버튼·검색 대상 셋·정류장 줄·확인 질문·역 칸·aboard 행과 단계 줄·결과 줄·「안내 시작」·최근 경로 줄 문장, BACKLOG B26·E43 M5·PROGRESS 갱신, §2 실차·실승차 행, 한소네 전 국면 | — |
 
 - 앱 단계(2~5)는 들어가기 전에 `git fetch`로 `and-fix` 통합분을 확인하고 그 위로 rebase한다(`DirectionsScreen.kt`·`GuideSession.kt`·`RouteRows.kt` 겹침은 양쪽을 살린다).
