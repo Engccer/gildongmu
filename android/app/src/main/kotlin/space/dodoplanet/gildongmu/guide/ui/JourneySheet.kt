@@ -58,7 +58,7 @@ enum class JourneySheetButton(val key: String, val tag: String) {
 /**
  * 실패일 때 보이는 버튼을 순서대로(iOS `failedControls`) — 해결 수단(권한 철회·정밀 위치 꺼짐으로 끊긴 경우, §6.1) → [경로 다시 조회] → 「자동차에서 내렸어요」 →
  * 「자동차에 탔어요」. 출구 도보 시작 실패는 「자동차에 탔어요」가 곧 다음 단계라 재시도를 두지 않는다(§6.4 표) — 끊긴 경우(`failure != null`)는 둔다.
- * 실패가 아니면(준비 중) 버튼이 없다 — 상태 문장과 [안내 종료]뿐이다. 순수 함수라 JVM 테스트가 순서를 잠근다(이 프로젝트엔 Compose UI 레인이 없다).
+ * 실패가 아니면(준비 중) 버튼이 없다 — 상태 문장과 [안내 종료]뿐이다. 순수 함수라 JVM 테스트가 순서를 잠그고, 그려진 시트는 계측 테스트 `JourneySheetA11yTest`가 본다.
  */
 fun journeySheetButtons(phase: JourneyPhase, failure: JourneyFailure?): List<JourneySheetButton> {
     val stage = (phase as? JourneyPhase.Failed)?.at ?: return emptyList()
