@@ -11,7 +11,8 @@
   같은 낱말 덩어리가 줄 안에 두 번 나오면 두 번 출력으로 본다. 끝나면 앱 언어를 원래 값으로 되돌린다.
 - transit(6번 E43 M5 ⑦⑧ + 5번 A80·A81, 책상에서 닿는 길 「이미 탔어요」로 승차 중까지): 경유역 상세 왕복 뒤 펼침이 남는가,
   승차 중 검색 탭 장소 상세의 제목 다음 줄(A81 이름 없는 「버튼」), 다른 탭에서 띠바로 펼친 뒤 8초 안 착지, 앱을 나갔다 돌아온 뒤 커서 줄
-  (「시트 닫기」면 결함), 화면을 끄고 켠 직후와 몇 초 뒤의 시트 줄(A80 이름 없는 「버튼」이 켠 직후 한 순간인가). 끝나면 안내를 끝낸다.
+  (「시트 닫기」면 결함), 화면을 끄고 켠 직후와 몇 초 뒤의 시트 줄(A80 이름 없는 「버튼」이 켠 직후 한 순간인가). 끝나면 앱을 강제 종료해 안내를 끝낸다.
+  진입(승차 중까지)만 5분 가까이 걸려 네 단계가 590초 안에 다 돌지 않는다: `H7_TSTEPS=leave,screen,via,search`에서 골라 나눠 돈다.
 - shortcuts: `dumpsys shortcut`(읽기 전용)에서 길동무의 정적·동적 바로가기 id를 읽는다. 기대: 기기 안 음성 인식기가 있으면(검색 탭에
   「받아쓰기 시작」 버튼이 선다) 정적 nearby + 동적 voiceSearchDynamic, 없으면 nearby만.
 다른 세션이 같은 기기를 쓰므로 기기 락 하나 안에서 처음부터 끝까지 돈다. 종료 코드: 0 통과, 1 실패, 2 시작 조건 미충족.
@@ -19,6 +20,7 @@
 import importlib.util
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -190,8 +192,28 @@ def nameless(line: str) -> bool:
     return bool(NAMELESS.match(line.strip()))
 
 
+def after_heading() -> str:
+    """상세에 들어온 직후 다음 줄로 가며 제목 헤딩(「… H」)을 지나 그 다음 줄을 돌려준다(착지가 창 제목이면 헤딩부터 나온다)."""
+    line = ""
+    for _ in range(3):
+        line = current(press("space 4", label="상세 제목 다음 줄"))
+        if line and not line.endswith(" H"):
+            return line
+    return line
+
+
+def reopen_if_band(label: str) -> bool:
+    """시트가 접혀 띠바가 남았으면 띠바로 다시 펼친다(다음 단계가 시트에서 시작하게). 펼쳤으면 True."""
+    band = find(t5.L_RESTORE, limit=30) or find(t5.L_RESTORE, first="prev", limit=30)
+    if not band:
+        return False
+    record("INFO", f"{label}: 띠바로 시트를 다시 펼침")
+    enter(5)
+    return True
+
+
 def transit_via_roundtrip() -> None:
-    """⑦ 경유역 줄을 누르면 역 상세가 열리고, 돌아오면 그 줄에 앉고 목록이 펼친 채인가. 상세에서는 A81처럼 제목 다음 줄도 본다."""
+    """⑦ 경유역 줄을 누르면 역 상세가 열리고, 돌아오면 시트가 다시 서서 그 줄에 앉고 목록이 펼친 채인가. 상세에서는 A81처럼 제목 다음 줄도 본다."""
     if not t5.guard("경유역 왕복"):
         return
     via = find(t5.L_VIA, limit=t5.SCAN_LIMIT)
@@ -208,42 +230,46 @@ def transit_via_roundtrip() -> None:
     enter(5)
     title = current(t5.land_after(started, 3))
     record("INFO", "경유역을 누른 뒤 착지 줄(역 상세 제목이 기대값)", (title or "출력 없음")[:50])
-    after_title = current(press("space 4", label="상세 제목 다음 줄"))
-    record("FAIL" if nameless(after_title) else "PASS", "경유역 상세 제목 다음 줄에 이름이 있음(A81)", after_title[:50])
+    nxt = after_heading()
+    record("FAIL" if nameless(nxt) else "PASS", "경유역 상세 제목 다음 줄에 이름이 있음(A81)", nxt[:50])
     started = h7.now()
     press("f4", wait=4, label="ESC 상세에서 복귀")
-    back = current(t5.land_after(started, 3))
+    out = t5.land_after(started, 4)
+    back = next((o for o in reversed(out) if o), "")
+    if t5.L_RESTORE in back or any(t5.L_RESTORE in o for o in out[-2:]):
+        record("FAIL", "상세에서 돌아오면 시트가 다시 섬(⑦)", f"띠바에 앉음: {back[:40]}")
+        reopen_if_band("경유역 왕복")
+        return
+    record("PASS" if bool(row) and row[:8] in back else "WARN", "돌아온 뒤 출력에 누른 경유역 행이 나옴", " / ".join(o[:20] for o in out if o)[:80])
+    # 커서 자리는 출력이 아니라 이웃 줄로 가린다(시트 창이 다시 뜨면 한소네가 창 제목만 내는 일이 있다): 다음 줄은 다른 경유역(펼침 유지), 이전 줄은 누른 행.
     nxt = current(press("space 4", label="펼침 유지 확인"))
-    same = bool(row) and row[:8] in back
-    record("PASS" if same else "FAIL", "상세에서 돌아오면 누른 경유역 행에 앉음(⑦)", f"앉은 줄: {back[:40]}")
-    record("PASS" if nxt and nxt != back and "경유" not in nxt[:4] and t5.L_STOP not in nxt else "WARN", "돌아온 뒤 목록이 펼친 채(다음 줄이 다른 경유역 행)", nxt[:40])
+    prv = current(press("space 1", label="누른 행으로 되돌아가기"))
+    expanded = bool(nxt) and nxt != prv and "탭" not in nxt and t5.L_RESTORE not in nxt and t5.L_STOP not in nxt and not nxt.startswith(("BT 경유", "경유"))
+    record("PASS" if bool(row) and row[:8] in prv else "FAIL", "상세에서 돌아오면 커서가 누른 경유역 행에 있음(⑦)", f"이전 줄 {prv[:30]}")
+    record("PASS" if expanded else "FAIL", "돌아온 뒤 목록이 펼친 채(다음 줄이 다른 경유역 행)", nxt[:40])
 
 
 def transit_search_detail() -> None:
     """A81 승차 중 검색 탭 → 장소 상세에서 제목 다음 줄. 그 뒤 검색 탭에서 띠바로 시트를 펼쳐 8초 안 착지(⑧)."""
     if not t5.guard("검색 탭 장소 상세"):
         return
-    if not find(t5.L_MINIMIZE, first="prev", limit=30):
-        return record("WARN", "「안내 시트 접기」 못 찾음")
-    enter(3)
-    if not find(t5.SEARCH_TAB, limit=30):
+    if find(t5.L_MINIMIZE, first="prev", limit=30):
+        enter(3)
+    elif not find(t5.L_RESTORE, limit=30):
+        return record("WARN", "「안내 시트 접기」도 띠바도 못 찾음")
+    if not find(t5.SEARCH_TAB, limit=t5.SCAN_LIMIT):
         return record("WARN", "검색 탭 못 찾음")
-    enter(3)
-    first = ""
-    for _ in range(12):
-        line = current(press("space 4", label="최근·결과 줄"))
-        if line and ("버튼" in line or "," in line) and t5.L_RESTORE not in line and "받아쓰기" not in line and "새로고침" not in line:
-            first = line
-            break
-    if first:
-        started = h7.now()
-        enter(5)
-        title = current(t5.land_after(started, 3))
-        nxt = current(press("space 4", label="상세 제목 다음 줄"))
-        record("FAIL" if nameless(nxt) else "PASS", "안내 중 장소 상세 제목 다음 줄에 이름이 있음(A81)", f"제목 {title[:24]} / 다음 {nxt[:40]}")
-        press("f4", wait=4, label="ESC 검색 탭으로")
+    entered = current(enter(3))
+    if re.sub(r"\s+목록에서.*$", "", entered).endswith(" H"):
+        # 진입 때 연 장소 상세가 탭 전환으로 복원돼 있다(A81 원보고와 같은 길) — 그 제목 다음 줄들을 판정한다. 아무것도 누르지 않는다.
+        lines = [current(press("space 4", label="복원된 상세 줄")) for _ in range(4)]
+        bad = [n for n, l in enumerate(lines) if nameless(l)]
+        record("FAIL" if bad else "PASS", "복원된 장소 상세 제목 다음 줄들에 이름 없는 버튼 없음(A81)", f"제목 {entered[:20]} / " + " | ".join(l[:18] for l in lines))
+        if bad:
+            i = bad[0]
+            record("INFO", "A81 이름 없는 버튼의 앞뒤 줄", f"앞 {(lines[i - 1] if i else entered)[:30]} / 뒤 {(lines[i + 1] if i + 1 < len(lines) else '')[:30]}")
     else:
-        record("INFO", "검색 탭에 연 장소 줄 없음(최근 장소·결과 없음)")
+        record("INFO", "검색 탭에 복원된 상세 없음", entered[:40])
     band = find(t5.L_RESTORE, limit=30) or find(t5.L_RESTORE, first="prev", limit=30)
     if not band:
         return record("FAIL", "다른 탭에서 띠바 줄 못 찾음")
@@ -286,6 +312,9 @@ def transit_screen_on() -> None:
     time.sleep(5)
     find(t5.L_TRANSIT_TITLE, first="prev", limit=24)
     later = t5.sheet_lines(30)
+    if later and t5.L_STOP in later[-1]:
+        tail = current(press("space 4", label="안내 종료 다음 줄"))
+        record("FAIL" if "시트 닫기" in tail else "PASS", "시트 줄이 「안내 종료」에서 끝남(「시트 닫기」 없음, 2026-11-21 판정)", tail[:40])
     e = [l for l in early if nameless(l)]
     l2 = [l for l in later if nameless(l)]
     record("FAIL" if l2 else "PASS", "화면 켜고 5초 뒤 시트 줄에 이름 없는 버튼 없음(A80)", f"켠 직후 {len(e)}개 / 5초 뒤 {len(l2)}개, 직후 줄: {' | '.join(x[:14] for x in early)}"[:160])
@@ -293,13 +322,19 @@ def transit_screen_on() -> None:
 
 def check_transit(query: str) -> None:
     t5.T0 = time.time()  # 대중교통 단계의 10분 예산은 이 모드 시작부터 센다
+    t5.BUDGET = 470.0  # 감싸개 상한 590초 안에 마무리(앱 강제 종료·홈)까지 끝나게
     if not t5.step_notice() or not t5.step_search(query) or not t5.step_start_button():
         return
     if t5.step_open_sheet() != "transit":
         return record("INFO", "대중교통 시트가 서지 않음 — 단계 건너뜀")
     if not t5.step_aboard("mid"):
         return
-    for step in (transit_via_roundtrip, transit_search_detail, transit_leave_return, transit_screen_on):
+    # 짧고 판정이 급한 단계(⑧-2 「시트 닫기」 판정 재료, A80)를 앞에 둔다 — 예산이 모자라면 뒤 단계부터 빠진다.
+    steps = (transit_leave_return, transit_screen_on, transit_via_roundtrip, transit_search_detail)
+    pick = set(filter(None, os.environ.get("H7_TSTEPS", "").split(",")))  # 예: H7_TSTEPS=search (leave·screen·via·search)
+    for step in steps:
+        if pick and step.__name__.removeprefix("transit_").split("_")[0] not in pick:
+            continue
         try:
             step()
         except Exception as e:
@@ -326,6 +361,8 @@ def check_shortcuts() -> None:
 
 
 def main() -> int:
+    # 감싸개 `timeout`의 종료 신호에도 아래 finally(앱 강제 종료·홈)가 돌게 한다 — 기본 처리는 finally를 건너뛰어 안내가 기기에 남는다.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(124))
     args = sys.argv[1:]
     apk = None
     if args[:1] == ["--apk"]:
@@ -358,8 +395,7 @@ def main() -> int:
     finally:
         after = h7.sh("cmd", "locale", "get-app-locales", PACKAGE).strip()
         record("PASS" if after == before else "FAIL", "앱 언어 원상 복구", after)
-        if only == "transit":
-            smoke.cleanup()  # 안내 종료 → 앱 닫기
+        # 대중교통 모드는 시트가 접혀 있을 수 있어 「안내 종료」를 찾는 데 예산을 쓰지 않는다 — 강제 종료가 전경 서비스와 안내 알림을 함께 끝낸다.
         h7.sh("am", "force-stop", PACKAGE)
         h7.sh("input", "keyevent", "KEYCODE_HOME")
 
