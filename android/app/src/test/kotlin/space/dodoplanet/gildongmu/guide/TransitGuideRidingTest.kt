@@ -84,7 +84,7 @@ class TransitGuideRidingTest {
     /** 지하철 v1을 골라 관측 승격(riding)까지 올린다 — 도착 피드는 승차역 「진입」 뒤 비어 있다(미관측). */
     private fun TransitGuideHarness.rideSubway() {
         trackReplies += TransitGuideHarness.okTrack("v1") to 0L
-        model.start(fiveLineRoute(), "여의도역", dest, accessible = false)
+        model.start(fiveLineRoute(), "여의도역", dest, accessible = false, aboard = null)
     }
 
     private suspend fun TestScope.boardAndRide(h: TransitGuideHarness) {
@@ -104,7 +104,7 @@ class TransitGuideRidingTest {
 
     /** 서울버스 이미 탔어요로 riding(근사 잠금) — 대기 목록·차량 선택을 건너뛴다. */
     private fun TransitGuideHarness.rideBus() {
-        model.start(busRoute(), "라 정류장", dest, accessible = false)
+        model.start(busRoute(), "라 정류장", dest, accessible = false, aboard = null)
         model.boardAlready(express = null)
     }
 
@@ -181,7 +181,7 @@ class TransitGuideRidingTest {
     // ── E48 버스 정류장·keep-alive ──
 
     @Test fun `버스 승차 중이면 keep-alive 프로파일이 버스용이고 내리면 꺼진다`() = transitTest(dispatcher) { h ->
-        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false)
+        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false, aboard = null)
         settle()
         h.model.boardApprox()
         h.model.confirmBoarded()
@@ -196,7 +196,7 @@ class TransitGuideRidingTest {
     // ── 단계 4: keep-alive 서비스 원함과 가동(M5 §6-4) ──
 
     @Test fun `keep-alive 서비스는 원함이 서면 켜고 프로파일 전환은 다시 켜지 않으며 원함이 지면 끈다`() = transitTest(dispatcher) { h ->
-        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false)
+        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false, aboard = null)
         settle()
         assertEquals(0, h.controller.starts, "대기 국면은 서비스가 필요 없다")
         h.model.boardApprox()
@@ -220,7 +220,7 @@ class TransitGuideRidingTest {
     }
 
     @Test fun `keep-alive 시작 거부는 세션을 끝내지 않고 원함을 남기며 전경 복귀가 다시 켠다`() = transitTest(dispatcher) { h ->
-        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false)
+        h.model.start(tagoRoute(), "라 정류장", h.dest, accessible = false, aboard = null)
         settle()
         // 화면이 잠긴 채 원함이 서는 전이(설계 리뷰 — 잠금 중 추정 도착 → 재관측 riding 복귀)의 기제: 백그라운드 시작이 동기로 거부된다.
         h.model.setForeground(false)

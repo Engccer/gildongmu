@@ -81,14 +81,14 @@ class TransitGuideRouteChangeTest {
 
     /** 서울버스 이미 탔어요로 riding — 복구의 출발점은 새 측위(deviceFix)다. */
     private fun TransitGuideHarness.rideBus() {
-        model.start(busRoute(), "라 정류장", dest, accessible = false)
+        model.start(busRoute(), "라 정류장", dest, accessible = false, aboard = null)
         model.boardAlready(express = null)
     }
 
     /** 지하철 v1을 골라 riding — 복구의 출발점은 「지금 어느 역인가」 질문(askStation)이다. */
     private suspend fun TestScope.rideSubway(h: TransitGuideHarness) {
         h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
-        h.model.start(fiveLineRoute(), "여의도역", h.dest, accessible = false)
+        h.model.start(fiveLineRoute(), "여의도역", h.dest, accessible = false, aboard = null)
         settle()
         h.trackReplies += trackWith("0", "진입") to 0L
         h.model.board(h.ui.waitingLive.single(), TransitLabel("방화행", "To Banghwa"))
@@ -445,7 +445,7 @@ class TransitGuideRouteChangeTest {
 
     @Test fun `승차역 기준 선언은 대기 국면에서 측위 없이 승차역 좌표로 조회한다`() = transitTest(dispatcher) { h ->
         h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
-        h.model.start(fiveLineRoute(), "여의도역", h.dest, accessible = false)
+        h.model.start(fiveLineRoute(), "여의도역", h.dest, accessible = false, aboard = null)
         settle()
         h.queueRoute(adoptable())
         h.model.prepareAltRoutes(declaredBoardStop = true)

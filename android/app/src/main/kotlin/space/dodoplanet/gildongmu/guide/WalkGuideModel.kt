@@ -311,8 +311,21 @@ class WalkGuideModel(
             if (prewalkTarget == null) return null
             return if (prewalkIsTransfer) PrewalkStopTail.transitAlsoEnded else PrewalkStopTail.transitNotStarted
         }
-    /** 종료 화면 없이 끝나는 세션인가 — 승차 전 도보(iOS는 여정 단계도, 여정은 `and-journey`가 더한다). */
-    private val endsWithoutScreen: Boolean get() = prewalkTarget != null
+    /**
+     * 여정(E70) 단계 세션의 표식(iOS `journeyChain`). null이 아니면 이 세션(택시·접근 도보·출구 도보)은 여정의 한 단계다: 다음 단계가 그 자리를 이으므로 종료 화면을
+     * 남기지 않고, 잊힌 세션 안전망이 돌지 않으며(지하 진입·택시 정차가 곧 정상이다), 도착 문장은 `arrivalText`(null이면 기본 도착 문장)다. 끝난 사유는 `onSessionEnd`로
+     * 여정에 간다(승차 전 도보를 일반화). `stop()`이 비운다 — 종료 분기는 `stop()` 앞에서 캡처한다(`prewalkTarget` 동형).
+     */
+    var journeyChain: JourneyChainMark? = null
+        private set
+    /**
+     * 마지막 실패의 문장 키와 해결 수단(E70 §6.1 `.ended` 원인 보존, iOS `lastFailure`). 여정의 실패 시트가 그 문장을 상태 줄로 쓰고 해결 수단 버튼을 고른다(새 문장·재통지 없음).
+     * `fail`이 세우고 새 시작이 비운다(`stopAndFail`은 `fail`을 지난다). ⚠ `clearFailure()`는 건드리지 않는다 — 그것은 시트 행의 거둠이고 이 값은 여정의 원인 보존이다.
+     */
+    var lastFailure: JourneyFailure? = null
+        private set
+    /** 종료 화면 없이 끝나는 세션인가 — 승차 전 도보 ∨ 여정 단계. */
+    private val endsWithoutScreen: Boolean get() = prewalkTarget != null || journeyChain != null
     /**
      * 세션 종료 1회 콜백(iOS `onSessionEnd`). 발화점은 둘뿐 — `stop()` 정리 완료 뒤 다음 메인 턴, 그리고 `requestStart`의 시작 잡 말미(시작되지 않아
      * `stop()`이 돌지 않는 경로: `startFailed`). 경로마다 부르지 않는다 — 종료 경로가 여럿이라 하나를 빠뜨리면 연결이 조용히 끊긴다.
@@ -560,6 +573,7 @@ class WalkGuideModel(
         lastStepFree = null
         pendingStepFreeNotice = null
         pendingEndReason = BeaconEndReason.ended
+        lastFailure = null
         startGeneration += 1
         val generation = startGeneration
         startJob = scope.launch {
@@ -572,9 +586,10 @@ class WalkGuideModel(
                 GuideDiag.log("start failed ${e::class.simpleName}: ${e.message}")
                 // 이 도보 세션은 시작되지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(`onSessionEnd`, iOS 시작 실패 판정과 같은 사유).
                 pendingEndReason = BeaconEndReason.startFailed
-                val bridge = prewalkTarget != null  // `stop()`이 표식을 지우기 전에 — 연결이 곧 대중교통 대기로 잇는다(A67 다리 문장)
+                val bridge = prewalkTarget != null && journeyChain == null  // `stop()`이 표식을 지우기 전에 — 연결이 곧 대중교통 대기로 잇는다(A67 다리 문장)
+                val journeyBridge = journeyChain?.bridgesStartFailure == true
                 stop()
-                fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge)
+                fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge, journeyBridgeAfterStop = journeyBridge)
             } finally {
                 if (startGeneration == generation) {
                     starting = false
@@ -584,6 +599,7 @@ class WalkGuideModel(
                         onSessionEnd = null
                         prewalkTarget = null
                         prewalkIsTransfer = false
+                        journeyChain = null
                         cb(BeaconEndReason.startFailed)
                     }
                 }
@@ -604,18 +620,22 @@ class WalkGuideModel(
     private suspend fun start(dest: BeaconDest, label: String, kind: GuideSessionKind, exitLead: ExitLead?) {
         if (isTracking) return
         // 권한 게이트(§3-2 ②) — 위치 서비스 → 권한 → 정밀 순.
-        if (!permissions.isLocationEnabled()) { fail(GuideStatus.unavailable, "beacon.weak"); return }
+        if (!permissions.isLocationEnabled()) { fail(GuideStatus.unavailable, "beacon.weak", journeyBridgeAfterStop = false); return }
+        // 배경 자동 인계(M5 §7-4, 안드로이드 고유): 여정 단계가 연 시작은 앱이 전경일 때만 권한을 묻는다. 배경이면 묻지 않고 현재 허용값만 읽는다 — 권한 창 결과가 오지 않으면
+        // `ask()`가 60초를 기다리고 여정은 이미 `Running(access)`라 30초 복구도 닿지 않는다.
+        val mayAsk = journeyChain == null || env.isForeground()
         var permission = permissions.currentLocation()
-        if (permission == LocationPermission.None) permission = permissions.requestLocation()
+        if (permission == LocationPermission.None && mayAsk) permission = permissions.requestLocation()
         when (permission) {
-            LocationPermission.None -> { fail(GuideStatus.denied, "beacon.denied", FailResolution.settings); return }
-            LocationPermission.Coarse -> { fail(GuideStatus.unavailable, "beacon.reduced", FailResolution.precise); return }
+            LocationPermission.None -> { fail(GuideStatus.denied, "beacon.denied", FailResolution.settings, journeyBridgeAfterStop = false); return }
+            LocationPermission.Coarse -> { fail(GuideStatus.unavailable, "beacon.reduced", FailResolution.precise, journeyBridgeAfterStop = false); return }
             LocationPermission.Fine -> Unit
         }
         // ③ 알림·걸음 권한 — 거부는 차단이 아니다.
-        permissions.requestNotifications()
-        // 걸음은 도보만 센다 — 자동차엔 만보계·걸음 요약이 없다(iOS `sessionStart = kind == .walk ? … : nil`).
-        val stepsGranted = kind == GuideSessionKind.walk && permissions.requestActivityRecognition()
+        if (mayAsk) permissions.requestNotifications()
+        // 걸음은 도보만 센다 — 자동차엔 만보계·걸음 요약이 없다(iOS `sessionStart = kind == .walk ? … : nil`). 배경 인계는 묻지 않는다(포트에 현재값 읽기가 없어 걸음 센서 없이
+        // 시작한다 — 여정 단계 세션은 종료 화면이 없어 걸음 요약이 쓰일 자리가 없다).
+        val stepsGranted = kind == GuideSessionKind.walk && mayAsk && permissions.requestActivityRecognition()
         // ④ 세션 단일성 — 권한 대기 중 뒤집힌 경합의 최종 게이트. 토큰은 stop()이 반납한다.
         val token = coordinator.claim { stop() }
         if (token == null) {
@@ -705,10 +725,11 @@ class WalkGuideModel(
         val wasTracking = isTracking
         // 도보 안내가 서지 못했다 — 승차 전 도보면 연결이 대중교통 대기로 잇는다(시작 실패와 같은 사유).
         pendingEndReason = BeaconEndReason.startFailed
-        val bridge = prewalkTarget != null  // `stop()`이 표식을 지우기 전에(위 시작 잡 실패와 같은 이유)
+        val bridge = prewalkTarget != null && journeyChain == null  // `stop()`이 표식을 지우기 전에(위 시작 잡 실패와 같은 이유)
+        val journeyBridge = journeyChain?.bridgesStartFailure == true
         stop(playStopTone = false)
         if (!wasTracking) return
-        fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge)
+        fail(GuideStatus.unavailable, "android.guide.serviceStartFailed", prewalkBridgeAfterStop = bridge, journeyBridgeAfterStop = journeyBridge)
     }
 
     /**
@@ -723,17 +744,24 @@ class WalkGuideModel(
         highPriority: Boolean = false,
         /** `stop()`을 먼저 지난 시작 실패(안드로이드 고유 — 서비스 시작 실패·포트 동기 예외)가 승차 전 도보였는가. `stop()`이 `starting`·표식을 지워 아래 판정이 못 본다. */
         prewalkBridgeAfterStop: Boolean = false,
+        /** 위와 같은 이유로 `stop()`을 먼저 지난 여정 접근 도보의 시작 실패(`bridgesStartFailure`)인가. ⚠ 기본값 없음 — 빠뜨리면 원인 문장만 들려 왜 승차 대기로 넘어갔는지 모른다. */
+        journeyBridgeAfterStop: Boolean,
     ) {
         this.status = status
         failResolution = resolution
+        lastFailure = JourneyFailure(key, resolution)
         statusText = prewalkTail?.let { prewalkStopText(it, strings.get(key)) } ?: strings.get(key)
         pendingFailLandingAt = clock()
         mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
-        val prewalkBridge = (starting && prewalkTarget != null) || prewalkBridgeAfterStop
+        // 여정 접근 도보의 시작 실패는 통지에만 다리 문장을 붙인다(iOS 판정 27) — 상태 줄은 원인만(대중교통이 끝난 뒤엔 「바로 넘어갑니다」가 거짓 진행형이다).
+        // `highPriority`: 곧 여정 시트가 다시 떠 커서가 옮겨 가고, 이 문장은 그 착지 라벨로 대체될 수 없다.
+        val journeyBridge = (starting && journeyChain?.bridgesStartFailure == true) || journeyBridgeAfterStop
+        val prewalkBridge = (starting && prewalkTarget != null && journeyChain == null) || prewalkBridgeAfterStop
         announce(
-            if (prewalkBridge) strings.get("android.beacon.prewalkUnavailableWith", strings.get(key)) else statusText,
-            highPriority = highPriority || prewalkBridge, speechClass = GuideSpeechClass.actionable,
+            if (journeyBridge) strings.get("android.journey.accessFailedWith", strings.get(key))
+            else if (prewalkBridge) strings.get("android.beacon.prewalkUnavailableWith", strings.get(key)) else statusText,
+            highPriority = highPriority || journeyBridge || prewalkBridge, speechClass = GuideSpeechClass.actionable,
         )
     }
 
@@ -843,6 +871,7 @@ class WalkGuideModel(
         exitLeadNotice = null
         prewalkTarget = null
         prewalkIsTransfer = false
+        journeyChain = null
         // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료 문장(도착·유휴·권한)이 연결 문장보다 먼저 나가고, 정리 도중
         // 다른 모델 시작이 재진입하지 않는다(iOS `Task { @MainActor in cb(reason) }`, spec 2026-08-30 §4.2).
         val reason = pendingEndReason
@@ -1009,7 +1038,17 @@ class WalkGuideModel(
     fun clearPrewalk() {
         prewalkTarget = null
         prewalkIsTransfer = false
+        journeyChain = null  // 여정 단계 표식도 같은 연결 표식이다(동기 거부 뒤 다음 비여정 세션으로 새지 않게)
         onSessionEnd = null
+    }
+
+    /**
+     * 여정 단계 세션으로 표식(E70 §6.3, iOS `markChained`). `requestStart` **앞**에 건다(`markPrewalk` 동형).
+     * ⚠ `arrivalText`는 기본값 없음 — 자동 인계 문장(「{역}역에 도착했습니다.」)을 쓸 단계가 빠뜨리면 다음 세션의 시작 통지만 들려 「왜 대중교통 안내가 시작됐나」를 모른다.
+     * ⚠ `bridgesStartFailure`도 기본값 없음 — 접근 도보가 빠뜨리면 시작 실패 뒤 원인 문장과 대중교통 시작 통지만 들려 「왜 걷기 안내 없이 승차 대기로 넘어갔나」를 모른다.
+     */
+    fun markChained(arrivalText: String?, bridgesStartFailure: Boolean) {
+        journeyChain = JourneyChainMark(arrivalText, bridgesStartFailure)
     }
 
     /**
@@ -1043,10 +1082,12 @@ class WalkGuideModel(
      * 옮겨 가므로 사유는 `highPriority`다.
      */
     private fun stopAndFail(status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none) {
-        val prewalkTail = prewalkStopTail.let { if (it == PrewalkStopTail.transitAlsoEnded) PrewalkStopTail.transitResumes else it }  // stop() 앞 캡처
+        // stop() 앞 캡처. 여정(E70)의 접근 도보는 끊겨도 대중교통 단계로 넘어가므로 「대중교통 안내는 시작하지 않았다」 꼬리를 붙이지 않는다.
+        val prewalkTail = if (journeyChain != null) null
+            else prewalkStopTail.let { if (it == PrewalkStopTail.transitAlsoEnded) PrewalkStopTail.transitResumes else it }
         pendingEndReason = BeaconEndReason.locationLost
         val leftEndScreen = stopLeavingSummary(playStopTone = false, text = strings.get(key))
-        fail(status, key, resolution, prewalkTail = prewalkTail, highPriority = !leftEndScreen)
+        fail(status, key, resolution, prewalkTail = prewalkTail, highPriority = !leftEndScreen, journeyBridgeAfterStop = false)
     }
 
     // ─────────────────────────── 전경 복귀 (§5-3) ───────────────────────────
@@ -2133,8 +2174,9 @@ class WalkGuideModel(
         if (arrived) {
             // prewalk(승차 전 도보)는 stop() 앞에서 캡처 — stop()이 지운다(A25 §4.2).
             val prewalk = prewalkTarget
+            val chained = journeyChain  // 여정 단계(E70) — prewalk처럼 stop() 앞 캡처
             val spoken = prewalk?.let { transitText.render(transitPrewalkArrivedLine(isEn = transitGuideIsEn(dataLocale()), station = it)) }
-                ?: strings.get("guide.arrived")
+                ?: chained?.arrivalText ?: strings.get("guide.arrived")
             // 수단은 stop() **앞**에서 캡처한다 — stop()이 수단을 도보로 되돌린다(iOS 설계 리뷰 B10). 자동차는 걸음 요약이 없다.
             val endedKind = sessionKind
             val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
@@ -2142,7 +2184,8 @@ class WalkGuideModel(
             pendingEndReason = BeaconEndReason.arrived
             stop()
             // prewalk는 종료 화면을 남기지 않는다 — 승차역은 여정의 끝이 아니고, 남기면 `screen`의 도보 우선순위가 대중교통 시트를 영구 은폐한다.
-            if (prewalk == null) presentEndScreen(dest, SessionEndKind.arrived, spoken, sample, endedKind)
+            // 여정 단계(자동차 확정 도착 포함)도 종료 화면과 「여기서 도보 안내 시작」을 만들지 않는다 — 다음 단계가 이으니 `onSessionEnd(arrived)`만 간다.
+            if (prewalk == null && chained == null) presentEndScreen(dest, SessionEndKind.arrived, spoken, sample, endedKind)
             statusText = spoken
             lastGuidance = spoken
             liveTopText = spoken
@@ -2211,19 +2254,22 @@ class WalkGuideModel(
         val reason = presumedArrivalStep(true, now - fixRef, now - progressRef, lastUsableDistanceToDest, thresholds) ?: return false
         GuideDiag.log { "presumedArrival reason=${reason.rawValue} dist=${lastUsableDistanceToDest?.let { fmt("%.1f", it) } ?: "-"} window=${if (inFinalApproach) "final" else "brief"}" }
         val prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
+        val chained = journeyChain
         val spoken = prewalk?.let { transitText.render(transitPrewalkArrivedLine(isEn = transitGuideIsEn(dataLocale()), station = it)) }
+            // 여정 단계는 다음 세션이 곧바로 이어지므로 「안내를 종료했습니다」로 끝맺지 않는다(뒤 문장과 모순).
+            ?: chained?.let { it.arrivalText ?: strings.get("guide.arrived") }
             ?: strings.get("guide.arrivedPresumed")
         val endedKind = sessionKind
         val sample = if (endedKind == GuideSessionKind.walk) steps.liveSample else null
         if (env.isForeground()) playTone(BeaconTone.nearby)
         pendingEndReason = BeaconEndReason.arrived
         stop()
-        if (prewalk == null) presentEndScreen(dest, SessionEndKind.presumed, spoken, sample, endedKind)
+        if (prewalk == null && chained == null) presentEndScreen(dest, SessionEndKind.presumed, spoken, sample, endedKind)
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
-        // 사후 정리(도착 3~5분 뒤)라 미룸. 단 승차 전 도보의 승차역 도착은 이어질 안내의 시작이라 행동 문장이다(spec §3.2 — prewalk 도착 행).
-        announce(spoken, highPriority = true, speechClass = if (prewalk == null) GuideSpeechClass.deferrable else GuideSpeechClass.actionable)
+        // 사후 정리(도착 3~5분 뒤)라 미룸. 단 승차 전 도보의 승차역 도착은 이어질 안내의 시작이라 행동 문장이다(spec §3.2 — prewalk 도착 행). 여정 단계의 도착도 같은 이유다(E70).
+        announce(spoken, highPriority = true, speechClass = if (prewalk == null && chained == null) GuideSpeechClass.deferrable else GuideSpeechClass.actionable)
         return true
     }
 
@@ -2985,6 +3031,11 @@ class WalkGuideModel(
  * 도보(E73)는 이 사유에서만 대중교통으로 돌아간다(위원장 판정 2026-10-19). `ended`(그 밖의 정지)와 갈라 두어야 종료 경로가 늘어도 다른 정지가 재개로 새지 않는다.
  */
 enum class BeaconEndReason { arrived, startFailed, userStopped, locationLost, ended }
+
+/**
+ * 여정(E70) 단계 표식(iOS `JourneyChainMark`). `bridgesStartFailure` = 여정 접근 도보 — 시작에 실패하면 여정이 대중교통으로 넘어가므로 원인 문장 뒤에 다리 문장을 붙인다(판정 27).
+ */
+data class JourneyChainMark(val arrivalText: String?, val bridgesStartFailure: Boolean)
 
 /** 승차 전 도보 정지 꼬리(A54·E73, iOS `PrewalkStopTail`). `transitResumes`는 환승 도보의 위치 상실 꼬리다 — `stopAndFail`만 고른다. */
 enum class PrewalkStopTail { transitNotStarted, transitAlsoEnded, transitResumes }

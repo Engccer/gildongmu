@@ -66,6 +66,18 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.carRoadNow" -> R.string.guide_carRoadNow
     "guide.etaStale" -> R.string.guide_etaStale
     "android.beacon.carWalkHandoffStart" -> R.string.android_beacon_carWalkHandoffStart
+    // 여정(B26, M5 §7) — 단계 세션 도착·실패 문장과 여정 시트
+    "android.journey.arrivedStop" -> R.string.android_journey_arrivedStop
+    "android.journey.arrivedStation" -> R.string.android_journey_arrivedStation
+    "android.journey.arrivedExit" -> R.string.android_journey_arrivedExit
+    "android.journey.arrivedStand" -> R.string.android_journey_arrivedStand
+    "android.journey.accessFailedWith" -> R.string.android_journey_accessFailedWith
+    "android.journey.egressStartFailed" -> R.string.android_journey_egressStartFailed
+    "android.journey.taxiOutFailed" -> R.string.android_journey_taxiOutFailed
+    "android.journey.taxiDropped" -> R.string.android_journey_taxiDropped
+    "android.journey.taxiBoarded" -> R.string.android_journey_taxiBoarded
+    "directions.loading" -> R.string.directions_loading
+    "route.transit.error" -> R.string.route_transit_error
     "beacon.stop" -> R.string.beacon_stop
     "beacon.first" -> R.string.beacon_first
     "beacon.closer" -> R.string.beacon_closer

@@ -26,7 +26,7 @@ import space.dodoplanet.gildongmu.location.LocationPermission
 
 // 페이크 포트(spec §10 — 판정은 :kit, 여기는 "실제로 했는가"를 기록한다).
 
-class FakeController : GuideForegroundController {
+open class FakeController : GuideForegroundController {
     var starts = 0
     var stops = 0
     /** 발급한 세대 수(두 모델이 한 인스턴스를 공유하면 한 수열). */
@@ -237,9 +237,11 @@ class GuideTestHarness(
      * 예외로 접히지 않고 `withTimeoutOrNull`이 null을 돌려주는 경로를 재현한다.
      */
     delayFor: (url: String) -> Long = { 0L },
+    /** 서비스 손잡이를 끼우는 테스트(여정 서비스 넘김)가 컨트롤러를 바꿔 넣는다. */
+    controllerOverride: FakeController? = null,
 ) {
     val catalog = CatalogStrings("ko")
-    val controller = FakeController()
+    val controller = controllerOverride ?: FakeController()
     val perms = FakePermissions()
     val tones = FakeTones()
     val speaker = FakeSpeaker()

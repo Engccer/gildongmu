@@ -55,7 +55,7 @@ class TransitGuideUserActionsTest {
     val main = MainDispatcherExtension(dispatcher)
 
     private fun TransitGuideHarness.begin(r: TransitRoute = route(subwayLeg("천호", "여의도"))) =
-        model.start(r, "여의도역", dest, accessible = false)
+        model.start(r, "여의도역", dest, accessible = false, aboard = null)
 
     private val TransitGuideHarness.phase get() = model.ui.value.state?.phase
 

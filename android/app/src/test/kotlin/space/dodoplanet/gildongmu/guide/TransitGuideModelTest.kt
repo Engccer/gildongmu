@@ -37,7 +37,7 @@ class TransitGuideModelTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-    private fun TransitGuideHarness.begin() = model.start(subwayRoute(), "여의도역", dest, accessible = false)
+    private fun TransitGuideHarness.begin() = model.start(subwayRoute(), "여의도역", dest, accessible = false, aboard = null)
 
     @Test fun `시작 문장은 목적지를 말하고 즉폴이 나간다`() = transitTest(dispatcher) { h ->
         h.begin()
@@ -78,7 +78,7 @@ class TransitGuideModelTest {
     }
 
     @Test fun `폴 주기 0이면 즉폴도 없다`() = transitTest(dispatcher) { h ->
-        h.model.start(h.untrackableRoute(), "나", h.dest, accessible = false)
+        h.model.start(h.untrackableRoute(), "나", h.dest, accessible = false, aboard = null)
         settle()
         advanceTimeBy(120_000)
         runCurrent()

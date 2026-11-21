@@ -391,6 +391,7 @@ object GuideSession {
 - **실패 국면은 들지 않는다**(설계 리뷰 반영): `Failed`를 커밋할 때 보유자만 서비스를 들고 있으면 내린다(여정 상태·실패 원인은 남는다). 실패 시트의 재시도·해결 수단은 사용자 동작이라 전경에서 종전 경로로 다시 시작한다. 잠금 화면에 둔 실패 시트가 위치 구독과 wake lock을 무기한 쥐지 않게.
 - **세대 거름이 넘김을 통과하도록 고친다**(설계 리뷰 반영, 세대가 바뀌는 모든 재사용 시작에 해당): ①알림 「안내 종료」 `PendingIntent`는 세대마다 다른 requestCode로 발급한다 — 지금은 requestCode 하나에 `FLAG_UPDATE_CURRENT`라 새 알림이 옛 PendingIntent의 extra까지 새 세대로 바꿔 거름을 통과한다. ②위치 리스너의 `onFix`·`onProviderDisabled`는 등록 시점의 세대를 캡처하고, 재결속은 옛 리스너를 먼저 해제한다 — 지금은 콜백 실행 시점의 가변 `generation`을 읽어 옛 리스너의 늦은 콜백이 새 세대로 전달된다.
 - **배경 자동 인계의 권한**(설계 리뷰 반영): 여정 단계가 연 도보·자동차 시작(`markChained`·`launchingJourneyStage`)은 앱이 전경일 때만 권한을 묻고, 배경이면 현재 허용값만 읽는다 — 걸음·알림은 없으면 없는 대로 시작하고, 위치가 없으면 묻지 않고 곧장 시작 실패(`beacon.denied`·`settings`, 실패 시트가 「설정 열기」를 준다). 지금 `GuidePermissionsImpl.ask()`는 결과가 오지 않으면 60초를 기다리고, 여정은 이미 `Running(access)`라 30초 복구도 닿지 않는다.
+- **구현(단계 2)**: 판정은 `guide/GuideServiceRelay.kt`(안드로이드 의존 없음, `GuideServiceRelayTest`), 실제 조작은 `AndroidGuideController`가 붙인다(시작·정지·`GuideForegroundService.live` 재결속·메인 핸들러). 소유자 순서는 도보 > 서비스를 쥔 대중교통 > 여정 보유자 > 서비스 없이 대기하는 대중교통(여정 밖 동작 불변). 배경 인계의 걸음 센서는 포트에 현재 허용값 읽기가 없어 이미 허용돼 있어도 쓰지 않는다(여정 단계 세션은 종료 화면이 없어 걸음 요약이 쓰일 자리가 없다).
 - **넘길 서비스가 없는 여정**(대기 중 대중교통으로 시작): 화면을 끈 뒤 첫 서비스 시작(자동 승차 승격의 keep-alive)이 거부되면 §6-4 「원함과 가동」 규칙 그대로 — 원함만 남고 전경 복귀가 다시 켠다. 새 동작은 없다.
 
 ### 7-5. 안내 화면
@@ -432,7 +433,7 @@ object GuideSession {
 | 단계 | 내용 | 남기는 인터페이스 |
 |---|---|---|
 | 1 | §7, `:kit` 이식(§7-2) | `Journey.kt` 함수·타입, `RouteService.journey`·`journeyStops`, `RecentStation`·`RecentRoute` 역 필드 |
-| 2 세션 | §7-3·§7-4: `GuideSession` 여정 상태·전이·준비·단계 시작·종료·`isOccupied`·복귀 30초, 도보 `markChained`·`lastFailure`·`endsWithoutScreen`, 대중교통 `start(…, aboard)`·후보 방향 잠금, 서비스 보유자·넘김 | `GuideSession.startJourney(JourneyPlan)`(호출부 없음), `journeyAction(JourneyEvent)`, `journeyUi`, `isOccupied`, `JourneyPlan`·`TransitAboardStart`·`JourneyFailure`·`JourneyUiState` |
+| 2 세션 ✅ 2026-11-21 | §7-3·§7-4: `GuideSession` 여정 상태·전이·준비·단계 시작·종료·`isOccupied`·복귀 30초, 도보 `markChained`·`lastFailure`·`endsWithoutScreen`, 대중교통 `start(…, aboard)`·후보 방향 잠금, 서비스 보유자·넘김 | `GuideSession.startJourney(JourneyPlan)`(호출부 없음), `journeyAction(JourneyEvent)`, `journeyUi`, `isOccupied`, `JourneyPlan`·`TransitAboardStart`·`JourneyFailure`·`JourneyUiState` |
 | 3 화면(안내) | §7-5: `GuideScreenKind.journey`·`JourneySheet`·띠바·도보/자동차 시트 여정 버튼·대중교통 시트 「다음 구간」·여정 중 숨김 | 시트가 부르는 `journeyAction` |
 | 4 길찾기 모델 | §7-6 모델 몫: `DirectionsViewModel` 여정 상태·조회·aboard 방면·최근 경로 역 필드(기본값 제거·`togglePin` 수정) | 화면이 부를 모델 함수(iOS 이름) |
 | 5 길찾기 화면(진입점 개방) | §7-6 화면 몫: 입구 버튼·검색 대상 셋·정류장 줄·확인 질문·역 칸·aboard 행과 단계 줄·결과 줄·「안내 시작」·최근 경로 줄 문장, BACKLOG B26·E43 M5·PROGRESS 갱신, §2 실차·실승차 행, 한소네 전 국면 | — |

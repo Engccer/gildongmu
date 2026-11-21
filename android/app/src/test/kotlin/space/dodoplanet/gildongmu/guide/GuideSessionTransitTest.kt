@@ -46,7 +46,7 @@ class GuideSessionTransitTest {
 
     private fun TransitGuideHarness.beginBoarded() {
         trackReplies += TransitGuideHarness.okTrack("v1") to 0L
-        model.start(subwayRoute(), "여의도역", dest, accessible = false)
+        model.start(subwayRoute(), "여의도역", dest, accessible = false, aboard = null)
     }
 
     @Test fun `서비스 소유자는 대중교통에서 도보로 넘어가고 앞 세대의 위치 꺼짐·알림 종료는 새 세션을 끝내지 않는다`() = joint { w, t ->

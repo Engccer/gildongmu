@@ -134,7 +134,7 @@ class GuideTransitHandoffTest {
     }
 
     @Test fun `환승 도보는 대중교통을 멈추고 600ms 뒤 걷기, 도착하면 다음 구간 대기로 돌아온다`() = joint { w, t ->
-        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false)
+        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         t.model.advance()  // 훅 → GuideSession.transitTransferWalk
@@ -153,7 +153,7 @@ class GuideTransitHandoffTest {
     }
 
     @Test fun `환승 도보 대기 중 다른 세션이 점유하면 인계를 버린다`() = joint { w, t ->
-        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false)
+        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         t.model.advance()
@@ -168,7 +168,7 @@ class GuideTransitHandoffTest {
     }
 
     @Test fun `외부 시작은 대기 중인 환승 인계를 취소한다`() = joint { w, t ->
-        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false)
+        t.model.start(transferRoute(), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         t.model.advance()
@@ -189,7 +189,7 @@ class GuideTransitHandoffTest {
         // 하차역 좌표 = 하네스의 기준 위치(다른 역 판정이 창을 버리지 않게).
         val here = w.fix(0.0)
         val via = stops("천호", "강동", "올림픽공원") + TransitLegStop(name = "여의도", lat = here.lat, lng = here.lng)
-        t.model.start(route(subwayLeg("천호", "여의도", via = via, exit = TransitLegExit(alight = "3"))), "여의도역", t.dest, accessible = false)
+        t.model.start(route(subwayLeg("천호", "여의도", via = via, exit = TransitLegExit(alight = "3"))), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         assertTrue(t.model.advanceIntoWalkHandoff())
@@ -216,7 +216,7 @@ class GuideTransitHandoffTest {
     @Test fun `하차 인계의 출구 문장은 시작음의 1회 소리 경고와 한 통지로 나간다`() = joint { w, t ->
         val here = w.fix(0.0)
         val via = stops("천호", "강동", "올림픽공원") + TransitLegStop(name = "여의도", lat = here.lat, lng = here.lng)
-        t.model.start(route(subwayLeg("천호", "여의도", via = via, exit = TransitLegExit(alight = "3"))), "여의도역", t.dest, accessible = false)
+        t.model.start(route(subwayLeg("천호", "여의도", via = via, exit = TransitLegExit(alight = "3"))), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         assertTrue(t.model.advanceIntoWalkHandoff())
@@ -273,7 +273,7 @@ class GuideTransitHandoffTest {
 
     @Test fun `하차 인계 도보의 시작 실패는 길찾기 선두 실패 행에 선다`() = joint { w, t ->
         // B28: 인계 도보는 시작 버튼이 없는 줄 없는 도보 시작이라 세 버튼 아래 실패 행 어디에도 걸리지 않는다.
-        t.model.start(route(subwayLeg("천호", "여의도")), "여의도역", t.dest, accessible = false)
+        t.model.start(route(subwayLeg("천호", "여의도")), "여의도역", t.dest, accessible = false, aboard = null)
         settle()
         t.model.boardAlready(express = null)
         assertTrue(t.model.advanceIntoWalkHandoff())

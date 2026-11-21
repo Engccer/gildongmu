@@ -80,6 +80,7 @@ fun transitNotificationTitleText(ui: TransitGuideUiState, strings: Strings): Str
 object GuideNotification {
     const val ID = 4101
     const val CHANNEL = "guide"
+    private const val STOP_REQUEST_BASE = 1000
 
     /** 매 세션 시작마다 부른다 — 같은 ID의 재생성은 이름을 갱신한다(앱 언어 변경을 따라간다). */
     fun ensureChannel(context: Context, strings: Strings) {
@@ -94,8 +95,10 @@ object GuideNotification {
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // requestCode를 세대마다 가른다(§7-4 세대 거름 ①) — 한 코드에 `FLAG_UPDATE_CURRENT`면 새 알림이 옛 PendingIntent의 extra까지 새 세대로 바꿔, 넘김
+        // 전에 내려 둔 옛 알림의 「안내 종료」가 세대 거름을 통과한다.
         val stop = PendingIntent.getService(
-            context, 1,
+            context, STOP_REQUEST_BASE + generation,
             Intent(context, GuideForegroundService::class.java).setAction(GuideForegroundService.ACTION_STOP)
                 .putExtra(GuideForegroundService.EXTRA_GENERATION, generation),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

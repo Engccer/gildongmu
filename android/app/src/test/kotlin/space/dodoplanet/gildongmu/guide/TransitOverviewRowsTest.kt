@@ -74,7 +74,7 @@ class TransitOverviewRowsTest {
     private val TransitGuideHarness.ui get() = model.ui.value
 
     private fun TransitGuideHarness.rideBus() {
-        model.start(busRoute(), "라 정류장", dest, accessible = false)
+        model.start(busRoute(), "라 정류장", dest, accessible = false, aboard = null)
         model.boardAlready(express = null)
     }
 
@@ -118,7 +118,7 @@ class TransitOverviewRowsTest {
 
     @Test fun `래치된 침묵 행과 탈출구는 신호가 회복돼도 남고 문구만 바뀐다`() = transitTest(dispatcher) { h ->
         h.trackReplies += TransitGuideHarness.okTrack("v1") to 0L
-        h.model.start(h.subwayRoute(), "여의도역", h.dest, accessible = false)
+        h.model.start(h.subwayRoute(), "여의도역", h.dest, accessible = false, aboard = null)
         settle()
         h.trackReplies += """{"mode":"subway","status":"ok","rawCount":1,"items":[{"vehicleId":"v1","direction":"하행","message":"진입","remainingStops":null,"destinationName":"방화","express":false,"arrivalCode":"0"}]}""" to 0L
         h.model.board(h.ui.waitingLive.single(), TransitLabel("방화행", "To Banghwa"))
@@ -138,7 +138,7 @@ class TransitOverviewRowsTest {
     }
 
     @Test fun `탑승 변경은 누른 시점에 riding일 때만 닫힘 뒤 행동을 낸다`() = transitTest(dispatcher) { h ->
-        h.model.start(busRoute(), "라 정류장", h.dest, accessible = false)
+        h.model.start(busRoute(), "라 정류장", h.dest, accessible = false, aboard = null)
         settle()
         assertEquals(TransitPhase.waiting, h.ui.state?.phase)
         assertNull(transitOverviewPerformReboard(h.ui), "승차 전엔 낡은 행동이라 아무것도 하지 않는다")
@@ -163,7 +163,7 @@ class TransitOverviewRowsTest {
 
     @Test fun `승차 전 위치 실패는 승차역 선언 행을 세우고 선언한 조회의 헤더는 승차역을 말한다`() = transitTest(dispatcher) { h ->
         h.coordinateFails = true
-        h.model.start(busRoute(), "라 정류장", h.dest, accessible = false)
+        h.model.start(busRoute(), "라 정류장", h.dest, accessible = false, aboard = null)
         settle()
         assertNull(transitAltFromBoardStopLabel(h.model, h.ui, h.catalog, isEn = false).takeIf { h.ui.pendingAltRoutes != null }, "조회 전엔 판정할 슬롯이 없다")
         h.model.prepareAltRoutes(declaredBoardStop = false)

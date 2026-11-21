@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *
  * 소유자(M5 §6-4): 다섯 경로(fix·위치 꺼짐·알림 문장·알림 「안내 종료」·`startForeground` 실패)는 이 서비스가 지금 든 **세대**를 싣고 `GuideSession`으로 간다.
  * 세션은 `serviceOwner()`가 고른 소유자의 세대와 같을 때만 전달한다 — 서비스는 도보 모델을 직접 부르지 않는다(소스 가드). 알림·프로파일 구독만 시작 시점의
- * 소유자에 건다(재사용 시작이면 새 세대·새 소유자로 다시 건다).
+ * 소유자에 건다(재사용 시작과 여정 넘김(`rebind`)이면 새 세대·새 소유자로 다시 건다).
  *
  * ⚠ `startForeground` 실패(백그라운드 시작·Android 14+ 위치 권한 미보유)는 여기서만 잡힌다(리뷰 B-3) — 잡아서 `stopSelf()` + 같은 세대의 시작 실패로
  * 되돌린다. 잡지 못하면 5초 뒤 `ForegroundServiceDidNotStartInTimeException`으로 프로세스가 죽는다. Android 12+의 **동기** 시작 거부는 서비스까지 오지
@@ -38,7 +38,7 @@ class GuideForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var uiJob: Job? = null
     private var profileJob: Job? = null
-    /** 이 서비스가 지금 든 세대(시작 명령이 실어 온다). 스트림 콜백은 호출 시점의 이 값을 싣는다 — 재사용 시작이면 같은 스트림이 새 세대의 것이 된다. */
+    /** 이 서비스가 지금 든 세대(시작 명령·넘김이 실어 온다). 스트림 콜백은 등록 시점의 세대를 캡처하고, 세대가 바뀌면 스트림을 다시 연다. */
     private var generation: Int? = null
     private var started = false
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -64,9 +64,8 @@ class GuideForegroundService : Service() {
         // 같은 인스턴스가 ACTION_START를 두 번 받으면(stopService와 새 시작이 onDestroy 전에 겹침) 스트림·wake lock을 덮어써 옛 wake lock이 영구
         // 보유되고 리스너가 이중 등록된다 — 살아 있는 자원은 그대로 새 세대가 쓰고, 알림·프로파일 구독만 새 소유자로 다시 건다.
         if (started) {
-            generation = gen
             GuideDiag.log("service start reused gen=$gen")
-            bindOwner(strings)
+            rebind(gen)  // 리스너는 등록 시점의 세대를 캡처하므로 새 세대로 다시 연다(§7-4)
             return
         }
         generation = gen
@@ -82,12 +81,31 @@ class GuideForegroundService : Service() {
             return
         }
         started = true
+        live = this
         GuideDiag.attachFileSink(this)   // startForeground 뒤 — 5초 창의 마진을 깎지 않는다(디렉터리 해석은 실행기 안)
         wakeLock = getSystemService(PowerManager::class.java)
             ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "gildongmu:guide")
             ?.apply { setReferenceCounted(false); acquire() }
         bindOwner(strings)
         GuideDiag.log("service start ok gen=$gen")
+    }
+
+    /**
+     * 여정(B26 §7-4)의 프로세스 안 넘김 — 컨트롤러가 다음 메인 턴에 부른다(`startForegroundService`를 부르지 않는다: 화면이 꺼진 배경에서 거부된다). 세대를
+     * 바꾸고, 옛 세대의 위치 리스너를 먼저 해제해 새 세대로 다시 열고(리스너는 등록 시점의 세대를 캡처한다), 알림을 새 세대의 「안내 종료」로 즉시 바꾸고, 새
+     * 소유자에 구독을 다시 건다.
+     */
+    fun rebind(gen: Int) {
+        generation = gen
+        GuideDiag.log("service rebind gen=$gen")
+        stream?.close()
+        stream = null
+        streamProfile = null
+        val strings = guideStrings { AppConfig.localizedApp().resources }
+        val owner = GuideSession.serviceOwner()?.takeIf { it.serviceGeneration == gen }
+        val (title, body) = owner?.notificationText(strings) ?: (strings.get("android.guide.notificationChannel") to "")
+        getSystemService(NotificationManager::class.java)?.notify(GuideNotification.ID, GuideNotification.build(this, strings, title, body, gen))
+        bindOwner(strings)
     }
 
     /** 지금 소유자의 프로파일·알림 문장을 구독한다. 소유자가 이 세대를 쥐고 있지 않으면(그 사이 끝났다) 걸지 않는다 — 정지 경로가 서비스를 내린다. */
@@ -124,15 +142,14 @@ class GuideForegroundService : Service() {
         if (profile == null) return
         val s = GuideLocationStream(this)
         stream = s
+        // 등록 시점의 세대를 캡처한다(§7-4 세대 거름 ②) — 실행 시점의 가변 세대를 읽으면 넘김 뒤 옛 리스너의 늦은 콜백이 새 세대로 전달된다.
+        val gen = generation ?: return
         val opened = s.open(
             profile,
-            onFix = { fix -> generation?.let { GuideSession.serviceFix(it, fix) } },
-            onProviderDisabled = { generation?.let { GuideSession.serviceProviderDisabled(it) } },
+            onFix = { fix -> GuideSession.serviceFix(gen, fix) },
+            onProviderDisabled = { GuideSession.serviceProviderDisabled(gen) },
         )
-        if (!opened) {
-            val gen = generation
-            main.post { gen?.let { GuideSession.serviceProviderDisabled(it) } }
-        }
+        if (!opened) main.post { GuideSession.serviceProviderDisabled(gen) }
     }
 
     /**
@@ -140,6 +157,7 @@ class GuideForegroundService : Service() {
      * bringDown에서 제거) 옛 `onDestroy`가 새 세션의 스트림·wake lock을 닫는 경로는 없다 — 실기기 대본 #24가 이것을 확인한다.
      */
     override fun onDestroy() {
+        if (live === this) live = null
         stopForeground(STOP_FOREGROUND_REMOVE)  // spec §3-3 ⑦ — 전경 이탈·알림 제거를 명시(OEM 잔존 변종 차단, 멱등)
         uiJob?.cancel()
         uiJob = null
@@ -161,42 +179,38 @@ class GuideForegroundService : Service() {
         const val ACTION_STOP = "space.dodoplanet.gildongmu.guide.STOP"
         const val EXTRA_GENERATION = "space.dodoplanet.gildongmu.guide.GENERATION"
         private const val NO_GENERATION = -1
+
+        /** 전경 시작을 마치고 아직 파괴되지 않은 인스턴스(메인 스레드에서만 읽고 쓴다) — 여정 넘김의 프로세스 안 재결속 대상(§7-4). */
+        var live: GuideForegroundService? = null
+            private set
     }
 }
 
 /**
- * 전경 서비스 손잡이(두 모델이 공유하는 한 인스턴스, M5 §6-4). 세대를 발급하고, 지금 세대만 내린다(앞 세션의 늦은 정지가 새 세션의 서비스를 내리지 않게).
+ * 전경 서비스 손잡이(두 모델과 여정 보유자가 공유하는 한 인스턴스, M5 §6-4·§7-4) — 판정은 [GuideServiceRelay]에 있고 여기서는 실제 조작만 붙인다.
  * Android 12+의 백그라운드 `startForegroundService` 거부(`ForegroundServiceStartNotAllowedException`, 14+ 위치 타입은 `SecurityException`)는 호출 자체에서
  * 던져진다 — 잡아서 같은 세대의 시작 실패로 넘긴다(`onStartFailed`는 `GuideSession.serviceStartFailed`, 동기).
  */
-class AndroidGuideController(context: Context, private val onStartFailed: (generation: Int, error: Throwable) -> Unit) : GuideForegroundController {
-    private val app = context.applicationContext
-    private var issued = 0
-    private var current: Int? = null
-
-    override fun nextGeneration(): Int = ++issued
-
-    override fun start(generation: Int) {
-        current = generation
-        try {
-            app.startForegroundService(
-                Intent(app, GuideForegroundService::class.java)
-                    .setAction(GuideForegroundService.ACTION_START)
-                    .putExtra(GuideForegroundService.EXTRA_GENERATION, generation),
-            )
-        } catch (e: Exception) {
-            GuideDiag.log("service start rejected=${e::class.simpleName} gen=$generation")
-            if (current == generation) current = null
-            onStartFailed(generation, e)
-        }
-    }
-
-    override fun stop(generation: Int) {
-        if (generation != current) {
-            GuideDiag.log("service stop stale gen=$generation current=$current")
-            return
-        }
-        current = null
-        app.stopService(Intent(app, GuideForegroundService::class.java))
-    }
+fun AndroidGuideController(context: Context, onStartFailed: (generation: Int, error: Throwable) -> Unit): GuideServiceRelay {
+    val app = context.applicationContext
+    val main = Handler(Looper.getMainLooper())
+    return GuideServiceRelay(
+        launch = { generation ->
+            try {
+                app.startForegroundService(
+                    Intent(app, GuideForegroundService::class.java)
+                        .setAction(GuideForegroundService.ACTION_START)
+                        .putExtra(GuideForegroundService.EXTRA_GENERATION, generation),
+                )
+                null
+            } catch (e: Exception) {
+                e
+            }
+        },
+        onStartFailed = onStartFailed,
+        shutdown = { app.stopService(Intent(app, GuideForegroundService::class.java)) },
+        rebind = { generation -> GuideForegroundService.live?.let { it.rebind(generation); true } ?: false },
+        serviceLive = { GuideForegroundService.live != null },
+        post = { work -> main.post(work) },
+    )
 }

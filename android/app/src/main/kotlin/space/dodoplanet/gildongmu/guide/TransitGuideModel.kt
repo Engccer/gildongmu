@@ -75,6 +75,7 @@ import space.dodoplanet.gildongmu.kit.initTransitGuide
 import space.dodoplanet.gildongmu.kit.isApproxTransitLock
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
+import space.dodoplanet.gildongmu.kit.journeyAboardTrainItems
 import space.dodoplanet.gildongmu.kit.transitAboardCandidates
 import space.dodoplanet.gildongmu.kit.transitAlightStopReachedLine
 import space.dodoplanet.gildongmu.kit.transitArrivalStatusLine
@@ -555,9 +556,10 @@ class TransitGuideModel(
 
     /**
      * 시작. 거부 판정(N1 §2.4)이 route 변환보다 먼저다(설계 리뷰 m2 — 변환 실패가 먼저 조용히 반환하면 요구된 거부 통지조차 없다). `aboard`(E71 지금 탄
-     * 열차)는 여정 세션(`and-journey`)이 인자를 더한다(M5 §6-2). `destinationRoman`은 §2-2처럼 세 요청에 함께 더할 때까지 없다(데이터 로케일 ko 전제).
+     * 열차)가 있으면 첫 leg의 첫 정류소 기준 열차 고르기(A34 둘째 단계)로 열고 목록은 그 방향에 잠긴다. null이면 종전 대기 시작. ⚠ 기본값 없음(안전 인자 — 생략이
+     * 조용히 종전 대기 시작이 된다). `destinationRoman`은 §2-2처럼 세 요청에 함께 더할 때까지 없다(데이터 로케일 ko 전제).
      */
-    fun start(route: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Boolean) {
+    fun start(route: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Boolean, aboard: TransitAboardStart?) {
         val token = claimSession()
         if (token == null) {
             // 거부는 버튼 활성화의 직접 응답이라 받아쓰기 억제를 우회한다(도보 `requestStart` 동형 — 코드 리뷰 m1).
@@ -569,7 +571,9 @@ class TransitGuideModel(
             coordinator.release(token)
             return
         }
-        beginSession(guideRoute = guideRoute, startLeg = 0, token = token, destinationLabel = destinationLabel, dest = dest, accessible = accessible)
+        beginSession(
+            guideRoute = guideRoute, startLeg = 0, token = token, destinationLabel = destinationLabel, dest = dest, accessible = accessible, aboard = aboard,
+        )
     }
 
     /**
@@ -592,7 +596,7 @@ class TransitGuideModel(
         }
         beginSession(
             guideRoute = if (prewalkCompleted) withoutWalkBefore(guideRoute, startLeg) else guideRoute,
-            startLeg = startLeg, token = token, destinationLabel = destinationLabel, dest = dest, accessible = accessible,
+            startLeg = startLeg, token = token, destinationLabel = destinationLabel, dest = dest, accessible = accessible, aboard = null,
         )
     }
 
@@ -602,10 +606,11 @@ class TransitGuideModel(
 
     /**
      * 게이트를 지난 뒤의 세션 초기화 공통부(`start`·`startAfterPrewalk`). `startLeg`가 0이 아니면 환승 도보 뒤의 재개다(E73) — 상태는 그 구간의 대기 국면,
-     * 시작 통지는 그 구간의 대기 문맥만.
+     * 시작 통지는 그 구간의 대기 문맥만. `aboard`(E71)는 첫 구간 시작에서만 선다(`startAfterPrewalk`는 언제나 null).
      */
     private fun beginSession(
         guideRoute: TransitGuideRoute, startLeg: Int, token: Int, destinationLabel: String, dest: BeaconDest, accessible: Boolean,
+        aboard: TransitAboardStart?,
     ) {
         sessionToken = token
         routeGen += 1
@@ -632,9 +637,19 @@ class TransitGuideModel(
         lastUserActionAt = clock()
         sessionStartLeg = startLeg
         val initial = initTransitGuide(route = guideRoute, startingAt = startLeg, now = nowMs())
-        // E71 R8(지금 탄 열차에서 시작)은 여정 세션이 더한다 — 여기선 종전 대기 시작뿐이다.
-        aboardDirection = null
+        // E71 R8: 지금 탄 열차에서 시작 — 첫 leg가 지하철 추적 가능이면 A34 `pickAboardStation(0)`과 같은 상태로 연다(첫 정류소 기준 열차 고르기).
+        // 목록은 고른 방향에 잠긴다(R14). 조건이 안 서면 종전 대기 시작.
+        val first = guideRoute.legs[initial.legIndex]
+        val aboardStarted = aboard != null && startLeg == 0 && first.trackMode == TransitTrackMode.subway && first.viaStops.isNotEmpty()
         aboardStartLandingPending = false
+        if (aboardStarted && aboard != null) {
+            aboardDirection = aboard.direction
+            aboardStartLandingPending = true
+            GuideDiag.log { "transit aboard start direction=${aboard.direction}" }
+        } else {
+            if (aboard != null) GuideDiag.log { "transit aboard start skipped direction=${aboard.direction} untrackable first leg" }
+            aboardDirection = null
+        }
         mutate {
             copy(
                 pendingWalkHandoff = null,
@@ -647,11 +662,10 @@ class TransitGuideModel(
                 waitingLive = emptyList(),
                 waitingDeparted = emptyList(),
                 waitingReason = null,
-                aboardStep = null,
-                boardOverrideIndex = null,
+                aboardStep = if (aboardStarted) TransitAboardStep.pickVehicle else null,
+                boardOverrideIndex = if (aboardStarted) 0 else null,
             )
         }
-        val first = guideRoute.legs[initial.legIndex]
         // 오디오 승격은 **첫 톤보다 먼저**(`WalkGuideModel` 동형, E36 §4.2.1). 안드로이드는 포커스·재생기를 `tones.beginSession`이 든다.
         tones.beginSession()
         playTone(BeaconTone.start, allowedInBackground = false)
@@ -663,7 +677,8 @@ class TransitGuideModel(
         } else {
             parts += spokenDestinationName?.let { strings.get("transitGuide.startedAt", it, guideRoute.legs.size) }
                 ?: strings.get("transitGuide.started", guideRoute.legs.size)
-            parts += waitContextText(first, isCurrentLeg = true)
+            // E71 R8: 지금 탄 열차에서 시작하면 대기 문맥(「{역}에서 {노선} 탑승.」)은 승차 중인 사람에게 거짓이라 뺀다.
+            if (!aboardStarted) parts += waitContextText(first, isCurrentLeg = true)
         }
         if (first.trackMode == null) parts += strings.get("transitGuide.untrackable")
         announce(parts.joinToString(" "), speechClass = GuideSpeechClass.actionable)
@@ -1523,10 +1538,8 @@ class TransitGuideModel(
         // 대기 목록은 조회 역을 이미 떠난 열차를 뺀다(A74) — [이미 탔어요]의 열차 고르기는 빼지 않는다(그 열차에 타고 있는 사람의 길).
         if (aboardStep != TransitAboardStep.pickVehicle) return transitBoardablePool(all)
         val candidates = transitAboardCandidates(all)
-        // E71 R14: 지금 탄 열차에서 시작한 세션은 고른 방향만(반대 방향을 되살리지 않는다). Kit에 `journeyAboardTrainItems`가 없어 같은 한 줄 필터를 둔다
-        // (여정 이식 때 Kit 함수로 바꾼다).
-        val direction = aboardDirection
-        return if (direction != null) candidates.filter { it.direction == direction } else candidates
+        // E71 R14: 지금 탄 열차에서 시작한 세션은 고른 방향만(반대 방향을 되살리지 않는다).
+        return aboardDirection?.let { journeyAboardTrainItems(candidates, it) } ?: candidates
     }
 
     /** 0건 사유 문구(§13.3 3-state) — 목록 자리(시트)·새로고침 응답 공용. */

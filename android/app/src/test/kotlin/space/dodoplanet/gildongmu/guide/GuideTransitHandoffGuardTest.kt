@@ -52,18 +52,18 @@ class GuideTransitHandoffGuardTest {
         assertTrue(body("fun startTransit(").contains("refuseIfActive()"), "공개 시작은 거부 판정을 먼저 지난다")
     }
 
-    @Test fun `② beginBeacon 호출부는 spec 6-6 표 네 곳`() {
+    @Test fun `② beginBeacon 호출부는 spec 6-6 표 네 곳과 여정 단계 시작(§7-7)`() {
         val calls = Regex("""(?<!fun )\bbeginBeacon\(""").findAll(code(session)).count()
-        assertEquals(4, calls, "startWalk·startCar·beginTransit·transitTransferWalk")
-        for (fn in listOf("fun startWalk(", "fun startCar(", "private fun beginTransit(", "fun transitTransferWalk(")) {
+        assertEquals(5, calls, "startWalk·startCar·beginTransit·transitTransferWalk·launchJourneyBeacon")
+        for (fn in listOf("fun startWalk(", "fun startCar(", "private fun beginTransit(", "fun transitTransferWalk(", "private fun launchJourneyBeacon(")) {
             assertTrue(body(fn).contains("beginBeacon("), fn)
         }
         assertEquals(emptyList(), callersOutsideSession(Regex("""\bbeginBeacon\(""")))
         // 연결이 스스로 연 시작은 연결을 지우지 않는다(iOS 설계 리뷰) — 취소 게이트는 본문 맨 앞, 예외 플래그 아래.
         val begin = body("private fun beginBeacon(").trimStart().substringAfter("{").trimStart()
-        assertTrue(begin.startsWith("if (!launchingPrewalk) {"), begin.take(80))
-        val gate = begin.substringBefore("}")
-        assertTrue(gate.contains("retirePrewalkRestart()") && gate.contains("cancelPrewalk()"), gate)
+        // 여정 단계가 연 시작(`launchingJourneyStage`)은 연결 취소만 건너뛴다(iOS 동형, §7-3).
+        assertTrue(begin.startsWith("if (!launchingPrewalk) retirePrewalkRestart()"), begin.take(80))
+        assertTrue(begin.contains("if (!launchingPrewalk && !launchingJourneyStage) cancelPrewalk()"))
         assertTrue(body("private fun launchPrewalk(").let { it.indexOf("launchingPrewalk = true") in 0 until it.indexOf("startWalk()") })
     }
 
@@ -78,7 +78,7 @@ class GuideTransitHandoffGuardTest {
 
     @Test fun `④ 대중교통 시작 창구는 GuideSession 한 곳`() {
         assertEquals(emptyList(), callersOutsideSession(Regex("""\btransit\.start\(|\.startAfterPrewalk\(""")))
-        assertEquals(1, Regex("""\btransit\.start\(""").findAll(code(session)).count(), "beginTransit의 승차 전 도보 없는 분기")
+        assertEquals(1, Regex("""\btransit\.start\(""").findAll(code(session)).count(), "beginTransit의 승차 전 도보 없는 분기(aboard 포함)")
         assertTrue(body("private fun beginTransit(").contains("transit.start("))
     }
 
