@@ -31,7 +31,7 @@ gil route walk "길동역" "강남역" --accessible true   # 계단 회피 도�
 
 스크린 리더 사용자에게 비싼 것은 화면에 **도달**하는 일이 아니라 그 화면을 **훑는** 일이다. 경로 하나가 수십 개의 접근성 객체인데 도구로는 한 번의 답이 된다. 좌표는 브라우저 밖으로 나가지 않는다(출력 allowlist가 구조적으로 막는다).
 
-구현·계약·검증 근거는 [`docs/WEBMCP.md`](docs/WEBMCP.md)(영문), 코드를 만질 때의 함정은 [`CLAUDE.md`](CLAUDE.md) §WebMCP 도구층에 있다.
+구현·계약·검증 근거는 [`docs/WEBMCP.md`](docs/WEBMCP.md)(영문), 코드를 만질 때의 함정은 [`.claude/rules/webmcp.md`](.claude/rules/webmcp.md)와 [`docs/PATTERNS.md`](docs/PATTERNS.md) §WebMCP 도구층에 있다.
 
 ## 핵심 설계
 

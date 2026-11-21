@@ -31,7 +31,7 @@ The app declares seven WebMCP tools at its root. In a compatible browser, such a
 
 For screen reader users, scanning a screen can take more effort than reaching it. A single route may contain dozens of accessibility objects; a tool can deliver that information in one response. An output allowlist prevents coordinates from being included in WebMCP tool responses to the agent.
 
-See [`docs/WEBMCP.md`](docs/WEBMCP.md) for the implementation, contracts, and validation evidence in English. Development rules and pitfalls are in the WebMCP section of [`CLAUDE.md` (Korean)](CLAUDE.md).
+See [`docs/WEBMCP.md`](docs/WEBMCP.md) for the implementation, contracts, and validation evidence in English. Development rules and pitfalls are in [`.claude/rules/webmcp.md`](.claude/rules/webmcp.md) and the WebMCP section of [`docs/PATTERNS.md`](docs/PATTERNS.md) (Korean).
 
 ## Core design
 

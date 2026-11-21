@@ -7,7 +7,7 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 - 실기기 테스트는 **한소네 7**로 진행한다.
 - 배포 전까지 **정식판을 중점적으로 개발**하고, iOS 앱과의 기능 등가성 유지·동기화도 **iOS 정식판을 기준**으로 한다.
 - 정식 기능 구성의 실기기 개발·검증에는 `debug`, 정식 배포에는 `release`를 쓴다. `experimental`은 별도 실험판이며 기본 개발·동기화 기준이 아니다. 기존 실험 기능의 정식판 승격에는 해당 기능의 검증이 필요하다.
-- **도보 실시간 안내는 정식 기능이다**(iOS 등가성, BACKLOG E43 우선순위 4). 진입점·세션은 빌드 구성 게이트를 보지 않고 전경 서비스·권한은 정식 매니페스트에 있다. 남은 완료 조건은 한소네 7 정식 기능 `debug` 검증이다.
+- **도보·자동차·대중교통 실시간 안내와 여정은 정식 기능이다**(iOS 등가성, BACKLOG E43). 진입점·세션은 빌드 구성 게이트를 보지 않고 전경 서비스·권한은 정식 매니페스트에 있다. 남은 완료 조건은 한소네 7 정식 기능 `debug` 검증과 실주행·실승차(BACKLOG §2 「E43 M5 …안드로이드」 행)다.
 
 ## 1. 모듈
 
@@ -19,7 +19,7 @@ android/
          a11y/      접근성 기본형(mergedRow·landingTarget·AppScreenScaffold·StatusLine) · 앱 통지 큐 AppNotices(화면 StatusLine이 한 문장으로 병합·RESUMED 소유자 claim, spec §13-5) · 결과 진동 Notice.haptic/LocalResultHaptics(§14-3)
          settings/  설정(SettingsStore 단일 소유자·순수 localeOverride/settingsRows·선택 다이얼로그·정보 출처·SettingsAction · 첫 착지 행 SettingsRoute(focusRow)) — 언어는 AppConfig.localized/localizedApp 한 경로(spec §14)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection — 자동 펼침 SceneAutoSection·버튼형 SceneButtonSection(안내 시트 주변 확인, M4b)) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
-         guide/·audio/ 도보 실시간 안내·톤(M4, 정식 기능) · 안내 중 변경의 길찾기 폼 동기화 채널 GuideFormSync · 시트를 접고 여는 스택 push 왕복 guide/ui/GuidePlaceNav(장소 상세)·WeightSettingsNav(설정 체중 칸) (M4b·E31) · 장소 상세의 안내 중 목적지·경유지 버튼 guide/ui/GuideHereButtons · 시트 첫 정보 행 착지 상태 머신 guide/ui/GuideSheetLanding + 커서 노드 관찰 A11yFocusObserver (E57) · 백그라운드 음성 안내(E53 — 채널 술어·대기 칸은 :kit, 게시는 WalkGuideModel.post, 발화 토큰은 audio/TtsGuideSpeaker) · 앱 시작 시 새 소식 공지(2.0 공지 미러, 키 releaseNoticeV2) guide/ui/ReleaseNoticeSheet · 채팅 답변 듣기 재생기 audio/ChatTtsPlayer(기기 TTS 우선·/api/tts 폴백) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
+         guide/·audio/ 도보 실시간 안내·톤(M4, 정식 기능) · 자동차는 같은 모델의 sessionKind=car 세션 + guide/ui/CarGuideStartButton · 대중교통 세션 guide/TransitGuideModel + guide/ui/Transit*(M5) · 여정 guide/JourneyPlan + guide/ui/JourneySheet(B26) · 안내 중 변경의 길찾기 폼 동기화 채널 GuideFormSync · 시트를 접고 여는 스택 push 왕복 guide/ui/GuidePlaceNav(장소 상세)·WeightSettingsNav(설정 체중 칸) (M4b·E31) · 장소 상세의 안내 중 목적지·경유지 버튼 guide/ui/GuideHereButtons · 시트 첫 정보 행 착지 상태 머신 guide/ui/GuideSheetLanding + 커서 노드 관찰 A11yFocusObserver (E57) · 백그라운드 음성 안내(E53 — 채널 술어·대기 칸은 :kit, 게시는 WalkGuideModel.post, 발화 토큰은 audio/TtsGuideSpeaker) · 앱 시작 시 새 소식 공지(2.0 공지 미러, 키 releaseNoticeV2) guide/ui/ReleaseNoticeSheet · 채팅 답변 듣기 재생기 audio/ChatTtsPlayer(기기 TTS 우선·/api/tts 폴백) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
          place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3) · 역 레이아웃 순서 정본 PlaceLayout·경유역 전화 저장소 StationPhoneStore·경유역 라우트 PlaceDetailRoute.ofTransitStop (E44) · 역 전화 단일 창구 callStationPhone (E45)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
@@ -35,7 +35,7 @@ android/
 
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
 - 길찾기 주소 요청은 `DirectionsAddressState`가 측위 전부터 소유한다. 초기 진입·재선택·경로 조회 모두 같은 요청을 주소 커밋까지 전달하고, 필드 변경은 작업과 요청을 함께 취소한다. 언어 변경은 주소 상태를 초기화하며 이전 요청의 종료는 최신 로딩을 건드리지 않는다. 회귀 검증은 Kit `DirectionsAddressStateTest`와 앱 `DirectionsAddressTest`다.
-- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig`의 `BuildConfig.EXPERIMENTAL` 플래그(현재 탭 순서·결과 진동 설정 행)이고, 검증되면 플래그 선언째 지운다. 자동차·대중교통 안내(M5)를 실험판으로 들이면 같은 자리에 플래그 하나를 두고 졸업 때 지운다(iOS는 2.0에서 같은 플래그를 졸업시켰다). 매니페스트 항목도 게이트의 일부다 — 실험 기능 전용 권한·서비스는 `src/experimental/AndroidManifest.xml`에 두고, 졸업 때 코드 게이트와 함께 `src/main`으로 승격한다.
+- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig`의 `BuildConfig.EXPERIMENTAL` 플래그(현재 탭 순서·결과 진동 설정 행)이고, 검증되면 플래그 선언째 지운다. 자동차·대중교통 안내와 여정(M5)은 실험 플래그 없이 정식 구성에 들어왔다. 매니페스트 항목도 게이트의 일부다 — 실험 기능 전용 권한·서비스는 `src/experimental/AndroidManifest.xml`에 두고, 졸업 때 코드 게이트와 함께 `src/main`으로 승격한다.
 
 ## 2. 환경
 

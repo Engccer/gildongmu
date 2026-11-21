@@ -341,7 +341,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Journey.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/JourneyTest.kt",
-      "note": "E70·E70-e·E71·E77 여정 순수 판정(전이 표·표시 이름·노선 머리말·방면 묶음·입구 짐작). sealed 케이스는 PascalCase(`JourneyPhase.Running`·`JourneyEvent.TaxiDropped`·`JourneyStepResult.Next`), enum은 소문자 그대로. UUID는 java.util.UUID, 튜플 `(lat:, lng:)?` → `RoutePoint?`. `journeyLineHintMatches`·`journeySameLine`은 internal. 전이 표 공유 fixture 테스트는 `JourneyStepSharedTest`, 모델·조회·최근 경로 테스트는 `JourneyModelsTest`(Swift JourneyModelsTests 대응). 채팅 여정 카드(`JourneyCardFreshness`)는 비목표라 이식하지 않는다"
+      "note": "E70·E70-e·E71·E77 여정 순수 판정(전이 표·표시 이름·노선 머리말·방면 묶음·입구 짐작). sealed 케이스는 PascalCase(`JourneyPhase.Running`·`JourneyEvent.TaxiDropped`·`JourneyStepResult.Next`), enum은 소문자 그대로. UUID는 java.util.UUID, 튜플 `(lat:, lng:)?` → `RoutePoint?`. `journeyLineHintMatches`·`journeySameLine`은 internal. 전이 표 공유 fixture 테스트는 `JourneyStepSharedTest`, 모델·조회·최근 경로 테스트는 `JourneyModelsTest`(Swift JourneyModelsTests 대응). 채팅 여정 카드(`JourneyCardFreshness`)는 BACKLOG B29에서 이식한다(core.json)"
     },
     {
       "swift": "CarTrafficAhead.swift",
