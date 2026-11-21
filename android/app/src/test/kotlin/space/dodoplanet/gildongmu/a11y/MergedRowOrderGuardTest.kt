@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.a11y
 import space.dodoplanet.gildongmu.kit.Fixtures
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -60,6 +61,15 @@ class MergedRowOrderGuardTest {
         assertTrue(body.contains("if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken } else Modifier.semantics(mergeDescendants = true) {}"), body)
         // 지우기는 맨 끝(focusable·testTag·착지 요청자보다 안쪽) — 앞에 두면 그것들의 시맨틱이 지워진다.
         assertTrue(body.indexOf(".focusable()") in 0 until body.indexOf("clearAndSetSemantics"))
+    }
+
+    /** `mergedRow` 밖의 병기 줄 두 자리(주변 상황 장소 줄, 위치 표시줄)도 낭독 이름이 있으면 글자를 지운다(한소네 2026-11-21 위치 표시줄 두 번 출력 실측). */
+    @Test fun `mergedRow 밖 병기 줄도 낭독 이름이 있으면 글자를 지운다`() {
+        val scene = pkg.resolve("nearby/SceneSection.kt").readText()
+        assertTrue(scene.contains("if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken; customActions = actions }"))
+        val bar = pkg.resolve("location/LocationBar.kt").readText()
+        assertTrue(bar.contains("Text(line.visual, if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken } else Modifier)"))
+        assertFalse(Regex("""\.semantics \{ if \(spoken != null\) contentDescription = spoken \}""").containsMatchIn(bar), "버튼에 낭독 이름을 주면 글자와 함께 두 번 나온다")
     }
 
     @Test fun `TextRow는 작업 메뉴를 mergedRow 앞에 붙인다`() {

@@ -15,8 +15,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.landingTarget
@@ -190,9 +190,11 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
             .padding(vertical = 4.dp)
             .tapTarget()
             .testTag(LOCATION_BAR_KEY)
-            .landingTarget(focus)
-            .semantics { if (spoken != null) contentDescription = spoken },
-    ) { Text(line.visual) }
+            .landingTarget(focus),
+    ) {
+        // 낭독 이름은 자식 글자 자리에만 둔다(A77 — 버튼에 주면 한소네가 낭독 이름 뒤에 글자를 이어 두 번 낸다). 버튼이 자식을 병합하므로 역할·클릭은 그대로다.
+        Text(line.visual, if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken } else Modifier)
+    }
 }
 
 private fun epochNow(): Double = System.currentTimeMillis() / 1000.0
