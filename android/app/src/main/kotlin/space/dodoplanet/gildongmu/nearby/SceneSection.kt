@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import space.dodoplanet.gildongmu.place.placeRowActions
@@ -131,10 +132,11 @@ private fun SceneGroups(
                     .testTag(key)
                     .defaultMinSize(minHeight = 48.dp)
                     .padding(vertical = 8.dp)
-                    .semantics(mergeDescendants = true) {
-                        if (spoken != null) contentDescription = spoken
-                        customActions = actions
-                    },
+                    // 낭독 이름이 있으면 자식 글자를 지운다(A77 — 병합하면 한소네가 낭독 이름 뒤에 글자를 이어 두 번 낸다). 클릭·착지는 앞이라 남는다.
+                    .then(
+                        if (spoken != null) Modifier.clearAndSetSemantics { contentDescription = spoken; customActions = actions }
+                        else Modifier.semantics(mergeDescendants = true) { customActions = actions },
+                    ),
             )
         }
         if (group.items.size > visible) {

@@ -106,6 +106,8 @@ class AppSessionTest {
         assertEquals(1, Regex("""Dictation\.isAvailable\(""").findAll(code).count())
         assertFalse(code.contains("isDictationAvailable"))
         assertTrue(code.contains("setAction(AppSession.ACTION_VOICE_SEARCH)"))
+        assertTrue(code.contains("FLAG_ACTIVITY_CLEAR_TASK"), "정적 「내 주변」과 같은 진입(동적은 시스템이 CLEAR_TASK를 붙이지 않는다)")
+        assertFalse(code.contains("ID = \"voiceSearch\""), "옛 정적 id 재사용 금지(고정된 사본이 동적 등록을 막는다)")
         assertTrue(code.contains("removeDynamicShortcuts"))
         assertFalse(code.contains("setPackage") || code.contains("setClassName"), "패키지 하드코딩 금지")
         assertTrue(src.resolve("MainActivity.kt").readText().contains("VoiceSearchShortcut.sync(this)"))

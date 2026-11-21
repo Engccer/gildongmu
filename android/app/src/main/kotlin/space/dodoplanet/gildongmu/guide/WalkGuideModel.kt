@@ -727,7 +727,7 @@ class WalkGuideModel(
         this.status = status
         failResolution = resolution
         statusText = prewalkTail?.let { prewalkStopText(it, strings.get(key)) } ?: strings.get(key)
-        pendingFailLanding = true
+        pendingFailLandingAt = clock()
         mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
         val prewalkBridge = (starting && prewalkTarget != null) || prewalkBridgeAfterStop
@@ -737,13 +737,16 @@ class WalkGuideModel(
         )
     }
 
-    private var pendingFailLanding = false
+    private var pendingFailLandingAt: Double? = null
 
-    /** 시작 실패 행의 착지 1회 소비(전이에만 착지 — 탭 복귀 재컴포지션은 착지하지 않는다). */
+    /**
+     * 시작 실패 행의 착지 1회 소비(전이에만 착지 — 탭 복귀 재컴포지션은 착지하지 않는다). 실패 뒤 `FAIL_LANDING_WINDOW_S` 안에만 참이다:
+     * 인계 도보(B28)는 다른 탭의 시트에서 시작해 실패 행이 그려지지 않은 채 표식이 남을 수 있고, 나중에 길찾기 탭에 들어오면 그 착지가 커서를 가져간다.
+     */
     fun takeFailLanding(): Boolean {
-        val take = pendingFailLanding
-        pendingFailLanding = false
-        return take
+        val at = pendingFailLandingAt
+        pendingFailLandingAt = null
+        return at != null && clock() - at <= FAIL_LANDING_WINDOW_S
     }
 
     // ─────────────────────────── 종료 (§3-3) ───────────────────────────
@@ -980,7 +983,7 @@ class WalkGuideModel(
     /** 시작 실패 행 소거(해결 버튼 뒤·다른 시작 앞·승차 전 도보 재시작 줄 거두기 `GuideSession.retirePrewalkRestart`). */
     fun clearFailure() {
         if (!status.isFailure) return
-        pendingFailLanding = false  // 거둔 실패 행의 착지가 다음 실패 없는 화면에서 포커스를 당기지 않게
+        pendingFailLandingAt = null  // 거둔 실패 행의 착지가 다음 실패 없는 화면에서 포커스를 당기지 않게
         status = GuideStatus.idle
         statusText = ""
         failResolution = FailResolution.none
@@ -2958,6 +2961,8 @@ class WalkGuideModel(
     }
 
     private companion object {
+        /** 시작 실패 착지의 유효 창(초). 시작 버튼 아래 실패 행은 실패 다음 프레임에 그려지므로 넉넉하다(B28 — 늦게 그려진 행은 착지하지 않는다). */
+        const val FAIL_LANDING_WINDOW_S = 3.0
         /** 상세 모드 추세 축 데드밴드(m) — 지터 방어가 아니라 빈도 노브(위원장 실보행 판정 6m). */
         const val detailDeadBand = 6.0
         const val detailDeadBandFloor = 5.0

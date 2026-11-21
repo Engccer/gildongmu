@@ -559,9 +559,15 @@ class WalkGuideModelTest {
         assertTrue(h.model.takeFailLanding())
         assertFalse(h.model.takeFailLanding())
         h.model.clearFailure()
+        // 늦게 그려진 실패 행(다른 탭에서 시작한 인계 도보, B28)은 착지하지 않는다 — 실패 뒤 3초 창.
         h.model.requestStart(h.request)
         settle()
-        assertEquals(2, h.model.ui.value.failSeq)
+        h.clock.now += 3.5
+        assertFalse(h.model.takeFailLanding())
+        h.model.clearFailure()
+        h.model.requestStart(h.request)
+        settle()
+        assertEquals(3, h.model.ui.value.failSeq)
     }
 
     @Test fun `종료 화면 닫기 — 상태 행·하단 윗줄을 비운다(상환 꼬리가 종료 문장을 되읽지 않게)`() = guideTest(dispatcher) { h ->

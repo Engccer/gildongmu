@@ -47,7 +47,7 @@ class GuideTransitHandoffGuardTest {
         assertEquals("guideStart?.invoke(entry.route, entry.name)", first.trim(), "펼침 본문 첫 항목")
         // 인계 도보의 시작 실패 행(B28): 길찾기 선두, 추적 중 「안내 종료」 블록 뒤에 선다(빠지면 인계 실패가 화면 어디에도 남지 않는다).
         val screen = code(dirs.resolve("DirectionsScreen.kt").readText())
-        assertTrue(screen.indexOf("directions-guide-stop").let { stop -> stop >= 0 && stop < screen.indexOf("GuideHandoffFailureRow()") && screen.indexOf("GuideHandoffFailureRow()") < screen.indexOf("val results = s.results") }, "선두 실패 행 배선")
+        assertTrue(screen.indexOf("directions-guide-stop").let { stop -> stop >= 0 && stop < screen.indexOf("GuideHandoffFailureRow {") && screen.indexOf("GuideHandoffFailureRow {") < screen.indexOf("val results = s.results") }, "선두 실패 행 배선")
         assertEquals(1, Regex("""\bstartTransit\(""").findAll(code(session)).count(), "정의 한 곳뿐")
         assertTrue(body("fun startTransit(").contains("refuseIfActive()"), "공개 시작은 거부 판정을 먼저 지난다")
     }

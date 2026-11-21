@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.guide.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -71,12 +73,13 @@ internal fun GuideStartFailureRow(ui: WalkGuideUiState, strings: Strings) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val failFocus = remember { FocusRequester() }
+    val failBring = remember { BringIntoViewRequester() }
     if (!(ui.status.isFailure && ui.statusText.isNotEmpty())) return
     Column(Modifier.fillMaxWidth()) {
         // `BodyLine`은 `focus`를 받지 않고 `a11y/`는 m1 소유라 `mergedRow` 직접(리뷰 N3-6).
-        Text(ui.statusText, Modifier.fillMaxWidth().mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
-        // 실패 **전이**에만 착지(모델이 발급한 1회 표식) — 탭 복귀 재컴포지션이 커서를 빼앗지 않는다.
-        LaunchedEffect(ui.failSeq) { if (GuideSession.walk.takeFailLanding()) land(failFocus, "시작 실패 문장") }
+        Text(ui.statusText, Modifier.fillMaxWidth().bringIntoViewRequester(failBring).mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
+        // 실패 **전이**에만 착지(모델이 발급한 1회 표식) — 탭 복귀 재컴포지션이 커서를 빼앗지 않는다. 길찾기 선두 행(B28)은 스크롤 위쪽이라 먼저 들인다.
+        LaunchedEffect(ui.failSeq) { if (GuideSession.walk.takeFailLanding()) landRevealed(failBring, failFocus, "시작 실패 문장") }
         when (ui.failResolution) {
             FailResolution.precise -> Button(
                 onClick = {
@@ -102,12 +105,14 @@ internal fun GuideStartFailureRow(ui: WalkGuideUiState, strings: Strings) {
  * 위 세 버튼 아래 실패 행 어디에도 걸리지 않는다. [정확한 위치 허용]의 `restartBeacon`은 모델이 든 같은 요청으로 다시 시작해 실패도 다시 여기 선다.
  */
 @Composable
-fun GuideHandoffFailureRow() {
+fun GuideHandoffFailureRow(heading: @Composable (destination: String) -> Unit) {
     val res = LocalContext.current.resources
     val strings = remember(res) { guideStrings(res) }
     val ui by GuideSession.walk.ui.collectAsState()
     val started by GuideSession.transitStartRoute.collectAsState()
-    if (handoffStartFailureShown(ui, started)) GuideStartFailureRow(ui, strings)
+    if (!handoffStartFailureShown(ui, started) || !(ui.status.isFailure && ui.statusText.isNotEmpty())) return
+    heading(ui.destinationLabel) // iOS 선두 섹션 머리말 「실시간 길 안내, {도착지}」 — 무엇이 실패했는지와 헤딩 이동 자리
+    GuideStartFailureRow(ui, strings)
 }
 
 /**

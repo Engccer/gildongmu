@@ -411,7 +411,7 @@ private fun AroundBody(
     val placeName = overview?.place?.let { bilingualName(lang, it, en = null, roman = overview.placeRoman) }
     val hereRes = aroundHereResId(payload, hasPlace = placeName != null)
     val hereVisual = placeName?.let { appLocalized(res, hereRes, it.display) } ?: stringResource(hereRes)
-    val hereSpoken = placeName?.let { appLocalized(res, hereRes, it.primary) }
+    val hereSpoken = placeName?.let { appLocalized(res, hereRes, it.primary) }?.takeIf { it != hereVisual } // 같으면 넘기지 않는다(넘기면 글자를 지운다, A77)
     Text(hereVisual, Modifier.fillMaxWidth().headingText().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
 
     // 2. 한눈에 보기 — 헤딩 + 반경, 불릿 6개(각 한 객체, 낭독은 text, 시각은 한글 병기 꼬리)

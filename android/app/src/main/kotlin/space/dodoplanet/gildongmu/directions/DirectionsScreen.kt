@@ -328,7 +328,7 @@ private fun DirectionsForm(
                 ) { Text(strings.get("beacon.stop")) }
             }
             // 인계 도보의 시작 실패(B28, iOS 같은 선두 섹션) — 시작 버튼 없는 도보 시작이라 실패 문장과 해결 버튼이 설 자리가 여기뿐이다.
-            if (guideUi != null && !guideUi.isTracking) GuideHandoffFailureRow()
+            if (guideUi != null && !guideUi.isTracking) GuideHandoffFailureRow { dest -> SectionHeading(joinText(strings.get("beacon.heading"), dest)) }
 
             val results = s.results
             if (results != null) {
