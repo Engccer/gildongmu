@@ -695,7 +695,7 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 ### `clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다
 
-⚠ **`clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다** — 한 노드의 시맨틱 수식어는 사슬 안쪽(뒤)부터 바깥쪽으로 접히고, 지우는 수식어를 만나면 그때까지 모은 것을 버린다. 그래서 `clickable`처럼 앞에 붙은 것은 살고 `.mergedRow(...).semantics { customActions = … }`·`.headingText()`처럼 뒤에 붙은 것은 사라진다(`RecentRow`는 액션을 같은 블록 안에 둔다). A77(한소네 영어 병기 줄 두 번 출력)을 `mergedRow` 한 곳에서 `clearAndSetSemantics`로 고치지 못한 이유가 이것이다 — 낭독 이름 + 뒤 시맨틱 자리가 `SearchRows.kt`·`NearbyKindScreen.kt`·`a11y/Lines.kt`·`directions/RouteRows.kt`에 있다(2026-11-21).
+⚠ **`clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다** — 한 노드의 시맨틱 수식어는 사슬 안쪽(뒤)부터 바깥쪽으로 접히고, 지우는 수식어를 만나면 그때까지 모은 것을 버린다. 그래서 `clickable`처럼 앞에 붙은 것은 살고 `.mergedRow(...).semantics { customActions = … }`·`.headingText()`처럼 뒤에 붙은 것은 사라진다(`RecentRow`는 액션을 같은 블록 안에 둔다). 그래서 A77(한소네 영어 병기 줄 두 번 출력)은 `mergedRow`가 낭독 이름이 있을 때만 지우기를 사슬 맨 끝에 두고, 호출부가 작업 메뉴·헤딩을 그 앞에 붙인다(`.semantics { customActions = … }.headingText().mergedRow(…)`, 소스 가드 `MergedRowOrderGuardTest`, 2026-11-21). 머티리얼 `Button`처럼 역할·클릭 시맨틱을 사용자 수식어 안쪽에 다는 컴포넌트는 버튼 수식어에 지우기를 걸면 그 시맨틱까지 지워지므로, 낭독 이름은 자식 `Text`에 지우기로 두고 버튼이 병합하게 한다(위치 표시줄 `LocationBar.kt`). 단일 live region인 `StatusLine`은 같은 모양이지만 남겼다.
 
 ### 화면 밖 행으로 옮기는 착지는 먼저 스크롤하고 기다린 뒤 포커스를 준다
 
@@ -716,6 +716,10 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 ### 바로가기·안내 알림은 태스크의 기준 인텐트를 바꾼다
 
 ⚠ **정적 바로가기(`NEW_TASK|CLEAR_TASK`)와 안내 알림은 태스크의 기준 인텐트를 자기 인텐트로 바꾼다** — `standard` 액티비티면 그 뒤 런처 아이콘(MAIN+LAUNCHER)이 기준 인텐트와 달라 기존 화면 위에 새 `MainActivity`를 쌓았다(2026-11-21 한소네 7 재현, `dumpsys` 화면 2개). `MainActivity`는 `singleTop`이라 런처·알림 복귀가 맨 위 화면의 `onNewIntent`로 가고(액션 없음 → `offer`가 무시), 바로가기의 `CLEAR_TASK` 재생성은 그대로다. 런처 인텐트에는 우리가 플래그를 붙일 수 없어 알림 쪽 플래그로는 풀리지 않는다(M4 spec이 `launchMode` 무변경을 택한 근거는 알림 경로만 봤다). 같은 뿌리의 둘째 함정: 바로가기로 연 앱을 뒤로 가기로 나가면 액티비티가 끝나고, 최근 앱에서 다시 열면 시스템이 그 바로가기 인텐트에 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`를 붙여 새로 만든다 — `offer`가 이 플래그를 보면 받지 않는다(iOS는 인텐트 `perform()`에서만 선다). 점검 대본 `android/scripts/hansone-and-wave1-fix.py`(`stack`·`history`).
+
+### 동적 바로가기는 정적과 진입 플래그·id 수명이 다르다
+
+⚠ **동적 바로가기에는 시스템이 `NEW_TASK|CLEAR_TASK`를 붙이지 않고, 매니페스트에서 뺀 정적 바로가기의 id는 다시 쓸 수 없다**(2026-11-21 「음성 검색」 동적 전환 리뷰). 정적 바로가기는 앱이 떠 있어도 액티비티를 지우고 새로 만들지만 동적은 `onNewIntent`로 들어오므로, 같은 진입을 원하면 인텐트에 두 플래그를 직접 붙인다(`nav/VoiceSearchShortcut.kt`). 또 사용자가 홈 화면에 고정한 정적 바로가기는 매니페스트에서 빠져도 비활성·불변 사본으로 남아, 같은 id로 `pushDynamicShortcut`을 부르면 예외가 난다 — 동적 id는 옛 정적 id와 가른다(`voiceSearchDynamic`, 가드 `AppSessionTest`).
 
 ### 이미 입력 포커스를 쥔 노드에 다시 `requestFocus()`해도 커서는 따라오지 않는다
 

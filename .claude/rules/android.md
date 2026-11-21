@@ -29,6 +29,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - **탭 전체 리셋은 시작 탭의 저장 스택부터 복원해 지운다**(`resetAllTabs`, `clearBackStack(시작 탭)` 금지). → PATTERNS
 - ⚠ **전역 1회 신호(바로가기 액션)는 받은 액티비티만 꺼낸다**: 지워지는 옛 `AppRoot`가 먼저 가져간다(`AppSession.take(owner)`). → PATTERNS
 - ⚠ **바로가기·안내 알림은 태스크의 기준 인텐트를 바꾼다**: `MainActivity`는 `singleTop`이고(아니면 런처 아이콘 복귀가 화면을 쌓는다), 최근 앱 재실행은 그 인텐트에 `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`를 붙여 오므로 액션으로 받지 않는다. → PATTERNS
+- ⚠ **동적 바로가기에는 시스템이 `NEW_TASK|CLEAR_TASK`를 붙이지 않고, 매니페스트에서 뺀 정적 바로가기 id는 다시 쓸 수 없다**(고정된 사본이 등록을 막는다): 플래그는 직접 붙이고 id는 가른다. → PATTERNS
 - ⚠ **이미 입력 포커스를 쥔 노드에 다시 `requestFocus()`해도 커서는 따라오지 않는다**: 비우고 접근성 이벤트 묶음 간격을 기다린 뒤 준다(`MovedRowLanding`). → PATTERNS
 - ⚠ **안내 문자열 표는 없는 키에 실행 중 던진다**: 안내 시트가 다른 패키지 컴포저블(`DisclosureRow`)에 `guideStrings`를 넘기면 그 함수의 키를 표와 가드 ⑧ 공용 줄 목록에 더한다. → PATTERNS
 - ⚠ **`MutableStateFlow`는 `equals`가 같은 값을 버린다**: 동일성으로 가르는 표식은 data class 아닌 감싸개로 싣는다. → PATTERNS
