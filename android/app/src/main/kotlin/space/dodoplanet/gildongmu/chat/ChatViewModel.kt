@@ -18,12 +18,10 @@ import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.isStation
-import space.dodoplanet.gildongmu.kit.models.AddressMatch
 import space.dodoplanet.gildongmu.kit.models.ChatRenderPayload
 import space.dodoplanet.gildongmu.kit.models.ChatRequestBody
 import space.dodoplanet.gildongmu.kit.models.ChatSource
 import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
-import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.nav.ReturnFocusSlot
 
@@ -46,7 +44,7 @@ data class ChatUiState(
     val followUps: List<String> = emptyList(),
     /** 답변(성공·실패) 도착 세대 — 화면의 완료 착지 신호. */
     val answerRevision: Int = 0,
-    /** 화면의 단일 polite 창구(진행 문장·주소 실패·받아쓰기 결과). */
+    /** 화면의 단일 polite 창구(진행 문장·받아쓰기 결과). */
     val notice: Notice = Notice(0, ""),
 )
 
@@ -64,11 +62,9 @@ class ChatViewModel(
     val place: Place?,
     private val stream: ChatStreamSource,
     private val suggestions: ChatSuggestionsSource,
-    private val geocode: suspend (String) -> AddressMatch?,
     private val consent: ChatConsentStore,
     private val location: ChatLocation,
     private val lang: () -> String,
-    private val dataLocale: () -> String,
     private val strings: ChatStrings,
     private val sounds: ChatSounds,
     savedState: SavedStateHandle,
@@ -89,7 +85,6 @@ class ChatViewModel(
     private val returnFocus = ReturnFocusSlot(savedState)
     private var nextId = 1L
     private var followUpJob: Job? = null
-    private var resolvingAddress = false
 
     /**
      * 전송. 동의 가드는 UI 게이트가 뚫려도 미동의 전송을 구조적으로 막는다(iOS 이중 방어). 받아들였으면 true — 화면이 보내기 버튼으로 착지한다.
@@ -133,32 +128,6 @@ class ChatViewModel(
     fun rememberReturnFocus(key: String) = returnFocus.remember(key)
 
     fun takeReturnFocus(): String? = returnFocus.take()
-
-    /**
-     * 주소 카드 → 장소(spec §4-4). 화면의 컴포지션 스코프에서 부른다 — 화면이 떠나면 취소되어 늦은 결과로 상세를 열지 않는다.
-     * 0건과 조회 실패는 다른 문장(3-state). 진행 중 재탭은 null.
-     */
-    suspend fun resolveAddress(address: JusoAddress): Place? {
-        if (resolvingAddress) return null
-        resolvingAddress = true
-        try {
-            val match = try {
-                geocode(address.roadAddrPart1.ifEmpty { address.roadAddr })
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                announce(strings.addressLookupFailed())
-                return null
-            }
-            if (match == null) {
-                announce(strings.addressNotFound())
-                return null
-            }
-            return jusoAddressToPlace(address, match, dataLocale())
-        } finally {
-            resolvingAddress = false
-        }
-    }
 
     private suspend fun runStream() {
         // 일반 채팅만 전송 직전 1회 측위(최초면 권한 다이얼로그). 실패해도 계속 — 위치는 필수가 아니다(iOS `try?`).

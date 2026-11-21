@@ -54,14 +54,12 @@ class ChatScreenA11yTest {
             place = null,
             stream = stream,
             suggestions = { _, _, _, _ -> emptyList() },
-            geocode = { null },
             consent = ChatConsentStore(InMemoryKeyValueStore()),
             location = object : ChatLocation {
                 override suspend fun prime() = Unit
                 override fun last(): ChatRequestBody.Coordinate? = null
             },
             lang = { "ko" },
-            dataLocale = { "ko" },
             strings = chatStrings(res),
             sounds = object : ChatSounds {
                 override fun send() = Unit

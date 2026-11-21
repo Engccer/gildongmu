@@ -9,7 +9,6 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -17,12 +16,10 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.directions.CatalogStrings
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
-import space.dodoplanet.gildongmu.kit.models.AddressMatch
 import space.dodoplanet.gildongmu.kit.models.ChatRenderPayload
 import space.dodoplanet.gildongmu.kit.models.ChatRequestBody
 import space.dodoplanet.gildongmu.kit.models.ChatSource
 import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
-import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.PlaceSort
 import java.io.IOException
@@ -49,8 +46,6 @@ class ChatViewModelTest {
         progressFallback = { catalog.get("android.chat.progressFallback") },
         progressSearching = { catalog.get("chat.progress.searching", it) },
         toolLabel = { c -> if (toolLabelId(c) != null) catalog.get("chat.progress.tool.$c") else c },
-        addressNotFound = { catalog.get("search.addressCoordFailed") },
-        addressLookupFailed = { catalog.get("directions.coordError") },
     )
 
     private class Sounds : ChatSounds {
@@ -83,7 +78,6 @@ class ChatViewModelTest {
 
     private val place = Place(id = "k1", name = "강동역", category = "교통,수송 > 지하철,전철 > 수도권5호선", address = "서울 강동구", roadAddress = "서울 강동구 천호대로", lat = 37.5358, lng = 127.1323)
     private val cafe = Place(id = "c1", name = "카페 길동", category = "", address = "a", roadAddress = "r", lat = 37.5, lng = 127.1)
-    private val address = JusoAddress("서울특별시 중구 세종대로 110 (태평로1가)", "서울특별시 중구 세종대로 110", "서울특별시 중구 태평로1가 31", "110 Sejong-daero", "04524", "")
 
     private val done = ChatStreamEvent.Done(
         "강동역 근처 카페입니다.",
@@ -98,7 +92,6 @@ class ChatViewModelTest {
         val location: Location,
         val sounds: Sounds,
         val consent: ChatConsentStore,
-        val geocodes: MutableList<String>,
     )
 
     private fun make(
@@ -107,14 +100,12 @@ class ChatViewModelTest {
         events: (ChatRequestBody) -> Flow<ChatStreamEvent> = { flowOf(ChatStreamEvent.Status(listOf("search_places")), done) },
         suggestions: Suggestions = Suggestions(),
         location: Location = Location(ChatRequestBody.Coordinate(37.53, 127.13)),
-        geocode: suspend (String) -> AddressMatch? = { null },
     ): Fixture {
         val consent = ChatConsentStore(InMemoryKeyValueStore()).also { if (granted) it.grant() }
         val stream = Stream(events)
         val sounds = Sounds()
-        val geocodes = ArrayList<String>()
-        val vm = ChatViewModel(place, stream, suggestions, { q -> geocodes += q; geocode(q) }, consent, location, { "ko" }, { "ko" }, strings, sounds, SavedStateHandle())
-        return Fixture(vm, stream, suggestions, location, sounds, consent, geocodes)
+        val vm = ChatViewModel(place, stream, suggestions, consent, location, { "ko" }, strings, sounds, SavedStateHandle())
+        return Fixture(vm, stream, suggestions, location, sounds, consent)
     }
 
     @Test fun `동의가 없으면 전송하지 않는다(이중 방어)`() = runTest(dispatcher) {
@@ -129,7 +120,7 @@ class ChatViewModelTest {
     @Test fun `설정에서 동의를 철회하면 다음 전송이 막히고 저장도 거짓이 된다(재진입 시 동의 화면)`() = runTest(dispatcher) {
         val store = InMemoryKeyValueStore()
         val consent = ChatConsentStore(store, dispatcher).also { it.grant() }
-        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), { null }, consent, Location(), { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), consent, Location(), { "ko" }, strings, Sounds(), SavedStateHandle())
         assertTrue(vm.send("첫 질문"))
         advanceUntilIdle()
         consent.revoke()
@@ -216,7 +207,7 @@ class ChatViewModelTest {
         }
         val consent = ChatConsentStore(InMemoryKeyValueStore()).also { it.grant() }
         val stream = Stream { flowOf(done) }
-        val vm = ChatViewModel(null, stream, Suggestions(), { null }, consent, location, { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        val vm = ChatViewModel(null, stream, Suggestions(), consent, location, { "ko" }, strings, Sounds(), SavedStateHandle())
         vm.send("질문")
         advanceUntilIdle()
         assertEquals(ChatRequestBody.Coordinate(37.5, 127.1), stream.bodies.single().userLocation)
@@ -225,7 +216,7 @@ class ChatViewModelTest {
     @Test fun `동의를 아직 읽지 않았으면 전송하지 않고, 읽으면 저장값을 따른다`() = runTest(dispatcher) {
         val store = InMemoryKeyValueStore().also { it.putString(ChatConsentStore.KEY, "true") }
         val consent = ChatConsentStore(store, dispatcher)
-        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), { null }, consent, Location(), { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), consent, Location(), { "ko" }, strings, Sounds(), SavedStateHandle())
         assertNull(vm.consentGranted.value)
         assertFalse(vm.send("질문"))
         vm.ensureConsentLoaded()
@@ -342,36 +333,6 @@ class ChatViewModelTest {
         assertTrue(g.vm.sendDraft())
         assertEquals("", g.vm.draft.text.toString())
         assertEquals("강동역", g.vm.state.value.messages.single().text)
-    }
-
-    @Test fun `주소 해석 — 성공·0건·조회 실패 문장이 갈린다`() = runTest(dispatcher) {
-        val ok = make(geocode = { AddressMatch(addressName = "", lat = 37.56, lng = 126.97) })
-        val placeResult = assertNotNull(ok.vm.resolveAddress(address))
-        assertEquals("juso-${address.roadAddr}", placeResult.id)
-        assertEquals(listOf("서울특별시 중구 세종대로 110"), ok.geocodes)
-
-        val none = make(geocode = { null })
-        assertNull(none.vm.resolveAddress(address))
-        assertEquals("이 주소의 위치를 확인하지 못해 상세 정보를 열 수 없습니다.", none.vm.state.value.notice.text)
-
-        val broken = make(geocode = { throw IOException("down") })
-        assertNull(broken.vm.resolveAddress(address))
-        assertEquals("선택한 주소의 위치를 확인하지 못했습니다.", broken.vm.state.value.notice.text)
-    }
-
-    @Test fun `주소 해석 in-flight 가드는 진행 중 재탭을 무시하고 취소 뒤 풀린다`() = runTest(dispatcher) {
-        val gate = CompletableDeferred<AddressMatch?>()
-        val f = make(geocode = { gate.await() })
-        val first = launch { f.vm.resolveAddress(address) }
-        advanceUntilIdle()
-        assertNull(f.vm.resolveAddress(address))
-        assertEquals(1, f.geocodes.size)
-        first.cancel()
-        advanceUntilIdle()
-        val third = launch { f.vm.resolveAddress(address) }
-        advanceUntilIdle()
-        assertEquals(2, f.geocodes.size)
-        third.cancel()
     }
 
     @Test fun `전사 병합 — 공백 초안은 버리고 타이핑 초안 뒤에 붙인다`() = runTest(dispatcher) {

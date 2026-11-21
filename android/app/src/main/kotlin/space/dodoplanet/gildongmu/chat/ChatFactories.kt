@@ -9,9 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.withContext
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.audio.AndroidChatClip
@@ -22,7 +20,6 @@ import space.dodoplanet.gildongmu.audio.systemTtsRate
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
-import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.models.ChatRequestBody
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -41,11 +38,9 @@ fun chatViewModelFactory(context: Context, place: Place?): ViewModelProvider.Fac
                 place = place,
                 stream = HttpChatStreamSource(AppConfig.API_BASE_URL),
                 suggestions = HttpChatSuggestionsSource(AppConfig.API_BASE_URL),
-                geocode = { query -> withContext(Dispatchers.IO) { SearchService(AppConfig.apiClient).geocode(query, 1).firstOrNull() } },
                 consent = services.consent,
                 location = StoreChatLocation,
                 lang = { AppLocale.current(res()) },
-                dataLocale = { AppLocale.dataLocale(res()) },
                 strings = chatStrings(res),
                 sounds = services.sounds,
                 savedState = createSavedStateHandle(),
