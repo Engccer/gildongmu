@@ -32,6 +32,7 @@ const INTENDED_DIFFERENCES: Record<string, string> = {
   "android.common.geoReducedDesc": "iOS 문장은 iOS 설정 경로(개인정보 보호 및 보안…)라 안드로이드 문안 별도",
   "android.nearby.subwayEmptyNearest": "문안 동일, iOS 지정자 %@ → 명명 플레이스홀더 {station}·{distance}",
   "android.nearby.subwayClosed": "문안 동일, iOS 지정자 %@ → {time}",
+  "android.releaseNotice.title": "2026-11-21 위원장 판정: 안드로이드 새 소식 창 제목은 iOS 「길동무 2.0…」에서 버전만 뺀다",
 };
 function flatten(obj: unknown, prefix = ""): Flat {
   const out: Flat = {};
