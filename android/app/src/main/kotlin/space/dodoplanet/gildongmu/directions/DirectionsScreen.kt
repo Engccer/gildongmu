@@ -274,7 +274,7 @@ private fun DirectionsForm(
     }
     // 커서 자리 관찰(폼이 컴포지션을 떠나면 낡은 값을 버린다 — 돌아와 첫 효과가 엉뚱한 줄을 끌지 않게).
     ObserveA11yFocus { tag -> ui.a11yCursorTag = tag }
-    DisposableEffect(Unit) { onDispose { ui.a11yCursorTag = null } }
+    DisposableEffect(Unit) { onDispose { ui.a11yCursorTag = null; ui.relandRequester = null } }
     val focusManager = LocalFocusManager.current
     val windowInfo = LocalWindowInfo.current
     LaunchedEffect(ui.rereadAboardSeq) {
