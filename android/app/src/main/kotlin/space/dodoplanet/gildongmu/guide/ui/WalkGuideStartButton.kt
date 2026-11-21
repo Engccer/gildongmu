@@ -58,7 +58,7 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, al
                 onStart()
                 GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, alternate, waypoint, exitLead = null))
             },
-            modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag(tag),
         ) { Text(strings.get(walkLineStartKey(line))) }
         if (ui.lastStartLine == line) GuideStartFailureRow(ui, strings)
     }

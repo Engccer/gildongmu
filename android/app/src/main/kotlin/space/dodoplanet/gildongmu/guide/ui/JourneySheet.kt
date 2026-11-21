@@ -22,13 +22,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import android.os.SystemClock
+import android.util.Log
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.mergedRow
@@ -104,15 +113,28 @@ private fun JourneySheetContent(ui: JourneyUiState?, strings: Strings) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val statusFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var acting by remember { mutableStateOf(false) }
     val phase = ui?.phase
     val lands = phase != null && journeySheetLandsOnStatus(phase)
-    // 시트가 뜰 때 실패면, 그리고 국면이 실패로 바뀔 때(키가 거짓 → 참). 준비 중에는 착지하지 않는다.
-    LaunchedEffect(lands) { if (lands) land(statusFocus, "여정 상태 문장") }
+    // 시트가 뜰 때 실패면, 그리고 국면이 실패로 바뀔 때(키가 거짓 → 참). 준비 중에는 착지하지 않는다. 실패 문장은 그 모델이 TTS로 막 말했으므로
+    // 발화가 끝난 뒤 착지한다(TalkBack이 같은 문장을 겹쳐 읽지 않게, 도보 시트 착지와 같은 대기).
+    LaunchedEffect(lands) { if (lands) relandStatus(focusManager, statusFocus, waitForSpeech = true) }
     // 누르면 자기가 사라지는 버튼(실패 → 준비 중): 커서를 남을 상태 문장으로 먼저 옮긴 뒤 전이한다(헌장 §5, iOS `act`). 상태 문장이
-    // 「경로를 찾는 중입니다.」로 바뀌는 것이 곧 눌렸다는 신호다.
+    // 「경로를 찾는 중입니다.」로 바뀌는 것이 곧 눌렸다는 신호다. 상태 문장은 실패 착지로 이미 입력 포커스를 쥐고 있어 다시 요청만으로는 커서가
+    // 따라오지 않는다(한소네 재현) — 비우고 간격을 둔 뒤 준다. 그 사이 두 번 누름은 in-flight 표식이 막는다.
     val act: (JourneyEvent) -> Unit = { event ->
-        runCatching { statusFocus.requestFocus() }
-        GuideSession.journeyAction(event)
+        if (!acting) {
+            acting = true
+            scope.launch {
+                try {
+                    relandStatus(focusManager, statusFocus, waitForSpeech = false)
+                    GuideSession.journeyAction(event)
+                } finally {
+                    acting = false
+                }
+            }
+        }
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
@@ -135,13 +157,15 @@ private fun JourneySheetContent(ui: JourneyUiState?, strings: Strings) {
                                 // 정밀 위치 요청은 도보 시작 실패 행과 같은 선례 — 허용되면 다시 조회한다.
                                 JourneySheetButton.precise -> scope.launch {
                                     if (AppConfig.permissionGate.request() == LocationPermission.Fine) act(JourneyEvent.Retry)
+                                    // 시스템이 창을 다시 띄우지 않는 경우(거듭 거절)에도 눌렸다는 응답을 준다 — 선례 그대로.
+                                    else GuideSession.walk.announceNow(strings.get("android.common.geoReducedDesc"), highPriority = true)
                                 }
                                 JourneySheetButton.retry -> act(JourneyEvent.Retry)
                                 JourneySheetButton.taxiDropped -> act(JourneyEvent.TaxiDropped)
                                 JourneySheetButton.taxiBoarded -> act(JourneyEvent.TaxiBoarded)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().tapTarget().testTag(button.tag).padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag(button.tag),
                     ) { Text(strings.get(button.key)) }
                 }
             }
@@ -153,3 +177,25 @@ private fun JourneySheetContent(ui: JourneyUiState?, strings: Strings) {
         ) { Text(strings.get("beacon.stop")) }
     }
 }
+
+/**
+ * 상태 문장 행에 (다시) 착지한다. 이미 입력 포커스를 쥔 행은 다시 요청해도 접근성 이벤트가 나가지 않으므로 비우고 이벤트 묶음 간격을 둔 뒤 준다
+ * (`MovedRowLanding` 관용구). `waitForSpeech`면 안내 모델(도보·대중교통)의 발화가 끝나기를 상한 안에서 기다린다(도보 시트 `SPEECH_WAIT_MS`).
+ */
+private suspend fun relandStatus(focusManager: FocusManager, requester: FocusRequester, waitForSpeech: Boolean) {
+    withFrameNanos { }
+    if (waitForSpeech) {
+        val start = SystemClock.elapsedRealtime()
+        delay(400) // 시트 표시 애니메이션
+        while (!(GuideSession.walk.announcementsSettled() && GuideSession.transit.announcementsSettled())) {
+            if (SystemClock.elapsedRealtime() - start >= GuideSheetLanding.SPEECH_WAIT_MS) break
+            delay(100)
+        }
+    }
+    focusManager.clearFocus()
+    delay(JOURNEY_FOCUS_EVENT_GAP_MS)
+    val landed = runCatching { requester.requestFocus(); true }.getOrElse { e -> Log.w("Guide", "여정 상태 문장 착지 실패", e); false }
+    Log.i("Guide", "journeySheetFocus target=status landed=$landed speechWait=$waitForSpeech")
+}
+
+private const val JOURNEY_FOCUS_EVENT_GAP_MS = 250L

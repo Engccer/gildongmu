@@ -42,7 +42,7 @@ fun TransitGuideStartButton(route: TransitRoute, name: String, dest: BeaconDest,
         Button(
             // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(iOS 같은 자리, `accessible: false`).
             onClick = { GuideSession.startTransit(TransitStartRequest(route, label, dest, accessible = false)) },
-            modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-start-transit-${route.routeKey}").padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag("guide-start-transit-${route.routeKey}"),
         ) { Text(strings.get("beacon.guideStartTransitAlt", name)) }
         if (transitStartFailureShown(ui, started, route)) GuideStartFailureRow(ui, strings)
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -104,8 +105,8 @@ class JourneySheetA11yTest {
         setBar()
         setJourney(JourneyPhase.Failed(JourneyStage.taxiIn))
         rule.onNodeWithTag("journey-status").assertIsDisplayed().assertTextEquals(strings.get("android.journey.taxiOutFailed"))
-        rule.onNodeWithTag("journey-retry").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-        rule.onNodeWithTag("journey-taxi-dropped").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("journey-retry").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("journey-taxi-dropped").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         assertTrue(top("journey-status") < top("journey-retry"))
         assertTrue(top("journey-retry") < top("journey-taxi-dropped"))
         assertTrue(top("journey-taxi-dropped") < top("journey-stop"))
@@ -118,7 +119,7 @@ class JourneySheetA11yTest {
         setBar()
         setJourney(JourneyPhase.Failed(JourneyStage.egress))
         rule.onNodeWithTag("journey-status").assertTextEquals(strings.get("android.journey.egressStartFailed"))
-        rule.onNodeWithTag("journey-taxi-boarded").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("journey-taxi-boarded").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         assertEquals(false, exists("journey-retry"))
         assertEquals(false, exists("journey-taxi-dropped"))
         checkAllRoots()
@@ -130,7 +131,7 @@ class JourneySheetA11yTest {
         setBar()
         setJourney(JourneyPhase.Failed(JourneyStage.access), JourneyFailure("beacon.denied", FailResolution.settings))
         rule.onNodeWithTag("journey-status").assertTextEquals(strings.get("beacon.denied"))
-        rule.onNodeWithTag("journey-settings").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("journey-settings").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         assertTrue(top("journey-settings") < top("journey-retry"))
         assertEquals(false, exists("journey-precise"))
         checkAllRoots()
@@ -141,7 +142,7 @@ class JourneySheetA11yTest {
     fun failedWithPreciseResolution() {
         setBar()
         setJourney(JourneyPhase.Failed(JourneyStage.transit), JourneyFailure("beacon.reduced", FailResolution.precise))
-        rule.onNodeWithTag("journey-precise").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithTag("journey-precise").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         assertTrue(top("journey-precise") < top("journey-retry"))
         assertEquals(false, exists("journey-settings"))
         checkAllRoots()

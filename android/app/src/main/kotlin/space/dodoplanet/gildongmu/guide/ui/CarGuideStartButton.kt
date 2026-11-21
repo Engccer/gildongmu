@@ -41,7 +41,7 @@ fun CarGuideStartButton(dest: BeaconDest, label: String, waypoint: GuideWaypoint
                 onStart()
                 GuideSession.startCar(CarStartRequest(dest, label, waypoint))
             },
-            modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-start-car").padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag("guide-start-car"),
         ) { Text(strings.get("beacon.guideStartCar")) }
         if (ui.lastStartKind == GuideSessionKind.car) GuideStartFailureRow(ui, strings)
     }
