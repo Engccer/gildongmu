@@ -26,6 +26,9 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **Compose는 사용자 지정 액션을 라벨로 골라 실행한다**: 한 줄에 같은 라벨이 둘이면 둘째는 닿지 않는다(`distinctBy { it.label }`). → PATTERNS
 - ⚠ **`clearAndSetSemantics`는 같은 노드에서 자기 뒤에 붙은 시맨틱(작업 메뉴·헤딩)도 지운다**: 지울 거면 남길 시맨틱을 같은 블록이나 그 앞에 둔다(`mergedRow` 뒤 `.semantics {}`가 조용히 사라진다, A77). → PATTERNS
 - ⚠ **화면 밖 행으로 옮기는 착지는 `bringIntoView()`를 기다린 뒤 포커스를 준다**: 화면 밖 행의 포커스 이동은 한소네 커서가 따르지 않는다(요청은 `true`). → PATTERNS
+- ⚠ **실시간 알림 영역은 착지 스크롤이 밀어낼 수 있는 자리에 두지 않는다**: 한소네는 화면 밖으로 나간 `StatusLine`의 변경을 읽지 않는다(검색 탭은 스크롤 밖 고정, A82). → PATTERNS
+- ⚠ **대화상자 진입 착지 효과는 대화상자 내용 안에 둔다**: 바깥 효과는 행 요청기 등록 전에 끝나고, 창 포커스를 기다리면 한소네가 커서를 제목으로 되돌린다(`ChoiceDialog`, A83). → PATTERNS
+- ⚠ **계측 테스트는 한소네 화면(576dp)에서도 돈다**: 순서는 `positionInRoot`, 화면 밖 노드는 `performScrollTo()` 뒤, 대화상자 뒤로는 키 이벤트, 길찾기 단독 화면은 `GuideSession.attach`. → PATTERNS
 - ⚠ **자기 키를 바꾸는 `LaunchedEffect`는 일을 하기 전에 취소된다**: 1회 신호는 일을 마친 뒤 끈다. → PATTERNS
 - **탭 전체 리셋은 시작 탭의 저장 스택부터 복원해 지운다**(`resetAllTabs`, `clearBackStack(시작 탭)` 금지). → PATTERNS
 - ⚠ **전역 1회 신호(바로가기 액션)는 받은 액티비티만 꺼낸다**: 지워지는 옛 `AppRoot`가 먼저 가져간다(`AppSession.take(owner)`). → PATTERNS
