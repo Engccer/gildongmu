@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -105,7 +106,7 @@ class GuideNav(
 )
 
 /**
- * 안내 시트(spec §7-3~§7-5, iOS `BeaconTrackingSheet` 도보부). 시트를 내리는 제스처(뒤로·바깥 탭·스와이프)는 **최소화**이고 종료는
+ * 안내 시트(spec §7-3~§7-5, iOS `BeaconTrackingSheet` 도보부). 시트를 내리는 제스처(뒤로·스와이프)는 **최소화**이고 종료는
  * 최하단 고정 버튼뿐(N1). live region이 없다(§5-3 — 문장은 TTS 한 채널). 착지: 새로 열림·띠바 복귀·사용자 전이(재조회 성공·대안 채택·경유지
  * 삭제·목적지/경유지 검색에서 고름)·전경 복귀 = **첫 정보 행**(E57 `GuideSheetLanding`, 경로 조회와 안내 발화가 끝난 뒤), 장소 상세 복귀 = 그 자리,
  * 조망 닫힘 = 진행 상황 버튼, 고르지 않고 닫은 메뉴·검색 = 제목, 도착 전이 = 종료 문장. 텍스트 행은 `mergedRow`, 버튼은 `landingTarget`.
@@ -116,7 +117,9 @@ class GuideNav(
 @Composable
 fun GuideSheet(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = { GuideSession.isMinimized = true }, sheetState = sheetState, dragHandle = null) {
+    // 바깥 탭 접기를 끈다(2026-11-21 위원장 판정: 시트 줄이 「안내 종료」에서 끝난다). 머티리얼 스크림은 바깥 탭 처리와 「시트 닫기」 시맨틱을 한
+    // 수식어로 달아(1.5.0) 이 설정이 둘을 함께 없앤다. 남는 접기는 「안내 시트 접기」 버튼, 뒤로 가기, 아래로 끌기(`ReleaseNoticeSheet` 선례).
+    ModalBottomSheet(onDismissRequest = { GuideSession.isMinimized = true }, sheetState = sheetState, dragHandle = null, properties = ModalBottomSheetProperties(shouldDismissOnClickOutside = false)) {
         if (ui.arrivalDest != null) EndScreen(ui, strings, nav) else TrackingContent(ui, strings, nav)
     }
 }

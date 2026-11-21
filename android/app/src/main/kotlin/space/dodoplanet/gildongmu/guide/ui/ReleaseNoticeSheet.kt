@@ -30,7 +30,7 @@ import space.dodoplanet.gildongmu.kit.KeyValueStore
 
 /**
  * 2.0 공지의 저장(iOS `ReleaseNotice` 미러, spec 2026-10-01-release-2.0-graduation-design.md §1). 키 이름이 iOS와 같다 — 키의 V2가 공지 버전이고
- * 다음 큰 변경 때 V3 키로 새 공지를 낸다. 저장은 확인 버튼만 한다: 뒤로·바깥 탭·아래로 끌기로 닫으면 저장하지 않아 다음 실행에 다시 뜬다.
+ * 다음 큰 변경 때 V3 키로 새 공지를 낸다. 저장은 확인 버튼만 한다: 뒤로·아래로 끌기로 닫으면 저장하지 않아 다음 실행에 다시 뜬다.
  */
 class ReleaseNotice(private val store: KeyValueStore, private val io: CoroutineDispatcher = Dispatchers.IO) {
     /** 첫 읽기는 IO에서(`SharedPreferences` 첫 접근은 디스크 로드). */
