@@ -2,6 +2,9 @@ package space.dodoplanet.gildongmu.directions
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -72,7 +75,7 @@ class JourneyResultRowsA11yTest {
     private fun set(result: JourneyResult, variantIndex: Int, egressIndex: Int, destination: JourneyDestination?, aboard: AboardOrigin? = null, onVariant: (Int) -> Unit = {}, onEgress: (Int) -> Unit = {}) {
         rule.setContent {
             MaterialTheme {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     JourneyResultRows(
                         result, ga, null, aboard, variantIndex, egressIndex, onVariant, onEgress, destination,
                         destinationName = "라마역", destinationRoman = null, lang = "ko", dataLocale = DataLocale.ko, strings = strings,

@@ -42,6 +42,8 @@ import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.StubTransport
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.location.StaleFix
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
 
 /**
  * 길찾기 여정 입력 검사 레인(B26 단계 5 묶음 B): 입력 줄 순서·한 줄 한 객체·버튼 48dp(상태 여섯 갈래), 지금 탄 열차 단계 줄의 갈래(노선·방면·새로고침·문장만),
@@ -261,7 +263,8 @@ class DirectionsJourneyA11yTest {
         rule.waitUntil(3_000) { rule.onNodeWithTag("transfer-answer-0").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Focused) == true }
         checkAllRoots()
         // 답: 대기가 비고 대화상자가 사라지며 그 쪽 역 칸이 선다.
-        rule.onNodeWithTag("transfer-answer-0").performClick()
+        // TalkBack 두 번 탭과 같은 클릭 동작으로 누른다(주입 터치는 대화상자 창 밖으로 떨어져 바깥 누름으로 닫힐 수 있다).
+        rule.onNodeWithTag("transfer-answer-0").performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
         assertNull(vm.state.value.pendingTransfer)
         assertTrue(!exists("transfer-question"))
@@ -273,7 +276,7 @@ class DirectionsJourneyA11yTest {
         val vm = show()
         askTransfer(vm)
         rule.waitUntil(5_000) { exists("transfer-question") }
-        rule.onNodeWithTag("transfer-answer-3").performClick()
+        rule.onNodeWithTag("transfer-answer-3").performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
         assertNull(vm.state.value.pendingTransfer)
         assertNull(vm.state.value.boardStation)
