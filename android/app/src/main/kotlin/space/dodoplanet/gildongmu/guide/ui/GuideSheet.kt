@@ -86,6 +86,9 @@ import space.dodoplanet.gildongmu.kit.transitPrewalkArrivedButtonLine
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
+import space.dodoplanet.gildongmu.kit.JourneyEvent
+import space.dodoplanet.gildongmu.kit.JourneyPhase
+import space.dodoplanet.gildongmu.kit.JourneyStage
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.WalkHealth
@@ -139,9 +142,29 @@ enum class GuideTitleMenuItem(val key: String, val tag: String) {
     detail("android.guide.destMenuDetail", "guide-menu-detail"),
 }
 
-/** 「전화 걸기」(E90)는 목적지 전화번호를 알 때만 서고 언제나 첫 항목이다 — 번호를 모르면 항목이 없다(죽은 항목 금지). */
-fun guideTitleMenuItems(destinationPhone: String?): List<GuideTitleMenuItem> =
-    listOfNotNull(GuideTitleMenuItem.call.takeIf { !destinationPhone.isNullOrEmpty() }, GuideTitleMenuItem.change, GuideTitleMenuItem.detail)
+/**
+ * 「전화 걸기」(E90)는 목적지 전화번호를 알 때만 서고 언제나 첫 항목이다 — 번호를 모르면 항목이 없다(죽은 항목 금지). 「목적지 바꾸기」는 여정 중이면 없다
+ * (iOS `onChangeDestination == nil` — 여정은 목적지가 계획의 일부), 항목이 하나만 남아도 메뉴 모양은 그대로다. ⚠ `inJourney`는 기본값 없음.
+ */
+fun guideTitleMenuItems(destinationPhone: String?, inJourney: Boolean): List<GuideTitleMenuItem> =
+    listOfNotNull(
+        GuideTitleMenuItem.call.takeIf { !destinationPhone.isNullOrEmpty() },
+        GuideTitleMenuItem.change.takeIf { !inJourney },
+        GuideTitleMenuItem.detail,
+    )
+
+/** 여정 단계 버튼(iOS `journeyStageButton`) — 택시 단계 동안만 서는 한 개. 키는 안내 문자열 표, 이벤트는 누르면 보내는 여정 사건. */
+enum class JourneyStageButton(val key: String, val tag: String, val event: JourneyEvent) {
+    taxiDropped("android.journey.taxiDropped", "guide-journey-taxi-dropped", JourneyEvent.TaxiDropped),
+    taxiBoarded("android.journey.taxiBoarded", "guide-journey-taxi-boarded", JourneyEvent.TaxiBoarded),
+}
+
+/** 도보·자동차 시트의 여정 단계 버튼 판정 — `Running(taxiIn)`이면 「자동차에서 내렸어요」, `Running(egress)`이면 「자동차에 탔어요」, 그 밖(준비 중·실패·여정 없음)은 없다. */
+fun journeyStageButton(phase: JourneyPhase?): JourneyStageButton? = when ((phase as? JourneyPhase.Running)?.stage) {
+    JourneyStage.taxiIn -> JourneyStageButton.taxiDropped
+    JourneyStage.egress -> JourneyStageButton.taxiBoarded
+    else -> null
+}
 
 /**
  * 행이 지금 렌더되는가 — 렌더 조건의 **정본**이다(행 렌더와 착지 판정이 같은 함수를 읽는다, iOS `rowExists`의 사본 문제를 구조로 막는다). 종료
@@ -164,6 +187,9 @@ fun sheetRowExists(ui: WalkGuideUiState, row: SheetRow): Boolean {
 @Composable
 private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
     val context = LocalContext.current
+    // 여정(E70) — 단계 버튼과 여정 중 숨김(목적지 바꾸기·경유지)의 근거. 여정이 있으면 `journeyUi`가 null이 아니다.
+    val journeyUi by GuideSession.journeyUi.collectAsState()
+    val inJourney = journeyUi != null
     // 목적지 전화번호(E90) — 전화번호부가 제목의 이름·좌표로 안다. 세션 통로를 타지 않는다.
     val destinationPhone = remember(ui.dest, ui.destinationLabel) { AppConfig.placePhoneBook.guideDestinationPhone(ui.dest, ui.destinationLabel) }
     val titleFocus = remember { FocusRequester() }
@@ -297,7 +323,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                     GuideTitleMenu(
                         title = joinText(strings.get(if (ui.sessionKind == GuideSessionKind.car) "beacon.carHeading" else "beacon.walkHeading"), ui.destinationLabel),
                         strings = strings,
-                        items = guideTitleMenuItems(destinationPhone),
+                        items = guideTitleMenuItems(destinationPhone, inJourney),
                         focus = titleFocus,
                         onSelect = { item ->
                             when (item) {
@@ -384,6 +410,13 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                 onClick = { GuideSession.walk.declarePrewalkArrival() },
                 modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).tapTarget().testTag("guide-prewalk-arrived"),
             ) { Text(prewalkArrivedButtonLabel(station)) }
+        }
+        // 여정 단계 버튼(E70 §6.3): 「안내 종료」 바로 위. 누르면 자신이 사라지는 전이지만 iOS처럼 커서를 따로 옮기지 않는다 — 다음 단계 시트가 착지를 맡는다.
+        journeyStageButton(journeyUi?.phase)?.let { stageButton ->
+            Button(
+                onClick = { GuideSession.journeyAction(stageButton.event) },
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).tapTarget().testTag(stageButton.tag),
+            ) { Text(strings.get(stageButton.key)) }
         }
         // 「안내 종료」는 두 배 높이(E81 판정 3·6) — 화면 맨 아래를 짚으면 바로 닿는다.
         Button(

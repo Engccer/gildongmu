@@ -18,7 +18,7 @@ class GuideDestinationCallGuardTest {
     @Test fun `안내 시트 — 제목 메뉴와 장소 상세가 같은 번호를 쓰고 번호는 세션 통로를 타지 않는다`() {
         val sheet = read("guide/ui/GuideSheet.kt")
         assertTrue(sheet.contains("AppConfig.placePhoneBook.guideDestinationPhone(ui.dest, ui.destinationLabel)"))
-        assertTrue(sheet.contains("items = guideTitleMenuItems(destinationPhone)"))
+        assertTrue(sheet.contains("items = guideTitleMenuItems(destinationPhone, inJourney)"))
         assertTrue(sheet.contains("guideDestinationPlace(it, ui.destinationLabel, destinationPhone)"))
         assertTrue(sheet.contains("GuideTitleMenuItem.call -> destinationPhone?.let { phone ->"))
         // 번호는 안내 세션(요청·모델·UI 상태)에 실리지 않는다.

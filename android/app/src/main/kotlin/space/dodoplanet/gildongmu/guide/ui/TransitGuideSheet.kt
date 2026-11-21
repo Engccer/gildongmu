@@ -420,14 +420,14 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             if (state != null) {
                 // 제목 행(E74·E75): 제목 + 접기, 제목 메뉴는 전화 걸기(E90) → 장소 상세 → 목적지 바꾸기(도보 시트와 같은 번호부·같은 순서). 경유지·경로
-                // 새로고침은 대중교통에 없다(ODsay가 경유역을 받지 않는다, N4·E75 판정 7). iOS는 여정 단계(E70)면 목적지 바꾸기를 숨긴다 — 안드로이드엔 여정이
-                // 아직 없어 늘 선다.
+                // 새로고침은 대중교통에 없다(ODsay가 경유역을 받지 않는다, N4·E75 판정 7). 여정 단계(E70)면 목적지 바꾸기를 숨긴다(iOS 동형) — 여정 중인가는 모델의
+                // 여정 훅이 걸려 있는가로 본다(`recoveryOffered` 선례).
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
                         GuideTitleMenu(
                             title = joinText(strings.get("beacon.transitHeading"), ui.destinationLabel),
                             strings = strings,
-                            items = guideTitleMenuItems(destinationPhone),
+                            items = guideTitleMenuItems(destinationPhone, inJourney = model.onJourneyStopped != null),
                             focus = titleFocus,
                             onSelect = { item ->
                                 when (item) {

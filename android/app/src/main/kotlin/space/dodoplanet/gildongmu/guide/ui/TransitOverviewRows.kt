@@ -147,9 +147,13 @@ fun transitOverviewSilenceText(model: TransitGuideModel, ui: TransitGuideUiState
 
 /**
  * 「다른 경로 보기」 행동을 세우는가(iOS `overviewActions` 비어 있지 않음). 여정(E70)의 대중교통 단계는 하차역·출구가 계획의 일부라 다른 경로로 바꾸지 않는다 —
- * 안드로이드에는 여정이 아직 없어(`and-journey`) 그 갈래는 없다(여정이 생기면 모델 여정 훅이 있는가를 여기에 더한다).
+ * 여정 중인가는 모델의 여정 훅이 걸려 있는가로 본다(`recoveryOffered` 선례).
  */
-fun transitOverviewOffersAlternatives(model: TransitGuideModel): Boolean = model.overview?.alternativesOffered == true
+fun transitOverviewOffersAlternatives(model: TransitGuideModel): Boolean =
+    transitOverviewOffersAlternatives(model.overview?.alternativesOffered == true, inJourney = model.onJourneyStopped != null)
+
+/** 순수 판정 — 모델이 제안하고 ∧ 여정 밖. ⚠ `inJourney`는 기본값 없음. */
+fun transitOverviewOffersAlternatives(alternativesOffered: Boolean, inJourney: Boolean): Boolean = alternativesOffered && !inJourney
 
 /**
  * 「탑승 변경」 실행(iOS `perform(reboardActionId)`) — **누른 시점에 최신 상태로 재검증**한다. riding에서만 유효(탑승 변경은 riding 컨트롤). 국면이 바뀌었으면 null(그

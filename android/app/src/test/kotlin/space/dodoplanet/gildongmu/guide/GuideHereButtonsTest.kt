@@ -12,10 +12,17 @@ class GuideHereButtonsTest {
     private val pkg = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu")
 
     @Test fun `추적 중에만 — 목적지 변경 다음에 경유지, 경유지는 ko 상세 조회 로케일만`() {
-        assertEquals(emptyList(), guideHereActions(tracking = false, waypointAvailable = true, hasWaypoint = false))
-        assertEquals(listOf(GuideHereAction.changeDest, GuideHereAction.addWaypoint), guideHereActions(tracking = true, waypointAvailable = true, hasWaypoint = false))
-        assertEquals(listOf(GuideHereAction.changeDest, GuideHereAction.changeWaypoint), guideHereActions(tracking = true, waypointAvailable = true, hasWaypoint = true))
-        assertEquals(listOf(GuideHereAction.changeDest), guideHereActions(tracking = true, waypointAvailable = false, hasWaypoint = true))
+        assertEquals(emptyList(), guideHereActions(tracking = false, waypointAvailable = true, hasWaypoint = false, inJourney = false))
+        assertEquals(listOf(GuideHereAction.changeDest, GuideHereAction.addWaypoint), guideHereActions(tracking = true, waypointAvailable = true, hasWaypoint = false, inJourney = false))
+        assertEquals(listOf(GuideHereAction.changeDest, GuideHereAction.changeWaypoint), guideHereActions(tracking = true, waypointAvailable = true, hasWaypoint = true, inJourney = false))
+        assertEquals(listOf(GuideHereAction.changeDest), guideHereActions(tracking = true, waypointAvailable = false, hasWaypoint = true, inJourney = false))
+    }
+
+    @Test fun `여정 중이면 목적지 변경이 없다 - 경유지 갈래는 그대로 따로 판정한다`() {
+        assertEquals(emptyList(), guideHereActions(tracking = false, waypointAvailable = true, hasWaypoint = false, inJourney = true))
+        assertEquals(emptyList(), guideHereActions(tracking = true, waypointAvailable = false, hasWaypoint = false, inJourney = true))
+        // 모델의 waypointAvailable()이 여정 중 거짓이라 실제로는 이 갈래만 오지만, 함수는 두 축을 독립으로 읽는다.
+        assertEquals(listOf(GuideHereAction.addWaypoint), guideHereActions(tracking = true, waypointAvailable = true, hasWaypoint = false, inJourney = true))
     }
 
     @Test fun `입구는 안내 시트와 같은 모델 함수이고 반영됐을 때만 폼에 보낸다`() {

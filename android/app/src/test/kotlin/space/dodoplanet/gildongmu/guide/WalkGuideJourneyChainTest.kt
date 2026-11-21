@@ -247,6 +247,16 @@ class WalkGuideJourneyChainTest {
         assertEquals(GuideStatus.denied, h.model.ui.value.status)
     }
 
+    @Test fun `경유지 진입점 - 추적 중 ko면 서고, 여정 중이면 숨는다(iOS waypointAvailable journey == nil)`() = guideTest(dispatcher) { h ->
+        assertFalse(h.model.waypointAvailable(), "추적 전")
+        h.model.requestStart(h.request)
+        settle()
+        assertEquals(GuideStatus.tracking, h.model.ui.value.status)
+        assertTrue(h.model.waypointAvailable())
+        h.model.inJourney = { true }
+        assertFalse(h.model.waypointAvailable())
+    }
+
     @Test fun `배경이어도 표식 없는 시작은 종전대로 묻는다`() = guideTest(dispatcher) { h ->
         h.env.foreground = false
         h.perms.location = LocationPermission.None

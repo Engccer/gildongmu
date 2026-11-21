@@ -2632,8 +2632,8 @@ class WalkGuideModel(
         syncOverview()
     }
 
-    /** 경유지 추가·변경 진입점 노출(iOS `waypointAvailable`) — 추적 중 ∧ ko(상세 조회 경유지는 ko 기능으로 출하됐다). 삭제·변경은 경유지가 있을 때만(화면 몫). */
-    fun waypointAvailable(): Boolean = isTracking && dataLocale() == DataLocale.ko
+    /** 경유지 추가·변경 진입점 노출(iOS `waypointAvailable`) — 추적 중 ∧ ko(상세 조회 경유지는 ko 기능으로 출하됐다) ∧ 여정 밖(여정은 경로가 계획의 일부, iOS `journey == nil`). 삭제·변경은 경유지가 있을 때만(화면 몫). */
+    fun waypointAvailable(): Boolean = isTracking && dataLocale() == DataLocale.ko && !inJourney()
 
     /**
      * 진행 중 재조회·전환을 버린다(토큰 증가 + 표식 해제 한 자리). ⚠ 토큰이 바뀌면 옛 조회의 `finally`는 표식을 풀지 않는다(토큰 일치 때만) — 여기서 함께

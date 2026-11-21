@@ -53,7 +53,10 @@ class JourneySheetA11yTest {
 
     @After
     fun reset() {
-        rule.runOnUiThread { GuideSession.debugSetJourneyUi(null) }
+        rule.runOnUiThread {
+            GuideSession.debugSetJourneyUi(null)
+            GuideSession.walk.debugSetUi(WalkGuideUiState())
+        }
         GuideSession.isMinimized = false
     }
 
@@ -154,5 +157,25 @@ class JourneySheetA11yTest {
         assertEquals(false, exists("journey-status"))
         rule.onNodeWithTag("guide-band").assertContentDescriptionEquals(joinText(strings.get("android.journey.egressStartFailed"), strings.get("guide.band.return")))
         checkAllRoots()
+    }
+
+    /** 도보 시트(묶음 B): 택시 단계 Running이면 「자동차에서 내렸어요」가 안내 종료 바로 앞 버튼이고, 도보 시트가 서 있으면 여정 시트는 서지 않는다. */
+    @Test
+    fun walkSheetShowsTaxiStageButtonRightBeforeStop() {
+        setBar()
+        rule.runOnUiThread { GuideSession.walk.debugSetUi(WalkGuideUiState(status = GuideStatus.tracking, destinationLabel = "가나역", statusText = "목적지까지 약 300m", bandDistanceMeters = 300)) }
+        setJourney(JourneyPhase.Running(JourneyStage.taxiIn))
+        rule.onNodeWithTag("guide-journey-taxi-dropped").assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertTextEquals(strings.get("android.journey.taxiDropped"))
+        rule.onNodeWithTag("guide-stop").assertIsDisplayed()
+        assertTrue(top("guide-journey-taxi-dropped") < top("guide-stop"))
+        assertTrue(rule.onNodeWithTag("guide-journey-taxi-dropped").getBoundsInRoot().bottom <= rule.onNodeWithTag("guide-stop").getBoundsInRoot().top)
+        assertEquals(false, exists("guide-prewalk-arrived"))
+        assertEquals(false, exists("journey-status"))
+        checkAllRoots()
+        setJourney(JourneyPhase.Running(JourneyStage.egress))
+        rule.onNodeWithTag("guide-journey-taxi-boarded").assertIsDisplayed().assertTextEquals(strings.get("android.journey.taxiBoarded"))
+        assertEquals(false, exists("guide-journey-taxi-dropped"))
+        setJourney(JourneyPhase.Running(JourneyStage.access))
+        assertEquals(false, exists("guide-journey-taxi-boarded"))
     }
 }

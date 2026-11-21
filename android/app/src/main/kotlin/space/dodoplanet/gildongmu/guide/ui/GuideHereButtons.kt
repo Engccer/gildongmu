@@ -28,10 +28,11 @@ enum class GuideHereAction(val tag: String) {
 /**
  * 어떤 버튼을 보이는가 — 도보 안내 추적 중에만. 경유지는 상세 조회가 있는 로케일(ko)만이고(`waypointAvailable`, 안내 시트 경유지 버튼과 같은 조건),
  * 동작이 교체라 미도착 경유지가 있으면 라벨이 "변경"이다(라벨이 곧 상태).
+ * 여정 중이면 「여기로 목적지 변경」이 없다(iOS `guideSession.journey == nil`). ⚠ `inJourney`는 기본값 없음.
  */
-fun guideHereActions(tracking: Boolean, waypointAvailable: Boolean, hasWaypoint: Boolean): List<GuideHereAction> = buildList {
+fun guideHereActions(tracking: Boolean, waypointAvailable: Boolean, hasWaypoint: Boolean, inJourney: Boolean): List<GuideHereAction> = buildList {
     if (!tracking) return@buildList
-    add(GuideHereAction.changeDest)
+    if (!inJourney) add(GuideHereAction.changeDest)
     if (waypointAvailable) add(if (hasWaypoint) GuideHereAction.changeWaypoint else GuideHereAction.addWaypoint)
 }
 
@@ -45,7 +46,7 @@ fun guideHereActions(tracking: Boolean, waypointAvailable: Boolean, hasWaypoint:
 fun GuideHereButtons(place: Place) {
     if (!GuideSession.isAttached) return
     val ui by GuideSession.walk.ui.collectAsState()
-    val actions = guideHereActions(ui.isTracking, GuideSession.walk.waypointAvailable(), ui.waypointLabel != null)
+    val actions = guideHereActions(ui.isTracking, GuideSession.walk.waypointAvailable(), ui.waypointLabel != null, inJourney = GuideSession.journeyUi.value != null)
     val dest = BeaconDest(place.lat, place.lng)
     val endpoint = DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman)
     for (action in actions) {
