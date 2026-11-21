@@ -18,9 +18,10 @@ class GuideJourneyGuardTest {
     private fun code(text: String): String = text.lines().filterNot { it.trimStart().let { l -> l.startsWith("*") || l.startsWith("/**") || l.startsWith("//") } }.joinToString("\n")
     private fun body(marker: String): String = session.substringAfter(marker).substringBefore("\n    }\n")
 
-    @Test fun `startJourney 호출부는 길찾기 여정 결과 하나뿐이다(B29 채팅 카드가 둘째로 더한다)`() {
-        val callers = allSources.filter { it.name != "GuideSession.kt" && Regex("""\bstartJourney\(""").containsMatchIn(code(it.readText())) }.map { it.name }
-        assertTrue(callers.all { it == "JourneyResultRows.kt" }, "허용 밖 호출부: $callers")
+    @Test fun `startJourney 호출부는 길찾기 여정 결과 한 파일의 한 자리뿐이다(B29 채팅 카드가 둘째로 더한다)`() {
+        val callers = allSources.filter { it.name != "GuideSession.kt" && Regex("""\bstartJourney\(""").containsMatchIn(code(it.readText())) }
+        assertEquals(listOf("JourneyResultRows.kt"), callers.map { it.name }, "허용 밖 호출부")
+        assertEquals(1, Regex("""\bstartJourney\(""").findAll(code(callers.single().readText())).count(), "호출 자리는 하나")
         // 공개 시작 함수의 거부 판정을 먼저 지난다.
         assertTrue(body("fun startJourney(").let { b -> b.indexOf("refuseIfActive()") in 0 until b.indexOf("JourneyState.start(") })
     }

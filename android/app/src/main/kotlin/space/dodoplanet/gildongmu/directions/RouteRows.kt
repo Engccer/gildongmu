@@ -171,19 +171,37 @@ fun TransitOutcomeRows(
         DisclosureRow(label = label, tag = "transit-$key", expanded = expanded, onToggle = { onToggle(key) }, strings = strings, modifier = landing) {
             // 안내 시작은 경로에 귀속된다(iOS 같은 자리) — 세션 UI는 별도 시트라 펼침을 접어도 세션이 죽지 않는다.
             guideStart?.invoke(entry.route, entry.name)
-            val legs = entry.route.legs
-            for (index in legs.indices) {
-                val line = transitLegLine(legs, index, destinationName, destinationRoman, lang, dataLocale, strings)
-                val legRow = if (legs[index].mode == "walk") TransitBriefingRow.Walk(index) else TransitBriefingRow.Transit(index)
-                StationRow(line.visual, "transit-$key-leg-$index", line.spoken.takeIf { it != line.visual }, legs, legRow, dataLocale, stationEntry, strings)
-                // 하차 줄은 별개 객체 — "무슨 열차"와 "어디로 내려 나가나"가 스와이프 한 번에 갈린다. 없으면 행 자체가 없다.
-                alightLine(legs[index], lang, dataLocale, strings)?.let {
-                    StationRow(it, "transit-$key-alight-$index", null, legs, TransitBriefingRow.Alight(index), dataLocale, stationEntry, strings)
-                }
-            }
+            TransitRouteLegRows(entry.route, "transit-$key", destinationName, destinationRoman, lang, dataLocale, strings, stationEntry)
         }
     }
     TransitRequeryRows(requery, strings)
+}
+
+/**
+ * 한 경로의 구간 줄들(iOS `TransitRouteRows(includeSummary: false)`) — 대중교통 결과의 펼침 본문과 여정 결과(`JourneyResultRows`)가 함께 쓴다.
+ * 줄 태그는 `$tagPrefix-leg-N`·`$tagPrefix-alight-N`.
+ */
+@Composable
+fun TransitRouteLegRows(
+    route: TransitRoute,
+    tagPrefix: String,
+    destinationName: String?,
+    destinationRoman: String?,
+    lang: String,
+    dataLocale: DataLocale,
+    strings: Strings,
+    stationEntry: BriefingStationEntry?,
+) {
+    val legs = route.legs
+    for (index in legs.indices) {
+        val line = transitLegLine(legs, index, destinationName, destinationRoman, lang, dataLocale, strings)
+        val legRow = if (legs[index].mode == "walk") TransitBriefingRow.Walk(index) else TransitBriefingRow.Transit(index)
+        StationRow(line.visual, "$tagPrefix-leg-$index", line.spoken.takeIf { it != line.visual }, legs, legRow, dataLocale, stationEntry, strings)
+        // 하차 줄은 별개 객체 — "무슨 열차"와 "어디로 내려 나가나"가 스와이프 한 번에 갈린다. 없으면 행 자체가 없다.
+        alightLine(legs[index], lang, dataLocale, strings)?.let {
+            StationRow(it, "$tagPrefix-alight-$index", null, legs, TransitBriefingRow.Alight(index), dataLocale, stationEntry, strings)
+        }
+    }
 }
 
 /** 수단 재조회 행의 입력(E50) — 화면 상태를 한 묶음으로 넘긴다. */

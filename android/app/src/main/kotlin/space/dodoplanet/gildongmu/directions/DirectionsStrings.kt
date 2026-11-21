@@ -217,6 +217,30 @@ internal fun stringId(key: String): Int? = when (key) {
     "android.journey.alightField" -> R.string.android_journey_alightField
     "android.journey.addMenu" -> R.string.android_journey_addMenu
     "android.common.unavailableHere.noBusData" -> R.string.android_common_unavailableHere_noBusData
+    "android.journey.designatedHeading" -> R.string.android_journey_designatedHeading
+    "android.journey.designatedHeadingAlight" -> R.string.android_journey_designatedHeadingAlight
+    "android.journey.designatedHeadingBus" -> R.string.android_journey_designatedHeadingBus
+    "android.journey.designatedHeadingBusAlight" -> R.string.android_journey_designatedHeadingBusAlight
+    "android.journey.designatedMissing" -> R.string.android_journey_designatedMissing
+    "android.journey.designatedMissingAlight" -> R.string.android_journey_designatedMissingAlight
+    "android.journey.designatedMissingStop" -> R.string.android_journey_designatedMissingStop
+    "android.journey.designatedMissingStopAlight" -> R.string.android_journey_designatedMissingStopAlight
+    "android.journey.recommendedHeading" -> R.string.android_journey_recommendedHeading
+    "android.journey.recommendedHeadingAlight" -> R.string.android_journey_recommendedHeadingAlight
+    "android.journey.recommendedHeadingBus" -> R.string.android_journey_recommendedHeadingBus
+    "android.journey.recommendedHeadingBusAlight" -> R.string.android_journey_recommendedHeadingBusAlight
+    "android.journey.taxiIn" -> R.string.android_journey_taxiIn
+    "android.journey.taxiInStop" -> R.string.android_journey_taxiInStop
+    "android.journey.totals" -> R.string.android_journey_totals
+    "android.journey.totalsAboard" -> R.string.android_journey_totalsAboard
+    "android.journey.totalsAboardTaxi" -> R.string.android_journey_totalsAboardTaxi
+    "android.journey.egressExit" -> R.string.android_journey_egressExit
+    "android.journey.egressLookupFailed" -> R.string.android_journey_egressLookupFailed
+    "android.journey.egressNone" -> R.string.android_journey_egressNone
+    "android.journey.egressNoneStop" -> R.string.android_journey_egressNoneStop
+    "android.journey.egressStand" -> R.string.android_journey_egressStand
+    "beacon.start" -> R.string.beacon_start
+    "beacon.guideStartTransitAlt" -> R.string.beacon_guideStartTransitAlt
     "transitGuide.exitBound" -> R.string.transitGuide_exitBound
     "transitGuide.openStation" -> R.string.transitGuide_openStation
     "transitGuide.callStation" -> R.string.transitGuide_callStation
