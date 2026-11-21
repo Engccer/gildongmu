@@ -124,7 +124,7 @@
     {
       "swift": "JourneyCardFreshness.swift",
       "status": "pending",
-      "note": "E70-b 채팅 여정 카드 신선도(웹 journey-card-freshness.ts 미러, 10분·100m·측위 실패). 안드로이드는 채팅 여정 카드가 비목표라(spec 2026-11-12-e70b-chat-journey-design.md §1) 카드를 이식할 때 함께 이식한다"
+      "note": "E70-b 채팅 여정 카드 신선도(웹 journey-card-freshness.ts 미러, 10분·100m·측위 실패). 안드로이드 채팅 여정 카드는 2026-11-21 위원장 판정으로 B26(길찾기 여정) 뒤 BACKLOG B29에서 이식하고, 이 파일도 그때 함께 이식한다"
     },
     {
       "swift": "RouteStartChat.swift",
