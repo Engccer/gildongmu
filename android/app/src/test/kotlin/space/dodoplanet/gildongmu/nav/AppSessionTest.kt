@@ -79,29 +79,37 @@ class AppSessionTest {
     }
 
     /**
-     * 정식·실험 바로가기 XML: 액션은 `AppSession` 상수와 같고, 패키지는 각 구성의 applicationId다(실험판 `.dev`).
-     * 「음성 검색」은 받아쓰기 게이트의 정책선(API 33, `isDictationAvailable`)을 넘는 기기의 `xml-v33`에만 있다(재리뷰 지적 4).
+     * 정식·실험 바로가기 XML: 정적은 「내 주변」 하나(액션은 `AppSession` 상수, 패키지는 각 구성의 applicationId, 실험판 `.dev`).
+     * 「음성 검색」은 정적에 없고 `VoiceSearchShortcut`이 받아쓰기가 되는 기기에만 동적으로 싣는다.
      */
-    @Test fun `바로가기 XML 두 벌은 패키지만 다르고 액션이 AppSession과 같다`() {
+    @Test fun `바로가기 XML 두 벌은 패키지만 다르고 내 주변 하나만 선언한다`() {
         val res = Fixtures.repoRoot.resolve("android/app/src")
         for ((set, pkg) in listOf("main" to "space.dodoplanet.gildongmu", "experimental" to "space.dodoplanet.gildongmu.dev")) {
-            for ((dir, expected) in listOf(
-                "xml" to listOf(AppSession.ACTION_NEARBY),
-                "xml-v33" to listOf(AppSession.ACTION_VOICE_SEARCH, AppSession.ACTION_NEARBY),
-            )) {
-                val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder().parse(res.resolve("$set/res/$dir/shortcuts.xml"))
-                val intents = doc.getElementsByTagName("intent")
-                val actions = (0 until intents.length).map { intents.item(it) as Element }.map { e ->
-                    assertEquals(pkg, e.getAttributeNS(ANDROID, "targetPackage"), "$set/$dir")
-                    assertEquals("space.dodoplanet.gildongmu.MainActivity", e.getAttributeNS(ANDROID, "targetClass"), "$set/$dir")
-                    e.getAttributeNS(ANDROID, "action")
-                }
-                assertEquals(expected, actions, "$set/$dir")
+            assertFalse(res.resolve("$set/res/xml-v33").exists(), "$set: xml-v33 정적 선언은 없다")
+            val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder().parse(res.resolve("$set/res/xml/shortcuts.xml"))
+            val intents = doc.getElementsByTagName("intent")
+            val actions = (0 until intents.length).map { intents.item(it) as Element }.map { e ->
+                assertEquals(pkg, e.getAttributeNS(ANDROID, "targetPackage"), set)
+                assertEquals("space.dodoplanet.gildongmu.MainActivity", e.getAttributeNS(ANDROID, "targetClass"), set)
+                e.getAttributeNS(ANDROID, "action")
             }
+            assertEquals(listOf(AppSession.ACTION_NEARBY), actions, set)
+            assertFalse(res.resolve("$set/res/xml/shortcuts.xml").readText().contains("shortcutId=\"voiceSearch\""), set)
         }
-        assertFalse(space.dodoplanet.gildongmu.speech.isDictationAvailable(32) { true }) // v33 선이 게이트의 정책선과 같다
-        assertTrue(space.dodoplanet.gildongmu.speech.isDictationAvailable(33) { true })
         assertTrue(res.resolve("main/AndroidManifest.xml").readText().contains("android:resource=\"@xml/shortcuts\""))
+    }
+
+    /** 동적 「음성 검색」: 판정 술어는 `Dictation.isAvailable` 한 곳, 액션은 `AppSession` 상수, 등록은 MainActivity가 부른다. */
+    @Test fun `음성 검색 동적 바로가기는 받아쓰기 술어 한 곳과 AppSession 액션을 쓴다`() {
+        val src = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu")
+        val code = src.resolve("nav/VoiceSearchShortcut.kt").readText()
+        assertEquals(1, Regex("""Dictation\.isAvailable\(""").findAll(code).count())
+        assertFalse(code.contains("isDictationAvailable"))
+        assertTrue(code.contains("setAction(AppSession.ACTION_VOICE_SEARCH)"))
+        assertTrue(code.contains("removeDynamicShortcuts"))
+        assertFalse(code.contains("setPackage") || code.contains("setClassName"), "패키지 하드코딩 금지")
+        assertTrue(src.resolve("MainActivity.kt").readText().contains("VoiceSearchShortcut.sync(this)"))
+        assertEquals("space.dodoplanet.gildongmu.action.VOICE_SEARCH", AppSession.ACTION_VOICE_SEARCH)
     }
 
     /** 바로가기·안내 알림이 태스크의 기준 인텐트를 바꾼 뒤 런처 아이콘으로 돌아올 때 화면이 겹쳐 쌓이지 않는다(재리뷰 지적 1, 한소네 재현). */

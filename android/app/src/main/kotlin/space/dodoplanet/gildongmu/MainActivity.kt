@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 「음성 검색」 바로가기는 받아쓰기가 되는 기기에만 동적으로 싣는다(라벨이 앱 언어라 액티비티를 만들 때마다 덮어쓴다).
+        runCatching { space.dodoplanet.gildongmu.nav.VoiceSearchShortcut.sync(this) }
         // 앱 바로가기(B22 ④): 정적 바로가기는 새 태스크로 이 액티비티를 다시 만든다. 구성 변경 재생성은 같은 인텐트를 다시 들고 오므로 첫 생성만 받는다.
         if (savedInstanceState == null) AppSession.offer(intent?.action, intent?.flags ?: 0, this)
         else AppSession.restoreBackgroundedAt(savedInstanceState.getDouble(BACKGROUNDED_AT_KEY, Double.NaN).takeIf { !it.isNaN() })

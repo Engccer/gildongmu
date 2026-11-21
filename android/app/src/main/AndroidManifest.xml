@@ -39,7 +39,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- 앱 바로가기 「음성 검색」·「내 주변」(B22 ④, iOS AppShortcuts). 런처 아이콘을 길게 누르면 나온다. -->
+            <!-- 앱 바로가기 「내 주변」(B22 ④, iOS AppShortcuts; 「음성 검색」은 동적 등록). 런처 아이콘을 길게 누르면 나온다. -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
