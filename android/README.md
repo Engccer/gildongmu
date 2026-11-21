@@ -213,10 +213,13 @@ node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호�
 
 ## 7. 게이트 락 절차
 
-1. `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done`
-2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:assembleExperimental :app:compileDebugAndroidTestKotlin`
-3. `cd .. && VITEST_MAX_THREADS=2 npm run test:run`
+Gradle은 가벼운 실행(`--tests` 하나)까지 전부 머신 전역 락 안에서 돌린다. 게이트 끝의 `./gradlew --stop`이 머신의 데몬을 모두 내려 락 밖 실행을 죽이기 때문이다. 락은 병렬 세션 스킬의 `gate-lock.py`이고 `<이름>`은 잠금 보유자로 출력되는 세션 이름이다. 같은 락을 다른 저장소의 안드로이드 세션도 쓴다. 선착순이 아니므로 잘게 여러 번 부르지 말고 묶어서 한 번에 돌린다. 종료 코드 75는 60분 대기 초과이고 출력된 보유자를 확인한 뒤 같은 명령을 다시 돌린다.
+
+1. `export ANDROID_HOME=~/Library/Android/sdk`
+2. `python3 ~/.claude/skills/parallel-sessions/scripts/gate-lock.py <이름> -- bash -c 'cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:assembleExperimental :app:compileDebugAndroidTestKotlin; code=$?; ./gradlew --stop >/dev/null 2>&1; exit $code'`
+3. `VITEST_MAX_WORKERS=2 python3 ~/.claude/skills/parallel-sessions/scripts/gate-lock.py <이름> -- npm run test:run`
    - androidTest(ATF)는 기기에서만 돈다(`connectedDebugAndroidTest`, 계측 변형은 `testBuildType` 기본값 = debug 하나뿐이라 `androidTestExperimental/` 소스셋은 **돌지 않는다**). 도보 안내 ATF(`guide/GuideSheetA11yTest`)는 `debugSetUi`로 상태만 넣어 전경 서비스를 띄우지 않는다(서비스 선언은 정식 매니페스트에 있어 debug 변형에서도 띄울 수 있다).
    - 기기 테스트의 계약 JSON은 `DeviceFixtures`로 테스트 APK assets에서 읽는다. JVM `Fixtures`의 Mac 저장소 탐색은 기기에서 실패한다. 개별 클래스 필터 실행 뒤에는 XML의 실제 클래스·테스트 수를 확인한다.
    - APK 매니페스트 계약 검사(도보 안내 전경 서비스·권한 존재, 백그라운드 위치 0, 패키지): `node android/scripts/check-release-manifest.mjs android/app/build/outputs/apk/debug/app-debug.apk`(release도 같게, 실험판은 `--experimental`).
-4. 성공·실패와 무관하게 `rmdir ~/gildongmu-wt/gate.lock; (cd android && ./gradlew --stop)`
+4. 판정은 출력이 아니라 종료 코드로 한다(로그는 파일로 받는다. `| tail`로 넘기면 종료 코드가 가려진다). 락은 명령이 끝나면 `gate-lock.py`가 놓는다.
+5. 한소네 실기기 점검은 기기 락(`GATE_LOCK_FILE=~/.claude/parallel-sessions/hansone.lock`) 안에서 설치·키 주입만 한다. APK는 게이트 락에서 먼저 빌드해 두고, 두 락을 겹쳐 쥐지 않는다.
