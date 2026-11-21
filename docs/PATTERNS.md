@@ -659,7 +659,7 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 ⚠ **스택 화면을 여는 동안 시트는 컴포지션에서 빠진다**(`GuideBottomBar`의 `if (showsSheet)`). iOS 안내 시트의 장소 상세는 중첩 시트라 부모 상태가 살아 있고 시스템이 누른 줄로 커서를 되돌리지만, 안드로이드는 돌아온 시트가 새 컴포지션이다. 그래서 `remember` 상태(펼친 목록 등)가 초기값으로 돌아가고, 그 상태가 세우던 줄이 없으면 복귀 착지는 요청자를 못 찾아 제목으로 떨어진다(2026-11-21 대중교통 시트 경유역 행, 리뷰 검출). 돌아와 앉을 줄을 세우는 상태는 push 시점에 세션 쪽 메모(`TransitSheetReturnMemo`, 도보 시트는 `GuideSession.sceneLookup`)에 적고, 돌아온 첫 컴포지션의 초기값으로 복원한다. 그 줄은 대개 화면 밖이라 복귀 착지는 들인 뒤 포커스를 준다(`landRevealed`).
 
-⚠ **navigation 2.10은 목적지 변경 통지(`OnDestinationChangedListener`)를 `currentBackStack` 갱신보다 먼저 부른다**(`NavControllerImpl.dispatchOnDestinationChanged`: 리스너 순회 → `_currentBackStack.tryEmit`). 그래서 통지 안에서 `currentBackStack.value`를 읽으면 pop 직전 목록이라, 닫은 장소 상세가 아직 있다고 보고 재개를 건너뛴다(2026-11-21 한소네 7: 대중교통 경유역 상세에서 뒤로 오면 시트 대신 띠바, 도보 시트 제목 메뉴 「장소 상세 보기」도 같은 함수). 같은 호출 안에서 갱신이 끝나므로 판정을 메인 큐에 한 번 미뤄 읽는다(`GuidePlaceNav.kt`, 계측 테스트 `GuidePlaceNavReopenTest`가 고치기 전 앱에서 실패함을 실기기로 확인). `getBackStackEntry`는 백스택을 직접 읽어 이 함정이 없다(`WeightSettingsNav.kt`).
+⚠ **navigation 2.10은 목적지 변경 통지(`OnDestinationChangedListener`)를 `currentBackStack` 갱신보다 먼저 부른다**(`NavControllerImpl.dispatchOnDestinationChanged`: 리스너 순회 → `_currentBackStack.tryEmit`). 그래서 통지 안에서 `currentBackStack.value`를 읽으면 pop 직전 목록이라, 닫은 장소 상세가 아직 있다고 보고 재개가 다음 이동(탭 누르기 등)까지 밀린다(2026-11-21 한소네 7: 대중교통 경유역 상세에서 뒤로 오면 시트 대신 띠바, 도보 시트 제목 메뉴 「장소 상세 보기」도 같은 함수). 같은 호출 안에서 갱신이 끝나므로 판정을 메인 큐에 한 번 미뤄 읽는다(`GuidePlaceNav.kt`, 계측 테스트 `GuidePlaceNavReopenTest`가 고치기 전 앱에서 실패함을 실기기로 확인). `getBackStackEntry`는 백스택을 직접 읽어 이 함정이 없다(`WeightSettingsNav.kt`).
 
 ### Compose 1.12의 접근성 초점 이벤트엔 노드 이름이 없다
 
