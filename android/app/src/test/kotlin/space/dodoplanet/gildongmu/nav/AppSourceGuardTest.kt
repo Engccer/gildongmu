@@ -219,6 +219,24 @@ class AppSourceGuardTest {
         assertTrue(main.contains("android:foregroundServiceType=\"location\""))
     }
 
+    /**
+     * `tapTarget()`(= `defaultMinSize(48dp)`) 뒤에 `padding`을 걸면 48dp는 여백을 포함한 바깥 크기이고 누르는 객체는 40dp다
+     * (2026-11-21 한소네 계측 39.47dp, 여정 시트·「안내 시작」 셋). 여백은 `tapTarget()` 앞에 둔다. 체인 안에서 `clickable`류가 먼저 오면
+     * 누르는 노드가 거기서 생기고 뒤 여백은 그 안쪽이라 위반이 아니다(설정 화면 줄).
+     */
+    @Test fun `tapTarget 뒤에 padding을 걸지 않는다`() {
+        val offenders = sources.filter { it.extension == "kt" }.filter { f ->
+            val code = f.readLines().filter { l -> val t = l.trimStart(); !t.startsWith("*") && !t.startsWith("//") && !t.startsWith("/**") }.joinToString(" ")
+            paddingAfterTapTarget.containsMatchIn(code)
+        }.map { it.name }
+        assertEquals(emptyList(), offenders)
+        assertTrue(paddingAfterTapTarget.containsMatchIn("""Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp)"""))
+        assertTrue(!paddingAfterTapTarget.containsMatchIn("""Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag(tag)"""))
+        assertTrue(!paddingAfterTapTarget.containsMatchIn("""Modifier.tapTarget().testTag(t).clickable(role = Role.Button, onClick = onClick).padding(vertical = 12.dp)"""))
+    }
+
+    private val paddingAfterTapTarget = Regex("""\.tapTarget\(\)(?:\s*\.(?!(?:padding|clickable|toggleable|selectable|combinedClickable)\b)\w+\((?:[^()]|\([^()]*\))*\))*\s*\.padding\(""")
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

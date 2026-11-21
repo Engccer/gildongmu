@@ -685,6 +685,10 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 
 ⚠ **사용자 정의 `Layout`이 자식에게 0보다 큰 최소 높이를 주면 `mergedRow`의 48dp 하한이 꺼진다** — `defaultMinSize`는 들어온 최소 제약이 0일 때만 값을 채운다. 정보 띠(B25 `InfoBandColumn`)는 몫을 최소 높이로 넘기는데, 고정 줄이 칸을 거의 채워 몫이 48dp보다 작아지면 띠가 종전 줄 하한보다 낮아졌다(2026-11-20 리뷰). 최소 높이를 넘기는 배치는 `maxOf(몫, 48.dp.roundToPx())`로 하한을 직접 지킨다.
 
+### 여백은 `tapTarget()` 앞에 둔다
+
+⚠ **`tapTarget()`(= `defaultMinSize(minHeight = 48.dp)`) 뒤에 `padding`을 걸면 누르는 객체가 40dp다** — 수식어는 바깥에서 안으로 적용되므로 48dp 최소 제약은 여백을 포함한 바깥 크기에 걸리고, 버튼 본체는 위아래 4dp를 뺀 최소 40dp를 받는다. 감싼 상자는 56dp로 커 보여도 접근성 노드(누르는 객체)는 40dp라 계측 `assertHeightIsAtLeast(48.dp)`가 39.47dp(한소네 밀도 1.875)로 실패했다(2026-11-21, 여정 시트 버튼과 도보·자동차·대중교통 「안내 시작」 셋, 같은 줄을 복사해 퍼졌다). 진단은 같은 버튼을 수식어 순서만 바꿔 다섯 벌 그려 기기에서 높이를 재서 했다(`tapTarget` 뒤 여백만 40dp, `padding → tapTarget`·`heightIn(min = 48.dp)`은 48dp). 여백은 `Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget()`처럼 앞에 두고, `AppSourceGuardTest`가 `tapTarget()` 뒤 체인의 `padding(`을 막는다. 같은 체인 안에서 `clickable`·`toggleable`이 먼저 오면 누르는 노드가 그 자리에서 생기고 뒤 여백은 그 안쪽이라 예외다(설정 화면 줄).
+
 ### 안내 시작은 수단마다 공개 함수 하나가 거부 판정 `refuseIfActive()` 뒤 본문 `beginBeacon`을 부르고, 자동차는 같은 모델의 `sessionKind = car` 세션이다
 
 **안내 시작은 수단마다 공개 함수 하나(`GuideSession.startWalk`·`startCar`)가 거부 판정 `refuseIfActive()` 뒤 본문 `beginBeacon`을 부른다**(M5 spec `docs/superpowers/specs/2026-11-20-android-m5-guidance-design.md` §2-2, iOS `refuseIfActive`·`beginBeacon` 동형). 요청 타입(`WalkStartRequest`·`CarStartRequest`, 봉인 인터페이스 `BeaconStartRequest`)이 수단을 들고 기본값 인자가 없다. 대중교통 세션의 내부 인계는 거부 판정 없이 `beginBeacon`으로 들어간다. 새 시작 함수를 더하면 `GuideSourceGuardTest` ①-2의 호출부 표를 넓힌다(iOS `guidance-gate-drift.test.ts`의 안드로이드 판).

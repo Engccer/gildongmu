@@ -39,9 +39,9 @@ class GuideSheetModalGuardTest {
         assertEquals(emptyList(), offenders)
     }
 
-    @Test fun `두 안내 시트는 바깥 탭 접기를 꺼 머티리얼 「시트 닫기」가 들리지 않는다`() {
+    @Test fun `안내 시트 셋은 바깥 탭 접기를 꺼 머티리얼 「시트 닫기」가 들리지 않는다`() {
         // 2026-11-21 위원장 판정: 시트 줄은 「안내 종료」에서 끝난다. 스크림의 바깥 탭 처리와 「시트 닫기」 시맨틱은 한 설정이 함께 없앤다.
-        for (file in listOf("guide/ui/GuideSheet.kt", "guide/ui/TransitGuideSheet.kt")) {
+        for (file in listOf("guide/ui/GuideSheet.kt", "guide/ui/TransitGuideSheet.kt", "guide/ui/JourneySheet.kt")) {
             val sheet = pkg.resolve(file).readText()
             assertTrue(sheet.contains("properties = ModalBottomSheetProperties(shouldDismissOnClickOutside = false)"), file)
         }
