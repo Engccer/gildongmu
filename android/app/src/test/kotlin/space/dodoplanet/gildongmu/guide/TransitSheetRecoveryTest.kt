@@ -131,9 +131,10 @@ class TransitSheetRecoveryTest {
 
     @Test fun `리뷰 반영 소스 가드 4 — 복구 페이지만 역 전용 검색을 켠다`() {
         assertTrue(endpointSrc.contains("titleOverride: String?, stationsOnly: Boolean)"))
-        assertTrue(endpointSrc.contains("if (!stationsOnly) when (p.target)"))
-        assertTrue(endpointSrc.contains("if (!stationsOnly && !p.hasSearched && p.recentEndpoints.isNotEmpty())"))
-        assertTrue(endpointSrc.contains("if (!stationsOnly) p.addresses.forEachIndexed"))
+        assertTrue(endpointSrc.contains("if (!stationsOnlyView) when (p.target)"))
+        assertTrue(endpointSrc.contains("if (!stationsOnlyView && !p.hasSearched && p.recentEndpoints.isNotEmpty())"))
+        assertTrue(endpointSrc.contains("if (!stationsOnlyView) p.addresses.forEachIndexed"))
+        assertTrue(endpointSrc.contains("val stationsOnlyView = stationsOnly || p.stationsOnlyMode"))  // 호출자 지정(복구)이 모드와 같은 줄 구성을 쓴다
         assertTrue(sheet.contains("recoveryStationSearch\"), stationsOnly = true)"))
         assertTrue(sheet.contains("it.placesOnly = true"))  // 후보 수 통지도 장소만 센다
         assertTrue(sheet.contains("titleOverride = null, stationsOnly = false)"))

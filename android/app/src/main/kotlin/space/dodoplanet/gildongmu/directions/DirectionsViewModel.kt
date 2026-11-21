@@ -41,6 +41,8 @@ import space.dodoplanet.gildongmu.kit.DirectionsOutcomeClassifier
 import space.dodoplanet.gildongmu.kit.DirectionsResults
 import space.dodoplanet.gildongmu.kit.JourneyAboardDirection
 import space.dodoplanet.gildongmu.kit.JourneyStationQuery
+import space.dodoplanet.gildongmu.kit.JourneyTransferMode
+import space.dodoplanet.gildongmu.kit.journeyTransferGuess
 import space.dodoplanet.gildongmu.kit.KoreanParticle
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentEndpoint
@@ -93,6 +95,8 @@ sealed class LandingTarget {
     data class RequeriedRoute(val routeKey: String) : LandingTarget()
     /** 수단 재조회 "없음" 문장(버튼 자리). */
     data class RequeryNone(val axis: TransitModeAxis) : LandingTarget()
+    /** 지금 탄 열차 역을 고른 뒤 방면·노선 단계 줄(E71, iOS `beginAboardLanding`) — 시트가 닫힌 뒤 화면이 그 줄로 커서를 보낸다. */
+    data object AboardStep : LandingTarget()
 }
 
 /** 수단 재조회 한 축의 상태(E50 §4.3, iOS `TransitRequeryState` 미러). 부재 = 아직 누르지 않음(버튼). */
@@ -147,6 +151,8 @@ data class DirectionsUiState(
     val aboardDirectionsState: AboardDirectionsState = AboardDirectionsState.Idle,
     /** 여정 조회 결과 3-state. `results`와 같은 세대에만 산다(결과 폐기·재조회 시작이 비운다). */
     val journeyOutcome: JourneyQueryOutcome? = null,
+    /** 입구 검색(E77)에서 역·정류장을 골라 답을 기다리는 질문. 질문은 시트가 닫힌 뒤 화면이 띄우고, 답·취소가 비운다. */
+    val pendingTransfer: PendingTransfer? = null,
     val journeyVariantIndex: Int = 0,
     val journeyEgressIndex: Int = 0,
     val landing: LandingRequest? = null,
@@ -270,7 +276,8 @@ class DirectionsViewModel(
 
     /** 필드 확정은 엔드포인트 전체 교체(원자). 장소면 스코프 최근 목록에 기록, 이전 결과는 폐기. */
     fun setEndpoint(endpoint: DirectionsEndpoint, target: DirectionsFieldTarget) {
-        if (target == DirectionsFieldTarget.via) {
+        // 입구 검색(`transfer`)의 역이 아닌 장소는 종전대로 경유지 확정이다.
+        if (target == DirectionsFieldTarget.via || target == DirectionsFieldTarget.transfer) {
             (endpoint as? DirectionsEndpoint.Place)?.let(::setVia)
             return
         }
@@ -1025,13 +1032,15 @@ class DirectionsViewModel(
             DirectionsFieldTarget.from -> strings.get("directions.from")
             DirectionsFieldTarget.to -> strings.get("directions.to")
             DirectionsFieldTarget.via -> strings.get("directions.via")
-            DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
+            DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
+                error("${target.name}은 길찾기 폼 끝점 필드가 아니다")
         }
         val endpoint = when (target) {
             DirectionsFieldTarget.from -> s.from
             DirectionsFieldTarget.to -> s.to
             DirectionsFieldTarget.via -> s.via
-            DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
+            DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
+                error("${target.name}은 길찾기 폼 끝점 필드가 아니다")
         }
         // 지금 탄 열차(E71): 「출발지, 지금 탄 열차, {역 장소 이름}」, 방면이 정해지면 「…, {방면}」. 한 줄 = 한 객체.
         if (target == DirectionsFieldTarget.from) s.aboardOrigin?.let { return joinText(label, aboardFieldValue(it, strings)) }
@@ -1045,7 +1054,8 @@ class DirectionsViewModel(
                 DirectionsFieldTarget.from -> strings.get("directions.searchFrom")
                 DirectionsFieldTarget.to -> strings.get("directions.searchTo")
                 DirectionsFieldTarget.via -> strings.get("directions.addVia")
-                DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
+                DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
+                    error("${target.name}은 길찾기 폼 끝점 필드가 아니다")
             }
         }
     }
@@ -1177,12 +1187,90 @@ class DirectionsViewModel(
         // "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침(F-B) — from에서만(지정 화면의 되돌리기는 이 부수효과가 없다).
         if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current) refreshCurrentLocation()
         // 확정 뒤 착지: 출발지 → 도착지 버튼, 도착지·경유지 → 조회 버튼(셋 다 "다음에 할 일").
-        val landing = if (target == DirectionsFieldTarget.from) LandingTarget.Field(DirectionsFieldTarget.to) else LandingTarget.Submit
+        val landing = when (target) {
+            DirectionsFieldTarget.from -> LandingTarget.Field(DirectionsFieldTarget.to)
+            DirectionsFieldTarget.transfer -> LandingTarget.Field(DirectionsFieldTarget.via) // 입구 버튼 자리(경유지 칸)
+            else -> LandingTarget.Submit
+        }
         _state.update { it.copy(landing = landingNext(landing)) }
-    }
+    }.also { it.journey = ::journeyPickerHooks }
     val endpointSearch: StateFlow<EndpointSearchState?> get() = picker.state
 
-    fun openPicker(target: DirectionsFieldTarget) = picker.open(target)
+    fun openPicker(target: DirectionsFieldTarget) {
+        // 다른 칸의 시트가 열리면 답 없는 질문은 버린다 — 대기가 남으면 이후 시트 닫힘의 커서 착지를 가로챈다(iOS `presentTransferQuestion`).
+        if (_state.value.pendingTransfer != null) _state.update { it.copy(pendingTransfer = null) }
+        picker.open(target)
+    }
+
+    // ── 여정 입력의 끝점 검색 자리(B26 단계 5, iOS `DirectionsEndpointSearchView` 콜백) ──────────
+
+    /** 정류장 이름 검색의 지역 근거(E70-e) — 현재 위치 출발이면 위치 스토어의 마지막 좌표다(없으면 null). */
+    private fun endpointCoordinate(endpoint: DirectionsEndpoint?): RoutePoint? = when (endpoint) {
+        is DirectionsEndpoint.Place -> RoutePoint(endpoint.lat, endpoint.lng)
+        DirectionsEndpoint.Current -> locator.storedCoordinate()?.let { RoutePoint(it.lat, it.lng) }
+        null -> null
+    }
+
+    /** 시트를 열 때마다 새로 만든다 — 출발·도착 좌표와 「지하철역 검색」 행의 조건(`journeyInputEnabled`)이 그때 값이어야 한다. */
+    private fun journeyPickerHooks(): JourneyPickerHooks {
+        val s = _state.value
+        return JourneyPickerHooks(
+            routes = routes,
+            stopOrigin = endpointCoordinate(s.from),
+            stopDest = endpointCoordinate(s.to),
+            onSelectStation = { station, target ->
+                // 역 칸 확정 — 시트가 역이나 정류장만 돌려준다(그 밖이면 시트가 통지하고 닫지 않는다). 착지는 그 칸이다.
+                setJourneyStation(station, board = target == DirectionsFieldTarget.boardStation)
+                _state.update { it.copy(landing = landingNext(LandingTarget.Field(target))) }
+            },
+            onSelectAboardStation = if (journeyInputEnabled) {
+                { station: RecentStation ->
+                    // 지금 탄 열차(E71) — 출발지 칸이 바뀌고 방면 단계가 선다. 착지는 시트가 닫힌 뒤 단계 줄이다.
+                    startAboard(station)
+                    _state.update { it.copy(landing = landingNext(LandingTarget.AboardStep)) }
+                }
+            } else null,
+            onSelectTransfer = ::beginTransfer,
+        )
+    }
+
+    /** 입구 검색(E77) — 확정하지 않고 대기에 담는다(짐작은 지금 정한다, 답 버튼 순서가 흔들리지 않게). 질문은 시트가 닫힌 뒤 화면이 띄운다. */
+    private fun beginTransfer(station: RecentStation, mode: JourneyTransferMode) {
+        val s = _state.value
+        val guess = journeyTransferGuess(station.lat, station.lng, endpointCoordinate(s.from), endpointCoordinate(s.to))
+        _state.update { it.copy(pendingTransfer = PendingTransfer(station, mode, guess)) }
+    }
+
+    /** 질문 문장(짐작 쪽). 대기가 없으면 빈 문장이다. */
+    fun transferQuestionText(): String = _state.value.pendingTransfer?.let { transferQuestionText(it, strings) } ?: ""
+
+    /** 답 버튼(짐작이 첫 버튼, 반대편, 경유만, 닫기). 대기가 없으면 빈 목록이다. */
+    fun transferQuestionButtons(): List<TransferChoice> = _state.value.pendingTransfer?.let { transferChoices(it, strings) } ?: emptyList()
+
+    /**
+     * 질문에 답한다. `board`는 `TransferChoice.board` 그대로: 값이 있으면 그 쪽 역 칸(true = 승차 쪽), null이면 경유지로만 둔다.
+     * 대기를 먼저 비우고, 화면이 커서를 보낼 자리를 돌려주며(상태의 `landing`에도 같은 요청을 싣는다) 대기가 없으면 null이다(멱등).
+     */
+    fun answerTransfer(board: Boolean?): LandingTarget? {
+        val ask = _state.value.pendingTransfer ?: return null
+        _state.update { it.copy(pendingTransfer = null) }
+        val field = if (board != null) {
+            setJourneyStation(ask.station, board)
+            if (board) DirectionsFieldTarget.boardStation else DirectionsFieldTarget.alightStation
+        } else {
+            setVia(DirectionsEndpoint.Place(ask.station.label, ask.station.lat, ask.station.lng, labelRoman = null))
+            DirectionsFieldTarget.via
+        }
+        val landing = LandingTarget.Field(field)
+        _state.update { it.copy(landing = landingNext(landing)) }
+        return landing
+    }
+
+    /** 질문을 답 없이 닫았다 — 아무것도 바꾸지 않고 입구 버튼으로 돌아간다(E77 판정 5). 대기가 이미 비었으면 무동작(멱등). */
+    fun cancelTransfer() {
+        if (_state.value.pendingTransfer == null) return
+        _state.update { it.copy(pendingTransfer = null, landing = landingNext(LandingTarget.Field(DirectionsFieldTarget.via))) }
+    }
 
     /** 닫힘은 진행 중 검색을 취소하고(picker) 열었던 필드로 착지한다(여기). */
     fun closePicker() {
@@ -1192,6 +1280,8 @@ class DirectionsViewModel(
 
     fun submitCandidates() = picker.submitCandidates()
     fun selectPlace(place: Place) = picker.selectPlace(place)
+    fun selectStop(row: StopRow) = picker.selectStop(row)
+    fun startAboardSearch() = picker.startAboardSearch()
     fun selectRecentEndpoint(endpoint: RecentEndpoint) = picker.selectRecentEndpoint(endpoint)
     fun selectCurrent() = picker.selectCurrent()
     fun selectAddress(address: JusoAddress) = picker.selectAddress(address)

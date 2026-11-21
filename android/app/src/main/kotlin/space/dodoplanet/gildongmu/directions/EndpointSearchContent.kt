@@ -74,6 +74,10 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
     val searchingLabel = strings.get("android.search.searching")
+    // 역 칸·지금 탄 열차 역 검색은 최근·주소·현재 위치 줄을 그리지 않는다 — 호출자 지정(`stationsOnly`, 잘못 내림 복구)과 모드(`p.stationsOnlyMode`)가 같은 줄 구성을 쓴다.
+    val stationsOnlyView = stationsOnly || p.stationsOnlyMode
+    val selectable = p.selectablePlaces
+    val others = p.otherPlaces
     val dictation = rememberDictation(
         onTranscript = picker::submitVoice,
         onNotice = { picker.postNotice(dictationNoticeText(res, it)) },
@@ -84,11 +88,17 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
         withFrameNanos { }
         runCatching { fieldFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "입력 착지 실패", it) }
     }
+    // 「지하철역 검색」으로 모드가 바뀌면 이 행이 사라지므로 커서를 검색 입력으로 옮긴다(iOS `landAboardSearchField` — 행이 사라지면 커서가 최상단으로 떨어진다).
+    LaunchedEffect(p.aboardMode) {
+        if (!p.aboardMode) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { fieldFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "지금 탄 열차 입력 착지 실패", it) }
+    }
     // 후보 도착 시 첫 후보 착지(M1 첫 결과 관용구). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
     LaunchedEffect(p.candidateRevision) {
         if (p.candidateRevision > picker.consumedCandidateRevision) {
             picker.consumedCandidateRevision = p.candidateRevision
-            if (p.places.isNotEmpty() || (!stationsOnly && p.addresses.isNotEmpty())) {
+            if (selectable.isNotEmpty() || p.stops.isNotEmpty() || others.isNotEmpty() || (!stationsOnlyView && p.addresses.isNotEmpty())) {
                 withFrameNanos { }
                 // 받아쓰기 줄이 서며 작은 화면에서는 첫 후보가 화면 밖이다 — 먼저 스크롤해야 한소네 커서가 포커스를 따른다(검색 화면과 같음).
                 runCatching { firstCandidateBring.bringIntoView() }.onFailure { Log.w("EndpointSearch", "첫 후보 스크롤 실패", it) }
@@ -104,10 +114,13 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
     }
 
     val title = titleOverride ?: when (p.target) {
-        DirectionsFieldTarget.from -> strings.get("directions.searchFrom")
+        DirectionsFieldTarget.from -> if (p.aboardMode) strings.get("android.journey.aboardStationField") else strings.get("directions.searchFrom")
         DirectionsFieldTarget.to -> strings.get("directions.searchTo")
         DirectionsFieldTarget.via -> strings.get("directions.searchVia")
         DirectionsFieldTarget.manualLocation -> strings.get("manualLocation.pickTitle")
+        DirectionsFieldTarget.transfer -> strings.get("android.journey.addMenu")
+        DirectionsFieldTarget.boardStation -> strings.get("android.journey.boardField")
+        DirectionsFieldTarget.alightStation -> strings.get("android.journey.alightField")
     }
 
     AppScreenScaffold(title, onBack = onBack) { padding ->
@@ -123,7 +136,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 state = p.queryState,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 label = { Text(strings.get("search.label")) },
-                placeholder = { Text(strings.get("android.search.prompt")) },
+                placeholder = { Text(if (p.aboardMode) strings.get("android.journey.aboardStationField") else strings.get("android.search.prompt")) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 // 단일행 필드의 하드웨어 Enter도 이 경로로 온다(M1 판정) — 별도 키 폴백은 이중 제출.
                 onKeyboardAction = { if (!p.isSearching) picker.submitCandidates() },
@@ -149,15 +162,20 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             }
 
             // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정에서는 지정 해제를 뜻한다. 도착지는 스왑이 담당하고 경유지는 장소만.
-            if (!stationsOnly) when (p.target) {
+            if (!stationsOnlyView) when (p.target) {
                 DirectionsFieldTarget.from -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
                 DirectionsFieldTarget.manualLocation -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("manualLocation.useGps")) }
-                DirectionsFieldTarget.to, DirectionsFieldTarget.via -> Unit
+                DirectionsFieldTarget.to, DirectionsFieldTarget.via, DirectionsFieldTarget.transfer,
+                DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation -> Unit
+            }
+            // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 여정 입력이 설 때만(`aboardOffered`) 있고, 누르면 이 시트가 지하철역만 받는 검색으로 바뀐다.
+            if (p.aboardOffered && !p.aboardMode) {
+                Button(onClick = picker::startAboardSearch, modifier = Modifier.tapTarget().testTag("ep-aboard-start")) { Text(strings.get("android.journey.aboardStart")) }
             }
 
             StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
 
-            if (!stationsOnly && !p.hasSearched && p.recentEndpoints.isNotEmpty()) {
+            if (!stationsOnlyView && !p.hasSearched && p.recentEndpoints.isNotEmpty()) {
                 SectionHeading(strings.get("recent.title"))
                 val pinnedLabel = strings.get("recent.pinned")
                 val reorder = reorderLabels()
@@ -191,22 +209,42 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 ) { Text(strings.get("recent.clearAll")) }
             }
 
-            // 후보(장소 먼저, 주소 다음). 첫 후보에만 착지 requester.
-            p.places.forEachIndexed { index, place ->
+            // 후보 줄 순서(iOS 동형): 역 장소 → 장소 실패 한 줄 → 정류장 → 정류장 실패·일부·정보 없음 → 기타 장소(역 칸·지금 탄 열차) → 주소(역 칸·지금 탄 열차는 없음).
+            // 첫 후보에만 착지 requester — 렌더 순서와 일치하는 첫 줄이다.
+            val firstIsPlace = selectable.isNotEmpty()
+            val firstIsStop = !firstIsPlace && p.stops.isNotEmpty()
+            val firstIsOther = !firstIsPlace && !firstIsStop && others.isNotEmpty()
+            val firstModifier = Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus)
+            @Composable
+            fun PlaceRow(place: space.dodoplanet.gildongmu.kit.models.Place, first: Boolean) {
                 val name = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
                 val address = place.roadAddress.ifEmpty { place.address }
                 ActionRow(
                     visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
                     onClick = { picker.selectPlace(place) },
-                    modifier = if (index == 0) Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus) else Modifier,
+                    modifier = if (first) firstModifier else Modifier,
                 )
             }
-            if (!stationsOnly) p.addresses.forEachIndexed { index, address ->
+            selectable.forEachIndexed { index, place -> PlaceRow(place, first = index == 0) }
+            if (p.showsPlacesFailure) Text(strings.get("directions.candidateError"), Modifier.padding(vertical = 8.dp).testTag("ep-places-failed"))
+            p.stops.forEachIndexed { index, row ->
+                // 한 줄 = 한 객체: 이름, 「정류장」, 거리(기준점이 없으면 거리 조각 없음).
+                ActionRow(
+                    visual = stopRowText(row, strings), tag = "ep-stop-${row.id}",
+                    onClick = { picker.selectStop(row) },
+                    modifier = if (firstIsStop && index == 0) firstModifier else Modifier,
+                )
+            }
+            if (p.stopsFailed) Text(strings.get("android.journey.stopSearchFailed"), Modifier.padding(vertical = 8.dp).testTag("ep-stops-failed"))
+            if (p.stopsTruncated) Text(strings.get("android.journey.stopSearchTruncated"), Modifier.padding(vertical = 8.dp).testTag("ep-stops-truncated"))
+            if (p.showsNoBusData) Text(strings.get("android.common.unavailableHere.noBusData"), Modifier.padding(vertical = 8.dp).testTag("ep-no-bus-data"))
+            others.forEachIndexed { index, place -> PlaceRow(place, first = firstIsOther && index == 0) }
+            if (!stationsOnlyView) p.addresses.forEachIndexed { index, address ->
                 val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
                 ActionRow(
                     visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
                     onClick = { picker.selectAddress(address) },
-                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.bringIntoViewRequester(firstCandidateBring).landingTarget(firstCandidateFocus) else Modifier,
+                    modifier = if (index == 0 && selectable.isEmpty() && p.stops.isEmpty() && others.isEmpty()) firstModifier else Modifier,
                 )
             }
         }

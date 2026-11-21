@@ -214,8 +214,11 @@ private fun DirectionsForm(
                 DirectionsFieldTarget.from -> ui.fromFocus
                 DirectionsFieldTarget.to -> ui.toFocus
                 DirectionsFieldTarget.via -> ui.viaFocus
-                DirectionsFieldTarget.manualLocation -> null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") } // 착지 하나로 앱을 죽이지 않는다
+                // 착지 하나로 앱을 죽이지 않는다. 입구·역 칸은 다음 묶음(B26 단계 5 B)이 폼에 올리며 그때 요청자를 잇는다.
+                DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer, DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation ->
+                    null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") }
             }
+            LandingTarget.AboardStep -> null // 다음 묶음이 방면 단계 줄 요청자를 잇는다
             LandingTarget.Submit -> ui.submitFocus
             is LandingTarget.RecentRoute -> ui.recentFocus[t.id]
             is LandingTarget.RequeriedRoute -> ui.requeryFocus[requeryRouteFocusKey(t.routeKey)]

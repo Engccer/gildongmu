@@ -188,6 +188,35 @@ internal fun stringId(key: String): Int? = when (key) {
     "android.journey.recentRouteBoth" -> R.string.android_journey_recentRouteBoth
     "android.journey.recentRouteStop" -> R.string.android_journey_recentRouteStop
     "android.journey.recentRouteBothPlaces" -> R.string.android_journey_recentRouteBothPlaces
+    "android.journey.askAlightSubway" -> R.string.android_journey_askAlightSubway
+    "android.journey.askAlightRail" -> R.string.android_journey_askAlightRail
+    "android.journey.askAlightBus" -> R.string.android_journey_askAlightBus
+    "android.journey.askBoardSubway" -> R.string.android_journey_askBoardSubway
+    "android.journey.askBoardRail" -> R.string.android_journey_askBoardRail
+    "android.journey.askBoardBus" -> R.string.android_journey_askBoardBus
+    "android.journey.answerYesAlight" -> R.string.android_journey_answerYesAlight
+    "android.journey.answerYesBoardSubway" -> R.string.android_journey_answerYesBoardSubway
+    "android.journey.answerYesBoardRail" -> R.string.android_journey_answerYesBoardRail
+    "android.journey.answerYesBoardBus" -> R.string.android_journey_answerYesBoardBus
+    "android.journey.answerNoBoardSubway" -> R.string.android_journey_answerNoBoardSubway
+    "android.journey.answerNoBoardRail" -> R.string.android_journey_answerNoBoardRail
+    "android.journey.answerNoBoardBus" -> R.string.android_journey_answerNoBoardBus
+    "android.journey.answerNoAlightSubway" -> R.string.android_journey_answerNoAlightSubway
+    "android.journey.answerNoAlightRail" -> R.string.android_journey_answerNoAlightRail
+    "android.journey.answerNoAlightBus" -> R.string.android_journey_answerNoAlightBus
+    "android.journey.answerViaOnly" -> R.string.android_journey_answerViaOnly
+    "android.journey.stopPlace" -> R.string.android_journey_stopPlace
+    "android.journey.busStopKind" -> R.string.android_journey_busStopKind
+    "android.journey.stopSearchFailed" -> R.string.android_journey_stopSearchFailed
+    "android.journey.stopSearchTruncated" -> R.string.android_journey_stopSearchTruncated
+    "android.journey.notStation" -> R.string.android_journey_notStation
+    "android.journey.aboardNotSubway" -> R.string.android_journey_aboardNotSubway
+    "android.journey.aboardStationField" -> R.string.android_journey_aboardStationField
+    "android.journey.aboardStart" -> R.string.android_journey_aboardStart
+    "android.journey.boardField" -> R.string.android_journey_boardField
+    "android.journey.alightField" -> R.string.android_journey_alightField
+    "android.journey.addMenu" -> R.string.android_journey_addMenu
+    "android.common.unavailableHere.noBusData" -> R.string.android_common_unavailableHere_noBusData
     "transitGuide.exitBound" -> R.string.transitGuide_exitBound
     "transitGuide.openStation" -> R.string.transitGuide_openStation
     "transitGuide.callStation" -> R.string.transitGuide_callStation

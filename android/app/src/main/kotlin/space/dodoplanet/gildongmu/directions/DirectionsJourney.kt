@@ -2,13 +2,17 @@ package space.dodoplanet.gildongmu.directions
 
 import space.dodoplanet.gildongmu.kit.JourneyAboardDirection
 import space.dodoplanet.gildongmu.kit.JourneyStationKind
+import space.dodoplanet.gildongmu.kit.JourneyTransferMode
+import space.dodoplanet.gildongmu.kit.JourneyTransferSide
 import space.dodoplanet.gildongmu.kit.RecentRoute
 import space.dodoplanet.gildongmu.kit.RecentStation
 import space.dodoplanet.gildongmu.kit.journeyAboardDirections
 import space.dodoplanet.gildongmu.kit.journeyAboardLines
 import space.dodoplanet.gildongmu.kit.journeyStationDisplayName
+import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.JourneyResult
+import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.SubwayArrival
 
 // 길찾기 여정 몫(B26 단계 4, iOS `DirectionsModel` 여정 상태·`DirectionsTabView` 문장 함수 미러) — 상태 타입과 순수 함수.
@@ -131,3 +135,81 @@ fun recentJourneyLabel(route: RecentRoute, from: String, to: String, enabled: Bo
     val one = board ?: alight ?: return null
     return strings.get("android.journey.recentRoute", from, to, one)
 }
+
+/**
+ * 역 칸의 노선 힌트(iOS `journeyLineHint`, spec §4.1 — 카테고리 마지막 조각 또는 이름 꼬리). 카카오 역 분류 끝(`수도권2호선`)이 노선이면 그것,
+ * 아니면 이름 뒤 공백 다음 노선 토큰(`아현역 2호선`의 `2호선`). 모르면 null(서버는 좌표 조건만으로 판정한다).
+ * Swift `split(separator:)`는 빈 조각을 버린다 — 같은 순서로 거른다.
+ */
+fun journeyLineHint(place: Place): String? {
+    fun isLine(token: String) = token.endsWith("선") || token.endsWith("철도") || token.startsWith("GTX")
+    val last = place.category.split('>').filter { it.isNotEmpty() }.lastOrNull()?.trim()
+    if (last != null && last != "지하철,전철" && isLine(last)) return last
+    val tail = place.name.split(' ').filter { it.isNotEmpty() }.drop(1).lastOrNull()
+    if (tail != null && isLine(tail)) return tail
+    return null
+}
+
+/** 입구 검색(E77)에서 고른 역·정류장과 그 질문의 짐작(시트가 닫힐 때 정해 두어 답 버튼 순서가 흔들리지 않는다). */
+data class PendingTransfer(val station: RecentStation, val mode: JourneyTransferMode, val guess: JourneyTransferSide)
+
+/**
+ * 질문의 답 버튼 하나. `board`는 `setJourneyStation`에 그대로 가는 값이다: true = 승차 쪽 칸(자동차에서 내리는 역), false = 하차 쪽 칸(자동차를 탈 역),
+ * null = 환승하지 않고 경유만. `cancel`은 닫기 버튼(답이 아니다 — 아무것도 바꾸지 않는다).
+ */
+data class TransferChoice(val label: String, val board: Boolean?, val cancel: Boolean)
+
+/** 질문 문장 속 장소 이름 — 정류장은 원문 그대로(「{이름} 정류장」), 역은 표시 이름 함수를 지나 「{이름}역」. */
+fun transferPlaceName(ask: PendingTransfer, strings: Strings): String =
+    if (ask.station.kind == JourneyStationKind.busStop) strings.get("android.journey.stopPlace", ask.station.label)
+    else strings.get("android.journey.stationPlace", journeyStationDisplayName(ask.station.label))
+
+/** 질문 문장(짐작 쪽) 6갈래. 키는 호출마다 리터럴이다(키 가드가 리터럴 전수를 표와 대조한다). */
+fun transferQuestionText(ask: PendingTransfer, strings: Strings): String {
+    val place = transferPlaceName(ask, strings)
+    return when (ask.guess) {
+        JourneyTransferSide.alight -> when (ask.mode) {
+            JourneyTransferMode.subway -> strings.get("android.journey.askAlightSubway", place)
+            JourneyTransferMode.rail -> strings.get("android.journey.askAlightRail", place)
+            JourneyTransferMode.bus -> strings.get("android.journey.askAlightBus", place)
+        }
+        JourneyTransferSide.board -> when (ask.mode) {
+            JourneyTransferMode.subway -> strings.get("android.journey.askBoardSubway", place)
+            JourneyTransferMode.rail -> strings.get("android.journey.askBoardRail", place)
+            JourneyTransferMode.bus -> strings.get("android.journey.askBoardBus", place)
+        }
+    }
+}
+
+/** 버튼 순서: 짐작이 첫 버튼, 그다음 반대편, 경유만, 마지막이 닫기(spec §2.3, iOS `transferQuestionButtons`). */
+fun transferChoices(ask: PendingTransfer, strings: Strings): List<TransferChoice> {
+    val place = transferPlaceName(ask, strings)
+    val yesBoard = when (ask.mode) {
+        JourneyTransferMode.subway -> strings.get("android.journey.answerYesBoardSubway", place)
+        JourneyTransferMode.rail -> strings.get("android.journey.answerYesBoardRail", place)
+        JourneyTransferMode.bus -> strings.get("android.journey.answerYesBoardBus", place)
+    }
+    val noBoard = when (ask.mode) {
+        JourneyTransferMode.subway -> strings.get("android.journey.answerNoBoardSubway", place)
+        JourneyTransferMode.rail -> strings.get("android.journey.answerNoBoardRail", place)
+        JourneyTransferMode.bus -> strings.get("android.journey.answerNoBoardBus", place)
+    }
+    val noAlight = when (ask.mode) {
+        JourneyTransferMode.subway -> strings.get("android.journey.answerNoAlightSubway", place)
+        JourneyTransferMode.rail -> strings.get("android.journey.answerNoAlightRail", place)
+        JourneyTransferMode.bus -> strings.get("android.journey.answerNoAlightBus", place)
+    }
+    val guessed = if (ask.guess == JourneyTransferSide.alight) {
+        listOf(TransferChoice(strings.get("android.journey.answerYesAlight", place), board = false, cancel = false), TransferChoice(noBoard, board = true, cancel = false))
+    } else {
+        listOf(TransferChoice(yesBoard, board = true, cancel = false), TransferChoice(noAlight, board = false, cancel = false))
+    }
+    return guessed + listOf(
+        TransferChoice(strings.get("android.journey.answerViaOnly"), board = null, cancel = false),
+        TransferChoice(strings.get("actions.close"), board = null, cancel = true),
+    )
+}
+
+/** 정류장 줄 한 줄 = 한 객체: 이름, 「정류장」, 거리(기준점이 없으면 거리 조각 없음). 이름은 원문 그대로 말한다(깎지 않는다). */
+fun stopRowText(row: StopRow, strings: Strings): String =
+    joinText(row.hit.name, strings.get("android.journey.busStopKind"), row.distance?.let(::formatDistance))

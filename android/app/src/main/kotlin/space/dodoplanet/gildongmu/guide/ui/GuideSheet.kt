@@ -647,7 +647,8 @@ private fun commitGuideEndpoint(endpoint: DirectionsEndpoint, field: DirectionsF
     when (field) {
         DirectionsFieldTarget.to -> if (GuideSession.walk.changeDestination(dest, place.label)) GuideFormSync.post(place) else return null
         DirectionsFieldTarget.via -> if (GuideSession.walk.setWaypoint(dest, place.label)) GuideFormSync.postWaypoint(place) else return null
-        DirectionsFieldTarget.from, DirectionsFieldTarget.manualLocation -> return null
+        DirectionsFieldTarget.from, DirectionsFieldTarget.manualLocation, DirectionsFieldTarget.transfer,
+        DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation -> return null
     }
     return if (field == DirectionsFieldTarget.to) "destinationChanged" else "waypointChanged"
 }
