@@ -365,7 +365,7 @@ private fun TransitTrackingContent(ui: TransitGuideUiState, strings: Strings, na
             closeOverview()
             return@OnChange
         }
-        if (target != null) landing.land(target, if (!byUser && lostFocus) "lost=phaseButton" else "transition", expectsSystemPlacement = inheritsPlacement)
+        if (target != null) landing.land(target, if (!byUser && lostFocus) "lost=phaseButton" else "transition", expectsSystemPlacement = transitTransitionExpectsPlacement(byUser, lostFocus, inheritsPlacement))
     }
     // 목적지 전환 후보 조회 결과 — 0건·오류는 조회 중 행이 바뀐 같은 자리 문구 행에 착지(헌장 §5). 조회 중은 검색 닫힘이 이미 착지를 맡았다.
     OnChange(ui.pendingDestChange?.phase) { _, phase ->

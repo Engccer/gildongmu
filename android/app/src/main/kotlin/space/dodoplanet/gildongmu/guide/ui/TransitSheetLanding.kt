@@ -83,6 +83,13 @@ fun transitPhaseTransitionLanding(
     return null
 }
 
+/**
+ * 국면 전이 착지가 시스템 배치를 기다리는가(창 안 첫 커서 이동 한 번을 세지 않는가). 사용자 전이(`byUser`)와 국면 버튼 소실(`lostFocus`)은 커서를 쥔 버튼이
+ * 전이와 함께 사라지고, 그때 스크린 리더가 커서를 근처 노드로 한 번 옮긴다(한소네 실측: 「이미 탔어요」의 열차 선택 뒤 47ms에 아래 헤딩으로). 이것을 사용자
+ * 이동으로 세면 착지를 포기해 커서가 상태 문장이 아닌 엉뚱한 줄에 남는다. `inherited`: 앞 요청이 기다리던 기대를 물려받는다.
+ */
+fun transitTransitionExpectsPlacement(byUser: Boolean, lostFocus: Boolean, inherited: Boolean): Boolean = inherited || byUser || lostFocus
+
 /** 화면 상태의 현재 구간(모델 `currentLeg`와 같은 식 — 순수 판정이 모델 없이 읽는다). */
 fun transitUiLeg(ui: TransitGuideUiState): TransitGuideLeg? = ui.state?.let { s -> ui.route?.legs?.getOrNull(s.legIndex) }
 

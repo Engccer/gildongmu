@@ -13,7 +13,9 @@ import space.dodoplanet.gildongmu.guide.ui.TransitSheetLanding
 import space.dodoplanet.gildongmu.guide.ui.transitControlExists
 import space.dodoplanet.gildongmu.guide.ui.transitLandingFallbackText
 import space.dodoplanet.gildongmu.guide.ui.transitPhaseTransitionLanding
+import space.dodoplanet.gildongmu.guide.ui.transitTransitionExpectsPlacement
 import space.dodoplanet.gildongmu.kit.BeaconDest
+import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.TransitPhase
 import space.dodoplanet.gildongmu.kit.TransitSignal
 import space.dodoplanet.gildongmu.kit.buildTransitGuideRoute
@@ -111,6 +113,24 @@ class TransitSheetLandingTest {
         advanceUntilIdle()
         assertEquals(listOf(TransitSheetControl.status), h.focused)
         assertFalse(h.logs.any { it.contains("reason=userMoved") }, h.logs.toString())
+    }
+
+    @Test fun `누른 버튼이 사라지는 전이(사용자·국면 버튼 소실)는 시스템의 첫 커서 이동을 세지 않고 상태 문장에 앉는다`() = runTest {
+        // 한소네 실측: 「이미 탔어요」 열차 선택 → 탑승 중. 버튼이 사라진 47ms 뒤 커서가 아래 헤딩으로 옮겨졌고, 종전 착지는 이를 사용자 이동으로 보고 포기했다.
+        assertTrue(transitTransitionExpectsPlacement(byUser = true, lostFocus = false, inherited = false))
+        assertTrue(transitTransitionExpectsPlacement(byUser = false, lostFocus = true, inherited = false))
+        assertTrue(transitTransitionExpectsPlacement(byUser = false, lostFocus = false, inherited = true))
+        assertFalse(transitTransitionExpectsPlacement(byUser = false, lostFocus = false, inherited = false), "관측 전이는 커서를 건드리지 않았다 — 첫 이동이 곧 사용자 이동")
+        val h = H(this)
+        h.settled = false
+        h.landing.land(TransitSheetControl.status, "transition", expectsSystemPlacement = transitTransitionExpectsPlacement(byUser = true, lostFocus = false, inherited = false))
+        advanceTimeBy(47); runCurrent()
+        h.landing.onA11yFocus(null)                 // 사라진 버튼 대신 시스템이 고른 노드
+        h.settled = true
+        advanceUntilIdle()
+        assertEquals(listOf(TransitSheetControl.status), h.focused)
+        assertTrue(Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/ui/TransitGuideSheet.kt").readText()
+            .contains("expectsSystemPlacement = transitTransitionExpectsPlacement(byUser, lostFocus, inheritsPlacement)"), "시트의 전이 착지가 이 판정을 지난다")
     }
 
     @Test fun `기대 없는 새 요청은 같은 첫 이동에 사용자 이동으로 끝난다 — 이미 이동을 본 요청은 기다리지 않는다`() = runTest {
