@@ -188,8 +188,12 @@ def run(query: str) -> None:
     menu = enter(4)
     first_item = current(menu)
     items = [first_item] + [current(press("space 4", label="메뉴")) for _ in range(3)]
-    if not any("장소 상세 보기" in i for i in items):
+    detail = next((n for n, i in enumerate(items) if "장소 상세 보기" in i), None)
+    change = next((n for n, i in enumerate(items) if "목적지 바꾸기" in i), None)
+    if detail is None:
         record("FAIL", "제목 메뉴", " / ".join(items)[:120])
+    elif change is None or change > detail:  # 아이폰 순서: 전화 걸기 → 목적지 바꾸기 → 장소 상세 보기(2026-11-21 위원장 판정)
+        record("FAIL", "제목 메뉴 순서(목적지 바꾸기 → 장소 상세 보기)", " / ".join(items)[:120])
     elif "전화 걸기" in first_item:
         record("PASS", "제목 메뉴, 첫 항목 전화 걸기")
     else:

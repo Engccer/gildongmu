@@ -129,16 +129,16 @@ private sealed interface GuidePage {
     data class Search(val target: DirectionsFieldTarget) : GuidePage
 }
 
-/** 제목 메뉴 항목(iOS `GuideTitleMenu` — 전화 걸기 → 장소 상세 → 목적지 바꾸기). 순서가 읽기 순서다(순수 함수로 잠근다). */
+/** 제목 메뉴 항목(iOS `GuideTitleMenu` — 전화 걸기 → 목적지 바꾸기 → 장소 상세, 2026-11-21 위원장 판정으로 아이폰 순서). 순서가 읽기 순서다(순수 함수로 잠근다). */
 enum class GuideTitleMenuItem(val key: String, val tag: String) {
     call("android.place.call", "guide-menu-call"),
-    detail("android.guide.destMenuDetail", "guide-menu-detail"),
     change("android.guide.destMenuChange", "guide-menu-change"),
+    detail("android.guide.destMenuDetail", "guide-menu-detail"),
 }
 
 /** 「전화 걸기」(E90)는 목적지 전화번호를 알 때만 서고 언제나 첫 항목이다 — 번호를 모르면 항목이 없다(죽은 항목 금지). */
 fun guideTitleMenuItems(destinationPhone: String?): List<GuideTitleMenuItem> =
-    listOfNotNull(GuideTitleMenuItem.call.takeIf { !destinationPhone.isNullOrEmpty() }, GuideTitleMenuItem.detail, GuideTitleMenuItem.change)
+    listOfNotNull(GuideTitleMenuItem.call.takeIf { !destinationPhone.isNullOrEmpty() }, GuideTitleMenuItem.change, GuideTitleMenuItem.detail)
 
 /**
  * 행이 지금 렌더되는가 — 렌더 조건의 **정본**이다(행 렌더와 착지 판정이 같은 함수를 읽는다, iOS `rowExists`의 사본 문제를 구조로 막는다). 종료

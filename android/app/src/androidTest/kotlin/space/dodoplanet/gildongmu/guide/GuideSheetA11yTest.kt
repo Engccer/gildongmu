@@ -96,7 +96,7 @@ class GuideSheetA11yTest {
         checkAllRoots()
     }
 
-    /** M4b: 제목 = 헤딩+버튼(메뉴 두 항목, 장소 상세 → 목적지 바꾸기), 주변 확인 트리거는 진행 상황 다음(iOS 읽기 순서). */
+    /** M4b: 제목 = 헤딩+버튼(메뉴 두 항목, 목적지 바꾸기 → 장소 상세), 주변 확인 트리거는 진행 상황 다음(iOS 읽기 순서). */
     @Test
     fun trackingTitleMenuAndSceneTriggerOrder() {
         setBar()
@@ -105,7 +105,7 @@ class GuideSheetA11yTest {
         rule.waitForIdle()
         val detail = rule.onNodeWithTag("guide-menu-detail").getBoundsInRoot()
         val change = rule.onNodeWithTag("guide-menu-change").getBoundsInRoot()
-        assertTrue(detail.top < change.top)
+        assertTrue(change.top < detail.top)
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.waitForIdle()
         assertTrue(rule.onNodeWithTag("guide-progress").getBoundsInRoot().top < rule.onNodeWithTag("scene-trigger").getBoundsInRoot().top)

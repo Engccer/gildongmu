@@ -15,12 +15,12 @@ class GuideSessionEditsGuardTest {
     private val pkg = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu")
     private val sheet = pkg.resolve("guide/ui/GuideSheet.kt").readText()
 
-    @Test fun `제목 메뉴 순서 — 전화 걸기(번호를 알 때만) → 장소 상세 → 목적지 바꾸기(iOS GuideTitleMenu)`() {
-        assertEquals(listOf(GuideTitleMenuItem.call, GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems("02-123-4567"))
-        assertEquals(listOf("android.place.call", "android.guide.destMenuDetail", "android.guide.destMenuChange"), guideTitleMenuItems("02-123-4567").map { it.key })
+    @Test fun `제목 메뉴 순서 — 전화 걸기(번호를 알 때만) → 목적지 바꾸기 → 장소 상세(iOS GuideTitleMenu, 2026-11-21 위원장 판정)`() {
+        assertEquals(listOf(GuideTitleMenuItem.call, GuideTitleMenuItem.change, GuideTitleMenuItem.detail), guideTitleMenuItems("02-123-4567"))
+        assertEquals(listOf("android.place.call", "android.guide.destMenuChange", "android.guide.destMenuDetail"), guideTitleMenuItems("02-123-4567").map { it.key })
         // 번호를 모르면 항목이 없다(죽은 항목 금지) — null도 빈 문자열도.
-        assertEquals(listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems(null))
-        assertEquals(listOf(GuideTitleMenuItem.detail, GuideTitleMenuItem.change), guideTitleMenuItems(""))
+        assertEquals(listOf(GuideTitleMenuItem.change, GuideTitleMenuItem.detail), guideTitleMenuItems(null))
+        assertEquals(listOf(GuideTitleMenuItem.change, GuideTitleMenuItem.detail), guideTitleMenuItems(""))
     }
 
     @Test fun `검색 페이지 — 억제는 onDispose에서 풀고, 앱 통지를 집지 않는다`() {
