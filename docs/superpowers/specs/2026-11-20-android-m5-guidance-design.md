@@ -372,7 +372,7 @@ object GuideSession {
 - **`launchJourneyBeacon`**: `walk.onSessionEnd = { r -> advanceJourney(StageEnded(JourneyStageEnd.from(r)), token) }`(`locationLost`·`ended` → `ended`) → `launchingJourneyStage = true` → `beginBeacon(request)` → false → 동기 거부(시작 대기도 추적도 아님)면 `walk.clearPrewalk()`·`ignoreFailureCause = true`·시작 실패·`false`.
 - **`beginBeacon` 예외 확장**(iOS 동형): `if (!launchingPrewalk) retirePrewalkRestart()`, `if (!launchingPrewalk && !launchingJourneyStage) cancelPrewalk()`. 여정 단계가 건 종료 훅을 지우지 않게.
 - **`beginTransit(request, aboard: TransitAboardStart?)`**: 공개 `startTransit(request)`은 `beginTransit(request, aboard = null)`. `aboard != null`이면 승차 전 도보 판정을 건너뛴다(iOS `guard … aboard == nil`). `transit.start(route, destinationLabel, dest, accessible, aboard)`와 `transit.startAfterPrewalk(…)` 안의 시작 본문은 `aboard` 인자를 기본값 없이 받는다(`startAfterPrewalk`는 늘 `null`).
-- **승차 전 도보와의 교차**(iOS 다섯 자리 그대로): `launchPrewalk`의 `prewalkRestart = if (journey == null) context else null`, `endPrewalk` 도착·재개 뒤 대중교통이 서지 않았고 여정이 `Running(transit)`이면 시작 실패, 사용자 정지·위치 상실·끊김이면 `TransitStopped`, `transitTransferWalk`가 점유로 버려질 때 `Running(transit)`이면 시작 실패, 하차 인계(`acceptWalkHandoff`)는 여정 안에서 쓰지 않는다(역 B 지정이면 `.done`이 `onJourneyRideCompleted`를 부르고 인계 신호를 세우지 않는다 — 대중교통 모델에 이미 있다).
+- **승차 전 도보와의 교차**(iOS 다섯 자리 그대로): `launchPrewalk`의 `prewalkRestart = if (journey == null) context else null`, `endPrewalk` 도착·재개 뒤 대중교통이 서지 않았고 여정이 `Running(transit)`이면 시작 실패, **환승 도보 중 위치 상실(`locationLost && context.isTransfer`)은 먼저 갈라 여정 훅을 둔 채 같은 구간 승차 대기로 재개**(`resumeTransitAfterWalkSpeech(prewalkCompleted = true)`, 지금 안드로이드 갈래 그대로), 그 밖의 사용자 정지·위치 상실·끊김이면 `TransitStopped`, `transitTransferWalk`가 점유로 버려질 때 `Running(transit)`이면 시작 실패, 하차 인계(`acceptWalkHandoff`)는 여정 안에서 쓰지 않는다(역 B 지정이면 `.done`이 `onJourneyRideCompleted`를 부르고 인계 신호를 세우지 않는다 — 대중교통 모델에 이미 있다).
 - **전경 복귀**: `setForeground(true)`에서 `Transitioning`이 `JourneyTuning.staleTransitionSeconds`(30초)보다 오래면 `advanceJourney(StaleTimeout)`(조용한 영구 대기 금지). 시계는 주입된 단조 시계.
 - **`finishJourney(stopSessions)`**: 상태·계획·원인·준비 작업·시각을 지우고 대중교통 훅 셋을 비운다. `stopSessions`(여정 시트 「안내 종료」)면 `cancelPrewalk()` 후 도는 세션을 정지음과 함께 멈춘다. 서비스 보유(§7-4)도 여기서 푼다.
 - **도보 모델 쪽 신설**(iOS `BeaconModel` 동형): `JourneyChainMark(arrivalText: String?, bridgesStartFailure: Boolean)`, `markChained(arrivalText, bridgesStartFailure)`(기본값 없음, `requestStart` 앞에 건다), `endsWithoutScreen = prewalkTarget != null || journeyChain != null`(여정 단계 세션은 종료 화면을 남기지 않고 잊힌 세션 안전망이 돌지 않는다), 도착 문장 = `arrivalText ?: 기본`, 접근 도보 시작 실패는 `android.journey.accessFailedWith(원인)` 한 통지(`highPriority`, 상태 줄은 원인만), `stop()` 앞에서 표식을 캡처. `lastFailure: JourneyFailure?`(실패 문장 키·해결 수단 — `fail`·`stopAndFail`이 세우고 시작마다 비운다). 자동차 확정 도착도 `endsWithoutScreen`이면 종료 화면과 「여기서 도보 안내 시작」을 만들지 않고 `onSessionEnd(arrived)`만 낸다(iOS `taxiArrived` 자리).
@@ -385,10 +385,13 @@ object GuideSession {
 **판정**: 여정이 살아 있는 동안에는 서비스를 **이어받는다**.
 
 - **여정 보유자**: `GuideSession` 안의 `JourneyServiceHolder : GuideServiceOwner`. `serviceOwner()` = 도보(시작 중·추적 중) > 대중교통(추적 중이고 서비스 세대를 쥠) > **여정 보유자(여정 있음)** > null. 보유자의 `locationProfile`은 `keepAlive`(저전력 — 위치 값은 쓰지 않는다, 서비스·wake lock을 살려 두는 몫), 알림 문장은 도는 단계 세션의 것(없으면 제목은 기존 알림 채널 이름, 본문은 여정 상태 문장 `journeyStatusText`), `handleServiceFix`·`handleProviderDisabled`는 무시(로그), 알림 「안내 종료」는 `journeyAction(UserEnded)`, 시작 실패는 해당 없음(보유자는 서비스를 **시작하지 않는다**).
-- **넘김**: `controller.stop(gen)`이 지금 세대의 정지를 받았을 때 여정이 있으면(`keepForJourney()`) `stopService` 대신 보유자에게 새 세대를 주고 떠 있는 서비스에 **프로세스 안 호출로** 넘긴다(서비스의 재사용 시작 경로 — 세대 교체·알림·프로파일 구독 재결속). 다음 단계 모델의 `controller.start(gen)`은 서비스가 떠 있으면(컨트롤러가 든 생존 표식, 정지 요청 시 동기로 내린다) 역시 프로세스 안 호출로 넘기고 `startForegroundService`를 부르지 않는다. 떠 있지 않으면 종전대로 시작한다(전경 첫 단계 등).
+- **넘김**: `controller.stop(gen)`이 지금 세대의 정지를 받았을 때 여정이 있고 실패 국면이 아니면(`keepForJourney()`) `stopService` 대신 보유자에게 새 세대를 주고 떠 있는 서비스에 **프로세스 안 호출로** 넘긴다(서비스의 재사용 시작 경로 — 세대 교체·알림·프로파일 구독 재결속). ⚠ 재결속은 정지 호출 안에서 하지 않고 **다음 메인 턴**에 한다(설계 리뷰 반영): `WalkGuideModel.stop()`은 `controller.stop`을 부른 뒤에 `serviceGeneration`·추적 표식을 비우므로, 그 안에서 재결속하면 `serviceOwner()`가 아직 도보를 돌려줘 결속이 세대 불일치로 끝난다. 그 사이 서비스 이벤트는 컨트롤러의 지금 세대(보유자 것)와 맞지 않아 버려진다. 다음 단계 모델의 `controller.start(gen)`은 서비스가 떠 있으면(컨트롤러가 든 생존 표식, 정지 요청 시 동기로 내린다) 역시 프로세스 안 호출로 넘기고 `startForegroundService`를 부르지 않는다. 떠 있지 않으면 종전대로 시작한다(전경 첫 단계 등).
 - **풀기**: `finishJourney`가 보유를 풀고, 그때 소유자가 보유자뿐이면 서비스를 내린다. 여정 대중교통 단계에서 대중교통이 keep-alive를 원하지 않는 동안(대기)에도 보유자가 서비스를 든다 — 여정 밖 대중교통(대기 중 서비스 없음)과 다른 **의도된 차이**이고, 효과는 대기 폴이 화면을 끈 동안에도 wake lock 아래서 도는 것이다.
 - **권한**: 보유자는 서비스를 시작하지 않으므로 권한 창도 새 거부 경로도 없다. 첫 단계가 서비스 없이 시작됐으면(대기 중인 대중교통) 넘길 서비스가 없고 종전 동작이다.
-- 세대 거름(§6-4)은 그대로: 넘긴 뒤 앞 단계의 늦은 위치 꺼짐·알림 종료는 세대 불일치로 버려진다.
+- **실패 국면은 들지 않는다**(설계 리뷰 반영): `Failed`를 커밋할 때 보유자만 서비스를 들고 있으면 내린다(여정 상태·실패 원인은 남는다). 실패 시트의 재시도·해결 수단은 사용자 동작이라 전경에서 종전 경로로 다시 시작한다. 잠금 화면에 둔 실패 시트가 위치 구독과 wake lock을 무기한 쥐지 않게.
+- **세대 거름이 넘김을 통과하도록 고친다**(설계 리뷰 반영, 세대가 바뀌는 모든 재사용 시작에 해당): ①알림 「안내 종료」 `PendingIntent`는 세대마다 다른 requestCode로 발급한다 — 지금은 requestCode 하나에 `FLAG_UPDATE_CURRENT`라 새 알림이 옛 PendingIntent의 extra까지 새 세대로 바꿔 거름을 통과한다. ②위치 리스너의 `onFix`·`onProviderDisabled`는 등록 시점의 세대를 캡처하고, 재결속은 옛 리스너를 먼저 해제한다 — 지금은 콜백 실행 시점의 가변 `generation`을 읽어 옛 리스너의 늦은 콜백이 새 세대로 전달된다.
+- **배경 자동 인계의 권한**(설계 리뷰 반영): 여정 단계가 연 도보·자동차 시작(`markChained`·`launchingJourneyStage`)은 앱이 전경일 때만 권한을 묻고, 배경이면 현재 허용값만 읽는다 — 걸음·알림은 없으면 없는 대로 시작하고, 위치가 없으면 묻지 않고 곧장 시작 실패(`beacon.denied`·`settings`, 실패 시트가 「설정 열기」를 준다). 지금 `GuidePermissionsImpl.ask()`는 결과가 오지 않으면 60초를 기다리고, 여정은 이미 `Running(access)`라 30초 복구도 닿지 않는다.
+- **넘길 서비스가 없는 여정**(대기 중 대중교통으로 시작): 화면을 끈 뒤 첫 서비스 시작(자동 승차 승격의 keep-alive)이 거부되면 §6-4 「원함과 가동」 규칙 그대로 — 원함만 남고 전경 복귀가 다시 켠다. 새 동작은 없다.
 
 ### 7-5. 안내 화면
 
@@ -436,3 +439,14 @@ B26이 「여정을 옮길 때 그 판정을 다시 본다」고 적었다. 판�
 
 - 앱 단계(2~5)는 들어가기 전에 `git fetch`로 `and-fix` 통합분을 확인하고 그 위로 rebase한다(`DirectionsScreen.kt`·`GuideSession.kt`·`RouteRows.kt` 겹침은 양쪽을 살린다).
 - 한소네 점검: 단계 2·4는 화면이 없어 JVM·리뷰로, 단계 3은 띄울 길이 없어(진입점 없음) Compose 단위 + 접근성 감사로, 단계 5에서 여정 시트를 포함한 전 국면을 기기에서 한 번씩 띄운다(점유를 나눠서). 닿지 못한 항목은 이유를 적어 BACKLOG §2로.
+
+### 7-10. 설계 리뷰 판정 (codex adversarial-review 1회, 2026-11-21)
+
+| 지적 | 판정 | 반영 |
+|---|---|---|
+| 정지 호출 안에서 재결속하면 `serviceOwner()`가 아직 도보라 결속이 실패한다 | 수용 | §7-4 넘김: 다음 메인 턴 재결속 |
+| 알림 종료 PendingIntent가 requestCode 하나 + `FLAG_UPDATE_CURRENT`라 옛 동작이 새 세대를 싣는다 | 수용 | §7-4 세대 거름 ① |
+| 위치 리스너 콜백이 실행 시점의 가변 세대를 읽는다 | 수용 | §7-4 세대 거름 ② |
+| 환승 도보 위치 상실을 `TransitStopped`로 적었다(iOS·안드로이드는 같은 구간 재개) | 수용 — 서술 오류 | §7-3 승차 전 도보 교차 |
+| 배경 자동 인계의 도보 시작이 걸음 권한 응답을 60초 기다린다 | 수용 | §7-4 배경 자동 인계의 권한 |
+| 실패 시트 동안 서비스·wake lock을 무기한 쥔다 | 수용 | §7-4 실패 국면은 들지 않는다 |
