@@ -54,6 +54,8 @@ import space.dodoplanet.gildongmu.chat.rememberDictation
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.joinText
+import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.coroutines.delay
 
 /**
  * 끝점 검색(spec §3-2, iOS `DirectionsEndpointSearchView` 대응). 폼을 덮는 모달 콘텐츠 — 상단 바의 뒤로 버튼이 닫기(취소)이고
@@ -89,9 +91,14 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
         runCatching { fieldFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "입력 착지 실패", it) }
     }
     // 「지하철역 검색」으로 모드가 바뀌면 이 행이 사라지므로 커서를 검색 입력으로 옮긴다(iOS `landAboardSearchField` — 행이 사라지면 커서가 최상단으로 떨어진다).
+    // 누른 행이 사라지면 시스템이 커서를 시트 위쪽(「뒤로」)에 놓고, 입력이 이미 포커스를 쥐었으면 다시 요청해도 커서가 오지 않는다(한소네 실측) —
+    // 비우고 간격을 둔 뒤 준다(`MovedRowLanding` 관용구).
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(p.aboardMode) {
         if (!p.aboardMode) return@LaunchedEffect
         withFrameNanos { }
+        focusManager.clearFocus()
+        delay(ABOARD_FIELD_GAP_MS)
         runCatching { fieldFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "지금 탄 열차 입력 착지 실패", it) }
     }
     // 후보 도착 시 첫 후보 착지(M1 첫 결과 관용구). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
@@ -170,7 +177,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             }
             // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 여정 입력이 설 때만(`aboardOffered`) 있고, 누르면 이 시트가 지하철역만 받는 검색으로 바뀐다.
             if (p.aboardOffered && !p.aboardMode) {
-                Button(onClick = { runCatching { fieldFocus.requestFocus() }; picker.startAboardSearch() }, modifier = Modifier.tapTarget().testTag("ep-aboard-start")) { Text(strings.get("android.journey.aboardStart")) }
+                Button(onClick = picker::startAboardSearch, modifier = Modifier.tapTarget().testTag("ep-aboard-start")) { Text(strings.get("android.journey.aboardStart")) }
             }
 
             StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
@@ -250,3 +257,6 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
         }
     }
 }
+
+/** 「지하철역 검색」 뒤 입력 착지: 비운 상태가 접근성 이벤트로 한 번 나갈 만큼. */
+private const val ABOARD_FIELD_GAP_MS = 250L
