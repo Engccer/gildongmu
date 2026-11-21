@@ -205,7 +205,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitTransferWalk.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitTransferWalkTest.kt",
-      "note": "E73 환승 도보 판정. JourneyTuning이 :kit에 없어 상수 하나를 이 파일에 두었다 — Journey.swift 이식(and-journey) 때 그쪽 정의로 합친다"
+      "note": "E73 환승 도보 판정. `JourneyTuning`은 Journey.kt 정의로 합쳤다(임시본 삭제, 2026-11-21)"
     },
     {
       "swift": "TransitWrongStopRecovery.swift",
@@ -338,8 +338,10 @@
     },
     {
       "swift": "Journey.swift",
-      "status": "pending",
-      "note": "E70 여정 전이(iOS 정식판, 2026-11 졸업) — 안드로이드 자동차·대중교통 안내 세션이 없어 이식 보류(BACKLOG §4 B26)"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Journey.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/JourneyTest.kt",
+      "note": "E70·E70-e·E71·E77 여정 순수 판정(전이 표·표시 이름·노선 머리말·방면 묶음·입구 짐작). sealed 케이스는 PascalCase(`JourneyPhase.Running`·`JourneyEvent.TaxiDropped`·`JourneyStepResult.Next`), enum은 소문자 그대로. UUID는 java.util.UUID, 튜플 `(lat:, lng:)?` → `RoutePoint?`. `journeyLineHintMatches`·`journeySameLine`은 internal. 전이 표 공유 fixture 테스트는 `JourneyStepSharedTest`, 모델·조회·최근 경로 테스트는 `JourneyModelsTest`(Swift JourneyModelsTests 대응). 채팅 여정 카드(`JourneyCardFreshness`)는 비목표라 이식하지 않는다"
     },
     {
       "swift": "CarTrafficAhead.swift",

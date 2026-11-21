@@ -262,6 +262,116 @@ enum class TransitModeAxis {
 @Serializable
 data class TransitRouteEnvelope(val result: TransitRouteResult? = null)
 
+// MARK: - 여정(E70 — 택시 → 대중교통 → 택시)
+
+// /api/route/journey 응답(spec 2026-10-17-e70-mode-change-journey-design.md §4.7). ko 전용. Kit `RouteModels.swift`의 여정 타입 미러.
+// 좌표는 기존 `RoutePoint`, 택시 구간은 기존 `CarRouteBriefing`, 대중교통은 `TransitRoute` 그대로.
+// ⚠ 갈래 enum(`JourneyMissingSide`·`JourneyVariantKind`·`EgressKind`)은 Swift처럼 엄격하다 — 모르는 값은 디코딩 실패다
+// (서버가 모르는 갈래를 보내면 조용히 다른 갈래로 읽지 않는다).
+
+/** 지정 역을 찾지 못한 쪽(판정 14). 한쪽만 지정한 조회는 그쪽만 온다. */
+@Serializable
+enum class JourneyMissingSide { board, alight, both }
+
+@Serializable
+data class JourneyDesignatedMissing(
+    val side: JourneyMissingSide,
+    /** 지금 탄 열차의 승차 쪽에서 반대 방향에만 그 역 열차가 있을 때 true(E71 판정 R5). 키가 없으면 null. */
+    val oppositeDirection: Boolean?,
+)
+
+/** 변형의 갈래. 지정 역 경로와 추천 경로가 같으면 `designated` 하나만 온다. */
+@Serializable
+enum class JourneyVariantKind { designated, recommended }
+
+/** 이 변형이 실제로 타는(내리는) 역. `name`은 서버 표기 그대로이고 문장에는 `journeyStationDisplayName`을 거쳐 넣는다. */
+@Serializable
+data class JourneyStationRef(val name: String, val coord: RoutePoint)
+
+/** 하차 뒤 택시를 탈 자리의 종류. `none`은 후보가 없어 하차 정류 좌표에서 곧장 택시를 부르는 경우다. */
+@Serializable
+enum class EgressKind { exit, stand, none }
+
+/** 출구·승강장 후보 하나와 거기서 도착지까지의 택시 구간. */
+@Serializable
+data class EgressOption(
+    val kind: EgressKind,
+    /** 출구 번호("1", "3-1") · 승강장 이름 · `none`이면 "". */
+    val label: String,
+    /** 카카오 POI 이름 원문(예 "광화문역 5호선 1번출구", `none`이면 ""). 출구 도보 세션의 목적지 이름이다. */
+    val placeName: String,
+    val lineName: String?,
+    val coord: RoutePoint,
+    val taxiOut: CarRouteBriefing,
+)
+
+@Serializable
+data class JourneyEgress(
+    /** [0] = 택시 시간 최단 출구(기본). 승강장은 있으면 마지막. */
+    val options: List<EgressOption>,
+    /** 출구 조회가 실패했다는 신호 — 후보 없음(`none`)과 다른 사실이라 문장이 갈린다(3-state). */
+    val lookupFailed: Boolean?,
+)
+
+@Serializable
+data class JourneyTotals(val minutes: Int, val taxiFare: Int, val transitFare: Int)
+
+@Serializable
+data class JourneyVariant(
+    val kind: JourneyVariantKind,
+    val boardStation: JourneyStationRef?,
+    val alightStation: JourneyStationRef?,
+    /** 승차 역을 지정했을 때만 온다. */
+    val taxiIn: CarRouteBriefing?,
+    /** 앞뒤 도보를 자른 경로. `routeKey` 유지라 실시간 안내가 그대로 읽는다. */
+    val transit: TransitRoute,
+    /** 하차 역을 지정한 변형에만 온다(하차 역을 지정하지 않았으면 부재). 마지막 탈것이 버스여도 싣고, 그때 후보는 `kind: none` 하나다. */
+    val egress: JourneyEgress?,
+    val totals: JourneyTotals,
+)
+
+@Serializable
+data class JourneyResult(
+    /** 0~2개. [0]이 기본 선택(지정 역 경로, 없으면 추천). 빈 배열은 "경로 없음"이지 조회 실패가 아니다. */
+    val variants: List<JourneyVariant>,
+    val designatedMissing: JourneyDesignatedMissing?,
+)
+
+/**
+ * `journey` 조회의 결과. 서버의 서비스 지역 밖 마커(`{"outOfCoverage":true}`, 200)는 `APIClient`가 던지는
+ * `APIError.OutOfCoverage`를 `RouteService.journey`가 이 갈래로 바꿔 돌려준다(경로 없음·조회 실패와 다른 신호).
+ * sealed 케이스는 PascalCase(Swift `.result`·`.outOfCoverage`).
+ */
+sealed class JourneyResponse {
+    data class Result(val result: JourneyResult) : JourneyResponse()
+    object OutOfCoverage : JourneyResponse()
+}
+
+/** 정류장 이름 검색 한 건(E70-e spec §4.6). `source`는 서울 TOPIS / 지방 TAGO. */
+@Serializable
+data class JourneyStopHit(
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    val stopNo: String?,
+    val source: Source,
+) {
+    @Serializable
+    enum class Source { seoul, tago }
+}
+
+/**
+ * 정류장 이름 검색 응답. 3-state: 정상 0건(`stops` 빈 배열, 플래그 없음) / 미유도(`unsearched`) / 일부 실패(`failed`).
+ * `truncated` = TAGO 페이지 상한에 걸려 가까운 정류장이 빠졌을 수 있다. 플래그 부재 = false(Swift 커스텀 디코딩 대응 기본값).
+ */
+@Serializable
+data class JourneyStopsResult(
+    val stops: List<JourneyStopHit>,
+    val unsearched: Boolean = false,
+    val failed: Boolean = false,
+    val truncated: Boolean = false,
+)
+
 // MARK: - 도보 경로
 
 /**

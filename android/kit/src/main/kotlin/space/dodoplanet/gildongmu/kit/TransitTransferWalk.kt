@@ -7,14 +7,6 @@ import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 // 탑승 구간 사이의 도보를 승차 전 도보(A25)와 같은 도보 실시간 안내로 돌린다.
 
 /**
- * Kit `JourneyTuning`(Journey.swift)의 이 파일이 쓰는 상수 하나만 미러한다. Journey 이식이 들어오면 그쪽 정의로 합친다.
- * 접근 도보(E70 D6)와 환승 도보가 같은 상수·같은 척도다.
- */
-object JourneyTuning {
-    const val accessWalkMinMeters = 30.0
-}
-
-/**
  * 탑승 구간 `legIndex` 앞 도보를 걷기 안내로 돌릴 대상. null = 지금처럼 문장만(맨 앞 구간·도보 없음·정보 결손·30m 미만).
  *
  * 조건은 A25(`transitPrewalkTarget`) 그대로에 거리 하나를 더한다: 앞 구간 하차 지점 ↔ 이 구간 승차 지점의 **직선**이

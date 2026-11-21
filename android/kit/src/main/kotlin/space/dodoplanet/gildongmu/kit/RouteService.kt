@@ -1,6 +1,9 @@
 package space.dodoplanet.gildongmu.kit
 
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
+import space.dodoplanet.gildongmu.kit.models.JourneyResponse
+import space.dodoplanet.gildongmu.kit.models.JourneyResult
+import space.dodoplanet.gildongmu.kit.models.JourneyStopsResult
 import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
@@ -68,6 +71,62 @@ class RouteService(val client: APIClient) {
         if (includeStops) query.add("includeStops" to "1")
         if (lang != "ko") query.add("lang" to lang)
         return client.get<TransitRouteEnvelope>("/api/route/transit", query).result
+    }
+
+    /**
+     * 택시 + 대중교통 + 택시 여정 조회(E70, ko 전용 — `lang`을 보내지 않는다). 지정 역은 최대 둘(둘 다 null이면 서버가 400이므로 호출자가 가른다).
+     * 노선 힌트가 없는 쪽은 `*Line` 파라미터를 생략한다. `OutOfCoverage` = 서비스 지역 밖, `variants` 빈 결과 = 경로 없음,
+     * throw = 조회 실패(3-state). ⚠ 인자 전부 기본값 없음(빠뜨린 호출은 컴파일이 잡는다).
+     */
+    suspend fun journey(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        board: JourneyStationQuery?,
+        alight: JourneyStationQuery?,
+    ): JourneyResponse {
+        val query = arrayListOf(
+            "origin" to coordPair(originLat, originLng),
+            "dest" to coordPair(destLat, destLng),
+            "stops" to "1",
+        )
+        if (board != null) {
+            query.add("board" to coordPair(board.lat, board.lng))
+            query.add("boardName" to board.name)
+            if (board.line != null && board.kind != JourneyStationKind.busStop) query.add("boardLine" to board.line)
+            if (board.kind == JourneyStationKind.busStop) query.add("boardKind" to "stop")
+            // 지금 탄 열차(E71): 노선이 없으면 boardLine이 빠져 서버 400이 실패 3-state로 드러난다.
+            if (board.aboardDirection != null && board.kind != JourneyStationKind.busStop) {
+                query.add("boardKind" to "aboard")
+                query.add("boardDir" to board.aboardDirection)
+            }
+        }
+        if (alight != null) {
+            query.add("alight" to coordPair(alight.lat, alight.lng))
+            query.add("alightName" to alight.name)
+            if (alight.line != null && alight.kind != JourneyStationKind.busStop) query.add("alightLine" to alight.line)
+            if (alight.kind == JourneyStationKind.busStop) query.add("alightKind" to "stop")
+        }
+        return try {
+            JourneyResponse.Result(client.get<JourneyResult>("/api/route/journey", query))
+        } catch (_: APIError.OutOfCoverage) {
+            JourneyResponse.OutOfCoverage
+        }
+    }
+
+    /**
+     * 정류장 이름 검색(E70-e spec §4.6). `origin`·`dest` 중 하나 이상은 있어야 한다(둘 다 null이면 서버가 400). 결과 3-state:
+     * `stops` 빈 배열 = 정상 0건, `unsearched` = 대상 지역을 못 정함, `failed` = 일부 조회 실패(나머지는 실림). 서비스 지역 밖은
+     * `APIClient`가 `APIError.OutOfCoverage`를 던진다. 시트 제출 때만 부른다(타자마다 아님). Swift 튜플 `(lat:, lng:)?` → `RoutePoint?`.
+     */
+    suspend fun journeyStops(
+        query: String,
+        origin: RoutePoint?,
+        dest: RoutePoint?,
+    ): JourneyStopsResult {
+        val params = arrayListOf("q" to query)
+        if (origin != null) params.add("origin" to coordPair(origin.lat, origin.lng))
+        if (dest != null) params.add("dest" to coordPair(dest.lat, dest.lng))
+        return client.get<JourneyStopsResult>("/api/route/journey/stops", params)
     }
 
     /**
@@ -201,3 +260,18 @@ enum class DataLocale {
         fun fromRawValue(raw: String): DataLocale? = entries.firstOrNull { it.name == raw }
     }
 }
+
+/** 여정 조회에 싣는 지정 역(E70). `line`은 노선 힌트(없으면 서버가 이름·좌표만으로 판정). */
+data class JourneyStationQuery(
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    val line: String?,
+    /** 정류장이면 `busStop`(노선 힌트는 싣지 않는다). null = 역. ⚠ 기본값 없음 — 빠뜨리면 정류장이 역으로 조회된다. */
+    val kind: JourneyStationKind?,
+    /**
+     * 지금 탄 열차의 방향(`updnLine` 원문 — 상행·하행·내선·외선). 승차 쪽에만 오고 non-null이면 `boardKind=aboard`로 조회한다(E71).
+     * 단 `kind == busStop`이면 무시한다(`boardKind=stop`만 싣고 `boardDir`은 없다). ⚠ 기본값 없음 — 빠뜨리면 지금 탄 열차가 일반 역 지정으로 조회된다.
+     */
+    val aboardDirection: String?,
+)

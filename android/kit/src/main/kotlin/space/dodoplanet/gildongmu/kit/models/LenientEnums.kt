@@ -36,3 +36,21 @@ internal abstract class LenientEnumSerializer<T : Any>(name: String, private val
 
 internal object LenientCarActionSerializer : LenientEnumSerializer<CarAction>("CarAction", CarAction::fromRawValue)
 internal object LenientWalkActionSerializer : LenientEnumSerializer<WalkAction>("WalkAction", WalkAction::fromRawValue)
+
+/**
+ * 최근 경로 역 칸의 지정 종류(Swift `try? decodeIfPresent(JourneyStationKind.self)`): 모르는 원시값은 null — 한 항목의 종류 때문에
+ * 경로 목록 전체 디코딩이 실패해 고정 경로까지 사라지는 일을 막는다. 저장 포맷은 원시값(`"stop"`)이다.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+internal object LenientJourneyStationKindSerializer :
+    LenientEnumSerializer<space.dodoplanet.gildongmu.kit.JourneyStationKind>("JourneyStationKind", space.dodoplanet.gildongmu.kit.JourneyStationKind::fromRawValue) {
+    /** 생성 인자에 기본값이 없어(안전 인자) 키 부재가 이 함수까지 온다 — `explicitNulls = false`의 부재 = null 표식을 먼저 본다. */
+    override fun deserialize(decoder: Decoder): space.dodoplanet.gildongmu.kit.JourneyStationKind? {
+        if (!decoder.decodeNotNullMark()) return decoder.decodeNull()
+        return super.deserialize(decoder)
+    }
+
+    override fun serialize(encoder: Encoder, value: space.dodoplanet.gildongmu.kit.JourneyStationKind?) {
+        if (value == null) encoder.encodeNull() else encoder.encodeString(value.rawValue)
+    }
+}

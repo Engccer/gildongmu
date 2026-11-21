@@ -6,6 +6,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import java.util.Locale
+import space.dodoplanet.gildongmu.kit.models.LenientJourneyStationKindSerializer
 
 /** 최근 검색어 항목(검색 탭). v1은 순수 문자열 배열이었고 v2 키로 승계한다. */
 @Serializable
@@ -26,6 +27,34 @@ data class RecentEndpoint(val label: String, val lat: Double, val lng: Double,
     val id: String get() = String.format(Locale.ROOT, "%.4f,%.4f", lat, lng)
 }
 
+/**
+ * 최근 경로에 딸린 갈아탈 역(E70). 역 칸 전용 값이라 `RecentEndpoint`(끝점·저장 포맷 공유 타입)를 넓히지 않는다.
+ * 동일 판정은 좌표 4자리 — `line`은 노선 힌트일 뿐 정체성이 아니다.
+ * ⚠ 생성 인자에 기본값을 두지 않는다 — 빠뜨린 호출이 정류장 지정을 역으로 조용히 바꾼다(`kind` 부재 = 역).
+ */
+@Serializable
+data class RecentStation(
+    val label: String,
+    val lat: Double,
+    val lng: Double,
+    val line: String?,
+    /** 지정 종류(E70-e). null = 역(구버전 저장본은 부재 = null), `busStop` = 시내버스 정류장. 같은 이름의 역과 정류장은 다른 지정이다. 모르는 원시값은 null. */
+    @Serializable(with = LenientJourneyStationKindSerializer::class)
+    val kind: JourneyStationKind?,
+) {
+    /** 좌표 4자리 키 + 정류장 표식 — 라벨·노선 힌트에 불변. 같은 좌표의 역과 정류장은 다른 지정이다. */
+    val id: String get() = String.format(Locale.ROOT, "%.4f,%.4f", lat, lng) + (if (kind == JourneyStationKind.busStop) "#stop" else "")
+}
+
+/** 지정 칸의 종류(E70-e). 역 입력은 종류 값이 없다(null). 서버 `boardKind`·`alightKind`의 `stop`과 1:1이고 이 원시값은 저장 포맷이라 바꾸지 않는다. */
+enum class JourneyStationKind(val rawValue: String) {
+    busStop("stop");
+
+    companion object {
+        fun fromRawValue(raw: String): JourneyStationKind? = entries.firstOrNull { it.rawValue == raw }
+    }
+}
+
 /** 최근 조회 경로(출발·도착 쌍). null = "현재 위치" — 활성화 시점에 재측위하므로 좌표를 굳히지 않는다. */
 @Serializable
 data class RecentRoute(
@@ -34,9 +63,16 @@ data class RecentRoute(
     /** 경유지(N4) — 동일 판정·정체성에 포함된다. 경유지는 장소뿐이라 null = 경유지 없음. */
     val via: RecentEndpoint? = null,
     val pinned: Boolean = false,
+    /**
+     * 자동차로 갈아탈 역(E70). 둘 다 null이면 일반 세 수단 조회 경로다. 동일 판정·정체성에 포함된다. 기존 저장분(필드 없음)은 null.
+     * Swift는 `via` 뒤·`pinned` 앞 인자지만 앱 호출이 `pinned`를 네 번째 위치 인자로 넘겨 와서 Kotlin은 `pinned` 뒤에 둔다
+     * (`labelRoman`과 같은 사정). ⚠ 고정 토글·재기록이 이 둘을 빠뜨리면 역 지정이 조용히 사라진다 — :kit 안의 재생성은 둘 다 넘긴다.
+     */
+    val boardStation: RecentStation? = null,
+    val alightStation: RecentStation? = null,
 ) {
-    /** 출발·도착·경유 키 — sameRoute와 같은 축(null = 현재 위치, 경유 null = 없음). */
-    val id: String get() = "${from?.id ?: "cur"}>${to?.id ?: "cur"}>${via?.id ?: "-"}"
+    /** 출발·도착·경유·갈아탈 역 키 — sameRoute와 같은 축(null = 현재 위치, 경유·역 null = 없음). */
+    val id: String get() = "${from?.id ?: "cur"}>${to?.id ?: "cur"}>${via?.id ?: "-"}>${boardStation?.id ?: "-"}>${alightStation?.id ?: "-"}"
 }
 
 /** 길찾기 필드 스코프 — 출발지·도착지·경유지 기록은 분리 저장한다. */
@@ -73,9 +109,10 @@ class RecentSearchStore(private val store: KeyValueStore) {
             String.format(Locale.ROOT, "%.4f", a.lat) == String.format(Locale.ROOT, "%.4f", b.lat) &&
                 String.format(Locale.ROOT, "%.4f", a.lng) == String.format(Locale.ROOT, "%.4f", b.lng)
 
-        /** 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일). 웹 `sameRoute` 미러. */
+        /** 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일) + 갈아탈 역 둘(E70, 좌표 4자리·부재끼리 동일). 웹 `sameRoute` 미러 + 역 필드. */
         internal fun sameRoute(a: RecentRoute, b: RecentRoute): Boolean =
-            sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via, b.via)
+            sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via, b.via) &&
+                a.boardStation?.id == b.boardStation?.id && a.alightStation?.id == b.alightStation?.id
 
         /** 한쪽 판정: 현재 위치(null)끼리 동일, place끼리는 좌표 4자리 일치. */
         internal fun sameSide(a: RecentEndpoint?, b: RecentEndpoint?): Boolean = when {
@@ -227,7 +264,7 @@ class RecentSearchStore(private val store: KeyValueStore) {
         return save(
             appendKeepingPins(route, routes(),
                 isSame = ::sameRoute, isPinned = { it.pinned },
-                withPinned = { r, p -> RecentRoute(r.from, r.to, r.via, p) }),
+                withPinned = { r, p -> RecentRoute(r.from, r.to, r.via, p, r.boardStation, r.alightStation) }),
             routesKey, RecentRoute.serializer())
     }
 
@@ -242,7 +279,7 @@ class RecentSearchStore(private val store: KeyValueStore) {
         save(
             setPinnedIn(route, routes(), pinned,
                 isSame = ::sameRoute, isPinned = { it.pinned },
-                withPinned = { r, p -> RecentRoute(r.from, r.to, r.via, p) }),
+                withPinned = { r, p -> RecentRoute(r.from, r.to, r.via, p, r.boardStation, r.alightStation) }),
             routesKey, RecentRoute.serializer())
 
     /** 고정 블록을 넘긴 순서로 다시 세운다(E67, 출발·도착·경유 동일 판정). */
