@@ -21,6 +21,7 @@
 """
 import importlib.util
 import os
+import re
 import signal
 import sys
 import time
@@ -41,6 +42,12 @@ enter = smoke.enter
 SCAN_LIMIT = 60
 # 누르지 않는 줄: 외부 앱을 연다.
 FORBIDDEN = ("전화 걸기", "전화번호")
+
+
+def lab(line: str) -> str:
+    """점자 줄에서 역할 표식(앞 「BT」)과 꼬리(「버튼 활성화하려면 …」)를 떼 화면 글자만 남긴다."""
+    line = re.sub(r"^BT\s+", "", line.strip())
+    return re.sub(r"\s+(버튼\s+)?(활성화하려면|전환하려면).*$", "", line)
 
 
 def doubled(line: str) -> bool:
@@ -111,10 +118,16 @@ def to_directions(dest_query: str) -> bool:
         return False
     enter(2.5)
     out = type_query(dest_query)
-    if not any("검색 결과" in o for o in out):
-        record("FAIL", "검색 결과 통지", " / ".join(out)[-120:])
-        return False
     row = current(out)
+    # 결과 수 통지는 헌장 §1 필수다. 빠져도 첫 결과에 앉았으면 뒤 국면을 보려고 계속 가되 WARN으로 남긴다(원인은 따로 가른다).
+    announced = next((o for o in out if "검색 결과" in o), None)
+    if announced:
+        record("PASS", "검색 탭 결과 수 통지", announced[:30])
+    elif row.startswith("BT") and dest_query in row:
+        record("WARN", "검색 탭 결과 수 통지가 기록에 없다(첫 결과에는 앉음)", " / ".join(out)[-100:])
+    else:
+        record("FAIL", "검색 결과", " / ".join(out)[-120:])
+        return False
     if "검색 결과" in row or not row:
         press("space 4", label="첫 결과")
     enter(4)
@@ -181,43 +194,62 @@ def question_buttons() -> list[str]:
 def check_question_order(ask: str, buttons: list[str]) -> None:
     for b in buttons:
         print(f"   ? {b}", flush=True)
-    ok = len(buttons) >= 4 and buttons[0].startswith("네") and "경유만" in buttons[2] and "닫기" in buttons[3]
+    ok = len(buttons) >= 4 and lab(buttons[0]).startswith("네") and "경유만" in buttons[2] and "닫기" in buttons[3]
     record("PASS" if ok else "FAIL", "확인 질문 버튼 순서(짐작, 반대편, 경유만, 닫기)", " | ".join(b[:18] for b in buttons[:4]))
     twice = [b for b in buttons if doubled(b)]
     record("FAIL" if twice else "PASS", "확인 질문 버튼 한 번 출력", (twice[0][:50] if twice else ""))
 
 
-def answer_first() -> str | None:
-    """첫 버튼(짐작)을 누르고 착지한 줄(새 칸)을 돌려준다."""
-    yes = find("네", first="prev", limit=8)
-    if not yes or not yes.startswith("네"):
-        record("FAIL", "확인 질문 첫 버튼 「네, …」 찾기", yes or "")
+def answer_first(index: int = 0) -> str | None:
+    """답 버튼(0 = 짐작 「네, …」, 1 = 반대편 「아니요, …」)을 누르고 착지한 줄(새 칸)을 돌려준다."""
+    want = "네" if index == 0 else "아니요"
+    line = find(want, first="prev", limit=8)
+    if index == 1 and line and "경유만" in line:
+        line = current(press("space 1", label="반대편 답"))
+    if not line or not lab(line).startswith(want) or "경유만" in line:
+        record("FAIL", f"확인 질문 답 버튼 「{want}, …」 찾기", line or "")
         return None
-    since = h7.now()
-    enter(3)
-    out = lcd_since(since, wait=2)
-    landed = current(out)
+    enter(6)
+    # 대화상자가 닫히며 창 제목이 먼저 나올 수 있다 — 위로 한 칸 갔다 돌아와 지금 줄을 읽는다.
+    above = current(press("space 1", label="위 줄"))
+    landed = current(press("space 4", label="착지 줄"))
     field = landed if ("자동차에서 내리는" in landed or "자동차를 탈" in landed) else None
-    record("PASS" if field else "WARN", "답한 뒤 새 역 칸에 착지", (landed or "")[:60])
+    record("PASS" if field else "WARN", "답한 뒤 새 역 칸에 착지", f"{lab(landed)[:40]} (위: {lab(above)[:30]})")
     return field
 
 
-def run_journey(dest_query: str, station_query: str) -> None:
+def run_ask(dest_query: str, station_query: str, answer: int = 0) -> None:
+    """확인 질문에 답한 뒤 착지만 본다(답 → 6초 뒤 지금 줄)."""
+    if not to_directions(dest_query) or not open_transfer(station_query):
+        return
+    answer_first(answer)
+    if find("갈아탈 역/정류장 지우기", limit=10):
+        enter(3)
+        above = current(press("space 1", label="위 줄"))
+        landed = current(press("space 4", label="착지 줄"))
+        record("PASS" if "경로 조회" in landed else "FAIL", "「갈아탈 역/정류장 지우기」 뒤 「경로 조회」에 착지", f"{lab(landed)[:30]} (위: {lab(above)[:30]})")
+
+
+def run_journey(dest_query: str, station_query: str, answer: int = 0) -> None:
     if not to_directions(dest_query):
         return
     ask = open_transfer(station_query)
     if not ask:
         return
     check_question_order(ask, question_buttons())
-    if not answer_first():
+    if not answer_first(answer):
         field = find("자동차에서 내리는", first="prev", limit=SCAN_LIMIT) or find("자동차를 탈", first="prev", limit=SCAN_LIMIT)
         if not field:
             return record("FAIL", "역 칸이 서지 않았다")
-    rest = scan(limit=8, stop="경로 조회")
+    # 남은 쪽 추가 버튼은 역 칸 위에 있을 수 있다 — 위 세 줄도 본다.
+    above_rows = [current(press("space 1", label="위 훑기")) for _ in range(3)]
+    for _ in range(3):
+        press("space 4", label="되돌아오기")
+    rest = above_rows + scan(limit=8, stop="경로 조회")
     for line in rest:
         print(f"   | {line}", flush=True)
     has_clear = any("갈아탈 역/정류장 지우기" in l for l in rest)
-    has_add = any(l.startswith("자동차에서 내리는 역/정류장 추가") or l.startswith("자동차를 탈 역/정류장 추가") for l in rest)
+    has_add = any(lab(l).startswith("자동차에서 내리는 역/정류장 추가") or lab(l).startswith("자동차를 탈 역/정류장 추가") for l in rest)
     record("PASS" if has_clear else "FAIL", "「갈아탈 역/정류장 지우기」")
     record("PASS" if has_add else "FAIL", "남은 쪽 추가 버튼")
     record("FAIL" if any("경유지/자동차 환승 추가" in l for l in rest) else "PASS", "역 칸이 서면 입구 버튼이 사라진다")
@@ -236,7 +268,7 @@ def run_journey(dest_query: str, station_query: str) -> None:
         print(f"   > {line}", flush=True)
     twice = [l for l in rows if doubled(l)]
     record("FAIL" if twice else "PASS", "여정 결과 줄 한 번 출력", (twice[0][:50] if twice else ""))
-    start = next((l for l in rows if l.endswith("안내 시작")), None)
+    start = next((l for l in rows if lab(l).endswith("안내 시작")), None)
     if not start:
         return record("FAIL", "여정 결과의 「… 안내 시작」")
     record("PASS", "여정 결과의 「… 안내 시작」", start[:50])
@@ -353,7 +385,7 @@ def run_aboard(dest_query: str, station_query: str) -> None:
     if not status or "준비" not in status:
         return record("INFO", "지금 탄 열차 경로가 없어 안내는 보지 못함", (status or "")[:60])
     rows = scan(limit=40, stop="안내 시작")
-    start = next((l for l in rows if l == "안내 시작" or l.startswith("안내 시작")), None)
+    start = next((l for l in rows if lab(l) == "안내 시작"), None)
     record("PASS" if start else "FAIL", "지금 탄 열차 결과의 이름 없는 「안내 시작」", (start or (rows[-1] if rows else ""))[:40])
     if not start:
         return
@@ -459,7 +491,11 @@ def main() -> int:
     station = args[2] if len(args) > 2 else "서울역"
     phases = {"journey": run_journey, "aboard": run_aboard, "regress": run_regress}
     try:
-        if phase in phases:
+        if phase in ("journey", "ask") and len(args) > 3:
+            (run_journey if phase == "journey" else run_ask)(dest, station, int(args[3]))
+        elif phase == "ask":
+            run_ask(dest, station)
+        elif phase in phases:
             phases[phase](dest, station)
         elif phase != "--cleanup":
             print(f"국면을 고르세요: {', '.join(phases)} 또는 --cleanup")

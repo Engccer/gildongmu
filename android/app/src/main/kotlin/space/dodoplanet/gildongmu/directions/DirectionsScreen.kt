@@ -19,6 +19,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalFocusManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalWindowInfo
 import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -152,9 +156,21 @@ class FormUiState(
     var a11yCursorTag: String? = null
     /** 직전 방면 상태 — 조회 중에서 끝으로 넘어온 전이를 잡는다. null = 아직 본 적 없음(첫 관찰은 전이가 아니다). */
     var previousAboardState: AboardDirectionsState? = null
-    /** 단계 줄 다시 읽기 요청 세대와 소비 세대(재진입 때 지난 요청을 다시 하지 않는다). */
+    /** 다시 앉히기 요청 세대와 소비 세대(재진입 때 지난 요청을 다시 하지 않는다). 대상이 null이면 단계 줄이다. */
     var rereadAboardSeq by mutableIntStateOf(0)
     var rereadAboardDone = 0
+    var relandRequester: FocusRequester? = null
+
+    /**
+     * 누른 버튼이 사라지는 전이 뒤 커서를 [target]으로 옮긴다: 비우고 간격을 둔 뒤 준다(누르기 전에 준 포커스는 한소네 커서를 옮기지 못해 화면 제목으로
+     * 떨어졌다, 실측 — 여정 시트 `relandStatus`와 같은 관용구).
+     */
+    fun reland(target: FocusRequester) {
+        relandRequester = target
+        rereadAboardSeq += 1
+    }
+    /** 다음 착지가 확인 질문 대화상자를 닫은 뒤인가 — 창이 돌아온 뒤 비우고 다시 앉힌다(대화상자가 떠 있을 때 준 포커스엔 커서가 오지 않는다). */
+    var landAfterDialog = false
 
     fun requester(row: InputRow): FocusRequester = when (row) {
         InputRow.From -> fromFocus
@@ -260,13 +276,16 @@ private fun DirectionsForm(
     ObserveA11yFocus { tag -> ui.a11yCursorTag = tag }
     DisposableEffect(Unit) { onDispose { ui.a11yCursorTag = null } }
     val focusManager = LocalFocusManager.current
+    val windowInfo = LocalWindowInfo.current
     LaunchedEffect(ui.rereadAboardSeq) {
         if (ui.rereadAboardSeq <= ui.rereadAboardDone) return@LaunchedEffect
         ui.rereadAboardDone = ui.rereadAboardSeq
         withFrameNanos { }
         focusManager.clearFocus()
         delay(REREAD_GAP_MS) // 비운 상태가 접근성 이벤트로 한 번 나갈 만큼(`MovedRowLanding`)
-        runCatching { ui.aboardStepFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "단계 줄 다시 읽기 실패", it) }
+        val target = ui.relandRequester ?: ui.aboardStepFocus
+        ui.relandRequester = null
+        runCatching { target.requestFocus() }.onFailure { Log.w("DirectionsScreen", "다시 앉히기 실패", it) }
     }
     // 입구 검색에서 고른 역·정류장의 확인 질문(E77): 시트가 닫힌 뒤(이 폼이 다시 컴포즈된 뒤) 450ms 지나 띄운다. 그 사이 다른 시트가 열리면 이 폼이 컴포지션을 떠나 대기는 버려진다.
     val ask = s.pendingTransfer
@@ -285,6 +304,15 @@ private fun DirectionsForm(
         if (landing.seq <= vm.consumedLanding) return@LaunchedEffect
         vm.consumedLanding = landing.seq
         withFrameNanos { }
+        if (ui.landAfterDialog) {
+            ui.landAfterDialog = false
+            // 창이 돌아오면 TalkBack이 먼저 커서를 화면 위쪽에 놓는다 — 그 뒤에 비우고 다시 앉힌다(이미 입력 포커스를 쥔 노드에 다시 요청하면 커서가 오지 않는다).
+            val returned = withTimeoutOrNull(DIALOG_RETURN_TIMEOUT_MS) { snapshotFlow { windowInfo.isWindowFocused }.first { it } } != null
+            Log.i("DirectionsScreen", "대화상자 뒤 착지 대기 returned=$returned target=${landing.target}")
+            delay(DIALOG_SETTLE_MS)
+            focusManager.clearFocus()
+            delay(REREAD_GAP_MS)
+        }
         val requester = when (val t = landing.target) {
             is LandingTarget.Field -> when (t.field) {
                 DirectionsFieldTarget.from -> ui.fromFocus
@@ -311,8 +339,8 @@ private fun DirectionsForm(
             title = vm.transferQuestionText(),
             choices = vm.transferQuestionButtons(),
             // 답: 새 칸(또는 경유지 줄)에 착지는 뷰모델이 싣는 `landing`이 한다. 닫기·뒤로·바깥: 아무것도 바꾸지 않고 입구 버튼으로.
-            onChoose = { c -> if (c.cancel) vm.cancelTransfer() else vm.answerTransfer(c.board) },
-            onDismiss = vm::cancelTransfer,
+            onChoose = { c -> ui.landAfterDialog = true; if (c.cancel) vm.cancelTransfer() else vm.answerTransfer(c.board) },
+            onDismiss = { ui.landAfterDialog = true; vm.cancelTransfer() },
         )
     }
     AppScreenScaffold(strings.get("android.tab.directions"), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
@@ -339,7 +367,7 @@ private fun DirectionsForm(
                 InputRow.AboardStep -> aboardStepSpec(s.aboardDirectionsState, strings)?.let { spec ->
                     AboardStepRows(
                         spec, ui.aboardStepFocus, ui.submitFocus,
-                        onRereadStep = { ui.rereadAboardSeq += 1 },
+                        onReland = { target -> ui.reland(target) },
                         onAction = { action ->
                             when (action) {
                                 is AboardAction.Line -> vm.chooseAboardLine(action.line)
@@ -366,7 +394,7 @@ private fun DirectionsForm(
                     spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
                     tag = row.tag, onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.landingTarget(ui.viaFocus),
                 )
-                InputRow.ViaRemove -> Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.tapTarget().testTag(row.tag)) {
+                InputRow.ViaRemove -> Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia(); ui.reland(ui.submitFocus) }, modifier = Modifier.tapTarget().testTag(row.tag)) {
                     Text(strings.get("directions.removeVia"))
                 }
                 // 역 칸: 채운 칸만 그리고(문장 `stationFieldText`) 누르면 그 칸 검색, 작업 메뉴 「삭제」 = 칸 비우기(iOS 밀기 삭제).
@@ -388,7 +416,7 @@ private fun DirectionsForm(
                 }
                 // 지우기는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다.
                 InputRow.ClearStations -> Button(
-                    onClick = { ui.submitFocus.requestFocus(); vm.clearJourneyStations() },
+                    onClick = { ui.submitFocus.requestFocus(); vm.clearJourneyStations(); ui.reland(ui.submitFocus) },
                     modifier = Modifier.tapTarget().testTag(row.tag),
                 ) { Text(strings.get("android.journey.clearStations")) }
                 InputRow.Submit -> Button(
@@ -553,6 +581,9 @@ private const val ASK_DELAY_MS = 450L
 
 /** 라벨만 바뀐 포커스 노드를 다시 읽히려 비운 상태가 접근성 이벤트로 한 번 나가길 기다리는 시간(`MovedRowLanding`과 같다). */
 private const val REREAD_GAP_MS = 250L
+/** 대화상자를 닫은 뒤 창이 돌아오기를 기다리는 상한과, 돌아온 뒤 시스템 커서 배치(창 제목 낭독)가 끝나기를 기다리는 시간(한소네 실측: 400ms로는 제목에 남았다). */
+private const val DIALOG_RETURN_TIMEOUT_MS = 1_500L
+private const val DIALOG_SETTLE_MS = 1_000L
 
 /**
  * 역 칸 비우기(iOS `clearStationField`): 칸이 사라지는 전이이므로 모델을 비우기 전에 커서를 계속 존재할 줄(다른 칸, 둘 다 비면 조회 버튼)로 옮긴다.
@@ -561,4 +592,5 @@ private fun clearStationField(vm: DirectionsViewModel, ui: FormUiState, board: B
     val target = ui.requester(clearStationCursorRow(vm.state.value, board))
     runCatching { target.requestFocus() }.onFailure { Log.w("DirectionsScreen", "칸 비우기 전 착지 실패", it) }
     vm.clearJourneyStation(board)
+    ui.reland(target)
 }

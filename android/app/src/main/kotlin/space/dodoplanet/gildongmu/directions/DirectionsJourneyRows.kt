@@ -158,7 +158,7 @@ fun AboardStepRows(
     spec: AboardStepSpec,
     stepFocus: FocusRequester,
     submitFocus: FocusRequester,
-    onRereadStep: () -> Unit,
+    onReland: (FocusRequester) -> Unit,
     onAction: (AboardAction) -> Unit,
 ) {
     TextRow(spec.text, InputRow.AboardStep.tag, focus = stepFocus)
@@ -169,8 +169,8 @@ fun AboardStepRows(
                 val target = if (b.action is AboardAction.Direction) submitFocus else stepFocus
                 runCatching { target.requestFocus() }.onFailure { Log.w("DirectionsJourney", "단계 버튼 착지 실패 ${b.tag}", it) }
                 onAction(b.action)
-                // 단계 줄이 이미 입력 포커스를 쥐고 있으면 위 요청은 커서를 옮기지 못한다 — 비우고 다시 앉혀 새 문장을 읽힌다.
-                if (b.action !is AboardAction.Direction) onRereadStep()
+                // 위 요청은 한소네 커서를 옮기지 못하고, 단계 줄이 이미 입력 포커스를 쥐었으면 아무 일도 없다 — 비우고 다시 앉혀 새 문장을 읽힌다.
+                onReland(target)
             },
             modifier = Modifier.tapTarget().testTag(b.tag),
         ) { Text(b.label) }
