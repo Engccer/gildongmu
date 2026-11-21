@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -112,7 +113,7 @@ class PlaceDetailA11yTest {
         rule.onNodeWithTag("call").assertTextContains("대표번호", substring = true)
         rule.onNodeWithTag("category").assertDoesNotExist() // 지하철은 분류 줄 없음(메타 줄과 중복)
         rule.onNodeWithTag("anchor-subway").assertDoesNotExist()
-        val top = { tag: String -> rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.top }
+        val top = { tag: String -> rule.onNodeWithTag(tag).fetchSemanticsNode().positionInRoot.y } // boundsInRoot는 화면에 잘려 작은 화면에서 같은 값이 된다
         assertTrue(top("call") < top("metro-supplement"))
         assertTrue(top("metro-supplement") < top("metro-0"))
         rule.onNodeWithTag("metro-1").assertContentDescriptionContains("운행 중지 2곳", substring = true) // 에스컬레이터 묶음(fixture stopped 2건)
@@ -120,10 +121,11 @@ class PlaceDetailA11yTest {
         assertTrue(top("route-heading") < top("nearby-heading"))
         val state = { v: String -> SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, v) }
         rule.onNodeWithTag("metro-0-0").assertDoesNotExist() // 기본 접힘
-        rule.onNodeWithTag("metro-0").assert(state("접힘")).performClick()
+        // 작은 화면(한소네 576dp)에서는 시설 줄이 화면 밖이다 — 누르기 전에 스크롤한다(화면 밖 노드의 누르기는 잘린 좌표를 누른다).
+        rule.onNodeWithTag("metro-0").performScrollTo().assert(state("접힘")).performClick()
         rule.onNodeWithTag("metro-0").assert(state("펼침"))
         rule.onNodeWithTag("metro-0-0").assertExists()
-        rule.onNodeWithTag("metro-0").performClick()
+        rule.onNodeWithTag("metro-0").performScrollTo().performClick()
         rule.onNodeWithTag("metro-0-0").assertDoesNotExist()
         rule.onNodeWithTag("metro-0").assert(state("접힘"))
         rule.onRoot().tryPerformAccessibilityChecks()

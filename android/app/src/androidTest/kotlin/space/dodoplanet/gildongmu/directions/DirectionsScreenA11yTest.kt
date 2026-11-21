@@ -15,6 +15,7 @@ import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,6 +23,7 @@ import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.kit.PlacePhoneBook
 import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.DeviceFixtures
+import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.HttpResponse
@@ -42,6 +44,12 @@ import space.dodoplanet.gildongmu.kit.pathOf
 class DirectionsScreenA11yTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
+
+    /** 앱에서는 하단 바(`GuideBottomBar`)가 길찾기보다 먼저 안내 세션을 조립한다. 화면만 띄우면 시작 버튼이 조립 전 세션을 읽는다. */
+    @Before
+    fun attach() {
+        GuideSession.attach(rule.activity.applicationContext)
+    }
 
     private val places = """{"places":[{"id":"k1","name":"강남역","category":"교통,수송 > 지하철","address":"서울 강남구","roadAddress":"서울 강남구 강남대로","lat":37.4979,"lng":127.0276}],"provider":"kakao-local","query":"강남"}"""
     private val emptyAddr = """{"addresses":[],"query":"q"}"""

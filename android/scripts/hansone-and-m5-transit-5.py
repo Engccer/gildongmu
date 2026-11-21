@@ -63,7 +63,7 @@ L_PICK_CANCEL = "역 선택 취소"  # transitGuide_reboardCancel
 L_CHANGE_BOARDING = "탑승 변경"  # transitGuide_changeBoarding
 L_HANDOFF = "남은 도보 안내 시작"  # transitGuide_walkHandoffStart
 L_ARRIVED = ("내리신 뒤", "내리셨으면", "하차 지점 도착")  # transitGuide_arrived* 통지·상태 문장(하차 선언 뒤 상태 줄은 「…하차 지점 도착.」)
-# 실행할 갈래: ride = 승차 중 → 화면 끔 → 탑승 변경으로 하차 → 남은 도보, nav = 승차 중 → 경유역 상세 왕복 → 탭 왕복 → 앱 밖 왕복.
+# 실행할 갈래: ride = 승차 중 → 화면 끔 → 탑승 변경으로 하차 → 남은 도보, nav = 승차 중 → 경유역 상세 왕복 → 탭 왕복 → 앱 밖 왕복, start = 시트 첫 착지·줄만 보고 종료(시작 회귀).
 PHASE = os.environ.get("H7_PHASE", "ride")
 SEARCH_TAB = "검색 탭"
 PLACE_FIELD = "장소 검색"
@@ -672,6 +672,9 @@ def run(query: str) -> None:
         return
     if "sheet" not in SKIP:
         check_transit_sheet()
+        if PHASE == "start":  # 시작 회귀만: 시트 첫 착지·줄 뒤 바로 종료와 길찾기 복귀
+            check_stop()
+            return
         check_band()
     if "candidates" not in SKIP:
         check_candidates_stay()
