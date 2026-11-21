@@ -170,7 +170,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
             }
             // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 여정 입력이 설 때만(`aboardOffered`) 있고, 누르면 이 시트가 지하철역만 받는 검색으로 바뀐다.
             if (p.aboardOffered && !p.aboardMode) {
-                Button(onClick = picker::startAboardSearch, modifier = Modifier.tapTarget().testTag("ep-aboard-start")) { Text(strings.get("android.journey.aboardStart")) }
+                Button(onClick = { runCatching { fieldFocus.requestFocus() }; picker.startAboardSearch() }, modifier = Modifier.tapTarget().testTag("ep-aboard-start")) { Text(strings.get("android.journey.aboardStart")) }
             }
 
             StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
@@ -226,7 +226,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                 )
             }
             selectable.forEachIndexed { index, place -> PlaceRow(place, first = index == 0) }
-            if (p.showsPlacesFailure) Text(strings.get("directions.candidateError"), Modifier.padding(vertical = 8.dp).testTag("ep-places-failed"))
+            if (p.showsPlacesFailure) TextRow(strings.get("directions.candidateError"), "ep-places-failed")
             p.stops.forEachIndexed { index, row ->
                 // 한 줄 = 한 객체: 이름, 「정류장」, 거리(기준점이 없으면 거리 조각 없음).
                 ActionRow(
@@ -235,9 +235,9 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                     modifier = if (firstIsStop && index == 0) firstModifier else Modifier,
                 )
             }
-            if (p.stopsFailed) Text(strings.get("android.journey.stopSearchFailed"), Modifier.padding(vertical = 8.dp).testTag("ep-stops-failed"))
-            if (p.stopsTruncated) Text(strings.get("android.journey.stopSearchTruncated"), Modifier.padding(vertical = 8.dp).testTag("ep-stops-truncated"))
-            if (p.showsNoBusData) Text(strings.get("android.common.unavailableHere.noBusData"), Modifier.padding(vertical = 8.dp).testTag("ep-no-bus-data"))
+            if (p.stopsFailed) TextRow(strings.get("android.journey.stopSearchFailed"), "ep-stops-failed")
+            if (p.stopsTruncated) TextRow(strings.get("android.journey.stopSearchTruncated"), "ep-stops-truncated")
+            if (p.showsNoBusData) TextRow(strings.get("android.common.unavailableHere.noBusData"), "ep-no-bus-data")
             others.forEachIndexed { index, place -> PlaceRow(place, first = firstIsOther && index == 0) }
             if (!stationsOnlyView) p.addresses.forEachIndexed { index, address ->
                 val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)

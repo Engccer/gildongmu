@@ -99,6 +99,8 @@ class DirectionsJourneyA11yTest {
     }
 
     private fun exists(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+    /** 누른 버튼이 사라진 뒤 커서(입력 포커스)가 계속 존재할 줄에 앉았는가 — 줄 수가 바뀌어도 그 노드가 보존돼야 한다(`key(row)`). */
+    private fun assertLandsOn(tag: String) = rule.waitUntil(3_000) { rule.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Focused) == true }
     private fun top(tag: String) = rule.onNodeWithTag(tag).getBoundsInRoot().top
 
     /** 줄들이 이 순서로 서 있고(위에서 아래로) 각 줄은 48dp 이상이다. */
@@ -132,6 +134,10 @@ class DirectionsJourneyA11yTest {
         assertRows("field-from", "swap", "field-to", "field-via", "via-remove", "submit")
         assertTrue(!exists("via-add"))
         checkAllRoots()
+        rule.onNodeWithTag("via-remove").performClick()
+        rule.waitForIdle()
+        assertNull(vm.state.value.via)
+        assertLandsOn("submit")
     }
 
     @Test
@@ -147,6 +153,7 @@ class DirectionsJourneyA11yTest {
         rule.waitForIdle()
         assertNull(vm.state.value.boardStation)
         assertRows("field-from", "swap", "field-to", "via-add", "submit")
+        assertLandsOn("submit")
         checkAllRoots()
     }
 
@@ -193,6 +200,7 @@ class DirectionsJourneyA11yTest {
         assertNotNull(vm.state.value.aboardOrigin?.direction)
         assertTrue(!exists("aboard-step") && !exists("aboard-direction-0"))
         assertRows("field-from", "field-to", "station-add-alight", "submit")
+        assertLandsOn("submit")
     }
 
     @Test
@@ -269,6 +277,7 @@ class DirectionsJourneyA11yTest {
         assertNull(vm.state.value.pendingTransfer)
         assertTrue(!exists("transfer-question"))
         assertNotNull(vm.state.value.boardStation ?: vm.state.value.alightStation)
+        assertLandsOn(if (vm.state.value.boardStation != null) "field-board-station" else "field-alight-station")
     }
 
     @Test
@@ -284,5 +293,6 @@ class DirectionsJourneyA11yTest {
         assertNull(vm.state.value.via)
         assertTrue(!exists("transfer-question"))
         rule.onNodeWithTag("via-add").assertIsDisplayed()
+        assertLandsOn("via-add")
     }
 }

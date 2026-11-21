@@ -1189,7 +1189,6 @@ class DirectionsViewModel(
         // 확정 뒤 착지: 출발지 → 도착지 버튼, 도착지·경유지 → 조회 버튼(셋 다 "다음에 할 일").
         val landing = when (target) {
             DirectionsFieldTarget.from -> LandingTarget.Field(DirectionsFieldTarget.to)
-            DirectionsFieldTarget.transfer -> LandingTarget.Field(DirectionsFieldTarget.via) // 입구 버튼 자리(경유지 칸)
             else -> LandingTarget.Submit
         }
         _state.update { it.copy(landing = landingNext(landing)) }

@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.directions
 
 import android.util.Log
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -146,16 +148,20 @@ fun aboardArrivalHaptic(previous: AboardDirectionsState?, current: AboardDirecti
     }
 }
 
+/** 방면 조회가 끝난 전이인가(질문 포함) — 커서가 단계 줄이면 그 줄을 다시 읽힌다(iOS `settleAboardArrival(rereadIfFocused:)`). */
+fun aboardArrivalSettled(previous: AboardDirectionsState?, current: AboardDirectionsState): Boolean =
+    previous == AboardDirectionsState.Loading && current != AboardDirectionsState.Loading && current != AboardDirectionsState.Idle
+
 /** 지금 탄 열차 단계 줄과 그 아래 버튼들. 줄 목록(`directionsInputRows`)에 `AboardStep`이 있을 때만 부른다. */
 @Composable
 fun AboardStepRows(
     spec: AboardStepSpec,
     stepFocus: FocusRequester,
     submitFocus: FocusRequester,
-    onStepFocusChanged: (Boolean) -> Unit,
+    onRereadStep: () -> Unit,
     onAction: (AboardAction) -> Unit,
 ) {
-    TextRow(spec.text, InputRow.AboardStep.tag, modifier = Modifier.onFocusChanged { onStepFocusChanged(it.hasFocus) }, focus = stepFocus)
+    TextRow(spec.text, InputRow.AboardStep.tag, focus = stepFocus)
     for (b in spec.buttons) key(b.tag) {
         Button(
             onClick = {
@@ -163,6 +169,8 @@ fun AboardStepRows(
                 val target = if (b.action is AboardAction.Direction) submitFocus else stepFocus
                 runCatching { target.requestFocus() }.onFailure { Log.w("DirectionsJourney", "단계 버튼 착지 실패 ${b.tag}", it) }
                 onAction(b.action)
+                // 단계 줄이 이미 입력 포커스를 쥐고 있으면 위 요청은 커서를 옮기지 못한다 — 비우고 다시 앉혀 새 문장을 읽힌다.
+                if (b.action !is AboardAction.Direction) onRereadStep()
             },
             modifier = Modifier.tapTarget().testTag(b.tag),
         ) { Text(b.label) }
@@ -191,7 +199,7 @@ fun TransferQuestionDialog(title: String, choices: List<TransferChoice>, onChoos
         modifier = Modifier.semantics { paneTitle = title },
         title = { Text(title, Modifier.testTag("transfer-question")) },
         text = {
-            Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 choices.forEachIndexed { i, c ->
                     val base = Modifier.fillMaxWidth().padding(vertical = 4.dp).tapTarget().testTag("transfer-answer-$i")
                     Button(

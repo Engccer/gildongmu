@@ -7,6 +7,7 @@ import space.dodoplanet.gildongmu.kit.RecentStation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** B26 단계 5 묶음 B: 입력 줄 순서·착지 줄·지금 탄 열차 단계 줄·진동 판정을 JVM에서 잠근다(문장은 실제 카탈로그). 노드 수준은 `DirectionsJourneyA11yTest`(계측). */
 class DirectionsJourneyRowsTest {
@@ -148,5 +149,16 @@ class DirectionsJourneyRowsTest {
         assertNull(aboardArrivalHaptic(null, AboardDirectionsState.Failed))
         assertNull(aboardArrivalHaptic(AboardDirectionsState.Failed, AboardDirectionsState.Failed))
         assertNull(aboardArrivalHaptic(AboardDirectionsState.Idle, AboardDirectionsState.Unavailable))
+    }
+
+    @Test fun `조회 중에서 끝난 전이는 질문도 다시 읽기 대상이다`() {
+        val loading = AboardDirectionsState.Loading
+        assertTrue(aboardArrivalSettled(loading, AboardDirectionsState.Lines(listOf("2호선", "4호선"))))
+        assertTrue(aboardArrivalSettled(loading, AboardDirectionsState.Loaded(listOf(gu))))
+        assertTrue(aboardArrivalSettled(loading, AboardDirectionsState.Failed))
+        assertTrue(!aboardArrivalSettled(null, AboardDirectionsState.Loaded(listOf(gu))))
+        assertTrue(!aboardArrivalSettled(loading, AboardDirectionsState.Loading))
+        assertTrue(!aboardArrivalSettled(loading, AboardDirectionsState.Idle))
+        assertTrue(!aboardArrivalSettled(AboardDirectionsState.Failed, AboardDirectionsState.Failed))
     }
 }

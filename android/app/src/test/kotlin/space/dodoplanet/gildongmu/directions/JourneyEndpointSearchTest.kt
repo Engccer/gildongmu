@@ -370,6 +370,8 @@ class JourneyEndpointSearchTest {
         assertNull(e.vm.state.value.pendingTransfer)
         assertEquals(DirectionsEndpoint.Place("마바 카페", 37.55, 126.99, null), e.vm.state.value.via)
         assertEquals("02-1234-5678", e.phoneBook.phone("마바 카페", 37.55, 126.99))
+        // 착지는 종전 경유지 확정과 같은 조회 버튼이다(iOS `applyResolvedFocus` — 도착지·경유지를 고르면 조회 버튼으로).
+        assertEquals(LandingTarget.Submit, e.vm.state.value.landing?.target)
     }
 
     @Test fun `입구 검색의 정류장 줄은 bus 질문 대상이다`() = runTest(dispatcher) {

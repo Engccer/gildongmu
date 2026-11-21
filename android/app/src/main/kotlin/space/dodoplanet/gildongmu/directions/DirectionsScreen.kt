@@ -58,6 +58,7 @@ import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.ui.ObserveA11yFocus
 import space.dodoplanet.gildongmu.guide.ui.GuideHandoffFailureRow
 import space.dodoplanet.gildongmu.guide.ui.carGuideStartSlot
 import space.dodoplanet.gildongmu.guide.ui.transitGuideStartSlot
@@ -147,8 +148,8 @@ class FormUiState(
     val addAlightFocus = FocusRequester()
     val aboardStepFocus = FocusRequester()
     val journeyFocus = FocusRequester()
-    /** 지금 탄 열차 단계 줄을 커서가 쥐고 있는가(`onFocusChanged`) — 방면 조회가 끝났을 때 그 줄을 다시 읽힐지 가른다. */
-    var aboardStepHasFocus = false
+    /** 스크린 리더 커서가 앉은 줄의 표식(`ObserveA11yFocus`, 관찰이 안 되면 null) — 방면 조회가 끝났을 때 단계 줄을 다시 읽힐지 가른다. */
+    var a11yCursorTag: String? = null
     /** 직전 방면 상태 — 조회 중에서 끝으로 넘어온 전이를 잡는다. null = 아직 본 적 없음(첫 관찰은 전이가 아니다). */
     var previousAboardState: AboardDirectionsState? = null
     /** 단계 줄 다시 읽기 요청 세대와 소비 세대(재진입 때 지난 요청을 다시 하지 않는다). */
@@ -245,14 +246,19 @@ private fun DirectionsForm(
         val current = s.aboardDirectionsState
         val previous = ui.previousAboardState
         ui.previousAboardState = current
-        val haptic = aboardArrivalHaptic(previous, current) ?: return@LaunchedEffect
-        if (ui.aboardStepHasFocus) {
-            vm.announceResult("", haptic)
+        val haptic = aboardArrivalHaptic(previous, current)
+        // 커서 판정은 입력 포커스가 아니라 접근성 커서다(스와이프·키 이동은 입력 포커스를 옮기지 않는다). 모르면 끌지 않고 통지 쪽.
+        if (ui.a11yCursorTag == InputRow.AboardStep.tag) {
+            if (!aboardArrivalSettled(previous, current)) return@LaunchedEffect
+            if (haptic != null) vm.announceResult("", haptic)
             ui.rereadAboardSeq += 1
-        } else {
+        } else if (haptic != null) {
             vm.announceResult(aboardStepText(current, strings).orEmpty(), haptic)
         }
     }
+    // 커서 자리 관찰(폼이 컴포지션을 떠나면 낡은 값을 버린다 — 돌아와 첫 효과가 엉뚱한 줄을 끌지 않게).
+    ObserveA11yFocus { tag -> ui.a11yCursorTag = tag }
+    DisposableEffect(Unit) { onDispose { ui.a11yCursorTag = null } }
     val focusManager = LocalFocusManager.current
     LaunchedEffect(ui.rereadAboardSeq) {
         if (ui.rereadAboardSeq <= ui.rereadAboardDone) return@LaunchedEffect
@@ -322,7 +328,8 @@ private fun DirectionsForm(
             // 진행 표시는 조회 자신이 도는 동안만.
             val querying = s.phase == DirectionsPhase.Locating || s.phase == DirectionsPhase.Loading
             // 입력 줄 — 순서와 조건은 `directionsInputRows`가 정본이고 여기는 그 목록을 그대로 그린다(iOS 같은 순서, 줄마다 한 접근성 객체).
-            for (row in directionsInputRows(s, journeyEnabled)) when (row) {
+            // 줄마다 key — 줄 수가 바뀌어도 남는 줄(조회 버튼·남은 칸)의 노드를 보존해, 사라지는 버튼이 먼저 옮겨 둔 커서가 살아남는다.
+            for (row in directionsInputRows(s, journeyEnabled)) key(row) { when (row) {
                 // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
                 InputRow.From -> ActionRow(
                     visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang, nowEpoch = now),
@@ -332,7 +339,7 @@ private fun DirectionsForm(
                 InputRow.AboardStep -> aboardStepSpec(s.aboardDirectionsState, strings)?.let { spec ->
                     AboardStepRows(
                         spec, ui.aboardStepFocus, ui.submitFocus,
-                        onStepFocusChanged = { ui.aboardStepHasFocus = it },
+                        onRereadStep = { ui.rereadAboardSeq += 1 },
                         onAction = { action ->
                             when (action) {
                                 is AboardAction.Line -> vm.chooseAboardLine(action.line)
@@ -388,8 +395,15 @@ private fun DirectionsForm(
                     onClick = {
                         if (s.isBusy) return@Button
                         // 지금 탄 열차인데 방면이 아직 없으면 조회하지 않고 단계 줄로 커서를 보낸다(그 줄의 문장이 곧 통지).
-                        if (vm.aboardNeedsDirection) runCatching { ui.aboardStepFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "단계 줄 착지 실패", it) }
-                        else vm.runQuery()
+                        // 단계 줄이 이미 입력 포커스를 쥐었으면 요청만으로는 커서가 오지 않아 다시 앉힌다. 단계 줄이 없으면(조회 전 짧은 창) 출발지 칸으로.
+                        if (vm.aboardNeedsDirection) {
+                            if (aboardStepSpec(s.aboardDirectionsState, strings) != null) {
+                                runCatching { ui.aboardStepFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "단계 줄 착지 실패", it) }
+                                ui.rereadAboardSeq += 1
+                            } else {
+                                runCatching { ui.fromFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "출발지 착지 실패", it) }
+                            }
+                        } else vm.runQuery()
                     },
                     modifier = Modifier
                         .tapTarget()
@@ -398,7 +412,7 @@ private fun DirectionsForm(
                         // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
                         .semantics { if (querying) stateDescription = searchingLabel },
                 ) { Text(strings.get("directions.submit")) }
-            }
+            } }
 
             StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
 
