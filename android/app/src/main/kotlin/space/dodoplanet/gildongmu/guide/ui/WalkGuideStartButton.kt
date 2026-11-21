@@ -23,7 +23,9 @@ import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.guide.FailResolution
 import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.GuideSessionKind
 import space.dodoplanet.gildongmu.guide.GuideWaypoint
+import space.dodoplanet.gildongmu.guide.TransitStartMark
 import space.dodoplanet.gildongmu.guide.WalkStartRequest
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
 import space.dodoplanet.gildongmu.directions.Strings
@@ -93,6 +95,27 @@ internal fun GuideStartFailureRow(ui: WalkGuideUiState, strings: Strings) {
         }
     }
 }
+
+/**
+ * 인계 도보의 시작 실패 행(B28, iOS `DirectionsTabView` 선두 섹션의 실패 문장 + 해결 버튼) — 길찾기 화면 선두(추적 중 「안내 종료」 자리)에 선다.
+ * 자동차 도착 뒤 「여기서 도보 안내 시작」·대중교통 하차 인계 「남은 도보 안내 시작」·잘못 내림 복구의 걷기는 시작 버튼이 없는 줄 없는 도보 시작이라
+ * 위 세 버튼 아래 실패 행 어디에도 걸리지 않는다. [정확한 위치 허용]의 `restartBeacon`은 모델이 든 같은 요청으로 다시 시작해 실패도 다시 여기 선다.
+ */
+@Composable
+fun GuideHandoffFailureRow() {
+    val res = LocalContext.current.resources
+    val strings = remember(res) { guideStrings(res) }
+    val ui by GuideSession.walk.ui.collectAsState()
+    val started by GuideSession.transitStartRoute.collectAsState()
+    if (handoffStartFailureShown(ui, started)) GuideStartFailureRow(ui, strings)
+}
+
+/**
+ * 인계 도보의 실패인가 — 마지막 시작이 줄 없는 도보이고 대중교통 시작 표식이 없을 때. 표식이 있으면 승차 전 도보(그 경로 버튼 아래, `transitStartFailureShown`)이고,
+ * 인계 셋은 공개 `startWalk`가 표식을 지운다. 줄이 있으면 도보 줄 버튼, 자동차면 자동차 버튼 아래다.
+ */
+fun handoffStartFailureShown(ui: WalkGuideUiState, started: TransitStartMark?): Boolean =
+    started == null && ui.lastStartKind == GuideSessionKind.walk && ui.lastStartLine == null
 
 /** 줄 안 안내 시작 버튼 문구(E42, iOS `WalkLineText.startKey` 미러 — 라벨이 그 줄 이름이라 어느 경로의 안내인지 구분된다). */
 fun walkLineStartKey(line: WalkLineKind): String = when (line) {

@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.guide
 
+import space.dodoplanet.gildongmu.guide.ui.handoffStartFailureShown
 import space.dodoplanet.gildongmu.guide.ui.transitStartFailureShown
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -260,6 +261,7 @@ class GuideTransitHandoffTest {
         assertTrue(ui.status.isFailure)
         assertTrue(transitStartFailureShown(ui, GuideSession.transitStartRoute.value, route))
         assertFalse(transitStartFailureShown(ui, GuideSession.transitStartRoute.value, route.copy()), "키가 같은 새 조회의 경로 객체 아래엔 없다")
+        assertFalse(handoffStartFailureShown(ui, GuideSession.transitStartRoute.value), "승차 전 도보 실패는 길찾기 선두에 서지 않는다(B28)")
         after(9_000)
         t.model.stop(playStopTone = false)
         // 도보 공개 시작은 표식을 지운다 — 그 도보의 실패가 대중교통 버튼 아래로 가지 않게.
@@ -267,6 +269,27 @@ class GuideTransitHandoffTest {
         settle()
         assertNull(GuideSession.transitStartRoute.value)
         assertFalse(transitStartFailureShown(w.model.ui.value, GuideSession.transitStartRoute.value, route))
+    }
+
+    @Test fun `하차 인계 도보의 시작 실패는 길찾기 선두 실패 행에 선다`() = joint { w, t ->
+        // B28: 인계 도보는 시작 버튼이 없는 줄 없는 도보 시작이라 세 버튼 아래 실패 행 어디에도 걸리지 않는다.
+        t.model.start(route(subwayLeg("천호", "여의도")), "여의도역", t.dest, accessible = false)
+        settle()
+        t.model.boardAlready(express = null)
+        assertTrue(t.model.advanceIntoWalkHandoff())
+        w.perms.location = LocationPermission.Coarse
+        GuideSession.acceptWalkHandoff()
+        settle()
+        after(610)
+        settle()
+        val ui = w.model.ui.value
+        assertTrue(ui.status.isFailure, ui.toString())
+        assertTrue(ui.statusText.isNotEmpty())
+        assertTrue(handoffStartFailureShown(ui, GuideSession.transitStartRoute.value))
+        // 재시작은 모델이 든 같은 요청이라 다시 실패해도 같은 자리다.
+        GuideSession.restartBeacon()
+        settle()
+        assertTrue(handoffStartFailureShown(w.model.ui.value, GuideSession.transitStartRoute.value))
     }
 
     @Test fun `탔다 신호는 승차 전 도보 재시작 줄을 거둔다`() = joint { w, t ->
