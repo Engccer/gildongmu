@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -57,9 +58,11 @@ class ReleaseNotice(private val store: KeyValueStore, private val io: CoroutineD
 fun ReleaseNoticeSheet(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val titleFocus = remember { FocusRequester() }
-    // 표시 애니메이션 뒤 제목으로 착지한다(`GuideSheet` 동형). 드래그 핸들은 두지 않는다 — 제목보다 먼저 읽히는 잡음이고, 닫기는 뒤로·바깥 탭으로 충분하다.
+    // 표시 애니메이션 뒤 제목으로 착지한다(`GuideSheet` 동형). 드래그 핸들은 두지 않는다 — 제목보다 먼저 읽히는 잡음이다.
     LaunchedEffect(Unit) { land(titleFocus, "공지 제목") }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = null) {
+    // 바깥 탭 닫기를 끈다(2026-11-21 판정: 「닫기」 하나만 들린다). 머티리얼 스크림은 바깥 탭 처리와 「시트 닫기」 시맨틱을 한 수식어로 달아(1.5.0) 이 설정이
+    // 둘을 함께 없앤다. 남는 닫힘은 「닫기」(확인 저장), 뒤로 가기와 아래로 끌기(저장 없음, 다음 실행에 다시 뜬다 — iOS와 같다).
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = null, properties = ModalBottomSheetProperties(shouldDismissOnClickOutside = false)) {
         Column(
             Modifier
                 .fillMaxWidth()

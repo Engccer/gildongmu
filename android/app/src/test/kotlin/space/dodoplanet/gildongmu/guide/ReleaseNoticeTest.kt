@@ -31,6 +31,11 @@ class ReleaseNoticeTest {
         assertEquals(1, Regex("""releaseNotice\.confirm\(\)""").findAll(root).count())
     }
 
+    @Test fun `새 소식 창은 바깥 탭 닫기를 꺼 머티리얼 「시트 닫기」가 들리지 않는다`() {
+        val sheet = pkg.resolve("guide/ui/ReleaseNoticeSheet.kt").readText()
+        assertTrue(sheet.contains("properties = ModalBottomSheetProperties(shouldDismissOnClickOutside = false)"))
+    }
+
     @Test fun `옛 도보 공지는 길찾기 화면에 남지 않는다`() {
         val screen = pkg.resolve("directions/DirectionsScreen.kt").readText()
         assertFalse("WalkGuideNotice" in screen)
