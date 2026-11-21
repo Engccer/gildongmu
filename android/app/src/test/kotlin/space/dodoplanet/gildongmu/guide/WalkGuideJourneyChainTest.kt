@@ -236,6 +236,17 @@ class WalkGuideJourneyChainTest {
         assertEquals(1, h.steps.starts)
     }
 
+    @Test fun `배경 + 표식 없어도 여정 중 시작(taxiOut·승차 전 도보)은 묻지 않는다(리뷰 지적 1)`() = guideTest(dispatcher) { h ->
+        h.env.foreground = false
+        h.model.inJourney = { true }
+        h.perms.location = LocationPermission.None
+        h.perms.requestResult = LocationPermission.Fine
+        h.model.requestStart(h.request)
+        settle()
+        assertEquals(0, h.perms.locationRequests)
+        assertEquals(GuideStatus.denied, h.model.ui.value.status)
+    }
+
     @Test fun `배경이어도 표식 없는 시작은 종전대로 묻는다`() = guideTest(dispatcher) { h ->
         h.env.foreground = false
         h.perms.location = LocationPermission.None

@@ -69,6 +69,7 @@ import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 /** 비콘 종료 사유 전부를 여정 단계 종료로(iOS `JourneyStageEnd.init`) — 위치 상실(E73 환승 도보 재개용으로 갈라 둔 사유)은 여정 단계에선 그 밖의 정지와 같다. */
 internal fun journeyStageEnd(reason: BeaconEndReason): JourneyStageEnd = when (reason) {
@@ -273,7 +274,8 @@ object GuideSession {
         serviceRelay = controller
         journeyClockMs = { SystemClock.elapsedRealtime() }  // 잠자기 중에도 전진하는 단조 시계(30초 상한, §7-3)
         // 접근 도보 30m 판정은 캐시 위치(force 없음, iOS `currentCoordinate(force: false)`) — 실시간 안내는 실좌표다.
-        journeyCoordinate = { AppConfig.locationStore.currentCoordinate(force = false) }
+        // 화면이 요청하지 않은 측위라 `silent`(실패가 위치 표시줄을 흔들지 않게). 안내 스트림은 스토어에 쓰지 않아 택시 뒤엔 새 측위가 될 수 있다(상한 8초).
+        journeyCoordinate = { AppConfig.locationStore.currentCoordinate(force = false, silent = true) }
         val tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock)
         // 보류 문장 버림은 토큰을 싣고 두 모델에 간다 — 그 토큰을 게시한 모델만 상환 표식을 세운다(§6-5).
         val speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(res()) }, onPendingDropped = ::speechDropped)
@@ -295,6 +297,7 @@ object GuideSession {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
             clock = clock,
         )
+        walk.inJourney = { journey != null }
         transitModel = TransitGuideModel(
             routes = routes,
             track = TransitTrackService(AppConfig.apiClient),
@@ -877,6 +880,7 @@ object GuideSession {
             }
             JourneyStage.transit -> {
                 transit.onJourneyStopped = { advanceJourney(JourneyEvent.TransitStopped, token) }
+                transit.onJourneyIdlePaused = ::releaseJourneyService
                 if (shape.alightDesignated) {
                     transit.onJourneyRideCompleted = { advanceJourney(JourneyEvent.RideCompleted, token) }
                     transit.journeyNextIsWalk = shape.hasEgressWalk
@@ -964,6 +968,7 @@ object GuideSession {
             transit.onJourneyRideCompleted = null
             transit.onJourneyStopped = null
             transit.journeyNextIsWalk = null
+            transit.onJourneyIdlePaused = null
         }
         releaseJourneyService()
         GuideDiag.log("journey finish stopSessions=$stopSessions")
@@ -1001,7 +1006,8 @@ object GuideSession {
     private object JourneyServiceHolder : GuideServiceOwner {
         override var serviceGeneration: Int? = null
         override val locationProfile: StateFlow<GuideLocationProfile?> = MutableStateFlow(GuideLocationProfile.keepAlive)
-        override val notificationChanges: Flow<*> get() = GuideSession._journeyUi
+        override val notificationChanges: Flow<*>
+            get() = GuideSession.transitModel?.ui?.let { combine(GuideSession._journeyUi, it) { journey, transit -> journey to transit } } ?: GuideSession._journeyUi
 
         /** 대기 중인 대중교통 단계면 그 세션의 문장, 아니면 채널 이름과 여정 상태 문장. */
         override fun notificationText(strings: space.dodoplanet.gildongmu.directions.Strings): Pair<String, String> {
@@ -1021,6 +1027,7 @@ object GuideSession {
      * 돌려준다(서비스를 내리지 않고 넘긴다). 아니면 null(내린다).
      */
     private fun retainServiceForJourney(): Int? {
+        if (releasingJourneyService) return null
         val state = journey ?: return null
         if (state.phase is JourneyPhase.Failed) return null
         val relay = serviceRelay ?: return null
@@ -1033,8 +1040,11 @@ object GuideSession {
     private fun releaseJourneyService() {
         val generation = JourneyServiceHolder.serviceGeneration ?: return
         JourneyServiceHolder.serviceGeneration = null
-        serviceRelay?.stop(generation)
+        // 여정이 살아 있는 채 푸는 자리(유휴 정지)는 손잡이가 보유자 판정을 다시 묻지 않게 한다 — 물으면 새 보유자 세대로 넘겨 서비스가 남는다.
+        releasingJourneyService = true
+        try { serviceRelay?.stop(generation) } finally { releasingJourneyService = false }
     }
+    private var releasingJourneyService = false
 
     // ── 억제 소유자 집합(§5-5) — 동일성(iOS ObjectIdentifier), equals 기반 HashSet 금지. 두 모델에 함께 걸고 이전 값은 모델마다 든다(M5 §6-5) ──
     private val suppressionOwners: MutableSet<Any> = Collections.newSetFromMap(IdentityHashMap())
@@ -1109,6 +1119,7 @@ object GuideSession {
         publishJourney()
         transitModel = transit
         transit?.let { wireTransitHooks(it) }
+        model.inJourney = { journey != null }
         prewalk = null
         prewalkRestart = null
         prewalkJob?.cancel(); prewalkJob = null

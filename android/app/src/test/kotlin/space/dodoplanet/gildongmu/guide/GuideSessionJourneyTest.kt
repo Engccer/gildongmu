@@ -772,6 +772,30 @@ class GuideSessionJourneyTest {
         assertTrue(j.w.model.isTracking)
     }
 
+    @Test fun `잊힌 여정 — 대중교통 대기가 유휴 정지에 들면 보유자가 쥔 서비스를 내린다(리뷰 지적 2)`() = joint(relay = true) { j ->
+        val rig = assertNotNull(j.rig)
+        GuideSession.startJourney(plan(taxiIn = true, egress = EgressKind.exit))
+        settle()
+        GuideSession.journeyAction(JourneyEvent.TaxiDropped)
+        settle()
+        rig.runPosts()
+        after(610)
+        j.w.model.declarePrewalkArrival()
+        settle()
+        rig.runPosts()
+        after(610)
+        rig.runPosts()
+        assertPhase(j, JourneyPhase.Running(JourneyStage.transit))
+        assertEquals(0, rig.shutdowns)
+        assertNotNull(rig.relay.current, "대기 중에는 보유자가 서비스를 든다")
+        after(90 * 60_000L)
+        rig.runPosts()
+        assertTrue(j.t.model.ui.value.idlePaused)
+        assertEquals(1, rig.shutdowns, "유휴 정지 뒤에는 wake lock·위치 구독을 쥐지 않는다")
+        assertNull(rig.relay.current)
+        assertNotNull(GuideSession.journeyUi.value, "여정과 세션은 남는다(재개는 사용자 조작)")
+    }
+
     // ── 사례 15: 여정이 없을 때 기존 동작 불변 ──
 
     @Test fun `여정이 없을 때 isOccupied는 isActive와 같다, 여정 중 단계 사이에만 갈린다`() = joint { j ->

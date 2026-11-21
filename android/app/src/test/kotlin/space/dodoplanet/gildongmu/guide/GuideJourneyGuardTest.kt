@@ -68,5 +68,9 @@ class GuideJourneyGuardTest {
         val service = guide.resolve("GuideForegroundService.kt").readText()
         assertTrue(service.contains("onFix = { fix -> GuideSession.serviceFix(gen, fix) }"))
         assertFalse(service.contains("generation?.let { GuideSession.serviceFix("), "실행 시점 세대 읽기 금지")
+        // 리뷰 지적 1·2·4: 여정 중 배경 시작은 묻지 않는다(배선 두 곳), 유휴 정지는 보유를 푼다, 단계 판정 측위는 조용하다.
+        assertEquals(2, Regex("""\.inJourney = \{ journey != null \}""").findAll(session).count())
+        assertTrue(body("private fun startJourneyStage(").contains("transit.onJourneyIdlePaused = ::releaseJourneyService"))
+        assertTrue(session.contains("currentCoordinate(force = false, silent = true)"))
     }
 }

@@ -318,6 +318,8 @@ class WalkGuideModel(
      */
     var journeyChain: JourneyChainMark? = null
         private set
+    /** 여정이 살아 있는가(`GuideSession`이 붙인다) — 여정 중 시작은 표식이 없어도(택시 taxiOut, 대중교통 단계가 연 승차 전 도보) 배경에서 권한을 묻지 않는다(§7-4). */
+    var inJourney: () -> Boolean = { false }
     /**
      * 마지막 실패의 문장 키와 해결 수단(E70 §6.1 `.ended` 원인 보존, iOS `lastFailure`). 여정의 실패 시트가 그 문장을 상태 줄로 쓰고 해결 수단 버튼을 고른다(새 문장·재통지 없음).
      * `fail`이 세우고 새 시작이 비운다(`stopAndFail`은 `fail`을 지난다). ⚠ `clearFailure()`는 건드리지 않는다 — 그것은 시트 행의 거둠이고 이 값은 여정의 원인 보존이다.
@@ -621,9 +623,9 @@ class WalkGuideModel(
         if (isTracking) return
         // 권한 게이트(§3-2 ②) — 위치 서비스 → 권한 → 정밀 순.
         if (!permissions.isLocationEnabled()) { fail(GuideStatus.unavailable, "beacon.weak", journeyBridgeAfterStop = false); return }
-        // 배경 자동 인계(M5 §7-4, 안드로이드 고유): 여정 단계가 연 시작은 앱이 전경일 때만 권한을 묻는다. 배경이면 묻지 않고 현재 허용값만 읽는다 — 권한 창 결과가 오지 않으면
+        // 배경 자동 인계(M5 §7-4, 안드로이드 고유): 여정 중 시작(표식·여정 생존)은 앱이 전경일 때만 권한을 묻는다. 배경이면 묻지 않고 현재 허용값만 읽는다 — 권한 창 결과가 오지 않으면
         // `ask()`가 60초를 기다리고 여정은 이미 `Running(access)`라 30초 복구도 닿지 않는다.
-        val mayAsk = journeyChain == null || env.isForeground()
+        val mayAsk = (journeyChain == null && !inJourney()) || env.isForeground()
         var permission = permissions.currentLocation()
         if (permission == LocationPermission.None && mayAsk) permission = permissions.requestLocation()
         when (permission) {

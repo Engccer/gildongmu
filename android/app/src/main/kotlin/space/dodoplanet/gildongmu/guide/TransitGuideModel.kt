@@ -313,6 +313,8 @@ class TransitGuideModel(
     var onJourneyStopped: (() -> Unit)? = null
     /** 여정이면 마지막 leg 버튼의 다음 단계가 걷기인가. null = 여정 아님. */
     var journeyNextIsWalk: Boolean? = null
+    /** 유휴 정지(`enterIdleIfDue`) 뒤 한 번 — 여정 보유자가 쥔 서비스를 놓게 한다(잊힌 여정이 wake lock·위치 구독을 밤새 쥐지 않게, §7-4). 여정 대중교통 단계에만. */
+    var onJourneyIdlePaused: (() -> Unit)? = null
 
     /** 「탔다」·경로를 바꿨다(A68)를 세션 소유자에게 알리는 훅(iOS `GuideSession.transitPassedPrewalk()` 직접 호출 자리) — `GuideSession`이 배선한다(가드 `GuideTransitHandoffGuardTest`). */
     var onPassedPrewalk: (() -> Unit)? = null
@@ -754,6 +756,7 @@ class TransitGuideModel(
         outputSuppressed = false
         onJourneyRideCompleted = null
         journeyNextIsWalk = null
+        onJourneyIdlePaused = null
         onJourneyStopped?.let {
             onJourneyStopped = null
             it()
@@ -768,11 +771,13 @@ class TransitGuideModel(
         val stopped = onJourneyStopped
         val rideCompleted = onJourneyRideCompleted
         val nextIsWalk = journeyNextIsWalk
+        val idlePausedHook = onJourneyIdlePaused
         onJourneyStopped = null
         stop(playStopTone = false)
         onJourneyStopped = stopped
         onJourneyRideCompleted = rideCompleted
         journeyNextIsWalk = nextIsWalk
+        onJourneyIdlePaused = idlePausedHook
     }
 
     /** 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태). */
@@ -922,6 +927,7 @@ class TransitGuideModel(
         announce(strings.get("transitGuide.idlePaused"), highPriority = true, speechClass = GuideSpeechClass.deferrable)
         GuideDiag.log { "transit idlePaused announced fg=$isForeground" }
         updateKeepAlive()
+        onJourneyIdlePaused?.invoke()
         return true
     }
 
