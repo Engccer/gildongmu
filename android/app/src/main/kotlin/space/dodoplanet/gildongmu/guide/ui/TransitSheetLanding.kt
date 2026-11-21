@@ -197,7 +197,7 @@ class TransitSheetLanding(
     private val log: (String) -> Unit = { GuideDiag.log(it) },
     private val sleep: suspend (Long) -> Unit = { delay(it) },
 ) {
-    private class Pending(val target: TransitSheetControl, val since: Double, val note: String, expectsSystemPlacement: Boolean) {
+    private class Pending(val target: TransitSheetControl, val since: Double, val note: String, val expectsSystemPlacement: Boolean) {
         var systemPlacementSeen = !expectsSystemPlacement
         var movedAfter: Double? = null
     }
@@ -320,6 +320,8 @@ class TransitSheetLanding(
         cursorTag = tag
         val p = pending ?: return
         val elapsed = clock() - p.since
+        // 시스템 배치는 이벤트 여러 개로 올 수 있다(한소네 실측: 누른 버튼이 사라진 뒤 47ms·82ms 두 번) — 요청 직후 묶음은 사람이 쓸 수 없는 간격이라 모두 배치로 본다.
+        if (p.expectsSystemPlacement && elapsed <= SYSTEM_PLACEMENT_BURST_SECONDS) { p.systemPlacementSeen = true; return }
         if (!p.systemPlacementSeen && elapsed <= SYSTEM_PLACEMENT_SECONDS) p.systemPlacementSeen = true
         else if (p.movedAfter == null) p.movedAfter = elapsed
     }
@@ -334,6 +336,7 @@ class TransitSheetLanding(
     companion object {
         const val SPEECH_WAIT_MS = GuideSheetLanding.SPEECH_WAIT_MS
         const val SYSTEM_PLACEMENT_SECONDS = GuideSheetLanding.SYSTEM_PLACEMENT_SECONDS
+        const val SYSTEM_PLACEMENT_BURST_SECONDS = 0.5
         const val POLL_MS = GuideSheetLanding.POLL_MS
         const val LAND_DELAY_MS = GuideSheetLanding.LAND_DELAY_MS
         const val RETRY_DELAY_MS = GuideSheetLanding.RETRY_DELAY_MS

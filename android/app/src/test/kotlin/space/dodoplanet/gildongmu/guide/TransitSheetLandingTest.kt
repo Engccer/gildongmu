@@ -126,11 +126,28 @@ class TransitSheetLandingTest {
         h.landing.land(TransitSheetControl.status, "transition", expectsSystemPlacement = transitTransitionExpectsPlacement(byUser = true, lostFocus = false, inherited = false))
         advanceTimeBy(47); runCurrent()
         h.landing.onA11yFocus(null)                 // 사라진 버튼 대신 시스템이 고른 노드
+        advanceTimeBy(35); runCurrent()
+        h.landing.onA11yFocus(null)                 // 같은 배치의 두 번째 이벤트(한소네 실측 82ms)
         h.settled = true
         advanceUntilIdle()
         assertEquals(listOf(TransitSheetControl.status), h.focused)
+        assertFalse(h.logs.any { it.contains("reason=userMoved") }, h.logs.toString())
         assertTrue(Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/ui/TransitGuideSheet.kt").readText()
             .contains("expectsSystemPlacement = transitTransitionExpectsPlacement(byUser, lostFocus, inheritsPlacement)"), "시트의 전이 착지가 이 판정을 지난다")
+    }
+
+    @Test fun `시스템 배치 묶음이 지난 뒤의 이동은 사용자 이동이다`() = runTest {
+        val h = H(this)
+        h.settled = false
+        h.landing.land(TransitSheetControl.status, "transition", expectsSystemPlacement = true)
+        advanceTimeBy(50); runCurrent()
+        h.landing.onA11yFocus(null)                 // 시스템 배치
+        advanceTimeBy(1_000); runCurrent()
+        h.landing.onA11yFocus("transit-via")        // 사람이 쓸었다
+        h.settled = true
+        advanceUntilIdle()
+        assertEquals(emptyList(), h.focused)
+        assertTrue(h.last.contains("reason=userMoved"), h.last)
     }
 
     @Test fun `기대 없는 새 요청은 같은 첫 이동에 사용자 이동으로 끝난다 — 이미 이동을 본 요청은 기다리지 않는다`() = runTest {
