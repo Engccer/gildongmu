@@ -33,5 +33,6 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - ⚠ **동적 바로가기에는 시스템이 `NEW_TASK|CLEAR_TASK`를 붙이지 않고, 매니페스트에서 뺀 정적 바로가기 id는 다시 쓸 수 없다**(고정된 사본이 등록을 막는다): 플래그는 직접 붙이고 id는 가른다. → PATTERNS
 - ⚠ **이미 입력 포커스를 쥔 노드에 다시 `requestFocus()`해도 커서는 따라오지 않는다**: 비우고 접근성 이벤트 묶음 간격을 기다린 뒤 준다(`MovedRowLanding`). → PATTERNS
 - ⚠ **안내 문자열 표는 없는 키에 실행 중 던진다**: 안내 시트가 다른 패키지 컴포저블(`DisclosureRow`)에 `guideStrings`를 넘기면 그 함수의 키를 표와 가드 ⑧ 공용 줄 목록에 더한다. → PATTERNS
+- ⚠ **누른 버튼이 사라지거나 대화상자가 닫힌 뒤의 착지는 비우고 간격을 둔 뒤 준다**: 누르는 순간 준 포커스는 한소네 커서를 옮기지 못하고(계측은 초록), 대화상자는 창이 돌아오고 1초 뒤에 앉힌다. → PATTERNS
 - ⚠ **`MutableStateFlow`는 `equals`가 같은 값을 버린다**: 동일성으로 가르는 표식은 data class 아닌 감싸개로 싣는다. → PATTERNS
 - ⚠ **누른 버튼이 사라지는 전이에서는 TalkBack이 커서를 옮기고 그 이동이 접근성 초점 이벤트 두 번으로 오기도 한다**: 착지 대기는 그 묶음을 사용자 이동으로 세지 않는다(`TransitSheetLanding` `expectsSystemPlacement`). → PATTERNS
