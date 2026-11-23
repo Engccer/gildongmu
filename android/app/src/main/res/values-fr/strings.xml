@@ -365,6 +365,7 @@
     <string name="android_settings_carListener">Qui écoute le guidage en voiture (expérimental)</string>
     <string name="android_settings_carListenerDriver">Conducteur (haut-parleur, ordres brefs)</string>
     <string name="android_settings_carListenerPassenger">Passager (écouteurs, lecteur d’écran)</string>
+    <string name="android_settings_chatModel">Modèle de réponse du chat</string>
     <string name="android_settings_dictationHold">Enregistrer en maintenant appuyé</string>
     <string name="android_settings_dictationStyle">Mode de dictée</string>
     <string name="android_settings_dictationTap">Toucher pour démarrer et arrêter</string>

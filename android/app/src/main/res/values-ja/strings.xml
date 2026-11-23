@@ -365,6 +365,7 @@
     <string name="android_settings_carListener">車の案内を聞く人（実験）</string>
     <string name="android_settings_carListenerDriver">運転者（スピーカー、短い指示）</string>
     <string name="android_settings_carListenerPassenger">同乗者（イヤホン、画面読み上げ）</string>
+    <string name="android_settings_chatModel">チャットの回答モデル</string>
     <string name="android_settings_dictationHold">押している間録音</string>
     <string name="android_settings_dictationStyle">音声入力の方式</string>
     <string name="android_settings_dictationTap">タップで開始・停止</string>

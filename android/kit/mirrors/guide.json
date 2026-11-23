@@ -337,6 +337,11 @@
       "note": "E82 S6 말로 묻기(spec 2026-11-14-e82-vergilius-v1-design.md §3.3·§4 V14~V24): 서버 계약 미러(요청·NDJSON 이벤트), 답변 모델 선택지 순서, 재료 조립, 문장 나누기, 읽기 진행. E82는 iOS 실험판 전용이라 이식하지 않는다"
     },
     {
+      "swift": "ChatAnswerModel.swift",
+      "status": "pending",
+      "note": "E89 채팅 답변 모델 선택(spec 2026-11-23-e89-chat-model-choice-design.md §4): 설정 저장 키, 선택지 순서, 요청 값. E89는 iOS 실험판 전용이라 이식하지 않는다"
+    },
+    {
       "swift": "Journey.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Journey.kt",

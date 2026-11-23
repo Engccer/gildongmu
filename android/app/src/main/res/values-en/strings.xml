@@ -365,6 +365,7 @@
     <string name="android_settings_carListener">Car guidance listener (experimental)</string>
     <string name="android_settings_carListenerDriver">Driver (speaker, short commands)</string>
     <string name="android_settings_carListenerPassenger">Passenger (earphones, screen reader)</string>
+    <string name="android_settings_chatModel">Chat answer model</string>
     <string name="android_settings_dictationHold">Record while holding</string>
     <string name="android_settings_dictationStyle">Dictation style</string>
     <string name="android_settings_dictationTap">Tap to start and stop</string>

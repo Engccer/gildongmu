@@ -365,6 +365,7 @@
     <string name="android_settings_carListener">Quién escucha la guía en coche (experimental)</string>
     <string name="android_settings_carListenerDriver">Conductor (altavoz, órdenes breves)</string>
     <string name="android_settings_carListenerPassenger">Acompañante (auriculares, lector de pantalla)</string>
+    <string name="android_settings_chatModel">Modelo de respuesta del chat</string>
     <string name="android_settings_dictationHold">Grabar mientras se mantiene pulsado</string>
     <string name="android_settings_dictationStyle">Modo de dictado</string>
     <string name="android_settings_dictationTap">Tocar para iniciar y detener</string>

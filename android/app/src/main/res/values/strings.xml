@@ -450,6 +450,7 @@
     <string name="android_settings_carListener">자동차 안내를 듣는 사람 (실험)</string>
     <string name="android_settings_carListenerDriver">운전자 (스피커, 짧은 명령)</string>
     <string name="android_settings_carListenerPassenger">동승자 (이어폰, 화면 낭독)</string>
+    <string name="android_settings_chatModel">채팅 답변 모델</string>
     <string name="android_settings_dictationHold">누르고 있는 동안 녹음</string>
     <string name="android_settings_dictationStyle">받아쓰기 방식</string>
     <string name="android_settings_dictationTap">탭해서 녹음 시작 또는 중지</string>
