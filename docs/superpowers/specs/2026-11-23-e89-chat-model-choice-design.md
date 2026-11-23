@@ -27,7 +27,7 @@
 | C11 | 고를 수 있는 모델 목록 끝점 `GET /api/chat/models` → `{"models":[...]}`(키 있는 다섯 가운데, 고정 순서, `connection()` + `no-store`). Gemini는 목록에 없다(언제나 처음 값) | 베르길리우스 `/api/vergilius/providers`와 같은 게이트 패턴. 빌드 때 굽히지 않게 `connection()` |
 | C12 | 로그: 다른 회사 경로의 오류는 종류와 상태 코드만(`[chat] <회사> 오류: <종류> <상태>`). 질문 글·답 글·도구 결과는 쓰지 않는다 | 베르길리우스 V34. Gemini 경로의 기존 로그는 손대지 않는다(C5) |
 | C13 | 추천 질문(`/api/chat/suggestions`)은 범위 밖, Gemini 그대로 | 착수 지시 |
-| C14 | 대화 이력 변환: 클라이언트 `messages`(user/assistant 글)를 그대로 옮긴다. 빈 글은 뺀다(Claude는 빈 글을 400으로 받는다). Claude는 첫 메시지가 user여야 하므로 앞머리의 assistant 글만 뺀다 | 현재 웹·iOS는 user로 시작한다(방어선) |
+| C14 | 대화 이력 변환: 클라이언트 `messages`의 역할은 `assistant`가 아니면 `user`로 접고(Gemini 경로와 같다), 오래된 턴부터 덜어 글자 합 24,000자 안에 둔다(마지막 턴은 잘라서라도 남긴다, `boundChatHistory`. 하루 상한은 건수만 세므로 건당 입력을 묶는다, 리뷰 반영 2026-11-23). 빈 글은 뺀다(Claude는 빈 글을 400으로 받는다). Claude는 첫 메시지가 user여야 하므로 앞머리의 assistant 글만 뺀다 | 현재 웹·iOS는 user로 시작한다(방어선) |
 
 ## 3. 정식판 봉인
 

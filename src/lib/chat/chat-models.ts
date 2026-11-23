@@ -98,6 +98,34 @@ export function createChatModelSession(input: ChatModelSessionInput): ChatModelS
 // 비용 방어(spec C10): 기존 채팅 IP 상한(60초 10회) 뒤에, 다른 회사 경로에만 인스턴스 하루 상한을 더한다.
 // 최악 Opus 질문당 약 2.3센트 × 150 = 인스턴스당 하루 약 3.5달러. ⚠ `rate-limit.ts` 머리 주석의 한계 그대로 인스턴스별이다.
 export const CHAT_MODEL_DAILY_CAP = 150;
+
+/** 다른 회사로 보내는 이력의 글자 합 상한. 하루 상한은 건수만 세므로 건당 입력을 여기서 묶는다(리뷰 2026-11-23). */
+export const CHAT_MODEL_HISTORY_MAX_CHARS = 24_000;
+
+/**
+ * 클라이언트 이력을 다른 회사로 보낼 모양으로 고른다. 역할은 Gemini 경로처럼 `assistant`가 아니면 `user`로 접고
+ * (`system`·`developer`로 운영자 지침을 끼우지 못하게), 오래된 턴부터 덜어 글자 합을 상한 안에 둔다. 마지막 턴은 항상 남기고 넘치면 자른다.
+ */
+export function boundChatHistory(raw: readonly { role?: unknown; text?: unknown }[], maxChars = CHAT_MODEL_HISTORY_MAX_CHARS): ChatHistoryTurn[] {
+  const turns: ChatHistoryTurn[] = raw.map((m) => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    text: typeof m.text === "string" ? m.text : "",
+  }));
+  const out: ChatHistoryTurn[] = [];
+  let used = 0;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = turns[i];
+    if (out.length === 0) {
+      out.unshift({ ...t, text: t.text.slice(0, maxChars) });
+      used = out[0].text.length;
+      continue;
+    }
+    if (used + t.text.length > maxChars) break;
+    out.unshift(t);
+    used += t.text.length;
+  }
+  return out;
+}
 const KST_OFFSET_MS = 9 * 3_600_000;
 
 /** 하루 상한(KST 자정 리셋, 다섯 모델 합산). 테스트가 새 인스턴스를 만든다. */

@@ -10,6 +10,7 @@ import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { ChatCapability, ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
 import {
   availableChatModels,
+  boundChatHistory,
   CHAT_MODEL_REQUEST_TIMEOUT_MS,
   createChatModelSession,
   parseChatModel,
@@ -185,7 +186,7 @@ function otherModelResponse(
     id,
     systemInstruction: input.systemInstruction,
     declarations: input.declarations,
-    history: input.messages,
+    history: boundChatHistory(input.messages),
     signal: AbortSignal.any([request.signal, AbortSignal.timeout(CHAT_MODEL_REQUEST_TIMEOUT_MS)]),
   });
   if (!session) return jsonError("chat_model_unavailable", 502);

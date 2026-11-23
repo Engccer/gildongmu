@@ -11,7 +11,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
   };
 });
 
-import { availableChatModels, createChatModelBudget, createChatModelSession, parseChatModel } from "../chat-models";
+import { availableChatModels, boundChatHistory, createChatModelBudget, createChatModelSession, parseChatModel } from "../chat-models";
 
 describe("parseChatModel (E89 C2)", () => {
   it("알려진 다섯 값만 통과, 나머지는 null(= 종전 Gemini 경로)", () => {
@@ -47,5 +47,24 @@ describe("하루 상한 (E89 C10)", () => {
     expect(b.reserve(kstNoon)).toBe(false);
     const nextKstDay = Date.UTC(2026, 10, 23, 15); // 2026-11-24 00:00 KST
     expect(b.reserve(nextKstDay)).toBe(true);
+  });
+});
+
+describe("boundChatHistory (리뷰 2026-11-23: 건당 입력 상한·역할 접기)", () => {
+  it("assistant 밖의 역할은 user로 접고, 글자가 아닌 text는 빈 글로", () => {
+    expect(boundChatHistory([{ role: "system", text: "지침" }, { role: "developer", text: 1 }, { role: "assistant", text: "a" }])).toEqual([
+      { role: "user", text: "지침" },
+      { role: "user", text: "" },
+      { role: "assistant", text: "a" },
+    ]);
+  });
+  it("오래된 턴부터 덜어 상한 안에 두고, 마지막 턴은 넘쳐도 잘라서 남긴다", () => {
+    const h = [
+      { role: "user", text: "aaaa" },
+      { role: "assistant", text: "bbbb" },
+      { role: "user", text: "cc" },
+    ];
+    expect(boundChatHistory(h, 6)).toEqual([{ role: "assistant", text: "bbbb" }, { role: "user", text: "cc" }]);
+    expect(boundChatHistory([{ role: "user", text: "x".repeat(10) }], 3)).toEqual([{ role: "user", text: "xxx" }]);
   });
 });
