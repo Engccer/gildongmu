@@ -166,7 +166,7 @@ OpenAI 앱·평가·사용량 리포트의 키 입력은 길동무 전용 `GILDO
 
 ⚠ **prod 키 검증은 `vercel env pull` 길이가 아니라 실호출로** — pull은 Encrypted 값을 복호화하지 않아 정상 키도 빈값으로 내려온다([[vercel-prod-env-pull-redacts-encrypted]]).
 
-비용·쿼터·키 만료 상태는 `node scripts/usage-report.mjs`가 정본이다(로컬 전용, 20프로브 = 돈 7 · 가용성 13 — ODsay 가용성 프로브는 경로 검색 실호출이라 Flex 전환 뒤로는 실행마다 1건 과금, Gemini 프로브는 운영 모델 생성 호출이라 실행마다 몇 토큰, 정본은 `scripts/lib/usage-probes.mjs`의 두 배열 길이).
+비용·쿼터·키 만료 상태는 `node scripts/usage-report.mjs`가 정본이다(로컬 전용, 20프로브 = 돈 7 · 가용성 13 — ODsay 가용성 프로브는 경로 검색 실호출이라 Flex 전환 뒤로는 실행마다 1건 과금, Gemini 프로브는 운영 모델 생성 호출이라 실행마다 몇 토큰, 정본은 `scripts/lib/usage-probes.mjs`의 두 배열 길이). Gemini 결제는 선불 크레딧이고 자동 충전이 켜져 있다(잔액 8,000원 미만이면 32,000원, 월 한도 64,000원, 결제 계정을 dodo-planet·converters의 공용 프로젝트와 함께 쓴다).
 
 ---
 
