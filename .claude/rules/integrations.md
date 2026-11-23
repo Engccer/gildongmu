@@ -87,6 +87,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | 한눈에 보기 | `nearby-overview.ts` / `/api/nearby/overview` | 주변 6종을 반경 1km로 집계, 키 게이트는 불릿 단위, 조각 실패는 불릿 `failed`로 200(3-state), 옵트인 `places=1`(E65) |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 + `/api/search/web`(검색창 웹섹션, 1시간 캐시) | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
 | 베르길리우스 말로 묻기(E82, iOS 실험판) | `vergilius/*` → OpenAI Responses API·Gemini·Anthropic Messages API / `/api/vergilius/ask`(NDJSON)·`/api/vergilius/providers` | 모델에게 주는 글에 좌표를 넣지 않는다(`materials.ts`). 제안은 요청에 있던 가게 id만 통과, 렌더는 `route-start`만, 도구는 채팅 실행부의 여섯 개를 왕복 2회·회차당 3건까지(도착지가 목록의 가게 이름이면 실행하지 않는다), 도구 결과의 좌표는 떼고 준다. 요청 전체 25초. 회사는 키 있는 쪽이 선택지로 선다(OpenAI 둘 `gpt-6.1-terra`·`gpt-6-luna`, Google `gemini-3.8-flash` 생각 낮음(「최소」는 400). E86 판정 2026-11-14로 Google도 연다, Claude는 모델 단위 셋 `claude-opus`·`claude-sonnet`·`claude-haiku`). Claude는 `stop_reason`이 `end_turn`·`tool_use`가 아니면 실패(거절을 다른 모델로 돌리는 서버 `fallbacks` 금지), 도구 부른 회차의 응답 내용은 생각 블록째 그대로 이력에. IP 60초 10회·인스턴스 일 300. 질문 글·재료는 로그 금지. → spec `2026-11-14-e82-vergilius-v1-design.md` §4 |
+| 채팅 답변 모델(E89, iOS 실험판) | `chat/chat-models.ts`·`openai-chat.ts`·`claude-chat.ts` → OpenAI Responses·Anthropic Messages / `/api/chat`(`chatModel`)·`/api/chat/models` | 다섯 값(`openai`·`openai-luna`·`claude-opus`·`claude-sonnet`·`claude-haiku`)만, 모르는 값은 Gemini 경로. 키 없음 502 `chat_model_unavailable`, 인스턴스 일 150건 503, 실패는 `chat_failed`(폴백·서버 `fallbacks` 금지), 로그는 종류·상태만. 요청 전체 100초·회차 45초. → spec `2026-11-23-e89-chat-model-choice-design.md` |
 
 ## API 키 현황
 
@@ -105,8 +106,8 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD)는 **폴백**이다. 정본은 기기 음성이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다. → INTEGRATIONS |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`). `gildongmu-prod` API 제한 키, ⚠ dodo와 공유하지 않는다. 키 교체 시 3곳 동조. → INTEGRATIONS |
 | `GOOGLE_PLACES_API_KEY` | `hasGooglePlacesKey` | 장소 상세 영업시간(E24). 무료분을 GCP 일일 쿼터로 상한(초과는 429라 과금 0). → INTEGRATIONS |
-| `GILDONGMU_OPENAI_API_KEY` | `hasOpenAiKey` | 길동무 전용 OpenAI 프로젝트 키(앱·eval·usage-report). 공용 `OPENAI_API_KEY`로 폴백하지 않는다. 없으면 `/api/vergilius/providers`에서 빠진다. → INTEGRATIONS |
-| `ANTHROPIC_API_KEY` | `hasAnthropicKey` | 베르길리우스 말로 묻기의 Claude 셋(Opus 5.5·Sonnet 5.5·Haiku 5.5, 모델은 코드 상수 `CLAUDE_VERGILIUS_MODELS`). 유료, 지출 상한은 Anthropic 콘솔. 없으면 셋 다 `/api/vergilius/providers`에서 빠진다 |
+| `GILDONGMU_OPENAI_API_KEY` | `hasOpenAiKey` | 길동무 전용 OpenAI 프로젝트 키(앱·eval·usage-report). 공용 `OPENAI_API_KEY`로 폴백하지 않는다. 없으면 `/api/vergilius/providers`·`/api/chat/models`에서 빠진다. → INTEGRATIONS |
+| `ANTHROPIC_API_KEY` | `hasAnthropicKey` | 베르길리우스 말로 묻기의 Claude 셋(Opus 5.5·Sonnet 5.5·Haiku 5.5, 모델은 코드 상수 `CLAUDE_VERGILIUS_MODELS`). 유료, 지출 상한은 Anthropic 콘솔. 실험판 채팅 답변 모델(E89, `CLAUDE_CHAT_SETTINGS`)도 같은 키. 없으면 셋 다 `/api/vergilius/providers`·`/api/chat/models`에서 빠진다 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인. → INTEGRATIONS |
 | `TMAP_APP_KEY` | `hasTmapKey`(도보 노출 게이트는 `hasWalkRouteKeyFor(lang)`: ko=`hasWalkRouteKey`, 비-ko=`hasTmapKey` / 자동차 노출 게이트는 `hasCarRouteKey`) | 보행자 ko 폴백·비-ko 단독 + 자동차 ko 기본. 일 1,000건 무료를 둘이 공유(길동무 단독), IPS "Any IP allowed" 유지(IP 제한 금지). → INTEGRATIONS |
