@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -55,6 +58,8 @@ import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.WIDE_CONTROLS_WEIGHT
+import space.dodoplanet.gildongmu.a11y.rememberWideLowWindow
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
@@ -295,16 +300,17 @@ private fun ChatConversation(
         land(if (key == LOCATION_BAR_KEY) barFocus else targets.existingRow(key), "return")
     }
 
-    // Android 15+ edge-to-edge: adjustResize는 창을 줄이지 않고 IME 인셋만 준다 — 입력 바가 키보드 뒤로 숨지 않게 이 컨테이너를 IME 위로 맞춘다.
-    Column(modifier.fillMaxSize().fitInside(WindowInsetsRulers.Ime.current).semantics { testTagsAsResourceId = true }) {
+    // 묶음 넷(위치 표시줄·대화·통지 줄·입력)을 세로 창에서는 위에서 아래로, 넓고 낮은 창에서는 대화 칸과 입력 칸 둘로 놓는다(E91·B30).
+    // 훑는 순서는 어느 쪽이든 위치 표시줄 → 대화 → 통지 → 입력이다.
+    val locationBar: @Composable () -> Unit = {
         if (showsLocationBar) {
             // 대화의 조회 기준 좌표(iOS `LocationBarView`) — 스크롤 밖 첫 줄
             Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore, AppConfig.manualLocationStore, onPickLocation, barFocus) }
         }
+    }
+    val conversation: @Composable (Modifier) -> Unit = { fill ->
         Column(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
+            fill
                 .verticalScroll(scroll)
                 .padding(horizontal = 16.dp),
         ) {
@@ -332,6 +338,8 @@ private fun ChatConversation(
                 onListen = { message -> tts.toggle(message.id, message.text) { vm.announce(listenFailedText, HapticKind.failure) } },
             )
         }
+    }
+    val statusRow: @Composable () -> Unit = {
         // 통지 줄은 스크롤 밖 — 목록을 올려 읽는 중에도 라이브 리전이 화면 안에 있다(읽기 순서는 목록 끝 → 통지 → 입력 그대로).
         Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (s.isStreaming) {
@@ -340,6 +348,8 @@ private fun ChatConversation(
             }
             StatusLine(if (dictationActive) heldNotice else s.notice, Modifier.padding(vertical = 4.dp))
         }
+    }
+    val input: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             TextField(
                 state = vm.draft,
@@ -378,6 +388,29 @@ private fun ChatConversation(
                         .semantics { if (s.isStreaming) stateDescription = sendingLabel },
                 ) { Text(stringResource(R.string.chat_send)) }
             }
+        }
+    }
+    // Android 15+ edge-to-edge: adjustResize는 창을 줄이지 않고 IME 인셋만 준다 — 입력 바가 키보드 뒤로 숨지 않게 이 컨테이너를 IME 위로 맞춘다.
+    val container = modifier.fillMaxSize().fitInside(WindowInsetsRulers.Ime.current).semantics { testTagsAsResourceId = true }
+    if (rememberWideLowWindow()) {
+        Row(container) {
+            // 칸마다 훑기 묶음으로 둔다: Compose는 기본으로 화면 좌표 순서(위에서 아래, 같은 높이면 왼쪽부터)로 훑어 두 칸의 줄이 섞인다.
+            Column(Modifier.weight(1f - WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }) {
+                locationBar()
+                conversation(Modifier.weight(1f).fillMaxWidth())
+            }
+            VerticalDivider()
+            Column(Modifier.weight(WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }) {
+                statusRow()
+                input()
+            }
+        }
+    } else {
+        Column(container) {
+            locationBar()
+            conversation(Modifier.weight(1f).fillMaxWidth())
+            statusRow()
+            input()
         }
     }
 }

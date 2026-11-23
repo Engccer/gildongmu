@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.search
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
@@ -36,6 +39,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -62,6 +66,8 @@ import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
 import space.dodoplanet.gildongmu.settings.SettingsAction
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.WIDE_CONTROLS_WEIGHT
+import space.dodoplanet.gildongmu.a11y.rememberWideLowWindow
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.RecentQuery
@@ -130,6 +136,8 @@ fun SearchScreen(
     val movedRecent = rememberMovedRowLanding { recentFocus[it] }
     val searchingLabel = stringResource(R.string.android_search_searching)
     val scroll = rememberScrollState()
+    val controlsScroll = rememberScrollState()
+    val wide = rememberWideLowWindow()
 
     // 결과 도착 시 첫 결과 행 착지(한 프레임 뒤, 소비한 세대만 한 번). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
     // 행을 먼저 화면 안으로 스크롤하고(끝날 때까지 기다림) 포커스를 준다: 위에 받아쓰기·위치 표시줄이 서면서 작은 화면(한소네 576dp)에서는
@@ -162,17 +170,9 @@ fun SearchScreen(
     }
 
     AppScreenScaffold(stringResource(R.string.app_title), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }) {
-            // 상태 줄은 스크롤 밖, 상단 바 바로 아래에 고정한다(A82): 한소네는 화면 밖으로 나간 실시간 알림 영역을 읽지 않는다. 결과가 많아 정렬
-            // 버튼·분류 칩이 서면 첫 결과 착지 스크롤(547px, 576dp 화면)이 결과 수 통지를 낸 상태 줄을 화면 위로 밀어 통지가 통째로 빠졌다.
-            StatusLine(s.notice, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scroll)
-                    .padding(horizontal = 16.dp),
-            ) {
+        // 입력·컨트롤 묶음과 목록 묶음(E91·B30): 세로 창에서는 한 스크롤에 차례로, 넓고 낮은 창에서는 두 칸으로 놓는다.
+        // 정렬 버튼은 결과가 있을 때만, 최근 검색은 결과 전에만 서서 둘이 함께 서지 않는다(세로 순서는 종전과 같다).
+        val controls: @Composable () -> Unit = {
                 TextField(
                     state = vm.queryState,
                     lineLimits = TextFieldLineLimits.SingleLine,
@@ -217,6 +217,15 @@ fun SearchScreen(
                 // 위치 표시줄(B27 ③, iOS `SearchView`의 `LocationBarView` 섹션): 검색의 거리 정렬 기준(유효 위치)을 밝히고 누르면 위치 지정.
                 if (location != null) LocationBarRow(location.first, location.second, onPickLocation, barFocus)
 
+                // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
+                if (s.canSortByReview && s.outcome != null) {
+                    Button(onClick = vm::toggleSort, modifier = Modifier.tapTarget().testTag("sort")) {
+                        Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+                    }
+                }
+
+        }
+        val list: @Composable () -> Unit = {
                 if (s.outcome == null && !s.isSearching && s.recentQueries.isNotEmpty()) {
                     RecentSection(
                         queries = s.recentQueries,
@@ -234,13 +243,6 @@ fun SearchScreen(
                     )
                 }
 
-                // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
-                if (s.canSortByReview && s.outcome != null) {
-                    Button(onClick = vm::toggleSort, modifier = Modifier.tapTarget().testTag("sort")) {
-                        Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
-                    }
-                }
-
                 s.outcome?.let { outcome ->
                     // 장소 줄 「물어보기」(B21): 돌아오면 그 줄로 착지한다(상세 열기와 같은 복귀 키).
                     val rowNav = LocalPlaceRowNav.current
@@ -250,7 +252,35 @@ fun SearchScreen(
                         onOpenPlace(place)
                     }
                 }
+        }
+        if (wide) {
+            // 넓고 낮은 창(한소네·가로로 눕힌 폰): 왼쪽 칸에 입력과 결과 수 줄, 오른쪽 칸에 목록. 훑는 순서는 검색창 → 검색 버튼 →
+            // 받아쓰기 → 결과 수 → 결과(E91). 결과 수 줄은 왼쪽 칸 맨 아래 스크롤 밖이라 첫 결과 착지 스크롤에 밀리지 않는다(A82).
+            Row(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }) {
+                // 칸마다 훑기 묶음으로 둔다: Compose는 기본으로 화면 좌표 순서(위에서 아래, 같은 높이면 왼쪽부터)로 훑어 두 칸의 줄이 섞인다.
+                Column(Modifier.weight(WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }) {
+                    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(controlsScroll).padding(horizontal = 16.dp)) { controls() }
+                    StatusLine(s.notice, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
+                VerticalDivider()
+                Column(Modifier.weight(1f - WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }.verticalScroll(scroll).padding(horizontal = 16.dp)) { list() }
             }
+        } else {
+            Column(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }) {
+            // 상태 줄은 스크롤 밖, 상단 바 바로 아래에 고정한다(A82): 한소네는 화면 밖으로 나간 실시간 알림 영역을 읽지 않는다. 결과가 많아 정렬
+            // 버튼·분류 칩이 서면 첫 결과 착지 스크롤(547px, 576dp 화면)이 결과 수 통지를 낸 상태 줄을 화면 위로 밀어 통지가 통째로 빠졌다.
+            StatusLine(s.notice, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scroll)
+                    .padding(horizontal = 16.dp),
+            ) {
+                controls()
+                list()
+            }
+        }
         }
     }
 }

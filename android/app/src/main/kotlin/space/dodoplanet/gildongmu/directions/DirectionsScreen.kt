@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.Saver
@@ -40,6 +43,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -53,6 +57,8 @@ import space.dodoplanet.gildongmu.a11y.rememberMovedRowLanding
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import space.dodoplanet.gildongmu.a11y.reorderLabels
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.WIDE_CONTROLS_WEIGHT
+import space.dodoplanet.gildongmu.a11y.rememberWideLowWindow
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
@@ -344,17 +350,11 @@ private fun DirectionsForm(
         )
     }
     AppScreenScaffold(strings.get("android.tab.directions"), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .semantics { testTagsAsResourceId = true },
-        ) {
             val searchingLabel = strings.get("android.directions.searching")
             // 진행 표시는 조회 자신이 도는 동안만.
             val querying = s.phase == DirectionsPhase.Locating || s.phase == DirectionsPhase.Loading
+            // 입력 묶음과 결과 묶음(E91·B30): 세로 창에서는 한 스크롤에 차례로, 넓고 낮은 창에서는 두 칸으로 놓는다(훑는 순서는 같다).
+            val controls: @Composable () -> Unit = {
             // 입력 줄 — 순서와 조건은 `directionsInputRows`가 정본이고 여기는 그 목록을 그대로 그린다(iOS 같은 순서, 줄마다 한 접근성 객체).
             // 줄마다 key — 줄 수가 바뀌어도 남는 줄(조회 버튼·남은 칸)의 노드를 보존해, 사라지는 버튼이 먼저 옮겨 둔 커서가 살아남는다.
             for (row in directionsInputRows(s, journeyEnabled)) key(row) { when (row) {
@@ -458,6 +458,8 @@ private fun DirectionsForm(
                 }
             }
 
+            }
+            val list: @Composable () -> Unit = {
             // 최근 경로: 결과 없는 화면에서만(실패 phase에서는 보인다 — 우회로). 여정 결과가 있으면 숨긴다(iOS `!journeyFound`).
             if (s.results == null && !s.journeyFound && !s.isBusy && s.recentRoutes.isNotEmpty()) {
                 SectionHeading(strings.get("recentRoutes.title"))
@@ -571,6 +573,26 @@ private fun DirectionsForm(
                     }
                 }
             }
+            }
+        if (rememberWideLowWindow()) {
+            Row(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }) {
+                // 칸마다 훑기 묶음으로 둔다: Compose는 기본으로 화면 좌표 순서(위에서 아래, 같은 높이면 왼쪽부터)로 훑어 두 칸의 줄이 섞인다.
+                Column(Modifier.weight(WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { controls() }
+                VerticalDivider()
+                Column(Modifier.weight(1f - WIDE_CONTROLS_WEIGHT).fillMaxHeight().semantics { isTraversalGroup = true }.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { list() }
+            }
+        } else {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .semantics { testTagsAsResourceId = true },
+        ) {
+            controls()
+            list()
+        }
         }
     }
     }

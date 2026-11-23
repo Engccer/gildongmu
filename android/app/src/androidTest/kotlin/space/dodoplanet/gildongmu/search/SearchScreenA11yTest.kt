@@ -18,9 +18,12 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import space.dodoplanet.gildongmu.a11y.isWideLowWindow
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
@@ -92,5 +95,35 @@ class SearchScreenA11yTest {
             .assertTextEquals(searchStrings { rule.activity.resources }.count(30))
             .assert(!hasAnyAncestor(hasScrollAction()))
             .assertIsDisplayed()
+    }
+
+    /**
+     * E91·B30: 넓고 낮은 창(한소네 7·가로로 눕힌 폰)에서는 왼쪽 칸에 입력과 결과 수 줄, 오른쪽 칸에 결과가 선다. 결과 수 줄은 조회 버튼
+     * 아래·첫 결과 왼쪽이고 스크롤 밖이다. 세로 창에서는 건너뛴다(그 배치는 위 테스트가 잠근다).
+     */
+    @Test
+    fun wideLowWindowPutsInputsLeftAndResultsRight() {
+        val dm = rule.activity.resources.displayMetrics
+        assumeTrue(isWideLowWindow(dm.widthPixels / dm.density, dm.heightPixels / dm.density))
+        val vm = SearchViewModel(
+            SearchService(stubbedClient { url -> if (pathOf(url) == "/api/places") HttpResponse(200, places) else HttpResponse(200, emptyAddr) }),
+            RecentSearchStore(InMemoryKeyValueStore()),
+            { "ko" },
+            searchStrings { rule.activity.resources },
+            SavedStateHandle(),
+        )
+        rule.setContent { MaterialTheme { SearchScreen(vm) } }
+
+        rule.onNodeWithTag("query").performTextInput("강동")
+        rule.onNodeWithTag("submit").performClick()
+        rule.waitUntil(5_000) { vm.state.value.resultsRevision == 1 }
+        rule.waitForIdle()
+
+        val bounds = { tag: String -> rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot }
+        val status = bounds("status")
+        assertTrue("결과 수 줄은 조회 버튼 아래", status.top >= bounds("submit").bottom)
+        assertTrue("결과는 결과 수 줄 오른쪽 칸", bounds("place-k1").left >= status.right)
+        rule.onNodeWithTag("status").assert(!hasAnyAncestor(hasScrollAction())).assertIsDisplayed()
+        rule.onNodeWithTag("place-k1").assertIsFocused()
     }
 }
