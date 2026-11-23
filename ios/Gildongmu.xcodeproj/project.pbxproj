@@ -201,7 +201,7 @@
 				INFOPLIST_KEY_NSMotionUsageDescription = "도보 안내로 도착했을 때 걸은 걸음 수를 보여 주기 위해 동작 및 피트니스 데이터를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "받아쓰기를 위해 음성 인식을 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -231,7 +231,7 @@
 				INFOPLIST_KEY_NSMotionUsageDescription = "도보 안내로 도착했을 때 걸은 걸음 수를 보여 주기 위해 동작 및 피트니스 데이터를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "받아쓰기를 위해 음성 인식을 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -274,7 +274,7 @@
 				INFOPLIST_KEY_NSMotionUsageDescription = "도보 안내로 도착했을 때 걸은 걸음 수를 보여 주기 위해 동작 및 피트니스 데이터를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "받아쓰기를 위해 음성 인식을 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

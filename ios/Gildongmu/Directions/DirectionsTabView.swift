@@ -1247,7 +1247,8 @@ struct DirectionsTabView: View {
         NavigationStack(path: $stationPath) {
             // 고정 경로 이동 뒤 커서 재착지의 가시화(E67 — 채택한 순서에서 행이 화면 밖으로 뛸 수 있다).
             ScrollViewReader { proxy in
-            List {
+            // 넓고 낮은 창(가로)에서는 앞 칸(출발·도착·조회)과 뒤 칸(최근 경로·결과)으로 나뉜다(E91).
+            TwoPaneList {
                 Section {
                     // 비-ko 현재 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만(LocationBar 동형).
                     // 옛 위치 문장의 "N분 전"이 멈추지 않게 1분마다 다시 그린다(stale-origin §3).
@@ -1370,6 +1371,7 @@ struct DirectionsTabView: View {
                         }
                     }
                 }
+            } trailing: {
                 // 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색
                 // 방해. 실패 phase에서는 보인다(다른 경로를 고르는 우회로). swipeActions 삭제가
                 // VoiceOver 로터로 자동 노출된다(endpoint 시트 동형).

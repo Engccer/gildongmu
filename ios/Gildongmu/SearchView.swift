@@ -30,7 +30,8 @@ struct SearchView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
-            List {
+            // 넓고 낮은 창(가로)에서는 앞 칸(받아쓰기·위치·정렬)과 뒤 칸(최근 검색·결과)으로 나뉜다(E91).
+            TwoPaneList {
                 // 마이크는 검색 필드 바로 다음 행(위원장 판정 2026-09-04: 시스템 검색창
                 // 옆에는 버튼을 붙일 자리가 없고, toolbar(내비 바)에 두면 VoiceOver가
                 // 제목보다 먼저 읽는다 — 실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
@@ -57,6 +58,18 @@ struct SearchView: View {
                     .accessibilityFocused($micRowFocused)
                 }
                 Section { LocationBarView() }
+                // 리뷰순 토글(spec 2026-08-17 §6): ko + 네이버 키(응답 provider 관측)일 때만.
+                // 라벨 전환이 곧 상태 신호. 섹션 밖에 두는 이유 — 리뷰순 0건이면 장소 섹션이
+                // 사라지는데 토글은 남아 있어야 되돌아갈 수 있다. 칩(클라 필터)과 다른 층이라
+                // 칩 행에 넣지 않는다. 최근 검색과는 동시에 서지 않으므로(결과 전·후) 앞 칸에 둔다.
+                if model.canSortByReview, model.outcome != nil {
+                    Button(appLocalized(model.sort == .review ? "search.sortByAccuracy" : "search.sortByReview")) {
+                        bucket = nil
+                        region = nil
+                        model.toggleSort()
+                    }
+                }
+            } trailing: {
                 // 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 행 활성화=재검색,
                 // swipeActions(고정 토글·삭제 — 고정이 앞, 위원장 지시 2026-08-12)가
                 // VoiceOver 로터 커스텀 액션으로 자동 노출된다. 고정 항목은 라벨 접미사
@@ -90,21 +103,22 @@ struct SearchView: View {
                         Button(appLocalized("recent.clearAll")) { clearRecent() }
                     }
                 }
-                // 리뷰순 토글(spec 2026-08-17 §6): ko + 네이버 키(응답 provider 관측)일 때만.
-                // 라벨 전환이 곧 상태 신호. 섹션 밖에 두는 이유 — 리뷰순 0건이면 장소 섹션이
-                // 사라지는데 토글은 남아 있어야 되돌아갈 수 있다. 칩(클라 필터)과 다른 층이라
-                // 칩 행에 넣지 않는다.
-                if model.canSortByReview, model.outcome != nil {
-                    Button(appLocalized(model.sort == .review ? "search.sortByAccuracy" : "search.sortByReview")) {
-                        bucket = nil
-                        region = nil
-                        model.toggleSort()
-                    }
-                }
                 if let outcome = model.outcome {
                     ForEach(Array(outcome.orderedSections.enumerated()), id: \.offset) { _, section in
                         sectionView(section)
                     }
+                }
+            } trailingOverlay: {
+                if model.isSearching {
+                    ProgressView(appLocalized("ios.search.searching"))
+                } else if model.failed {
+                    // 3-state: "조회 실패"는 "결과 없음"과 다른 화면·문장(뭉개기 금지)
+                    ContentUnavailableView(
+                        appLocalized("ios.search.failedTitle"),
+                        systemImage: "wifi.exclamationmark"
+                    )
+                } else if model.outcome != nil && model.totalCount == 0 {
+                    ContentUnavailableView.search
                 }
             }
             .navigationDestination(for: Place.self) { PlaceDetailView(place: $0) }
@@ -166,19 +180,6 @@ struct SearchView: View {
                 Button(appLocalized("ios.common.ok")) {}
             }
             .sheet(item: $chatPlace) { ChatView(place: $0) }
-            .overlay {
-                if model.isSearching {
-                    ProgressView(appLocalized("ios.search.searching"))
-                } else if model.failed {
-                    // 3-state: "조회 실패"는 "결과 없음"과 다른 화면·문장(뭉개기 금지)
-                    ContentUnavailableView(
-                        appLocalized("ios.search.failedTitle"),
-                        systemImage: "wifi.exclamationmark"
-                    )
-                } else if model.outcome != nil && model.totalCount == 0 {
-                    ContentUnavailableView.search
-                }
-            }
             }
         }
     }

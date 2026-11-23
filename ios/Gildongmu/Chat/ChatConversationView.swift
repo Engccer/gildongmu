@@ -66,8 +66,15 @@ struct ChatConversationView<EmptyContent: View>: View {
         self.emptyContent = emptyContent
     }
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
     var body: some View {
-        VStack(spacing: 0) {
+        // 넓고 낮은 창(가로)에서는 대화 칸과 입력 칸을 나란히 둔다(E91, spec 2026-11-23 §2.2).
+        // 훑는 순서는 세로와 같다(위치 표시줄 → 대화 → 입력). `AnyLayout`이라 회전해도 뷰 정체성이 유지된다.
+        let wide = verticalSizeClass == .compact
+        let layout = wide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+        layout {
+            VStack(spacing: 0) {
             if showsLocationBar {
                 LocationBarView().padding(.horizontal)
             }
@@ -149,8 +156,12 @@ struct ChatConversationView<EmptyContent: View>: View {
                     }
                 }
             }
+            }
+            .containerRelativeFrame(.horizontal) { width, _ in wide ? width * 0.6 : width }
             Divider()
+            // 가로에서는 위쪽에 붙인다(키보드가 올라와도 입력창이 가려지지 않게).
             inputBar
+                .frame(maxHeight: wide ? .infinity : nil, alignment: .top)
         }
         // 장소 상세: 표준 시트 + 닫기 버튼(장소 채팅 시트·안내 시트 "장소 상세 보기" 동형).
         // 닫히면 연 원점(카드·블록)으로 포커스 복원 — 대입은 지연·검증·1회 재시도(정본 절차).
