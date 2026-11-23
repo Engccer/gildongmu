@@ -49,7 +49,7 @@ export interface RunResult {
   promptTokens: number;
   outputTokens: number;
   thoughtTokens: number;
-  /** `promptTokens` 가운데 캐시에서 읽은 몫(Claude). 없으면 캐시 할인을 빼고 센다. */
+  /** `promptTokens` 가운데 캐시에서 읽은 몫(Claude·OpenAI·Gemini 암묵 캐시, Gemini는 2026-11-23부터 기록). 없으면 캐시 할인을 빼고 센다. */
   cacheReadTokens?: number;
   /** `promptTokens` 가운데 캐시에 쓴 몫(Claude, 5분 캐시 = 입력 단가의 1.25배). */
   cacheWriteTokens?: number;
@@ -93,11 +93,16 @@ const PROMO_END = "2026-12-31T23:59:59.999Z";
  * Haiku 5.5는 2026-11-15 같은 스킬 확인: 프롬프트 10만 토큰 이하 $0.10/$0.50(넘으면 $0.50/$2.50, 이 하네스의 세션은 그 아래), 캐시 읽기 0.1배.
  * OpenAI는 2026-11-15 공식 모델 문서 확인: gpt-6.1-terra $1/$5(캐시 읽기 $0.05), gpt-6-luna $0.10/$0.50(캐시 읽기 $0.01).
  * 캐시 쓰기는 기본 30분 보존에서 입력의 1.25배(prompt-caching 가이드).
+ * Gemini 암묵 캐시 읽기는 2026-11-23 공식 요금표 확인: 3.6-flash·3.8-flash 캐시 입력 $0.075(2027-01-01부터 $0.15), 곧 입력 단가의 0.1배.
+ * 쓰기 요금은 없다(암묵 캐시). 그래서 Gemini는 할인 기간과 무관하게 `cacheReadMultiplier`로 적는다.
  */
-const PRICE_TABLE: Record<string, { promo?: [number, number]; list: [number, number]; cacheRead?: number; cacheWriteMultiplier?: number }> = {
-  "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
+const PRICE_TABLE: Record<
+  string,
+  { promo?: [number, number]; list: [number, number]; cacheRead?: number; cacheReadMultiplier?: number; cacheWriteMultiplier?: number }
+> = {
+  "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5], cacheReadMultiplier: 0.1 },
   "gemini-3.7-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
-  "gemini-3.8-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
+  "gemini-3.8-flash": { promo: [0.75, 3.75], list: [1.5, 7.5], cacheReadMultiplier: 0.1 },
   "gemini-4-hydrogen": { list: [1.5, 7.5] },
   "claude-opus-5-5": { list: [4, 20], cacheRead: 0.2, cacheWriteMultiplier: 1.25 },
   "claude-sonnet-5-5": { list: [2, 10], cacheRead: 0.1, cacheWriteMultiplier: 1.25 },
@@ -142,7 +147,7 @@ export function pricesAt(measuredAt: string, modelSpec = FALLBACK_MODEL): Prices
   return {
     inPerToken: inUsd / 1e6,
     outPerToken: outUsd / 1e6,
-    cacheReadPerToken: (row.cacheRead ?? inUsd) / 1e6,
+    cacheReadPerToken: (row.cacheRead ?? inUsd * (row.cacheReadMultiplier ?? 1)) / 1e6,
     cacheWritePerToken: (inUsd * (row.cacheWriteMultiplier ?? 1)) / 1e6,
     label,
   };

@@ -3,7 +3,7 @@
  * ②safety pass^k ③regression/capability 분리 ④measuredAt 기준 단가 ⑤"총지연" 라벨+각주 ⑥unstubbed.
  */
 import { describe, expect, it } from "vitest";
-import { buildReport, caseVerdict, parseModelSpec, pricesAt, type ResultFile, type RunResult } from "../report";
+import { buildReport, caseVerdict, parseModelSpec, pricesAt, sessionCost, type ResultFile, type RunResult } from "../report";
 
 const A = "gemini-3.6-flash";
 const B = "gemini-3.7-flash";
@@ -76,6 +76,16 @@ describe("pricesAt — 단가는 날짜의 함수", () => {
   it("생각 수준 접미사는 단가를 바꾸지 않는다", () => {
     expect(pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen@low")).toEqual(pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen"));
     expect(pricesAt("2026-11-14T00:00:00Z", "gemini-3.6-flash@low").label).toContain("2026-12-31");
+  });
+  it("Gemini 암묵 캐시 읽기는 두 기간 모두 입력 단가의 0.1배이고 쓰기 요금은 없다(3.6-flash)", () => {
+    expect(pricesAt("2026-11-23T00:00:00Z", "gemini-3.6-flash").cacheReadPerToken).toBeCloseTo(0.075 / 1e6, 12);
+    expect(pricesAt("2027-01-01T00:00:00Z", "gemini-3.6-flash").cacheReadPerToken).toBeCloseTo(0.15 / 1e6, 12);
+    const run = { promptTokens: 10_000, cacheReadTokens: 8_000, cacheWriteTokens: 0, outputTokens: 100, thoughtTokens: 0 } as RunResult;
+    // 2,000 × 0.75 + 8,000 × 0.075 + 100 × 3.75 (per 1M)
+    expect(sessionCost(run, pricesAt("2026-11-23T00:00:00Z", "gemini-3.6-flash"))).toBeCloseTo((1500 + 600 + 375) / 1e6, 12);
+  });
+  it("캐시 단가가 없는 모델은 캐시 읽기도 입력 단가 그대로다(할인을 빼고 센 상한, 4-hydrogen)", () => {
+    expect(pricesAt("2026-11-14T00:00:00Z", "gemini-4-hydrogen").cacheReadPerToken).toBe(1.5 / 1e6);
   });
 });
 

@@ -66,6 +66,8 @@ interface RoundStat {
   promptTokens: number;
   outputTokens: number;
   thoughtTokens: number;
+  /** `promptTokens` 가운데 암묵 캐시에서 읽은 몫(`usageMetadata.cachedContentTokenCount`). Gemini는 캐시 쓰기 요금이 없다. */
+  cacheReadTokens: number;
   /** 기록만 한다(채점·실패 판정에 쓰지 않는다 — Claude 러너의 refusal·max_tokens 실패와의 비대칭을 리포트에서 읽기 위해). */
   finishReason: string | null;
   toolCalls: string[];
@@ -125,6 +127,7 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOut
           promptTokens: u.promptTokenCount ?? 0,
           outputTokens: u.candidatesTokenCount ?? 0,
           thoughtTokens: u.thoughtsTokenCount ?? 0,
+          cacheReadTokens: u.cachedContentTokenCount ?? 0,
           finishReason: res.candidates?.[0]?.finishReason ?? null,
           toolCalls: parts.filter((p) => p.functionCall).map((p) => p.functionCall.name),
           toolArgs: parts
@@ -189,6 +192,8 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
     promptTokens: rounds.reduce((s, r) => s + r.promptTokens, 0),
     outputTokens: rounds.reduce((s, r) => s + r.outputTokens, 0),
     thoughtTokens: rounds.reduce((s, r) => s + r.thoughtTokens, 0),
+    cacheReadTokens: rounds.reduce((s, r) => s + r.cacheReadTokens, 0),
+    cacheWriteTokens: 0,
   });
   try {
     const result = await runAgentLoop({
