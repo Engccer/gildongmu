@@ -64,7 +64,7 @@ function setMovedManualLocation() {
   setManualLocation({
     label: "길동 카페", lat: 37.5384, lng: 127.1432,
     origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-    setAt: 1,
+    setAt: Date.now() / 1000,
   });
   stubGeolocation({ lat: 37.6384, lng: 127.1432, accuracy: 10 }); // 약 11km — drop 확정
 }
@@ -85,6 +85,20 @@ describe("useManualLocationNotice", () => {
   it("등록 직후엔 통지가 비어 있다", () => {
     renderHarness();
     expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("시간 만료로 해제되면 이동이 아니라 시간을 말한다", async () => {
+    renderHarness();
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
+      setAt: Date.now() / 1000 - 12 * 3600 - 1,
+    });
+    await act(async () => {
+      await runManualLocationJudgment();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("12시간이 지나 지정한 위치를 해제했습니다");
+    });
   });
 
   it("자동 해제 판정이 나면 단일 live region에 문구가 나타난다", async () => {

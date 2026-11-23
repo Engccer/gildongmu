@@ -3,7 +3,11 @@ package space.dodoplanet.gildongmu.location
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import space.dodoplanet.gildongmu.kit.ManualVerdict
+import space.dodoplanet.gildongmu.kit.isManualLocationExpired
 import space.dodoplanet.gildongmu.kit.judgeManualLocation
+
+/** 자동 해제 사유 — 웹 `ManualClearReason` 미러. `drop`은 이동 감지, `expired`는 수명(12시간) 경과. */
+enum class ManualClearReason { drop, expired }
 
 /**
  * 수동 위치 이동 판정(iOS `ManualLocationJudge.run` · 웹 `runManualLocationJudgment` 미러, spec §13-2). 트리거 3종 — 앱 시작·전경 복귀
@@ -22,7 +26,7 @@ class ManualLocationJudge(
     private val location: LocationStore,
     private val now: () -> Double,
     private val notify: (String) -> Unit,
-    private val autoClearedText: () -> String,
+    private val autoClearedText: (ManualClearReason) -> String,
     private val minIntervalSeconds: Double = 30.0,
 ) {
     private val mutex = Mutex()
@@ -41,6 +45,12 @@ class ManualLocationJudge(
     private suspend fun judge() {
         run {
             val current = manual.current.value ?: return
+            // 수명 만료는 측위·origin·권한 가드보다 **앞**이다 — 판정할 수 없는 상태와 같은 자리에 머문 상태(keep)가 며칠 전 지정이 남는 자리다.
+            if (isManualLocationExpired(current, now())) {
+                manual.clear()
+                notify(autoClearedText(ManualClearReason.expired))
+                return
+            }
             // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
             if (current.origin == null) { manual.setVerdict(ManualVerdict.undecidable); return }
             // 권한이 없으면 팝업을 띄우지 않고 유지한다(증거 부재). 유지하되 그 사실을 라벨이 말한다.
@@ -52,7 +62,7 @@ class ManualLocationJudge(
             if (manual.current.value?.revision != captured) return
             if (verdict != ManualVerdict.drop) { manual.setVerdict(verdict); return }
             manual.clear()
-            notify(autoClearedText())
+            notify(autoClearedText(ManualClearReason.drop))
         }
     }
 }

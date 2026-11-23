@@ -836,6 +836,20 @@ class DirectionsViewModelTest {
         assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
     }
 
+    @Test fun `수동 위치가 켜진 출발지에서 현재 위치를 고르면 지정을 해제하고, 꺼져 있으면 해제를 부르지 않는다`() = runTest(dispatcher) {
+        val client = APIClient("https://example.test", allOk())
+        var manual: ManualLocation? = ManualLocation(1, "길동역", null, 37.5, 127.1, ManualFix(37.5, 127.1, 20.0, 1.0), 1.0)
+        var cleared = 0
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), StationService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { "ko" }, ko, SavedStateHandle(), PlacePhoneBook(InMemoryKeyValueStore()), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, manual = { manual }, clearManual = { cleared++; manual = null })
+        m.openPicker(DirectionsFieldTarget.from); assertTrue(m.endpointSearch.value!!.revertsManualLocation)
+        m.selectCurrent(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, cleared); assertNull(manual)
+        assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        m.openPicker(DirectionsFieldTarget.from); assertFalse(m.endpointSearch.value!!.revertsManualLocation)
+        m.selectCurrent(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, cleared)
+    }
+
     // ── E50 수단 재조회 ──────────────────────────────────────────────────────
 
     private val transitWithAxes = transitBody.replace("\"totalCandidates\":", "\"requeryAxes\":[\"busOnly\",\"subwayOnly\",\"scenic\"],\"totalCandidates\":")

@@ -62,7 +62,17 @@ object ManualLocationPolicy {
 
     /** 판정용 fix의 나이 상한(초). 위치 정책의 수용 나이 미러. */
     const val fixMaxAgeSeconds = 10.0
+
+    /**
+     * 수동 위치의 수명(초). 지정한 지 이만큼 지나면 이동 판정과 무관하게 해제한다 — 같은 자리에 머문 지정(`keep`)과 판정 불가(`undecidable`)가
+     * 며칠 전 지정을 남기는 자리다. 웹 `MANUAL_MAX_AGE_S` 미러. ⚠ 통지 문장 `manualLocation.autoClearedExpired`가 12시간을 숫자로 말한다.
+     */
+    const val maxAgeSeconds = 12.0 * 60 * 60
 }
+
+/** 지정한 지 수명을 넘겼는가. 시계 역행(지정 시각이 미래)은 만료가 아니다. 웹 `isManualLocationExpired` 미러. */
+fun isManualLocationExpired(manual: ManualLocation, nowSeconds: Double): Boolean =
+    nowSeconds - manual.setAt > ManualLocationPolicy.maxAgeSeconds
 
 fun isEligibleManualFix(fix: ManualFix, now: Double): Boolean {
     if (!(fix.accuracy.isFinite() && fix.accuracy > 0 && fix.accuracy <= ManualLocationPolicy.judgeCeilingMeters)) return false

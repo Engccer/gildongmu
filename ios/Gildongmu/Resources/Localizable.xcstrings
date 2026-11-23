@@ -40011,6 +40011,46 @@
         }
       }
     },
+    "manualLocation.autoClearedExpired": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12시간이 지나 지정한 위치를 해제했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12 hours passed. The set location was cleared."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasaron 12 horas. Se ha borrado la ubicación establecida."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12 heures se sont écoulées. La position définie a été effacée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sono passate 12 ore. La posizione impostata è stata cancellata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12時間が経過したため、指定した位置を解除しました"
+          }
+        }
+      }
+    },
     "manualLocation.gps": {
       "localizations": {
         "ko": {

@@ -109,7 +109,9 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "ios.nearby.whereAmIChat":
     "채팅 진입 버튼. 열리는 대화의 앵커는 조회된 좌표(수동 반영)이고 호칭은 산문과 같은 층이다(위 §4.7).",
   "directions.useCurrentLocation":
-    "출발지 선택 버튼. 누르면 `current` 토큰이 되고 그 해석이 수동 위치를 탄다 — 필드 라벨은 즉시 '지정한 위치'로 바뀐다. 버튼 이름 자체의 재작성은 이번 범위 밖(리뷰 미지적, 새 카피 6로케일).",
+    "출발지 선택 버튼의 GPS 측 라벨. 수동 위치가 켜져 있으면 같은 버튼이 `manualLocation.useGps`로 바뀌고 누르면 지정을 푼다(2026-11-24).",
+  "manualLocation.useGps":
+    "수동 위치를 푸는 버튼의 이름('현재 위치로 되돌리기'). 수동 상태에서만 서고 누르면 GPS로 돌아가므로 GPS를 명명하는 것이 맞다.",
   "common.outOfCoverage": "기능 커버리지 설명(위 NearbyLoadState 근거와 같은 층).",
   "ios.common.outOfCoverage": "위와 같음.",
   "directions.geoError":

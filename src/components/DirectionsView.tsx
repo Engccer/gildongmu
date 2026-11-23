@@ -27,6 +27,7 @@ import {
   getGeolocationSnapshot,
 } from "@/lib/geolocation";
 import { awaitEffectiveLocation } from "@/lib/effective-location";
+import { clearManualLocation } from "@/lib/manual-location-store";
 import { staleAgeMessage, staleFixOf, type StaleAgeMessage } from "@/lib/stale-origin";
 import { useClockWhile } from "@/hooks/useClockWhile";
 import { useCurrentAddress } from "@/hooks/useCurrentAddress";
@@ -1098,6 +1099,9 @@ export function DirectionsView({
    * 성공이면 새 주소, 취득 실패면 옛 위치, 권한 거부면 "현재 위치"로 스스로 바뀐다.
    */
   async function selectCurrentFrom() {
+    // 수동 위치가 켜져 있으면 이 버튼은 "현재 위치로 되돌리기"다(라벨도 그렇게 바뀐다) — 지정을
+    // 풀지 않으면 "현재 위치"를 골랐는데 출발지가 지정한 위치로 남는다(실사용 2026-11-23).
+    clearManualLocation();
     setFromField(endpointToField({ kind: "current" }, currentLabel));
     if (refreshCurrentRef.current) return;
     refreshCurrentRef.current = true;
@@ -2043,6 +2047,7 @@ export function DirectionsView({
           setFromField(endpointToField(ep, currentLabel));
         }}
         onUseCurrent={() => void selectCurrentFrom()}
+        useCurrentLabel={manual ? tManual("useGps") : t("useCurrentLocation")}
         useCurrentBusy={refreshingCurrent}
         focusAfterResolve={() => toInputRef.current?.focus()}
         announce={announce}
@@ -2705,6 +2710,7 @@ function EndpointField({
   onTextChange,
   onResolve,
   onUseCurrent,
+  useCurrentLabel,
   useCurrentBusy,
   registerInput,
   focusAfterResolve,
@@ -2725,6 +2731,8 @@ function EndpointField({
   onResolve: (ep: DirEndpoint) => void;
   /** 있으면 "현재 위치 사용" 복원 버튼 노출(출발지 전용, 도착지는 스왑으로 충분) */
   onUseCurrent?: () => void;
+  /** 그 버튼의 라벨. 수동 위치가 켜져 있으면 "현재 위치로 되돌리기"(동작의 범위가 다르다). */
+  useCurrentLabel?: string;
   /** 강제 재측위 진행 중 — 버튼 라벨 전환이 유일한 진행 신호(별도 통지 금지) */
   useCurrentBusy?: boolean;
   /** 입력 요소를 부모에 노출(다른 필드 확정 시 이 입력으로 포커스 전진용) */
@@ -2977,7 +2985,7 @@ function EndpointField({
           }}
           className="mt-1 min-h-11 text-sm text-blue-700 underline dark:text-blue-300"
         >
-          {useCurrentBusy ? t("refreshingCurrent") : t("useCurrentLocation")}
+          {useCurrentBusy ? t("refreshingCurrent") : (useCurrentLabel ?? t("useCurrentLocation"))}
         </button>
       )}
       {candidates &&

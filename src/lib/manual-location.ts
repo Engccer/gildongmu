@@ -66,6 +66,27 @@ export const JUDGE_CEILING_M = 100;
  */
 export const FIX_MAX_AGE_S = 10;
 
+/**
+ * 수동 위치의 수명(초). 지정한 지 이만큼 지나면 이동 판정과 무관하게 해제한다.
+ *
+ * 이동 판정만으로는 풀리지 않는 자리가 둘 있다: 집에서 다른 곳을 지정해 두고 다음 날
+ * 같은 집에서 앱을 켠 경우(`keep`), 판정할 수 없는 경우(`undecidable`). 둘 다 며칠 전
+ * 지정이 조회 기준으로 남는다(실사용 2026-11-23). 12시간은 한나절 머무는 실내 사용은
+ * 지키고 하룻밤을 넘긴 지정은 푸는 값이다.
+ *
+ * ⚠ 통지 문장 `manualLocation.autoClearedExpired`가 이 시간을 숫자로 말한다. 값을
+ * 바꾸면 6로케일 문장도 함께 바꾼다(`manual-location.test.ts`가 ko를 잠근다).
+ */
+export const MANUAL_MAX_AGE_S = 12 * 60 * 60;
+
+/**
+ * 지정한 지 수명을 넘겼는가. 시계 역행(지정 시각이 미래)은 만료로 보지 않는다.
+ * `GildongmuKit/ManualLocation.swift`·`:kit` `ManualLocation.kt`의 같은 이름 함수와 미러다.
+ */
+export function isManualLocationExpired(manual: ManualLocation, nowSeconds: number): boolean {
+  return nowSeconds - manual.setAt > MANUAL_MAX_AGE_S;
+}
+
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }

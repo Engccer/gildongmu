@@ -235,9 +235,11 @@ struct GildongmuApp: App {
                 // VoiceOver는 포커스 밖 텍스트 변경을 읽지 않으므로 "표시줄이 말한다"는
                 // 그 줄로 돌아갈 때만 성립하고, 표시줄이 없는 화면에서 복귀하면 아예
                 // 만나지 못한다.
-                ManualLocationJudge.announcer = {
+                ManualLocationJudge.announcer = { reason in
                     AccessibilityNotification.Announcement(
-                        appLocalized("manualLocation.autoCleared")
+                        appLocalized(reason == .expired
+                                     ? "manualLocation.autoClearedExpired"
+                                     : "manualLocation.autoCleared")
                     ).post()
                 }
                 // 판정 트리거 ③(앱 시작). onChange는 *변화*에만 발화하므로 콜드 런치의

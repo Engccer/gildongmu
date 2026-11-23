@@ -43,6 +43,14 @@ class ManualLocationTest {
         assertEquals(100.0, ManualLocationPolicy.movedMeters)
         assertEquals(100.0, ManualLocationPolicy.judgeCeilingMeters)
         assertEquals(10.0, ManualLocationPolicy.fixMaxAgeSeconds)
+        assertEquals(43_200.0, ManualLocationPolicy.maxAgeSeconds)
+    }
+
+    @Test fun `수명 경계 - 딱 12시간은 유지, 1초 넘으면 만료, 시계 역행은 만료 아님`() {
+        val m = ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1_000.0)
+        assertFalse(isManualLocationExpired(m, 1_000.0 + 43_200.0))
+        assertTrue(isManualLocationExpired(m, 1_000.0 + 43_201.0))
+        assertFalse(isManualLocationExpired(m, 500.0)) // 지정 시각이 미래
     }
 
     /**

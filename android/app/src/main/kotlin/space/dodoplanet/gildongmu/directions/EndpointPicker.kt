@@ -88,6 +88,9 @@ class EndpointPicker(
     var journey: (() -> JourneyPickerHooks)? = null
     private var hooks: JourneyPickerHooks? = null
 
+    /** 수동 위치가 켜져 있는가 — 길찾기 화면만 건다(열 때마다 읽는다). 켜져 있으면 출발지의 「현재 위치 사용」은 「현재 위치로 되돌리기」다. */
+    var manualActive: (() -> Boolean)? = null
+
     private val _state = MutableStateFlow<EndpointSearchState?>(null)
     val state: StateFlow<EndpointSearchState?> = _state.asStateFlow()
 
@@ -101,7 +104,11 @@ class EndpointPicker(
         consumedCandidateRevision = 0
         val journeyHooks = journey?.invoke()
         hooks = journeyHooks
-        _state.value = EndpointSearchState(target, aboardOffered = target == DirectionsFieldTarget.from && journeyHooks?.onSelectAboardStation != null)
+        _state.value = EndpointSearchState(
+            target,
+            aboardOffered = target == DirectionsFieldTarget.from && journeyHooks?.onSelectAboardStation != null,
+            revertsManualLocation = target == DirectionsFieldTarget.from && manualActive?.invoke() == true,
+        )
         // 역 칸은 최근 목록을 보이지 않는다(분류가 없어 역인지 알 수 없다).
         if (target.isStationTarget) return
         // 첫 로드는 io(spec §7) — 진입 착지가 검색 입력이라 목록이 한 프레임 늦어도 계약이 깨지지 않는다.

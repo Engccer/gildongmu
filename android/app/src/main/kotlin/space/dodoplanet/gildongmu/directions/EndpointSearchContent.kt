@@ -170,7 +170,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
 
             // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정에서는 지정 해제를 뜻한다. 도착지는 스왑이 담당하고 경유지는 장소만.
             if (!stationsOnlyView) when (p.target) {
-                DirectionsFieldTarget.from -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
+                DirectionsFieldTarget.from -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get(if (p.revertsManualLocation) "manualLocation.useGps" else "directions.useCurrentLocation")) }
                 DirectionsFieldTarget.manualLocation -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("manualLocation.useGps")) }
                 DirectionsFieldTarget.to, DirectionsFieldTarget.via, DirectionsFieldTarget.transfer,
                 DirectionsFieldTarget.boardStation, DirectionsFieldTarget.alightStation -> Unit

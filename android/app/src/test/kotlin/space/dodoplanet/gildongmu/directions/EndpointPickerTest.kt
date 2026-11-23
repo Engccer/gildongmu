@@ -86,6 +86,16 @@ class EndpointPickerTest {
         assertNull(p.state.value) // 확정 뒤 닫힌다
     }
 
+    @Test fun `수동 위치가 켜져 있으면 출발지 시트의 현재 위치 버튼은 되돌리기 라벨 상태, 도착지·꺼짐은 종전`() = runTest(dispatcher) {
+        val p = picker(this)
+        p.open(DirectionsFieldTarget.from); assertFalse(p.state.value!!.revertsManualLocation) // manualActive 미설정
+        p.manualActive = { true }
+        p.open(DirectionsFieldTarget.from); assertTrue(p.state.value!!.revertsManualLocation)
+        p.open(DirectionsFieldTarget.to); assertFalse(p.state.value!!.revertsManualLocation)
+        p.manualActive = { false }
+        p.open(DirectionsFieldTarget.from); assertFalse(p.state.value!!.revertsManualLocation)
+    }
+
     @Test fun `close는 진행 중 검색을 취소하고 타깃을 돌려주며 착지를 발급하지 않는다(발급은 호스트)`() = runTest(dispatcher) {
         val p = picker(this)
         p.open(DirectionsFieldTarget.from); p.state.value!!.queryState.setTextAndPlaceCursorAtEnd("강동"); p.submitCandidates()

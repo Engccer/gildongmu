@@ -996,6 +996,7 @@
     <string name="kidsNearby_source">Fuente: búsqueda de lugares de KakaoMap. Interior/exterior es una estimación — confírmalo antes de visitar.</string>
     <string name="manualLocation_addrNoCoord">Esa dirección no tiene coordenadas registradas.</string>
     <string name="manualLocation_autoCleared">Se detectó movimiento. Se ha borrado la ubicación establecida.</string>
+    <string name="manualLocation_autoClearedExpired">Pasaron 12 horas. Se ha borrado la ubicación establecida.</string>
     <string name="manualLocation_gps">Ubicación actual</string>
     <string name="manualLocation_gpsFailed">No se pudo determinar la ubicación</string>
     <string name="manualLocation_gpsNear">Ubicación actual (cerca de %1$s)</string>

@@ -996,6 +996,7 @@
     <string name="kidsNearby_source">Source : recherche de lieux KakaoMap. Intérieur/extérieur est une estimation — veuillez confirmer avant de vous déplacer.</string>
     <string name="manualLocation_addrNoCoord">Aucune coordonnée n\'est enregistrée pour cette adresse.</string>
     <string name="manualLocation_autoCleared">Déplacement détecté. La position définie a été effacée.</string>
+    <string name="manualLocation_autoClearedExpired">12 heures se sont écoulées. La position définie a été effacée.</string>
     <string name="manualLocation_gps">Position actuelle</string>
     <string name="manualLocation_gpsFailed">Position introuvable</string>
     <string name="manualLocation_gpsNear">Position actuelle (près de %1$s)</string>

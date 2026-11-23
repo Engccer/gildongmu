@@ -36,6 +36,7 @@ fun directionsViewModelFactory(context: Context): ViewModelProvider.Factory {
                 phoneBook = AppConfig.placePhoneBook,
                 manual = { AppConfig.manualLocationStore.current.value },
                 verdict = { AppConfig.manualLocationStore.verdict.value },
+                clearManual = AppConfig.manualLocationStore::clear,
                 staleChanges = AppConfig.effectiveLocation.staleChanges,
             )
         }

@@ -66,6 +66,8 @@ data class EndpointSearchState(
     val showsNoBusData: Boolean = false,
     /** 역 칸·입구 검색에서 장소 검색이 실패했는데 다른 후보(정류장·주소)가 있다 — 역 장소 줄이 없는 이유가 "역 없음"이 아니라 "조회 실패"임을 알린다. */
     val showsPlacesFailure: Boolean = false,
+    /** 출발지 시트를 열 때 수동 위치가 켜져 있었다 — 「현재 위치 사용」 버튼이 「현재 위치로 되돌리기」(`manualLocation.useGps`)로 바뀐다(웹 `useCurrentLabel`). */
+    val revertsManualLocation: Boolean = false,
 ) {
     /** 지하철역·기차역만 고를 수 있는 검색인가(역 칸 + 지금 탄 열차) — 장소 줄이 「고를 수 있는 것」과 「기타 장소」로 갈린다. */
     val stationsOnlyMode: Boolean get() = target.isStationTarget || aboardMode

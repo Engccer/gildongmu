@@ -1241,6 +1241,7 @@
     "manualUnverifiable": "Ubicación establecida, {label} (no se puede verificar)",
     "useGps": "Volver a la ubicación actual",
     "autoCleared": "Se detectó movimiento. Se ha borrado la ubicación establecida.",
+    "autoClearedExpired": "Pasaron 12 horas. Se ha borrado la ubicación establecida.",
     "guideStartsFromCurrent": "La guía comienza desde tu ubicación actual.",
     "pickTitle": "Establecer tu ubicación",
     "addrNoCoord": "Esa dirección no tiene coordenadas registradas."

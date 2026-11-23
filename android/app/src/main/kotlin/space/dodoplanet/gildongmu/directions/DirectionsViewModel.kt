@@ -201,6 +201,8 @@ class DirectionsViewModel(
     /** 수동 위치(spec §13-4) — 출발지 "현재 위치" 필드가 표시줄과 같은 문장을 낸다. 호출 시점 읽기(앱 싱글턴 캡처 없음). */
     private val manual: () -> ManualLocation? = { null },
     private val verdict: () -> ManualVerdict? = { null },
+    /** 수동 위치 해제 — 출발지 「현재 위치로 되돌리기」가 부른다(웹 `clearManualLocation`). */
+    private val clearManual: () -> Unit = {},
     /** epoch 초 — 옛 위치 경과 계산용(테스트가 고정한다). */
     private val epochNow: () -> Double = { System.currentTimeMillis() / 1000.0 },
     /** 옛 위치 전이(`LocationStore.staleChanges`) — 다른 화면의 측위 성공·실패를 칸이 따라가게 한다(구현 리뷰 M-2). */
@@ -1183,6 +1185,8 @@ class DirectionsViewModel(
 
     /** 후보·최근 목록·통지는 `EndpointPicker`; 확정의 의미(필드 확정·재측위·착지)는 아래 `onSelect`가 정한다. */
     val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }, closesOnSelect = true, noteDestinationPhone = phoneBook::noteDestination) { endpoint, target ->
+        // 수동 위치가 켜져 있으면 출발지 「현재 위치 사용」은 「현재 위치로 되돌리기」다 — 지정을 풀지 않으면 현재 위치를 골랐는데 출발지가 지정 위치로 남는다.
+        if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current && manual() != null) clearManual()
         setEndpoint(endpoint, target)
         // "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침(F-B) — from에서만(지정 화면의 되돌리기는 이 부수효과가 없다).
         if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current) refreshCurrentLocation()
@@ -1192,7 +1196,7 @@ class DirectionsViewModel(
             else -> LandingTarget.Submit
         }
         _state.update { it.copy(landing = landingNext(landing)) }
-    }.also { it.journey = ::journeyPickerHooks }
+    }.also { it.journey = ::journeyPickerHooks; it.manualActive = { manual() != null } }
     val endpointSearch: StateFlow<EndpointSearchState?> get() = picker.state
 
     fun openPicker(target: DirectionsFieldTarget) {

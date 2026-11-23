@@ -20,6 +20,7 @@ class ManualLocationJudgeTest {
     private val dispatcher = StandardTestDispatcher()
     private var nowSec = 10_000.0
     private val notices = ArrayList<String>()
+    private val reasons = ArrayList<ManualClearReason>()
 
     private class Rig(val src: FakeSource, val gate: FakeGate, val location: LocationStore, val manual: ManualLocationStore, val judge: ManualLocationJudge)
 
@@ -28,7 +29,7 @@ class ManualLocationJudgeTest {
         val location = LocationStore(src, gate, epochNow = { nowSec })
         val manual = ManualLocationStore(MemStore()) { nowSec }.also { it.hydrate() }
         if (withManual) manual.set("길동역", null, 37.5, 127.1, origin)
-        val judge = ManualLocationJudge(manual, location, { nowSec }, { notices += it }, { "해제됨" }, interval)
+        val judge = ManualLocationJudge(manual, location, { nowSec }, { notices += it }, { reasons += it; if (it == ManualClearReason.expired) "만료됨" else "해제됨" }, interval)
         return Rig(src, gate, location, manual, judge)
     }
 
@@ -57,6 +58,24 @@ class ManualLocationJudgeTest {
         val none = rig(); val u = async { none.judge.run() }; runCurrent(); advanceTimeBy(8_001); runCurrent(); u.await()
         assertEquals(ManualVerdict.undecidable, none.manual.verdict.value); assertNotNull(none.manual.current.value)
         assertEquals(false, none.location.lastFixFailed) // silent — 표시줄 실패 표식 미갱신
+    }
+
+    @Test fun `같은 자리(keep)여도 12시간이 지났으면 해제하고 expired로 통지, 측위 0`() = runTest(dispatcher) {
+        val r = rig(); nowSec += 43_201.0 + 0.0 // 지정 시각은 10_000 → 1초 넘김
+        r.judge.run()
+        assertNull(r.manual.current.value); assertEquals(listOf("만료됨"), notices); assertEquals(listOf(ManualClearReason.expired), reasons); assertEquals(0, r.src.subscriptions)
+    }
+
+    @Test fun `origin 없는 지정도 만료면 해제`() = runTest(dispatcher) {
+        val r = rig(origin = null); nowSec += 43_201.0
+        r.judge.run()
+        assertNull(r.manual.current.value); assertNull(r.manual.verdict.value); assertEquals(listOf("만료됨"), notices)
+    }
+
+    @Test fun `12시간 안이면 수명으로는 해제하지 않는다(딱 12시간 포함)`() = runTest(dispatcher) {
+        val r = rig(origin = null); nowSec += 43_200.0
+        r.judge.run()
+        assertNotNull(r.manual.current.value); assertEquals(ManualVerdict.undecidable, r.manual.verdict.value); assertEquals(0, notices.size)
     }
 
     @Test fun `CAS — 판정 중 재지정이면 옛 결과 폐기(해제 없음·verdict 미기록)`() = runTest(dispatcher) {

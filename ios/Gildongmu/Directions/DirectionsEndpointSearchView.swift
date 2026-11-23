@@ -361,10 +361,15 @@ struct DirectionsEndpointSearchView: View {
                 }
                 // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정 맥락에서는
                 // 지정 해제를 뜻한다. 도착지에는 노출하지 않는다(스왑이 담당).
+                // ⚠ 수동 위치가 켜진 채 출발지에서 누르면 이 버튼도 **지정 해제**다(라벨도 그렇게 바뀐다).
+                // 풀지 않으면 "현재 위치 사용"을 골랐는데 출발지가 지정한 위치로 남고, 길찾기 탭에는
+                // 표시줄이 없어 되돌릴 길이 검색 탭뿐이다(실사용 2026-11-23).
                 if (target == .from || target == .manualLocation) && !aboardMode {
-                    Button(appLocalized(target == .manualLocation
+                    let manualOn = ManualLocationStore.shared.current != nil
+                    Button(appLocalized(target == .manualLocation || manualOn
                                         ? "manualLocation.useGps"
                                         : "directions.useCurrentLocation")) {
+                        if target == .from { ManualLocationStore.shared.clear() }
                         select(.current)
                     }
                 }

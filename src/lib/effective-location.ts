@@ -1,5 +1,10 @@
 import { awaitGeolocation, type GeoState, type LocateOptions } from "./geolocation";
-import { judgeManualLocation, type Fix, type ManualLocation } from "./manual-location";
+import {
+  isManualLocationExpired,
+  judgeManualLocation,
+  type Fix,
+  type ManualLocation,
+} from "./manual-location";
 import { clearManualLocation, getManualLocation, setManualVerdict } from "./manual-location-store";
 
 /**
@@ -22,7 +27,9 @@ export interface EffectiveLocation {
   source: "gps" | "manual";
 }
 
-type Announcer = ((verdict: "drop") => void) | null;
+/** 자동 해제 사유. `drop`은 이동 감지, `expired`는 지정한 지 수명(`MANUAL_MAX_AGE_S`) 경과. */
+export type ManualClearReason = "drop" | "expired";
+type Announcer = ((reason: ManualClearReason) => void) | null;
 let announcer: Announcer = null;
 
 /**
@@ -75,6 +82,13 @@ export async function awaitRealFix(opts: LocateOptions): Promise<RealFix | null>
 export async function runManualLocationJudgment(): Promise<void> {
   const manual = getManualLocation();
   if (!manual) return;
+  // 수명 만료는 측위보다 **앞**이다 — 판정할 수 없는 상태(origin 없음·측위 실패)와
+  // 같은 자리에 머문 상태(`keep`)가 바로 며칠 전 지정이 남는 자리라, 뒤에 두면 닿지 않는다.
+  if (isManualLocationExpired(manual, Date.now() / 1000)) {
+    clearManualLocation();
+    announcer?.("expired");
+    return;
+  }
   // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
   // 결과는 기록한다: 라벨은 `undecidable`을 `keep`과 구분해야 한다(3-state).
   if (!manual.origin) {

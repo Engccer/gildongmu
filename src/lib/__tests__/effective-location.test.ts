@@ -50,7 +50,7 @@ describe("effective-location", () => {
   it("수동 위치가 있으면 force:false는 측위 없이 수동 좌표를 준다", async () => {
     const spy = vi.fn();
     vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: spy } });
-    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: Date.now() / 1000 });
     const eff = await awaitEffectiveLocation({ force: false });
     expect(eff).toEqual({ lat: 37.5384, lng: 127.1432, source: "manual" });
     expect(spy).not.toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe("effective-location", () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     stubGeolocation({ lat: 37.6384, lng: 127.1432, accuracy: 10 }); // 약 11km
     const eff = await awaitEffectiveLocation({ force: true });
@@ -72,7 +72,7 @@ describe("effective-location", () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 10 });
     const eff = await awaitEffectiveLocation({ force: true });
@@ -81,7 +81,7 @@ describe("effective-location", () => {
   });
 
   it("origin이 없으면 아무리 멀리 있어도 해제하지 않는다 (undecidable)", async () => {
-    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: Date.now() / 1000 });
     stubGeolocation({ lat: 35.1796, lng: 129.0756, accuracy: 10 }); // 부산
     await awaitEffectiveLocation({ force: true });
     expect(getManualLocation()).not.toBeNull();
@@ -91,7 +91,7 @@ describe("effective-location", () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     stubGeolocation(null);
     await runManualLocationJudgment();
@@ -104,11 +104,46 @@ describe("effective-location", () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     stubGeolocation({ lat: 37.6384, lng: 127.1432, accuracy: 10 });
     await runManualLocationJudgment();
     expect(announce).toHaveBeenCalledTimes(1);
+  });
+
+  it("지정한 지 12시간이 넘으면 같은 자리여도 해제하고 사유를 expired로 통지한다", async () => {
+    const announce = vi.fn();
+    setManualJudgmentAnnouncer(announce);
+    const now = Date.now() / 1000;
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: now },
+      setAt: now - 12 * 3600 - 1,
+    });
+    stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 10 });
+    await runManualLocationJudgment();
+    expect(getManualLocation()).toBeNull();
+    expect(announce.mock.calls).toEqual([["expired"]]);
+  });
+
+  it("판정할 수 없는 지정(origin 없음·측위 실패)도 12시간이 넘으면 해제한다", async () => {
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
+      setAt: Date.now() / 1000 - 12 * 3600 - 1,
+    });
+    stubGeolocation(null);
+    await runManualLocationJudgment();
+    expect(getManualLocation()).toBeNull();
+  });
+
+  it("12시간 안이면 수명으로는 해제하지 않는다", async () => {
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
+      setAt: Date.now() / 1000 - 12 * 3600 + 60,
+    });
+    stubGeolocation(null);
+    await runManualLocationJudgment();
+    expect(getManualLocation()).not.toBeNull();
   });
 
   it("유지·판정불가는 통지하지 않는다", async () => {
@@ -117,7 +152,7 @@ describe("effective-location", () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 10 });
     await runManualLocationJudgment();
@@ -128,7 +163,7 @@ describe("effective-location", () => {
     setManualLocation({
       label: "A", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     let release: (() => void) | null = null;
     vi.stubGlobal("navigator", {
@@ -146,7 +181,7 @@ describe("effective-location", () => {
       },
     });
     const pending = runManualLocationJudgment();
-    setManualLocation({ label: "B", lat: 37.6, lng: 127.2, origin: null, setAt: 2 });
+    setManualLocation({ label: "B", lat: 37.6, lng: 127.2, origin: null, setAt: Date.now() / 1000 });
     release!();
     await pending;
     expect(getManualLocation()?.label).toBe("B");
@@ -159,7 +194,7 @@ describe("effective-location", () => {
     function setNearby() {
       setManualLocation({
         label: "길동 카페", lat: 37.5384, lng: 127.1432,
-        origin: { ...nearFix, at: Date.now() / 1000 }, setAt: 1,
+        origin: { ...nearFix, at: Date.now() / 1000 }, setAt: Date.now() / 1000,
       });
     }
 
@@ -189,7 +224,7 @@ describe("effective-location", () => {
     it("origin이 없으면 측위 없이 undecidable로 기록된다", async () => {
       const spy = vi.fn();
       vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: spy } });
-      setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+      setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: Date.now() / 1000 });
       await runManualLocationJudgment();
       expect(getManualVerdict()).toBe("undecidable");
       expect(spy).not.toHaveBeenCalled();
@@ -213,7 +248,7 @@ describe("effective-location", () => {
         },
       });
       const pending = runManualLocationJudgment();
-      setManualLocation({ label: "B", lat: 37.6, lng: 127.2, origin: null, setAt: 2 });
+      setManualLocation({ label: "B", lat: 37.6, lng: 127.2, origin: null, setAt: Date.now() / 1000 });
       release!();
       await pending;
       expect(getManualVerdict()).toBeNull();
@@ -221,7 +256,7 @@ describe("effective-location", () => {
   });
 
   it("awaitRealFix는 수동 위치를 무시하고 실좌표만 준다", async () => {
-    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: Date.now() / 1000 });
     stubGeolocation({ lat: 37.9, lng: 127.9, accuracy: 10 });
     const real = await awaitRealFix({ force: true });
     expect(real).toEqual(

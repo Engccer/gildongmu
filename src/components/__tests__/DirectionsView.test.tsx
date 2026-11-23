@@ -5,6 +5,7 @@ import type { DirEndpoint } from "@/lib/directions-state";
 import type { JusoAddress, Place } from "@/lib/types";
 import {
   __resetManualLocationForTest,
+  getManualLocation,
   setManualLocation,
 } from "@/lib/manual-location-store";
 import { awaitGeolocation } from "@/lib/geolocation";
@@ -292,6 +293,27 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     });
     renderView();
     expect((screen.getByLabelText("from") as HTMLInputElement).value).toBe("manual");
+  });
+
+  it("수동 위치가 켜져 있으면 출발지의 현재 위치 버튼이 '현재 위치로 되돌리기'가 되고, 누르면 지정이 풀린다", async () => {
+    setManualLocation({
+      label: "길동 카페",
+      lat: 37.5384,
+      lng: 127.1432,
+      origin: null,
+      setAt: Date.now() / 1000,
+    });
+    renderView();
+    expect(screen.queryByRole("button", { name: "useCurrentLocation" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "useGps" }));
+    await waitFor(() => {
+      expect(getManualLocation()).toBeNull();
+      expect((screen.getByLabelText("from") as HTMLInputElement).value).not.toBe("manualUnverifiable");
+    });
+    // 풀린 뒤에는 같은 버튼이 GPS 측 라벨로 돌아온다.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "useCurrentLocation" })).toBeTruthy();
+    });
   });
 
   it("origin 없는 수동 위치는 manualUnverifiable 라벨로 표시된다", () => {

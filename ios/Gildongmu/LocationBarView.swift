@@ -32,8 +32,9 @@ func manualLocationLabel(_ store: ManualLocationStore, accessible: Bool) -> Stri
 /// ⚠ **형제 "지정 해제" 버튼을 되돌리지 말 것**(위원장 실사용 판정 2026-08-09).
 /// GPS가 기본값이라 수동 지정은 의도적으로 고른 상태이고, 되돌리기는 지정 시트의
 /// "현재 위치로 되돌리기"(`DirectionsEndpointSearchView`의 `.manualLocation` 분기)가
-/// 담당한다 — 첫 화면에 상시 노출할 빈도가 아니다. 해제 경로가 이제 그 한 곳뿐이므로
-/// 그 버튼이나 아래 `commit(.current)` 분기를 지우면 사용자가 수동 위치에 갇힌다.
+/// 담당한다 — 첫 화면에 상시 노출할 빈도가 아니다. 표시줄에서 푸는 길은 그 한 곳뿐이므로
+/// 그 버튼이나 아래 `commit(.current)` 분기를 지우면 이 화면에서는 수동 위치에 갇힌다
+/// (그 밖의 해제: 길찾기 출발지 검색의 같은 이름 버튼, 이동 감지, 12시간 수명).
 struct LocationBarView: View {
     @State private var store = ManualLocationStore.shared
     @State private var location = LocationService.shared

@@ -67,7 +67,7 @@ describe("PlaceSearch — 현재 위치 지정 모달과 홈 live region 경합 
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
+      setAt: Date.now() / 1000,
     });
     renderHome();
     // 모달이 열리기 전엔 홈의 단일 live region이 유일한 status — 참조를 먼저 잡는다.

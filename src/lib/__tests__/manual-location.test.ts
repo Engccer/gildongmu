@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/manual-location-scenarios.json";
+import ko from "../../../messages/ko.json";
 import {
   FIX_MAX_AGE_S,
   JUDGE_CEILING_M,
+  MANUAL_MAX_AGE_S,
   MOVED_M,
+  isManualLocationExpired,
   isManualLocationVerified,
   judgeManualLocation,
   parseManualLocation,
@@ -22,6 +25,25 @@ describe("judgeManualLocation — 공유 fixture", () => {
       expect(verdict).toBe(c.expect);
     });
   }
+});
+
+describe("isManualLocationExpired — 수명", () => {
+  const manual = (setAt: number): ManualLocation => ({
+    revision: 1, label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt,
+  });
+
+  it("수명을 넘겨야 만료다(경계는 유지)", () => {
+    expect(isManualLocationExpired(manual(1000), 1000 + MANUAL_MAX_AGE_S)).toBe(false);
+    expect(isManualLocationExpired(manual(1000), 1000 + MANUAL_MAX_AGE_S + 1)).toBe(true);
+  });
+
+  it("지정 시각이 미래(시계 역행)면 만료로 보지 않는다", () => {
+    expect(isManualLocationExpired(manual(5000), 1000)).toBe(false);
+  });
+
+  it("통지 문장이 말하는 시간이 상수와 같다", () => {
+    expect(ko.manualLocation.autoClearedExpired).toContain(`${MANUAL_MAX_AGE_S / 3600}시간`);
+  });
 });
 
 describe("상수", () => {
