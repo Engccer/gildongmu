@@ -8,6 +8,16 @@ import { dataLocale } from "@/lib/data-locale";
 import { routing } from "@/i18n/routing";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { ChatCapability, ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
+import {
+  availableChatModels,
+  CHAT_MODEL_REQUEST_TIMEOUT_MS,
+  createChatModelSession,
+  parseChatModel,
+  reserveChatModelDaily,
+  type ChatModelId,
+} from "@/lib/chat/chat-models";
+import { ChatModelError } from "@/lib/chat/chat-model-error";
+import { runChatModelLoop } from "@/lib/chat/model-loop";
 
 export const maxDuration = 120; // 적극 연쇄 + 여러 Gemini 호출 — 조기 중단 방지
 
@@ -21,6 +31,11 @@ interface ChatRequest {
   capabilities?: string[];
   /** `userLocation`이 수동 지정 위치인가(E70-b D2·E83 R6) — 카드의 `manualOrigin`으로 돌려준다(그 카드는 실제 위치로 다시 조회한다). */
   userLocationManual?: boolean;
+  /**
+   * 실험판 「채팅 답변 모델」(E89). 알려진 다섯 값(`chat-models.ts`)만 다른 회사로 간다. 없거나 모르는 값이면 종전 Gemini 경로 그대로다
+   * (정식판·웹·CLI는 이 필드를 보내지 않는다 — 봉인 1선, 가드 `chat-model-seal.test.ts`).
+   */
+  chatModel?: unknown;
 }
 
 /**
@@ -105,6 +120,12 @@ export async function POST(request: Request) {
 
   const systemInstruction = buildChatSystemInstruction(locale, pc, { journey: journeyOpen });
 
+  // E89: 알려진 값이면 그 회사로 간다. 여기서 갈라진 뒤 아래 Gemini 줄은 종전 그대로다(값이 없으면 이 분기에 들지 않는다).
+  const chatModel = parseChatModel(body.chatModel);
+  if (chatModel) {
+    return otherModelResponse(request, chatModel, { systemInstruction, declarations, ctx, messages: body.messages });
+  }
+
   const tools = [{ functionDeclarations: declarations }];
   const history: Content[] = body.messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -130,6 +151,76 @@ export async function POST(request: Request) {
     },
   });
 
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache" },
+  });
+}
+
+function jsonError(error: string, status: number): Response {
+  return new Response(JSON.stringify({ error }), { status, headers: { "Content-Type": "application/json" } });
+}
+
+/** 로그에 남길 종류와 상태 코드. 메시지 본문은 넣지 않는다(요청 글이 되비칠 수 있다, spec C12). */
+function errorKind(e: unknown): string {
+  if (e instanceof ChatModelError) return e.status === null ? e.kind : `${e.kind} ${e.status}`;
+  return e instanceof Error ? e.name : "unknown";
+}
+
+/**
+ * Gemini 밖 회사의 채팅(E89 spec C3·C4·C9·C10). 응답 계약(NDJSON `status`·`done`·`error`)은 Gemini 경로와 같다.
+ * 키 없음은 502(스트림 전), 하루 상한은 503, 그 밖의 실패는 기존 `chat_failed`다. Gemini로 돌리지 않는다.
+ */
+function otherModelResponse(
+  request: Request,
+  id: ChatModelId,
+  input: {
+    systemInstruction: string;
+    declarations: ReturnType<typeof availableDeclarations>;
+    ctx: ExecutionContext;
+    messages: ChatRequest["messages"];
+  },
+): Response {
+  if (!availableChatModels().includes(id)) return jsonError("chat_model_unavailable", 502);
+  const session = createChatModelSession({
+    id,
+    systemInstruction: input.systemInstruction,
+    declarations: input.declarations,
+    history: input.messages,
+    signal: AbortSignal.any([request.signal, AbortSignal.timeout(CHAT_MODEL_REQUEST_TIMEOUT_MS)]),
+  });
+  if (!session) return jsonError("chat_model_unavailable", 502);
+  if (!reserveChatModelDaily(Date.now())) return jsonError("daily_budget_exhausted", 503);
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (e: ChatStreamEvent) => controller.enqueue(encoder.encode(toNdjsonLine(e)));
+      try {
+        const result = await runChatModelLoop({
+          session,
+          ctx: input.ctx,
+          onStatus: (names) => send({ type: "status", categories: names }),
+        });
+        send({ type: "done", text: result.text, renders: result.renders, sources: result.sources });
+      } catch (e) {
+        // 앱이 요청을 거뒀으면(연결 끊김) 받을 곳이 없다 — 오류로 세지 않고 조용히 끝낸다.
+        if (!request.signal.aborted) {
+          console.error(`[chat] ${id} 오류:`, errorKind(e));
+          try {
+            send({ type: "error", code: "chat_failed" });
+          } catch {
+            // 스트림이 이미 닫혔다.
+          }
+        }
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          // 거둬진 스트림은 이미 닫혀 있다.
+        }
+      }
+    },
+  });
   return new Response(stream, {
     headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache" },
   });
