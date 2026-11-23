@@ -61,6 +61,11 @@ describe("defaultJudge", () => {
     expect(defaultJudge({ httpStatus: 429, bodyText: "" })).toBe(STATUS.QUOTA);
   });
 
+  it("402는 잔액 소진이고 쿼터 초과·조회 실패와 섞지 않는다", () => {
+    expect(defaultJudge({ httpStatus: 402, bodyText: "" })).toBe(STATUS.CREDIT);
+    expect(STATUS.CREDIT).toBe("잔액 소진");
+  });
+
   // 이 스위트의 핵심. 미분류가 정상으로 새면 리포트 전체가 거짓말이 된다
   it("미분류 응답을 정상으로 뭉개지 않는다", () => {
     for (const code of [0, 302, 400, 404, 418, 500, 502, 503]) {
@@ -477,6 +482,35 @@ describe("Gemini 모델명 drift", () => {
     const match = source.match(/GEMINI_MODEL\s*=\s*"([^"]+)"/);
     expect(match).not.toBeNull();
     expect(GILDONGMU_GEMINI_MODEL).toBe(match[1]);
+  });
+});
+
+// 2026-11-22 선불 크레딧이 소진돼 채팅이 전부 402로 죽었는데 리포트는 「정상」이었다.
+// 모델 목록과 토큰 세기는 무료라 결제 상태를 보지 않고(소진 중에도 200), 생성 호출만 402를 낸다.
+describe("Gemini 프로브", () => {
+  const probe = () => MONEY_PROBES.find((p) => p.id === "gemini");
+
+  it("요청은 운영 모델의 생성 호출이다(목록 조회로는 잔액 소진과 모델 은퇴가 보이지 않는다)", () => {
+    const { url, init } = probe().build({ GEMINI_API_KEY: "AIza-test-key" });
+    expect(url).toBe(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GILDONGMU_GEMINI_MODEL}:generateContent`,
+    );
+    expect(url).not.toContain("AIza-test-key");
+    expect(init.method).toBe("POST");
+    expect(init.headers["x-goog-api-key"]).toBe("AIza-test-key");
+    const body = JSON.parse(init.body);
+    expect(body.contents[0].parts[0].text.length).toBeLessThanOrEqual(4);
+    expect(body.generationConfig.maxOutputTokens).toBeLessThanOrEqual(16);
+  });
+
+  it("402는 잔액 소진, 404(모델 은퇴)는 조회 실패, 200만 정상이다", async () => {
+    const respond = (status, body) => async () => ({ status, text: async () => body });
+    const env = { GEMINI_API_KEY: "AIza-test-key" };
+    const depleted = await runProbe(probe(), env, respond(402, '{"error":{"code":402,"message":"Your prepayment credits are depleted."}}'));
+    expect(depleted.status).toBe(STATUS.CREDIT);
+    expect(depleted.detail).toContain("prepayment credits are depleted");
+    expect((await runProbe(probe(), env, respond(404, '{"error":{"code":404}}'))).status).toBe(STATUS.ERROR);
+    expect((await runProbe(probe(), env, respond(200, '{"candidates":[]}'))).status).toBe(STATUS.OK);
   });
 });
 

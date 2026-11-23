@@ -616,6 +616,8 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 **"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다** — Vercel 대시보드나 각 벤더 콘솔을 손으로 훑지 말 것. 돈·가용성·시한·걱정불필요 4섹션을 평문으로 내고, 200에 오류를 담는 벤더 6종(ODsay·서울지하철·따릉이·juso·공공데이터포털·NCP 지오코딩)까지 judge로 가른다(설계 근거는 spec `2026-07-31-usage-cost-report-design.md`). ⚠ 이 스크립트가 답하지 **못하는** 것은 **호출량**이다(Vercel Hobby는 런타임 로그 보존 1시간·Observability 조회 12시간이 상한). 호출 건수·라우트 분포가 필요하면 Vercel Observability의 External APIs·Functions를 본다.
 
+⚠ **Gemini 칸은 운영 모델의 생성 호출로 잰다 — 모델 목록 조회로 되돌리지 말 것.** Gemini API는 선불 크레딧이 소진돼도 모델 목록(`models`)·모델 조회·토큰 세기(`countTokens`)에 200을 내고 생성 호출(`generateContent`)에만 402 `RESOURCE_EXHAUSTED`(「Your prepayment credits are depleted」)를 낸다(소진 상태에서 네 호출을 직접 대조). 요청 검증이 결제 검사보다 앞이라 일부러 틀린 요청을 보내는 무과금 탐침(Perplexity 방식)도 400만 받는다. 2026-11-22 13시대(KST)에 크레딧이 소진돼 `/api/chat`이 전부 `chat_failed`였는데 목록 조회 프로브는 「정상」을 냈다. 402는 `defaultJudge`가 「잔액 소진」으로 가르며 쿼터 초과(429, 기다리면 풀린다)와 섞지 않는다. 같은 호출이 모델 은퇴(404)도 잡는다. 사고 시점은 Cloud Monitoring `serviceruntime.googleapis.com/api/request_count`를 `response_code`로 갈라 찾는다(Vercel Hobby 런타임 로그는 30분 남짓만 남는다). 충전과 자동 충전 설정은 AI Studio `ai.studio/projects`의 결제 화면이다.
+
 ---
 
 ## 공개 저장소 규율

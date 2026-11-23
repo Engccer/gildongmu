@@ -155,10 +155,22 @@ export const MONEY_PROBES = [
     id: "gemini",
     label: "Gemini",
     envKeys: ["GEMINI_API_KEY"],
+    // ⚠ 운영 모델의 생성 호출이어야 한다. 모델 목록과 토큰 세기는 무료라 결제 상태를 보지 않아
+    // 선불 크레딧이 소진된 동안에도 200을 낸다(2026-11-22 실사고: 채팅은 전부 402인데 리포트는 「정상」).
+    // 생성 호출은 잔액 소진(402)과 모델 은퇴(404)를 함께 잡는다. 입력 몇 토큰이라 실행당 과금은 무시할 수준이다.
     build: (env) => ({
-      url: `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${env.GEMINI_API_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${GILDONGMU_GEMINI_MODEL}:generateContent`,
+      init: {
+        method: "POST",
+        headers: { "x-goog-api-key": env.GEMINI_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: "안녕" }] }],
+          generationConfig: { maxOutputTokens: 8 },
+        }),
+      },
     }),
-    note: "콘솔 aistudio.google.com",
+    describe: () => `${GILDONGMU_GEMINI_MODEL} 생성 호출 확인`,
+    note: "선불 크레딧 충전과 잔액은 콘솔 ai.studio/projects",
   },
   {
     id: "gemini-usage",

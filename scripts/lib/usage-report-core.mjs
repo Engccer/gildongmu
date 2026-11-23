@@ -1,9 +1,11 @@
 // 과금·쿼터 리포트의 순수 판정 계층. I/O 없음(테스트 검출력 유지)
 
-/** 프로브 결과 5-state. 서로 절대 뭉개지 않는다 */
+/** 프로브 결과 6-state. 서로 절대 뭉개지 않는다 */
 export const STATUS = {
   OK: "정상",
   QUOTA: "쿼터 초과",
+  // 선불 크레딧 소진(HTTP 402). 쿼터와 달리 기다려도 풀리지 않고 충전해야 풀린다
+  CREDIT: "잔액 소진",
   AUTH: "인증 실패",
   ERROR: "조회 실패",
   MISSING: "키 미설정",
@@ -38,6 +40,7 @@ export function parseEnvFile(text) {
 export function defaultJudge({ httpStatus }) {
   if (httpStatus === 401 || httpStatus === 403) return STATUS.AUTH;
   if (httpStatus === 429) return STATUS.QUOTA;
+  if (httpStatus === 402) return STATUS.CREDIT;
   if (httpStatus >= 200 && httpStatus < 300) return STATUS.OK;
   return STATUS.ERROR;
 }

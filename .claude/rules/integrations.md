@@ -116,3 +116,5 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 상세 키 발급 경로·실호출 검증 이력은 `PROGRESS.md`, API 생태계 조사는 `docs/research/RESEARCH-2026-06-*.md`.
 
 ⚠ **prod 채팅/STT가 502면 코드보다 키 등록 유효성을 먼저 의심**([[vercel-env-add-noninteractive-bug]]·[[deepgram-prod-key-401]]). 검증은 `env pull` 길이가 아니라 실호출로([[vercel-prod-env-pull-redacts-encrypted]]).
+
+⚠ **채팅이 200 NDJSON `chat_failed`만 내면 Gemini 선불 크레딧 소진(402)부터 본다**: `usage-report.mjs`의 Gemini 칸이 「잔액 소진」으로 가른다(생성 호출 프로브 — 모델 목록 조회로 되돌리지 말 것). → PATTERNS §"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다

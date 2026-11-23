@@ -9,6 +9,10 @@
 
 ---
 
+## 2026-11-23
+
+- **채팅 장애 원인 확인과 점검 도구 보강**: 사용자 제보로 확인한 결과 2026-11-22 13시대부터 Gemini 선불 크레딧이 소진돼 `/api/chat`이 전부 402로 실패하고 있었다(모델 은퇴·iOS 버전과 무관, 복구는 AI Studio 충전). `usage-report.mjs`의 Gemini 프로브가 무료인 모델 목록 조회라 이 상태를 「정상」으로 보고하던 것을 운영 모델 생성 호출로 바꾸고, 402를 새 상태 「잔액 소진」으로 가른다. 근거는 `docs/PATTERNS.md` §"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다.
+
 ## 2026-11-22
 
 - **안드로이드 병렬 웨이브 마감과 문서 만료 점검(세션 `and-close`)**: 검색 탭 결과 수 줄을 상단 바 아래 맨 위에 두는 위원장 판정(iOS와 다른 순서)과, iOS 순서를 지키는 네 안을 한소네에서 쓸 수 없었던 이유, 스크롤 영역에 관한 한소네 실측 세 건을 `docs/PATTERNS.md`·`.claude/rules/android.md`에 적었다. doc-audit로 PROGRESS·BACKLOG·FIELD-TEST·INTEGRATIONS·`android/README.md`에 남은 웨이브 이전 서술(안드로이드에 자동차·대중교통 안내가 없다, 스토어 2.5·「다음 정식판」 등)을 고치고 종결 식별자 아홉 개를 종결 표에 달았다. 계획 `docs/superpowers/plans/2026-11-20-android-parity-m5-parallel-plan.md`에 웨이브 종료를 적었다.
