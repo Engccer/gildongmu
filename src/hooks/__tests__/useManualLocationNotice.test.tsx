@@ -87,18 +87,17 @@ describe("useManualLocationNotice", () => {
     expect(screen.getByRole("status").textContent).toBe("");
   });
 
-  it("시간 만료로 해제되면 이동이 아니라 시간을 말한다", async () => {
+  it("시간 만료로 해제되면 통지하지 않는다", async () => {
     renderHarness();
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
-      setAt: Date.now() / 1000 - 12 * 3600 - 1,
+      setAt: Date.now() / 1000 - 4 * 3600 - 1,
     });
     await act(async () => {
       await runManualLocationJudgment();
     });
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toBe("12시간이 지나 지정한 위치를 해제했습니다");
-    });
+    expect(getManualLocation()).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("");
   });
 
   it("자동 해제 판정이 나면 단일 live region에 문구가 나타난다", async () => {

@@ -147,12 +147,12 @@ private func strippingComments(_ source: String) -> String {
     #expect(manualLocationBilingualName(bare, lang: "en") == BilingualName(primary: "강동구청", secondary: nil))
 }
 
-@Test func 수명은_12시간을_넘겨야_만료이고_시계_역행은_만료가_아니다() {
+@Test func 수명은_4시간을_넘겨야_만료이고_시계_역행은_만료가_아니다() {
     func manual(setAt: Double) -> ManualLocation {
         ManualLocation(revision: 1, label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: nil, setAt: setAt)
     }
     // 웹 `MANUAL_MAX_AGE_S` 미러.
-    #expect(ManualLocationPolicy.maxAgeSeconds == 12 * 60 * 60)
+    #expect(ManualLocationPolicy.maxAgeSeconds == 4 * 60 * 60)
     #expect(!isManualLocationExpired(manual(setAt: 1000), now: 1000 + ManualLocationPolicy.maxAgeSeconds))
     #expect(isManualLocationExpired(manual(setAt: 1000), now: 1000 + ManualLocationPolicy.maxAgeSeconds + 1))
     #expect(!isManualLocationExpired(manual(setAt: 5000), now: 1000))

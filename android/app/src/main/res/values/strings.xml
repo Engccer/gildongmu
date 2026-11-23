@@ -1081,7 +1081,6 @@
     <string name="kidsNearby_source">출처: 카카오맵 장소 검색. 실내/실외는 분류 추정이며 방문 전 확인하세요.</string>
     <string name="manualLocation_addrNoCoord">선택한 주소에 등록된 좌표가 없습니다.</string>
     <string name="manualLocation_autoCleared">이동이 감지되어 지정한 위치를 해제했습니다</string>
-    <string name="manualLocation_autoClearedExpired">12시간이 지나 지정한 위치를 해제했습니다</string>
     <string name="manualLocation_gps">현재 위치</string>
     <string name="manualLocation_gpsFailed">위치를 확인할 수 없습니다</string>
     <string name="manualLocation_gpsNear">현재 위치(%1$s 부근)</string>

@@ -27,9 +27,7 @@ export interface EffectiveLocation {
   source: "gps" | "manual";
 }
 
-/** 자동 해제 사유. `drop`은 이동 감지, `expired`는 지정한 지 수명(`MANUAL_MAX_AGE_S`) 경과. */
-export type ManualClearReason = "drop" | "expired";
-type Announcer = ((reason: ManualClearReason) => void) | null;
+type Announcer = ((verdict: "drop") => void) | null;
 let announcer: Announcer = null;
 
 /**
@@ -85,8 +83,8 @@ export async function runManualLocationJudgment(): Promise<void> {
   // 수명 만료는 측위보다 **앞**이다 — 판정할 수 없는 상태(origin 없음·측위 실패)와
   // 같은 자리에 머문 상태(`keep`)가 바로 며칠 전 지정이 남는 자리라, 뒤에 두면 닿지 않는다.
   if (isManualLocationExpired(manual, Date.now() / 1000)) {
+    // 통지하지 않는다(위원장 판정 2026-11-24) — 화면이 현재 위치로 돌아와 있는 것으로 충분하다.
     clearManualLocation();
-    announcer?.("expired");
     return;
   }
   // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.

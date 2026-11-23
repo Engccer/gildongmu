@@ -996,7 +996,6 @@
     <string name="kidsNearby_source">Source: KakaoMap place search. Indoor/outdoor is an estimate — please confirm before visiting.</string>
     <string name="manualLocation_addrNoCoord">No coordinates are registered for that address.</string>
     <string name="manualLocation_autoCleared">Movement detected. The set location was cleared.</string>
-    <string name="manualLocation_autoClearedExpired">12 hours passed. The set location was cleared.</string>
     <string name="manualLocation_gps">Current location</string>
     <string name="manualLocation_gpsFailed">Location unavailable</string>
     <string name="manualLocation_gpsNear">Current location (near %1$s)</string>

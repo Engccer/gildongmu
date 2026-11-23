@@ -996,7 +996,6 @@
     <string name="kidsNearby_source">Fonte: ricerca luoghi di KakaoMap. Al chiuso/all\'aperto è una stima — verifica prima di visitare.</string>
     <string name="manualLocation_addrNoCoord">Nessuna coordinata registrata per questo indirizzo.</string>
     <string name="manualLocation_autoCleared">Movimento rilevato. La posizione impostata è stata cancellata.</string>
-    <string name="manualLocation_autoClearedExpired">Sono passate 12 ore. La posizione impostata è stata cancellata.</string>
     <string name="manualLocation_gps">Posizione attuale</string>
     <string name="manualLocation_gpsFailed">Impossibile determinare la posizione</string>
     <string name="manualLocation_gpsNear">Posizione attuale (vicino a %1$s)</string>

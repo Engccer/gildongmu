@@ -22,9 +22,8 @@ export function useManualLocationNotice(): [string, () => void] {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    setManualJudgmentAnnouncer((reason) => {
-      // 사유가 다르면 문장도 다르다 — 시간 만료를 "이동이 감지되어"로 말하면 거짓이다.
-      setNotice(t(reason === "expired" ? "manualLocation.autoClearedExpired" : "manualLocation.autoCleared"));
+    setManualJudgmentAnnouncer((verdict) => {
+      if (verdict === "drop") setNotice(t("manualLocation.autoCleared"));
     });
     // 언마운트 시 슬롯을 비운다 — cleanup 이후 도착하는 늦은 판정(비동기 fetch
     // 완료 후)이 `announcer?.("drop")`을 호출해도 null이라 no-op이다(StrictMode

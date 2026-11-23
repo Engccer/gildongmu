@@ -9,7 +9,7 @@ enum ManualLocationJudge {
     /// ⚠ 자동 해제는 반드시 통지한다. 포커스 밖 텍스트 변경을 VoiceOver는 읽지
     /// 않으므로 "표시줄이 말한다"는 사용자가 그 줄로 돌아갈 때만 성립하고,
     /// 표시줄이 없는 화면에서 복귀하면 아예 만나지 못한다.
-    nonisolated(unsafe) static var announcer: (@MainActor (ManualClearReason) -> Void)?
+    nonisolated(unsafe) static var announcer: (@MainActor () -> Void)?
 
     /// 판정 1회. 트리거 3종(scenePhase 복귀 · force 조회 · 앱 시작)이 호출한다.
     /// ⚠ 어느 갈래로 끝나든 **결과를 스토어에 남긴다.** 결과를 버리면 라벨이
@@ -23,8 +23,8 @@ enum ManualLocationJudge {
         let startedAt = Date().timeIntervalSince1970
         if isManualLocationExpired(manual, now: startedAt) {
             diag("expired age=\(Int(startedAt - manual.setAt))s origin=\(manual.origin != nil)")
+            // 통지하지 않는다(위원장 판정 2026-11-24) — 화면이 현재 위치로 돌아와 있는 것으로 충분하다.
             ManualLocationStore.shared.clear()
-            announcer?(.expired)
             return
         }
         // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
@@ -54,7 +54,7 @@ enum ManualLocationJudge {
         }
 
         ManualLocationStore.shared.clear()
-        announcer?(.moved)
+        announcer?()
     }
 
     /// 판정 기록(실험판·디버그만). 2026-11-23 실사용에서 지정이 풀리지 않은 까닭을 기기 로그로

@@ -111,35 +111,35 @@ describe("effective-location", () => {
     expect(announce).toHaveBeenCalledTimes(1);
   });
 
-  it("지정한 지 12시간이 넘으면 같은 자리여도 해제하고 사유를 expired로 통지한다", async () => {
+  it("지정한 지 4시간이 넘으면 같은 자리여도 해제하고, 알리지 않는다", async () => {
     const announce = vi.fn();
     setManualJudgmentAnnouncer(announce);
     const now = Date.now() / 1000;
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: now },
-      setAt: now - 12 * 3600 - 1,
+      setAt: now - 4 * 3600 - 1,
     });
     stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 10 });
     await runManualLocationJudgment();
     expect(getManualLocation()).toBeNull();
-    expect(announce.mock.calls).toEqual([["expired"]]);
+    expect(announce).not.toHaveBeenCalled();
   });
 
-  it("판정할 수 없는 지정(origin 없음·측위 실패)도 12시간이 넘으면 해제한다", async () => {
+  it("판정할 수 없는 지정(origin 없음·측위 실패)도 4시간이 넘으면 해제한다", async () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
-      setAt: Date.now() / 1000 - 12 * 3600 - 1,
+      setAt: Date.now() / 1000 - 4 * 3600 - 1,
     });
     stubGeolocation(null);
     await runManualLocationJudgment();
     expect(getManualLocation()).toBeNull();
   });
 
-  it("12시간 안이면 수명으로는 해제하지 않는다", async () => {
+  it("4시간 안이면 수명으로는 해제하지 않는다", async () => {
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null,
-      setAt: Date.now() / 1000 - 12 * 3600 + 60,
+      setAt: Date.now() / 1000 - 4 * 3600 + 60,
     });
     stubGeolocation(null);
     await runManualLocationJudgment();

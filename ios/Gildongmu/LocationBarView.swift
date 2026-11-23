@@ -34,7 +34,7 @@ func manualLocationLabel(_ store: ManualLocationStore, accessible: Bool) -> Stri
 /// "현재 위치로 되돌리기"(`DirectionsEndpointSearchView`의 `.manualLocation` 분기)가
 /// 담당한다 — 첫 화면에 상시 노출할 빈도가 아니다. 표시줄에서 푸는 길은 그 한 곳뿐이므로
 /// 그 버튼이나 아래 `commit(.current)` 분기를 지우면 이 화면에서는 수동 위치에 갇힌다
-/// (그 밖의 해제: 길찾기 출발지 검색의 같은 이름 버튼, 이동 감지, 12시간 수명).
+/// (그 밖의 해제: 길찾기 출발지 검색의 같은 이름 버튼, 이동 감지, 4시간 수명).
 struct LocationBarView: View {
     @State private var store = ManualLocationStore.shared
     @State private var location = LocationService.shared

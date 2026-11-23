@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/manual-location-scenarios.json";
-import ko from "../../../messages/ko.json";
 import {
   FIX_MAX_AGE_S,
   JUDGE_CEILING_M,
@@ -41,8 +40,8 @@ describe("isManualLocationExpired — 수명", () => {
     expect(isManualLocationExpired(manual(5000), 1000)).toBe(false);
   });
 
-  it("통지 문장이 말하는 시간이 상수와 같다", () => {
-    expect(ko.manualLocation.autoClearedExpired).toContain(`${MANUAL_MAX_AGE_S / 3600}시간`);
+  it("수명은 4시간이다(위원장 판정 2026-11-24)", () => {
+    expect(MANUAL_MAX_AGE_S).toBe(4 * 60 * 60);
   });
 });
 

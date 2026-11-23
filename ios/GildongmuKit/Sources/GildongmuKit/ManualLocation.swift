@@ -64,13 +64,8 @@ public enum ManualLocationPolicy {
     /// 수동 위치의 수명(초). 웹 `MANUAL_MAX_AGE_S` 미러 — 지정한 지 이만큼 지나면 이동
     /// 판정과 무관하게 해제한다. 같은 자리에 머문 지정(`keep`)과 판정할 수 없는 지정
     /// (`undecidable`)은 이동 판정만으로는 며칠이고 남는다(실사용 2026-11-23).
-    /// ⚠ 통지 문장 `manualLocation.autoClearedExpired`가 이 시간을 숫자로 말한다.
-    public static let maxAgeSeconds: Double = 12 * 60 * 60
-}
-
-/// 자동 해제 사유. 사유가 다르면 통지 문장도 다르다(시간 만료를 "이동이 감지되어"로 말하면 거짓).
-public enum ManualClearReason: Equatable, Sendable {
-    case moved, expired
+    /// 4시간과 "만료 해제는 알리지 않는다"는 위원장 판정(2026-11-24).
+    public static let maxAgeSeconds: Double = 4 * 60 * 60
 }
 
 /// 지정한 지 수명을 넘겼는가. 시계 역행(지정 시각이 미래)은 만료로 보지 않는다.

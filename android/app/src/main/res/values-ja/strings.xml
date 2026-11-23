@@ -996,7 +996,6 @@
     <string name="kidsNearby_source">出典: カカオマップの場所検索。屋内/屋外は分類による推定のため、訪問前にご確認ください。</string>
     <string name="manualLocation_addrNoCoord">選択した住所に登録された座標がありません。</string>
     <string name="manualLocation_autoCleared">移動を検知したため、指定した位置を解除しました</string>
-    <string name="manualLocation_autoClearedExpired">12時間が経過したため、指定した位置を解除しました</string>
     <string name="manualLocation_gps">現在地</string>
     <string name="manualLocation_gpsFailed">現在地を確認できません</string>
     <string name="manualLocation_gpsNear">現在地(%1$s付近)</string>
