@@ -11,7 +11,10 @@
 
 ## 2026-11-23
 
+- **채팅 모델 재측정 1일차(E86, 세션 `e86-remeasure`)**: 현행 Gemini 3.6 Flash와 GPT-6.1 Terra(추론 끔·낮음), Claude Sonnet 5.5(낮음)를 38케이스 × 3회 같은 실행에서 번갈아 재고, 35분 간격 소표본으로 캐시가 식은 운영형 비용을 쟀다. 답을 읽은 안전 판독은 네 팔 모두 9/9이고, 질문당 운영형 비용은 3.6 1.21센트(2027년 2.42센트), Terra 0.75센트, Sonnet 3.17센트다. 하네스는 Gemini 암묵 캐시 적중을 기록하고 캐시 읽기 단가를 셈하도록 고쳤다(테스트 동반). 리포트 `docs/evals/2026-11-23-e86-chat-remeasure-day1.md`, 전환 판정은 2일차 재현 뒤.
+
 - **실험판 「채팅 답변 모델」(E89, 세션 `e89-chat-model`)**: iOS 실험판 설정 AI 묶음에 「채팅 답변 모델」 줄을 「나들이 답변 모델」 앞에 두고 Gemini 3.6 Flash(처음 값)·GPT-6.1 Terra·GPT-6 Luna·Claude Sonnet·Opus·Haiku 가운데 키가 있는 것을 고르게 했다. 서버 `/api/chat`은 선택 필드 `chatModel`의 다섯 값만 OpenAI Responses·Anthropic Messages로 보내고(설정은 E86 측정 팔: Terra 추론 끔, Luna 추론 낮음, Claude effort 낮음), 없거나 모르는 값은 종전 Gemini 경로 그대로다(byte-identical 테스트, 정식판·웹·CLI는 필드를 보내지 않는다). 회사 중립 루프 `runChatModelLoop`를 새로 두고 `runAgentLoop`는 손대지 않았다. 키 없음 502, 다른 회사 경로 인스턴스 하루 150건 상한 503, 그 밖의 실패는 기존 `chat_failed`(Gemini 폴백 없음). 고를 수 있는 목록 `GET /api/chat/models`. 개인정보 문구는 위원장 판정(같은 날)대로 처리방침 채팅 문단에 「실험판에서 채팅 답변 모델을 바꾸면 Google Gemini 대신 OpenAI 또는 Anthropic Claude에 전송됩니다」를 여섯 언어로 넣고, 실험판 설정 줄 바로 아래에 전송 범위 설명 한 줄을 두었다(동의 문구·`PrivacyInfo.xcprivacy`·ASC 라벨은 그대로). spec `docs/superpowers/specs/2026-11-23-e89-chat-model-choice-design.md`.
+
 - **채팅 장애 원인 확인과 점검 도구 보강**: 사용자 제보로 확인한 결과 2026-11-22 13시대부터 Gemini 선불 크레딧이 소진돼 `/api/chat`이 전부 402로 실패하고 있었다(모델 은퇴·iOS 버전과 무관). 결제 계정이 선불로 바뀐 뒤 10월 2일 충전분이 바닥난 것이고, 48,000원을 충전해 복구하고 자동 충전(8,000원 미만이면 32,000원, 월 한도 64,000원)을 켰다. `usage-report.mjs`의 Gemini 프로브가 무료인 모델 목록 조회라 이 상태를 「정상」으로 보고하던 것을 운영 모델 생성 호출로 바꾸고, 402를 새 상태 「잔액 소진」으로 가른다. 근거는 `docs/PATTERNS.md` §"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다.
 
 ## 2026-11-22
