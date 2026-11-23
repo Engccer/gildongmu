@@ -265,6 +265,7 @@
       "tabOrder": "Ordine delle schede",
       "tabOrderReset": "Ripristina l’ordine predefinito",
       "tabOrderResetDone": "Ordine predefinito ripristinato",
+      "chatModel": "Modello di risposta della chat",
       "vergiliusProvider": "Modello di risposta della passeggiata"
     },
     "shortcut": {

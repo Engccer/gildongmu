@@ -265,6 +265,7 @@
       "tabOrder": "Ordre des onglets",
       "tabOrderReset": "Rétablir l’ordre par défaut",
       "tabOrderResetDone": "Ordre par défaut rétabli",
+      "chatModel": "Modèle de réponse du chat",
       "vergiliusProvider": "Modèle de réponse de la balade"
     },
     "shortcut": {

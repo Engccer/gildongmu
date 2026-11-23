@@ -265,6 +265,7 @@
       "tabOrder": "Tab order",
       "tabOrderReset": "Restore default order",
       "tabOrderResetDone": "Default order restored",
+      "chatModel": "Chat answer model",
       "vergiliusProvider": "Stroll answer model"
     },
     "shortcut": {

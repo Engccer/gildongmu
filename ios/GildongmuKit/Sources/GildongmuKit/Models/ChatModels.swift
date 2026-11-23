@@ -165,10 +165,12 @@ public struct ChatRequestBody: Encodable, Sendable {
     public let capabilities: [String]?
     /// `userLocation`이 수동 지정 위치인가(D2). `capabilities`와 함께만 싣는다(웹 `useChat` 미러).
     public let userLocationManual: Bool?
+    /// 실험판 채팅 답변 모델(E89). nil이면 키 자체를 생략한다(Gemini 처음 값, 정식판). 채우는 자리는 앱 `ChatModel` 한 곳이다.
+    public let chatModel: String?
 
     public init(
         messages: [Turn], userLocation: Coordinate?, locale: String, placeContext: PlaceContext?,
-        capabilities: [String]? = nil, userLocationManual: Bool? = nil
+        capabilities: [String]? = nil, userLocationManual: Bool? = nil, chatModel: String? = nil
     ) {
         self.messages = messages
         self.userLocation = userLocation
@@ -176,5 +178,13 @@ public struct ChatRequestBody: Encodable, Sendable {
         self.placeContext = placeContext
         self.capabilities = capabilities
         self.userLocationManual = userLocationManual
+        self.chatModel = chatModel
+    }
+
+    /// 같은 본문에 채팅 답변 모델만 바꾼 사본(E89). 앱은 실험판 봉인 안에서만 이 사본을 쓴다.
+    public func with(chatModel: String?) -> ChatRequestBody {
+        ChatRequestBody(
+            messages: messages, userLocation: userLocation, locale: locale, placeContext: placeContext,
+            capabilities: capabilities, userLocationManual: userLocationManual, chatModel: chatModel)
     }
 }

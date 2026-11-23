@@ -15,6 +15,17 @@ public struct ChatService: Sendable {
         self.session = session
     }
 
+    private struct ModelsResponse: Decodable {
+        let models: [String]
+    }
+
+    /// 서버에 키가 있는 채팅 답변 모델 식별자(Gemini 제외, E89). 화면 순서는 `ChatAnswerModel.choices`.
+    public func models(baseURL: URL, timeout: TimeInterval = 10) async throws -> [String] {
+        let response: ModelsResponse = try await APIClient(baseURL: baseURL, session: session)
+            .get("/api/chat/models", query: [], timeout: timeout)
+        return response.models
+    }
+
     /// 이벤트 스트림. 소비 Task가 취소되면 onTermination이 전송 Task를 취소한다.
     public func stream(_ body: ChatRequestBody, baseURL: URL) -> AsyncThrowingStream<ChatStreamEvent, any Error> {
         AsyncThrowingStream { continuation in

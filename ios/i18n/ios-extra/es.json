@@ -265,6 +265,7 @@
       "tabOrder": "Orden de las pestañas",
       "tabOrderReset": "Restablecer el orden predeterminado",
       "tabOrderResetDone": "Orden predeterminado restablecido",
+      "chatModel": "Modelo de respuesta del chat",
       "vergiliusProvider": "Modelo de respuesta del paseo"
     },
     "shortcut": {

@@ -83,6 +83,9 @@ struct SettingsView: View {
     // 조회 전·실패면 행이 없다. 저장값이 닫혔으면 목록 맨 앞이 실효값이다(Kit `VergiliusProvider.effective`).
     @AppStorage(VergiliusProvider.storageKey) private var vergiliusProviderRaw = ""
     @State private var vergiliusChoices: [String] = []
+    // 채팅 답변 모델(E89) — 선택지는 서버에 키가 있는 것뿐이다(`/api/chat/models`). 조회 전·실패·다른 모델 없음이면 행이 없다.
+    @AppStorage(ChatAnswerModel.storageKey) private var chatModelRaw = ""
+    @State private var chatModelChoices: [String] = []
     #endif
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
@@ -123,7 +126,22 @@ struct SettingsView: View {
         #endif
     }
 
+    /// 채팅 답변 모델 선택지를 서버에서 받는다(실험판만). 실패하면 행을 그리지 않는다.
+    private func loadChatModelChoices() async {
+        #if DEBUG || EXPERIMENTAL
+        guard AppConfig.experimentalChatModelEnabled,
+              let server = try? await ChatService().models(baseURL: AppConfig.apiBaseURL) else { return }
+        chatModelChoices = ChatAnswerModel.choices(server: server)
+        #endif
+    }
+
     #if DEBUG || EXPERIMENTAL
+    private var chatModelSelection: Binding<String> {
+        Binding(
+            get: { ChatAnswerModel.effective(stored: chatModelRaw, choices: chatModelChoices) ?? "" },
+            set: { chatModelRaw = $0 })
+    }
+
     private var vergiliusSelection: Binding<String> {
         Binding(
             get: { VergiliusProvider.effective(stored: vergiliusProviderRaw, choices: vergiliusChoices) ?? "" },
@@ -286,6 +304,15 @@ struct SettingsView: View {
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
                            isOn: $aiConsentGranted)
                     #if DEBUG || EXPERIMENTAL
+                    if AppConfig.experimentalChatModelEnabled, !chatModelChoices.isEmpty {
+                        Picker(appLocalized("ios.settings.chatModel"), selection: chatModelSelection) {
+                            ForEach(chatModelChoices, id: \.self) { id in
+                                Text(ChatAnswerModel.displayName(id) ?? id).tag(id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .id("chatModel-\(AppLanguage.current)")
+                    }
                     if AppConfig.experimentalOutingEnabled, !vergiliusChoices.isEmpty {
                         Picker(appLocalized("ios.settings.vergiliusProvider"), selection: vergiliusSelection) {
                             ForEach(vergiliusChoices, id: \.self) { id in
@@ -319,6 +346,7 @@ struct SettingsView: View {
             // 스와이프·VO escape로 닫힐 때의 폴백(멱등이라 [닫기] 경로와 겹쳐도 통지는 최대 1회).
             .onDisappear { commitWeight() }
             .task { await loadVergiliusChoices() }
+            .task { await loadChatModelChoices() }
             .task {
                 guard focusWeightOnAppear else { return }
                 proxy.scrollTo(Self.weightRowID)
