@@ -266,6 +266,7 @@
       "tabOrderReset": "Rétablir l’ordre par défaut",
       "tabOrderResetDone": "Ordre par défaut rétabli",
       "chatModel": "Modèle de réponse du chat",
+      "chatModelFooter": "Si vous choisissez un autre modèle que Gemini, vos questions de chat et votre position sont envoyées à OpenAI ou à Anthropic.",
       "vergiliusProvider": "Modèle de réponse de la balade"
     },
     "shortcut": {

@@ -312,6 +312,11 @@ struct SettingsView: View {
                         }
                         .pickerStyle(.menu)
                         .id("chatModel-\(AppLanguage.current)")
+                        // 다른 회사로 가는 범위를 알리는 설명(E89 위원장 판정 2026-11-23). 다른 설정의 설명은 헤더 없는 섹션의 footer지만,
+                        // 여기서 AI 묶음을 나누면 정식판에도 동의 스위치와 링크 사이에 간격이 생긴다. 실험판 줄 안의 작은 글씨 한 줄로 둔다.
+                        Text(appLocalized("ios.settings.chatModelFooter"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                     if AppConfig.experimentalOutingEnabled, !vergiliusChoices.isEmpty {
                         Picker(appLocalized("ios.settings.vergiliusProvider"), selection: vergiliusSelection) {

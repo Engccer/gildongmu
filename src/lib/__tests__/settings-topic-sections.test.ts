@@ -80,6 +80,13 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
   });
 });
 
+describe("채팅 답변 모델 설명(E89 판정 2026-11-23)", () => {
+  it("설명은 그 Picker 바로 뒤의 글 한 줄이다(AI 묶음을 나누면 정식판에 간격이 생겨 footer 대신 줄 안에 둔다)", () => {
+    const between = BODY.slice(at("ios.settings.chatModel"), at("ios.settings.chatModelFooter"));
+    expect(between).not.toMatch(/(Picker|Toggle|TextField|Link|NavigationLink)\(|\bif\b|#endif/);
+  });
+});
+
 describe("백그라운드 음성 안내 설명은 그 판에 있는 기능만 말한다(A59)", () => {
   const extra = (dir: string, locale: string) =>
     JSON.parse(readFileSync(join(ROOT, dir, `${locale}.json`), "utf8")) as Record<string, Record<string, Record<string, string>>>;

@@ -266,6 +266,7 @@
       "tabOrderReset": "標準の順序に戻す",
       "tabOrderResetDone": "標準の順序に戻しました",
       "chatModel": "チャットの回答モデル",
+      "chatModelFooter": "Gemini以外のモデルを選ぶと、チャットの質問と位置情報がOpenAIまたはAnthropicに送信されます。",
       "vergiliusProvider": "お散歩の回答モデル"
     },
     "shortcut": {

@@ -266,6 +266,7 @@
       "tabOrderReset": "Restore default order",
       "tabOrderResetDone": "Default order restored",
       "chatModel": "Chat answer model",
+      "chatModelFooter": "If you choose a model other than Gemini, your chat questions and location are sent to OpenAI or Anthropic.",
       "vergiliusProvider": "Stroll answer model"
     },
     "shortcut": {
