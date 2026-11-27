@@ -33056,37 +33056,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 안내를 기기 음성으로 듣기"
+            "value": "나들이(베타) 안내를 기기 음성으로 듣기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hear stroll guidance in device voice"
+            "value": "Hear stroll (beta) guidance in device voice"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oír la guía del paseo con la voz del dispositivo"
+            "value": "Oír la guía del paseo (beta) con la voz del dispositivo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entendre le guidage de la balade avec la voix de l'appareil"
+            "value": "Entendre le guidage de la balade (bêta) avec la voix de l'appareil"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ascolta la guida della passeggiata con la voce del dispositivo"
+            "value": "Ascolta la guida della passeggiata (beta) con la voce del dispositivo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お散歩の案内を端末の音声で聞く"
+            "value": "お散歩（ベータ版）の案内を端末の音声で聞く"
           }
         }
       }
@@ -33856,37 +33856,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 답변 모델"
+            "value": "나들이(베타) 답변 모델"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stroll answer model"
+            "value": "Stroll (beta) answer model"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modelo de respuesta del paseo"
+            "value": "Modelo de respuesta del paseo (beta)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modèle de réponse de la balade"
+            "value": "Modèle de réponse de la balade (bêta)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modello di risposta della passeggiata"
+            "value": "Modello di risposta della passeggiata (beta)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お散歩の回答モデル"
+            "value": "お散歩（ベータ版）の回答モデル"
           }
         }
       }

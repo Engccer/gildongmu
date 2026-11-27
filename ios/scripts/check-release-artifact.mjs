@@ -57,12 +57,12 @@ const LOCATION_KEY = "NSLocationWhenInUseUsageDescription";
 /** 실험판(Info-Experimental.plist)에만 있어야 하는 키. 정식 산출물에 보이면 새는 것이다. */
 const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 /** 실험 게이트 안 코드만 쓰는 프레임워크. 정식 실행 파일의 링크 목록에 보이면 코드가 샌 것이다. */
-// CallKit(E82 판정 10): 통화 중 Magic Tap을 시스템에 넘기려고 실험판 받아쓰기 등록부만 `CXCallObserver`를 읽는다.
-const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth", "CallKit"];
+// CallKit은 3.0에서 받아쓰기 시작 동작(E82 판정 10)과 함께 정식판으로 졸업해 이 목록에서 뺐다.
+const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth"];
 /** 실험 게이트 안 앱 타입 이름. 정식 실행 파일 바이트에 이 문자열(Swift 맹글 이름의 일부)이 보이면 코드가 샌 것이다.
  *  프레임워크 링크로는 안 잡히는 것만 둔다. */
 // ShakeToSearch(E87): 흔들기 → 장소 검색 창. 창 클래스 확장의 흔들기 받기와 시스템 「실행 취소」 알림 끄기가 함께 들어 있다.
-const EXPERIMENTAL_ONLY_SYMBOLS = ["DictationTriggerRegistry", "ShakeToSearch"];
+const EXPERIMENTAL_ONLY_SYMBOLS = ["ShakeToSearch"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */

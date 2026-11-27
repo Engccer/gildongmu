@@ -4,7 +4,7 @@ import GildongmuKit
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
 /// 세션 리셋 시 `.id` 재생성만으론 기본 탭 복귀가 안 된다 — 명시 복귀 필요.
 /// 탭 바 순서·기본 탭은 `AppTab.order(stored:)`·`AppTab.initial`이 정한다(기본 채팅 - 검색 - 길찾기 - 내 주변.
-/// 실험판은 설정 "탭 순서"에서 사용자가 정한 순서, E66 `experimentalTabOrderEnabled`).
+/// 설정 "탭 순서"에서 사용자가 정한 순서가 있으면 그 순서, E66 — 3.0 정식판 졸업).
 /// `String` rawValue = 안정 식별자(스펙 10-A §8). 정수 인덱스였다면 탭 삽입 시
 /// 순서가 밀려 저장된 값이 다른 탭을 가리키는 마이그레이션 결함이 생기지만,
 /// 이름 기반 rawValue는 케이스를 어디에 끼워 넣어도 기존 값이 계속 같은 탭을 가리킨다.
@@ -14,16 +14,15 @@ enum AppTab: String {
     case directions
     case nearby
 
-    /// 기본 순서(정식판은 이 순서로 고정, 실험판은 저장값이 없을 때).
+    /// 기본 순서(저장값이 없을 때).
     static let defaultOrder: [AppTab] = [.chat, .search, .directions, .nearby]
-    /// 사용자 지정 순서(E66, 실험판만): 탭 `rawValue` 배열의 JSON 문자열(spec 2026-10-05 §3.1 — 앱 루트가
+    /// 사용자 지정 순서(E66): 탭 `rawValue` 배열의 JSON 문자열(spec 2026-10-05 §3.1 — 앱 루트가
     /// `@AppStorage`로 관찰해야 탭 바가 즉시 바뀌고, `@AppStorage`는 배열을 받지 않는다).
     static let orderKey = "tabOrder.v1"
 
     /// 탭 바 순서. 저장값은 Kit `Reorder.restoredOrder`로 복구한다(모르는 값·빠진 탭은 기본 순서로 메운다).
     /// 앱 루트는 `@AppStorage` 관찰값을 넘기고, 런치·리셋의 시작 탭만 `initial`이 저장소를 직접 읽는다.
     static func order(stored: String) -> [AppTab] {
-        guard AppConfig.experimentalTabOrderEnabled else { return defaultOrder }
         return Reorder.restoredOrder(json: stored, defaultOrder: defaultOrder.map(\.rawValue))
             .compactMap(AppTab.init(rawValue:))
     }

@@ -232,10 +232,8 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.menu)
 
-                    // 탭 순서(E66): 실험판만. 정식판은 줄이 없고 순서가 고정이다.
-                    if AppConfig.experimentalTabOrderEnabled {
-                        NavigationLink(appLocalized("ios.settings.tabOrder")) { TabOrderView() }
-                    }
+                    // 탭 순서(E66, 3.0 정식판 졸업).
+                    NavigationLink(appLocalized("ios.settings.tabOrder")) { TabOrderView() }
                 }
 
                 Section(appLocalized("ios.settings.sectionVoice")) {

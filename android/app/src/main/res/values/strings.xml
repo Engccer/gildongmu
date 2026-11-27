@@ -473,7 +473,7 @@
     <string name="android_settings_listenSpeed15x">1.5배</string>
     <string name="android_settings_listenSpeed1x">1배</string>
     <string name="android_settings_listenSpeed2x">2배</string>
-    <string name="android_settings_outingForegroundSpeech">나들이 안내를 기기 음성으로 듣기</string>
+    <string name="android_settings_outingForegroundSpeech">나들이(베타) 안내를 기기 음성으로 듣기</string>
     <string name="android_settings_outingForegroundSpeechFooter">나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.</string>
     <string name="android_settings_releaseNotes">업데이트 이력</string>
     <string name="android_settings_releaseNotesError">업데이트 이력을 불러올 수 없습니다</string>
@@ -494,7 +494,7 @@
     <string name="android_settings_title">설정</string>
     <string name="android_settings_trendHaptics">진동 알림 확장 (실험)</string>
     <string name="android_settings_trendHapticsFooter">걷는 동안 가까워짐과 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다.</string>
-    <string name="android_settings_vergiliusProvider">나들이 답변 모델</string>
+    <string name="android_settings_vergiliusProvider">나들이(베타) 답변 모델</string>
     <string name="android_settings_weightFooter">체중은 %1$s~%2$skg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요.</string>
     <string name="android_settings_weightKg">칼로리 추정용 체중(kg)</string>
     <string name="android_settings_weightRejected">체중은 %1$s~%2$skg 사이여야 합니다. 이전 값 %3$skg을 유지합니다.</string>

@@ -246,7 +246,7 @@
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Guidage vocal en arrière-plan",
       "backgroundSpeechFooterOuting": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que la narration de la balade, même écran éteint ou pendant l'utilisation d'une autre app.",
-      "outingForegroundSpeech": "Entendre le guidage de la balade avec la voix de l'appareil",
+      "outingForegroundSpeech": "Entendre le guidage de la balade (bêta) avec la voix de l'appareil",
       "outingForegroundSpeechFooter": "Pendant la balade, annonce les lieux proches, les intersections et les passages piétons avec la voix de l'appareil au lieu de VoiceOver, même écran allumé.",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consentement à l'envoi des données du chat IA",
@@ -270,7 +270,7 @@
       "chatModelLegacyName": "{name} (classique)",
       "chatModelTerraDescription": "Trouve avec précision les informations utiles et répond brièvement, à l'essentiel",
       "chatModelGeminiDescription": "Le modèle précédent, qui explique les lieux et les itinéraires de façon détaillée et bienveillante",
-      "vergiliusProvider": "Modèle de réponse de la balade"
+      "vergiliusProvider": "Modèle de réponse de la balade (bêta)"
     },
     "shortcut": {
       "voiceSearch": {

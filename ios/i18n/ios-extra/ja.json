@@ -246,7 +246,7 @@
       "listenSpeed2x": "2倍",
       "backgroundSpeech": "バックグラウンド音声案内",
       "backgroundSpeechFooterOuting": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺の読み上げを端末の音声で伝えます。",
-      "outingForegroundSpeech": "お散歩の案内を端末の音声で聞く",
+      "outingForegroundSpeech": "お散歩（ベータ版）の案内を端末の音声で聞く",
       "outingForegroundSpeechFooter": "お散歩中は画面がついていても、周辺、分かれ道、横断歩道の案内をVoiceOverの代わりに端末の音声で伝えます。",
       "aiSection": "AIチャット",
       "aiConsentToggle": "AIチャットのデータ送信に同意",
@@ -270,7 +270,7 @@
       "chatModelLegacyName": "{name}（従来）",
       "chatModelTerraDescription": "必要な情報を正確に探し、要点だけを簡潔に答えるモデル",
       "chatModelGeminiDescription": "これまでのモデルで、場所や道のりを親切に詳しく説明するモデル",
-      "vergiliusProvider": "お散歩の回答モデル"
+      "vergiliusProvider": "お散歩（ベータ版）の回答モデル"
     },
     "shortcut": {
       "voiceSearch": {

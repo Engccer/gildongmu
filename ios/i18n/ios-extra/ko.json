@@ -246,7 +246,7 @@
       "listenSpeed2x": "2배",
       "backgroundSpeech": "백그라운드 음성 안내",
       "backgroundSpeechFooterOuting": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다. 나들이 중에는 주변 정보도 안내합니다.",
-      "outingForegroundSpeech": "나들이 안내를 기기 음성으로 듣기",
+      "outingForegroundSpeech": "나들이(베타) 안내를 기기 음성으로 듣기",
       "outingForegroundSpeechFooter": "나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.",
       "aiSection": "AI 채팅",
       "aiConsentToggle": "AI 채팅 데이터 전송 동의",
@@ -270,7 +270,7 @@
       "chatModelLegacyName": "{name} (레거시)",
       "chatModelTerraDescription": "필요한 정보를 정확히 찾고, 핵심만 간결하게 답하는 모델",
       "chatModelGeminiDescription": "기존 모델로, 장소와 길을 친절하게 풀어 설명하는 모델",
-      "vergiliusProvider": "나들이 답변 모델"
+      "vergiliusProvider": "나들이(베타) 답변 모델"
     },
     "shortcut": {
       "voiceSearch": {

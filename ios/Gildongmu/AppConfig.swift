@@ -22,17 +22,8 @@ enum AppConfig {
     /// (플래그 졸업 — 항상 참인 상수를 남기지 않는다). 도보 안내는 2026-08-15, 자동차·대중교통
     /// 안내와 백그라운드 음성 안내는 2026-10-01(2.0, spec 2026-10-01-release-2.0-graduation-design.md)에,
     /// 안내 시트 제목 행 밀기 동작(E74)은 2026-10-27(E75)에, 나들이(E51)·상단 줄 새로고침 자리(E82 판정 8)·채팅 답의
-    /// 수단별 안내 시작(E83)은 2026-11-27(3.0, spec 2026-11-27-e92-release-3.0-design.md §4)에 졸업했다.
-
-    /// 탭 순서 설정(E66, 위원장 판정 2026-10-05)의 봉인. 켜지면 설정 일반 묶음에 "탭 순서" 줄이 서고
-    /// `AppTab.order(stored:)`가 사용자가 정한 순서(저장값)를 쓴다. 꺼지면 줄이 없고 순서는 `AppTab.defaultOrder`로 고정이다.
-    /// 소비자는 그 둘뿐이다(`SettingsView` 한 줄, `AppTab.order(stored:)`). 실험판 실사용 판정을 통과하면
-    /// 이 검사를 삭제한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
-    #if EXPERIMENTAL
-    static let experimentalTabOrderEnabled = true
-    #else
-    static let experimentalTabOrderEnabled = false
-    #endif
+    /// 수단별 안내 시작(E83)은 2026-11-27(3.0, spec 2026-11-27-e92-release-3.0-design.md §4)에, 탭 순서 설정(E66)과
+    /// 받아쓰기 시작 동작(E82 판정 10, 두 손가락 두 번 탭)은 2026-11-28(3.0)에 졸업했다.
 
     /// 채팅 답변 모델 선택지 확장(E89, 위원장 판정 2026-11-23). 「채팅 답변 모델」 줄 자체는 3.0에서 정식판으로 졸업했고
     /// (정식판 선택지는 Terra·Gemini 둘, E92 A3), 이 플래그는 실험판 선택지 여섯(Luna·Claude 셋 추가)과 그 전송 범위 설명만 켠다.

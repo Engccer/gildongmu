@@ -246,7 +246,7 @@
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Guida vocale in background",
       "backgroundSpeechFooterOuting": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e la narrazione della passeggiata, anche a schermo spento o mentre usi un'altra app.",
-      "outingForegroundSpeech": "Ascolta la guida della passeggiata con la voce del dispositivo",
+      "outingForegroundSpeech": "Ascolta la guida della passeggiata (beta) con la voce del dispositivo",
       "outingForegroundSpeechFooter": "Durante la passeggiata, annuncia i luoghi vicini, gli incroci e gli attraversamenti pedonali con la voce del dispositivo invece di VoiceOver, anche a schermo acceso.",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
@@ -270,7 +270,7 @@
       "chatModelLegacyName": "{name} (classico)",
       "chatModelTerraDescription": "Trova con precisione le informazioni necessarie e risponde in breve, solo con l'essenziale",
       "chatModelGeminiDescription": "Il modello precedente, che spiega luoghi e percorsi in modo cordiale e dettagliato",
-      "vergiliusProvider": "Modello di risposta della passeggiata"
+      "vergiliusProvider": "Modello di risposta della passeggiata (beta)"
     },
     "shortcut": {
       "voiceSearch": {

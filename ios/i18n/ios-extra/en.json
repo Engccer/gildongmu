@@ -246,7 +246,7 @@
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Background voice guidance",
       "backgroundSpeechFooterOuting": "Speaks guidance such as turns, going off route, and arrival, plus Stroll narration, in the device voice even while the screen is off or you are using another app.",
-      "outingForegroundSpeech": "Hear stroll guidance in device voice",
+      "outingForegroundSpeech": "Hear stroll (beta) guidance in device voice",
       "outingForegroundSpeechFooter": "During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on.",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
@@ -270,7 +270,7 @@
       "chatModelLegacyName": "{name} (legacy)",
       "chatModelTerraDescription": "Finds the information you need accurately and answers briefly with just the key points",
       "chatModelGeminiDescription": "The previous model, which explains places and routes in a friendly, detailed way",
-      "vergiliusProvider": "Stroll answer model"
+      "vergiliusProvider": "Stroll (beta) answer model"
     },
     "shortcut": {
       "voiceSearch": {

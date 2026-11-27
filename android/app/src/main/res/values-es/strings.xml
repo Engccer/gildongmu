@@ -388,7 +388,7 @@
     <string name="android_settings_listenSpeed15x">1,5x</string>
     <string name="android_settings_listenSpeed1x">1x</string>
     <string name="android_settings_listenSpeed2x">2x</string>
-    <string name="android_settings_outingForegroundSpeech">Oír la guía del paseo con la voz del dispositivo</string>
+    <string name="android_settings_outingForegroundSpeech">Oír la guía del paseo (beta) con la voz del dispositivo</string>
     <string name="android_settings_outingForegroundSpeechFooter">Durante el paseo, anuncia los lugares cercanos, los cruces de calles y los pasos de peatones con la voz del dispositivo en lugar de VoiceOver, incluso con la pantalla encendida.</string>
     <string name="android_settings_releaseNotes">Notas de la versión</string>
     <string name="android_settings_releaseNotesError">No se pudieron cargar las notas de la versión</string>
@@ -409,7 +409,7 @@
     <string name="android_settings_title">Ajustes</string>
     <string name="android_settings_trendHaptics">Alertas de vibración ampliadas (experimental)</string>
     <string name="android_settings_trendHapticsFooter">También vibra al acercarte y cuando la guía no es fiable mientras caminas. Los resultados de la búsqueda, de los alrededores y de las indicaciones, y los cambios de estado durante la guía, también vibran. Solo vibra con la pantalla encendida.</string>
-    <string name="android_settings_vergiliusProvider">Modelo de respuesta del paseo</string>
+    <string name="android_settings_vergiliusProvider">Modelo de respuesta del paseo (beta)</string>
     <string name="android_settings_weightFooter">Introduce un peso entre %1$s y %2$s kg. Los datos introducidos no se guardan en ningún servidor.</string>
     <string name="android_settings_weightKg">Peso para estimar calorías (kg)</string>
     <string name="android_settings_weightRejected">El peso debe estar entre %1$s y %2$s kg. Se mantiene el valor anterior, %3$s kg.</string>

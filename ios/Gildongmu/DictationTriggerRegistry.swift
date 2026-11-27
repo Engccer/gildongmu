@@ -1,11 +1,9 @@
 import SwiftUI
 import UIKit
-#if EXPERIMENTAL
 import CallKit
 import GildongmuKit
-#endif
 
-// 화면을 겨냥하지 않고 받아쓰기를 시작·끝내는 동작(E82 판정 10, 실험판 전용):
+// 화면을 겨냥하지 않고 받아쓰기를 시작·끝내는 동작(E82 판정 10, 3.0 정식판 졸업):
 // VoiceOver 두 손가락 두 번 탭(Magic Tap) — 창·앱 객체의 `accessibilityMagicTapBlock`(`installMagicTap`).
 // 「지금 화면의 받아쓰기」를 이 등록부 한 곳에서 찾는다. 받아쓰기 버튼(`HoldDictationButton`)이 스스로 등록하므로
 // 받아쓰기가 있는 화면이 늘어도 화면마다 배선할 것이 없다(호출부 한 곳 누락이 조용한 결함이 되는 길을 구조로 막는다).
@@ -15,21 +13,14 @@ extension View {
     /// 이 컨트롤을 「화면을 겨냥하지 않는 받아쓰기」의 대상으로 등록한다(E82 판정 10). `perform`은 그 컨트롤을 누른 것과 같은
     /// 길이어야 한다 — 녹음 시작 때 낭독 끊기·완료 뒤 포커스·통지 계약이 버튼으로 시작한 경우와 갈리지 않게.
     /// `perform`의 반환값은 실제로 무언가 했는가다. 무시했어도(`false`) Magic Tap은 삼킨다 — 대상이 있는 화면의 두 번 탭이 음악을 켜지 않게(`handleMagicTap`).
-    /// 정식판에서는 아무것도 하지 않는다(등록부·Magic Tap 처리가 컴파일에서 빠진다).
     @ViewBuilder
     func dictationTriggerTarget(
         isActive: @escaping @MainActor () -> Bool,
         perform: @escaping @MainActor () -> Bool
     ) -> some View {
-        #if EXPERIMENTAL
         modifier(DictationTriggerTargetModifier(isActive: isActive, perform: perform))
-        #else
-        self
-        #endif
     }
 }
-
-#if EXPERIMENTAL
 
 /// 등록된 받아쓰기 컨트롤 하나. 뷰 상태(`@State`)가 쥐므로 그 컨트롤이 화면에서 사라지면 함께 사라지고,
 /// 등록부는 약한 참조로만 든다(해제 배선이 따로 없다).
@@ -212,5 +203,3 @@ private final class DictationTriggerAnchorView: UIView {
         return self
     }
 }
-
-#endif
