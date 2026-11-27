@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">Pasando junto a %1$s</string>
     <string name="android_outing_returnToOrigin">Volver al inicio</string>
     <string name="android_outing_roadEntered">Ahora en %1$s</string>
+    <string name="android_outing_sheetTitle">Paseo (beta)</string>
     <string name="android_outing_start">Iniciar paseo</string>
     <string name="android_outing_started">Paseo iniciado</string>
     <string name="android_outing_stop">Terminar el paseo</string>
@@ -722,6 +723,7 @@
     <string name="directions_from">Origen</string>
     <string name="directions_fromHere">Cómo llegar desde aquí</string>
     <string name="directions_geoError">No se pudo obtener tu ubicación. Busca un punto de partida.</string>
+    <string name="directions_journeyReady">Guía de ruta lista.</string>
     <string name="directions_loading">Buscando rutas…</string>
     <string name="directions_locating">Localizándote…</string>
     <string name="directions_needEndpoints">Elige primero un origen y un destino.</string>

@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">Passing %1$s</string>
     <string name="android_outing_returnToOrigin">Back to start</string>
     <string name="android_outing_roadEntered">Now on %1$s</string>
+    <string name="android_outing_sheetTitle">Stroll (Beta)</string>
     <string name="android_outing_start">Start stroll</string>
     <string name="android_outing_started">Stroll started</string>
     <string name="android_outing_stop">End stroll</string>
@@ -722,6 +723,7 @@
     <string name="directions_from">From</string>
     <string name="directions_fromHere">Directions from here</string>
     <string name="directions_geoError">Couldn\'t get your location. Please search for a starting point.</string>
+    <string name="directions_journeyReady">Route guidance is ready.</string>
     <string name="directions_loading">Finding routes…</string>
     <string name="directions_locating">Locating you…</string>
     <string name="directions_needEndpoints">Please choose a starting point and destination first.</string>

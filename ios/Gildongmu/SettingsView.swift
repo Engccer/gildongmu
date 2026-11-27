@@ -65,7 +65,7 @@ struct SettingsView: View {
     // `BackgroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다).
     @AppStorage(BackgroundSpeech.storageKey) private var backgroundSpeechEnabled = BackgroundSpeech.defaultEnabled
     // 나들이 전경 기기 음성(E82 판정 7) — 화면이 켜진 VoiceOver 사용 중에도 나들이 자동 안내를 기기 음성으로. 키·기본값·실효값
-    // 정본은 Kit `OutingForegroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다). 줄은 실험판에만 선다.
+    // 정본은 Kit `OutingForegroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다).
     @AppStorage(OutingForegroundSpeech.storageKey) private var outingForegroundSpeechEnabled =
         OutingForegroundSpeech.defaultEnabled
     #if DEBUG || EXPERIMENTAL
@@ -81,6 +81,8 @@ struct SettingsView: View {
     @AppStorage(TrendHaptics.storageKey) private var trendHapticsEnabled = false
     // 나들이 「말로 묻기」의 답변 모델(E82 V23) — 선택지는 서버에 키가 있는 것뿐이다(`/api/vergilius/providers`, 게이트 패턴).
     // 조회 전·실패면 행이 없다. 저장값이 닫혔으면 목록 맨 앞이 실효값이다(Kit `VergiliusProvider.effective`).
+    // 봉인(E92 3.0): 나들이는 정식판으로 졸업했지만 이 줄은 이 `#if` 안에만 있다. 정식판은 Terra 고정이고 저장값을 읽지 않는다
+    // (`OutingModel.resolveProvider`, 가드 `outing-guard.test.ts`).
     @AppStorage(VergiliusProvider.storageKey) private var vergiliusProviderRaw = ""
     @State private var vergiliusChoices: [String] = []
     #endif
@@ -121,8 +123,7 @@ struct SettingsView: View {
     /// 답변 모델 선택지를 서버에서 받는다(실험판만). 실패하면 행을 그리지 않는다 — 고를 수 없는 이름을 보이지 않는다.
     private func loadVergiliusChoices() async {
         #if DEBUG || EXPERIMENTAL
-        guard AppConfig.experimentalOutingEnabled,
-              let server = try? await VergiliusService(baseURL: AppConfig.apiBaseURL).providers() else { return }
+        guard let server = try? await VergiliusService(baseURL: AppConfig.apiBaseURL).providers() else { return }
         vergiliusChoices = VergiliusProvider.choices(server: server)
         #endif
     }
@@ -251,14 +252,12 @@ struct SettingsView: View {
                     .id("listenSpeed-\(AppLanguage.current)")
                 }
 
-                // 나들이 전경 기기 음성(E82 판정 7, 음성 묶음의 끝): 나들이가 있는 판(실험판)에만 줄이 선다. 이름만으로는 VoiceOver를 켠 채
+                // 나들이 전경 기기 음성(E82 판정 7, 음성 묶음의 끝): 이름만으로는 VoiceOver를 켠 채
                 // 화면을 켜 둔 동안의 일이라는 범위가 드러나지 않아 설명을 둔다.
-                if AppConfig.experimentalOutingEnabled {
-                    Section {
-                        Toggle(appLocalized("ios.settings.outingForegroundSpeech"), isOn: $outingForegroundSpeechEnabled)
-                    } footer: {
-                        Text(appLocalized("ios.settings.outingForegroundSpeechFooter"))
-                    }
+                Section {
+                    Toggle(appLocalized("ios.settings.outingForegroundSpeech"), isOn: $outingForegroundSpeechEnabled)
+                } footer: {
+                    Text(appLocalized("ios.settings.outingForegroundSpeechFooter"))
                 }
 
                 // 백그라운드 음성 안내는 이름에 "음성"이 있어도 쓰이는 자리 기준으로 길 안내 묶음이다(E59 판정).
@@ -267,10 +266,9 @@ struct SettingsView: View {
                 } header: {
                     Text(appLocalized("ios.settings.sectionGuidance"))
                 } footer: {
-                    // 이름만으로는 무엇을 말하는지(행동 문장만)가 드러나지 않는다 — 범위는 새 정보다. 나들이 주변 낭독은
-                    // 나들이가 있는 판(실험판)에서만 말한다(A59 — 정식판에 없는 기능을 약속하지 않는다).
-                    Text(AppConfig.experimentalOutingEnabled
-                        ? appLocalized("ios.settings.backgroundSpeechFooterOuting") : appLocalized("ios.settings.backgroundSpeechFooter"))
+                    // 이름만으로는 무엇을 말하는지(행동 문장만)가 드러나지 않는다 — 범위는 새 정보다. 나들이 주변 낭독도 말한다
+                    // (A59 — 3.0에서 나들이가 정식판으로 졸업해 나들이 문장으로 고정).
+                    Text(appLocalized("ios.settings.backgroundSpeechFooterOuting"))
                 }
 
                 Section {
@@ -336,7 +334,7 @@ struct SettingsView: View {
                         }
                     }
                     #if DEBUG || EXPERIMENTAL
-                    if AppConfig.experimentalOutingEnabled, !vergiliusChoices.isEmpty {
+                    if !vergiliusChoices.isEmpty {
                         Picker(appLocalized("ios.settings.vergiliusProvider"), selection: vergiliusSelection) {
                             ForEach(vergiliusChoices, id: \.self) { id in
                                 Text(VergiliusProvider.displayName(id) ?? id).tag(id)

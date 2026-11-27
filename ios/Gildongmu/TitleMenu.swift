@@ -9,10 +9,8 @@ extension EnvironmentValues {
     @Entry var openSettings: () -> Void = {}
 }
 
-/// 네 탭 공통 상단 줄. principal "길동무" 메뉴는 새로고침(현재 탭만)·설정(시트)이다.
-/// 실험판(E82 판정 8, 2026-11-16)은 왼쪽에 나들이 시작(E51 — 도착지 없는 도보 안내, 봉인 `experimentalOutingEnabled`),
-/// 오른쪽에 새로고침 버튼(봉인 `experimentalTopBarRefreshEnabled`)을 두고 메뉴엔 설정만 남긴다.
-/// 두 봉인은 서로 다른 기능이라 따로 졸업한다(정식판 새로고침 자리는 실사용 뒤 다음 제출 때 판정).
+/// 네 탭 공통 상단 줄(E82 판정 8, 2026-11-16 실험판 → 3.0 정식판): 왼쪽 나들이 시작(E51 — 도착지 없는 도보 안내),
+/// 가운데 principal "길동무" 메뉴(설정 시트), 오른쪽 새로고침(현재 탭만) 버튼.
 /// Menu는 네이티브 disclosure라 VoiceOver가 "길동무, 팝업 버튼"으로 낭독한다.
 /// 푸시된 상세 화면엔 표시되지 않는다(SwiftUI 화면별 toolbar 기본 동작).
 private struct GildongmuTitleMenu: ViewModifier {
@@ -22,23 +20,16 @@ private struct GildongmuTitleMenu: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toolbar {
-                if AppConfig.experimentalOutingEnabled {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button(appLocalized("ios.outing.start")) { GuideSession.shared.startOuting() }
-                    }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(appLocalized("ios.outing.start")) { GuideSession.shared.startOuting() }
                 }
                 ToolbarItem(placement: .principal) {
                     Menu(appLocalized("app.title")) {
-                        if !AppConfig.experimentalTopBarRefreshEnabled {
-                            Button(appLocalized("ios.common.refresh")) { refreshTab() }
-                        }
                         Button(appLocalized("ios.settings.title")) { openSettings() }
                     }
                 }
-                if AppConfig.experimentalTopBarRefreshEnabled {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(appLocalized("ios.common.refresh")) { refreshTab() }
-                    }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(appLocalized("ios.common.refresh")) { refreshTab() }
                 }
             }
         }

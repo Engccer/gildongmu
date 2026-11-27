@@ -312,14 +312,17 @@ describe("나들이 전경 기기 음성 배선 (E82 판정 7)", () => {
     }
   });
 
-  it("설정 행은 나들이 봉인 조건 안에 한 자리다(정식판에는 줄이 없다)", () => {
+  it("설정 행은 한 자리이고 정식판에도 선다(3.0 나들이 졸업 — 실험 구성 블록 밖)", () => {
     const settings = read(join(APP, "SettingsView.swift"));
     expect(settings.split('"ios.settings.outingForegroundSpeech"').length - 1).toBe(1);
     const row = settings.indexOf('appLocalized("ios.settings.outingForegroundSpeech")');
-    const guard = settings.lastIndexOf("if AppConfig.experimentalOutingEnabled {", row);
-    expect(guard).toBeGreaterThan(-1);
-    // 조건 블록이 행 앞에서 닫히지 않았다.
-    const between = settings.slice(guard, row);
-    expect((between.match(/\{/g) ?? []).length).toBeGreaterThan((between.match(/\}/g) ?? []).length);
+    // 행 앞에서 열린 채 닫히지 않은 `#if`가 없다.
+    let depth = 0;
+    for (const line of settings.slice(0, row).split("\n")) {
+      const t = line.trim();
+      if (t.startsWith("#if ")) depth++;
+      else if (t.startsWith("#endif")) depth--;
+    }
+    expect(depth).toBe(0);
   });
 });

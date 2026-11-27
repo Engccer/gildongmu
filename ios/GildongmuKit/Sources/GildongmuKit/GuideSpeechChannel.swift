@@ -119,7 +119,7 @@ public func outingDeviceOverVoiceOver(switchEnabled: Bool, origin: OutingSpeechO
     }
 }
 
-/// 설정 스위치 「나들이 전경 기기 음성」(E82 판정 7, 실험판). 키·기본값·실효값의 정본.
+/// 설정 스위치 「나들이 전경 기기 음성」(E82 판정 7). 키·기본값·실효값의 정본.
 public enum OutingForegroundSpeech {
     public static let storageKey = "outingForegroundSpeechEnabled"
     /// 기본값 켬(위원장 판정 2026-11-16).

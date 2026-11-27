@@ -245,7 +245,6 @@
       "listenSpeed15x": "1.5x",
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Background voice guidance",
-      "backgroundSpeechFooter": "Speaks guidance such as turns, going off route, and arrival in the device voice even while the screen is off or you are using another app.",
       "backgroundSpeechFooterOuting": "Speaks guidance such as turns, going off route, and arrival, plus Stroll narration, in the device voice even while the screen is off or you are using another app.",
       "outingForegroundSpeech": "Hear stroll guidance in device voice",
       "outingForegroundSpeechFooter": "During a stroll, speaks nearby places, junctions, and crosswalks in the device voice instead of VoiceOver, even with the screen on.",
@@ -367,6 +366,7 @@
     },
     "outing": {
       "heading": "Stroll",
+      "sheetTitle": "Stroll (Beta)",
       "start": "Start stroll",
       "stop": "End stroll",
       "endedByUser": "Stroll ended.",

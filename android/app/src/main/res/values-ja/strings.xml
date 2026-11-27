@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">そばに%1$s</string>
     <string name="android_outing_returnToOrigin">出発地点へ</string>
     <string name="android_outing_roadEntered">%1$sに入りました</string>
+    <string name="android_outing_sheetTitle">お散歩（ベータ版）</string>
     <string name="android_outing_start">お散歩を開始</string>
     <string name="android_outing_started">お散歩を開始しました</string>
     <string name="android_outing_stop">お散歩を終了</string>
@@ -722,6 +723,7 @@
     <string name="directions_from">出発地</string>
     <string name="directions_fromHere">ここからの経路検索</string>
     <string name="directions_geoError">現在地を確認できません。出発地を検索して指定してください。</string>
+    <string name="directions_journeyReady">経路案内の準備ができました。</string>
     <string name="directions_loading">経路を探しています。</string>
     <string name="directions_locating">現在地を確認しています。</string>
     <string name="directions_needEndpoints">先に出発地と目的地を選択してください。</string>

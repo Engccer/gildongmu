@@ -166,15 +166,29 @@ describe("나들이 앞 상황 두 줄(E82 판정 4)", () => {
 });
 
 describe("나들이 진입점", () => {
-  it("상단 줄 버튼은 왼쪽 나들이 시작(실험판 전용)·메뉴 새로고침(정식판)·설정·오른쪽 새로고침(실험판) 순서다(E82 판정 8)", () => {
+  it("상단 줄 버튼은 왼쪽 나들이 시작·가운데 메뉴의 설정·오른쪽 새로고침 순서다(E82 판정 8, 3.0 정식판)", () => {
     const menu = readFileSync(TITLE_MENU, "utf8");
     const buttons = menu.match(/Button\(appLocalized\("[^"]+"\)\)/g) ?? [];
     expect(buttons).toEqual([
       'Button(appLocalized("ios.outing.start"))',
-      'Button(appLocalized("ios.common.refresh"))',
       'Button(appLocalized("ios.settings.title"))',
       'Button(appLocalized("ios.common.refresh"))',
     ]);
+  });
+
+  it("베타 표기는 시트 제목 한 곳이고 시작 버튼 이름에는 없다(E92 판정 ⓕ)", () => {
+    const sheet = readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8");
+    expect(sheet.split('appLocalized("ios.outing.sheetTitle")').length - 1).toBe(1);
+    const uses = swiftFiles(IOS).filter((f) => readFileSync(f, "utf8").includes('"ios.outing.sheetTitle"'));
+    expect(uses.map((f) => f.split("/").pop())).toEqual(["OutingSheet.swift"]);
+    // 제목은 헤딩 한 줄이고 표기는 한 문자열 안에 있다(괄호 표기 조각을 따로 두지 않는다).
+    expect(sheet).toMatch(/Text\(appLocalized\("ios\.outing\.sheetTitle"\)\)\s*\.accessibilityAddTraits\(\.isHeader\)/);
+    for (const locale of ["ko", "en", "es", "fr", "it", "ja"]) {
+      const outing = JSON.parse(readFileSync(join(IOS, `i18n/ios-extra/${locale}.json`), "utf8")).ios.outing;
+      expect(outing.sheetTitle.startsWith(outing.heading), locale).toBe(true);
+      expect(outing.sheetTitle, locale).not.toBe(outing.heading);
+      expect(outing.start, locale).not.toMatch(/beta|bêta|베타|ベータ/i);
+    }
   });
 
   it("길찾기 탭 버튼은 도착지 없는 조회의 거절 상태에서만 선다(자동 시작 아님, 위원장 판정 2026-09-26)", () => {
@@ -599,5 +613,50 @@ describe("E82 위원장 판정(2026-11-17) 배선", () => {
     expect(finish).toMatch(/if speech\.isStarting \{[^}]*speech\.cancel\(\)/);
     // 시트 뷰는 이 종료를 스스로 걸지 않는다(접히면 파괴된다).
     expect(read("Gildongmu/Directions/OutingSheet.swift")).not.toContain("finishAskOnSheetMinimized");
+  });
+});
+
+/** `marker` 자리를 감싸는 `#if` 줄들(바깥 → 안쪽, `#else` 갈래는 `!(…)`). */
+function compileConditionsAt(source: string, marker: string): string[] {
+  const at = source.indexOf(marker);
+  if (at < 0) throw new Error(`마커 ${marker}를 찾지 못했다`);
+  const stack: string[] = [];
+  for (const line of source.slice(0, at).split("\n")) {
+    const t = line.trim();
+    if (t.startsWith("#if ")) stack.push(t);
+    else if (t.startsWith("#else")) stack.push(`!(${stack.pop()})`);
+    else if (t.startsWith("#endif")) stack.pop();
+  }
+  return stack;
+}
+
+describe("「말로 묻기」 답변 모델은 정식판에서 Terra 고정이다(E92 3.0)", () => {
+  const SEAL = "#if DEBUG || EXPERIMENTAL";
+  const settings = () => readFileSync(join(IOS, "Gildongmu/SettingsView.swift"), "utf8");
+
+  it("정식판 갈래는 저장값을 읽지 않고 openai를 돌려준다", () => {
+    const body = functionBody(readFileSync(MODEL, "utf8"), "resolveProvider");
+    expect(body).toMatch(/^\{\s*#if DEBUG \|\| EXPERIMENTAL\n[\s\S]*#else\s*return "openai"\s*#endif\s*\}$/);
+    expect(compileConditionsAt(body, "VergiliusProvider.storageKey")).toEqual([SEAL]);
+  });
+
+  it("앱이 저장값을 읽는 자리와 「나들이 답변 모델」 줄은 전부 실험 구성 블록 안이다", () => {
+    const readers = swiftFiles(join(IOS, "Gildongmu")).filter((f) => readFileSync(f, "utf8").includes("VergiliusProvider.storageKey"));
+    expect(readers.map((f) => f.split("/").pop()).sort()).toEqual(["OutingModel.swift", "SettingsView.swift"]);
+    for (const file of readers) {
+      const source = readFileSync(file, "utf8");
+      expect(compileConditionsAt(source, "VergiliusProvider.storageKey"), file).toEqual([SEAL]);
+    }
+    const src = settings();
+    expect(src.split('"ios.settings.vergiliusProvider"').length - 1).toBe(1);
+    expect(compileConditionsAt(src, 'appLocalized("ios.settings.vergiliusProvider")')).toEqual([SEAL]);
+    expect(compileConditionsAt(src, "VergiliusService(baseURL:")).toEqual([SEAL]);
+  });
+
+  it("가드 자체: #else 갈래와 #endif 뒤를 가른다", () => {
+    const src = ["#if A", "a()", "#else", "b()", "#endif", "c()"].join("\n");
+    expect(compileConditionsAt(src, "a()")).toEqual(["#if A"]);
+    expect(compileConditionsAt(src, "b()")).toEqual(["!(#if A)"]);
+    expect(compileConditionsAt(src, "c()")).toEqual([]);
   });
 });

@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">À côté : %1$s</string>
     <string name="android_outing_returnToOrigin">Retour au départ</string>
     <string name="android_outing_roadEntered">Vous êtes sur %1$s</string>
+    <string name="android_outing_sheetTitle">Balade (bêta)</string>
     <string name="android_outing_start">Commencer la balade</string>
     <string name="android_outing_started">Balade commencée</string>
     <string name="android_outing_stop">Terminer la balade</string>
@@ -722,6 +723,7 @@
     <string name="directions_from">Départ</string>
     <string name="directions_fromHere">Itinéraire depuis ici</string>
     <string name="directions_geoError">Impossible d\'obtenir votre position. Veuillez rechercher un point de départ.</string>
+    <string name="directions_journeyReady">Itinéraire prêt.</string>
     <string name="directions_loading">Recherche d\'itinéraires…</string>
     <string name="directions_locating">Localisation en cours…</string>
     <string name="directions_needEndpoints">Choisissez d\'abord un départ et une arrivée.</string>

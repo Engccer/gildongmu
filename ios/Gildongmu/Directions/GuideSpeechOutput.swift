@@ -18,8 +18,7 @@ enum GuideSpeechOutput {
             stored: UserDefaults.standard.object(forKey: BackgroundSpeech.storageKey) as? Bool)
     }
 
-    /// 나들이 전경 기기 음성 스위치의 실효값(E82 판정 7, 실험판 설정). 게시 시점마다 읽는다(세션 중에 바꾸면 다음 문장부터).
-    /// 정식판에는 스위치 행이 없고 나들이에 닿는 길도 없다(봉인 `experimentalOutingEnabled`).
+    /// 나들이 전경 기기 음성 스위치의 실효값(E82 판정 7, 설정 음성 묶음). 게시 시점마다 읽는다(세션 중에 바꾸면 다음 문장부터).
     static var outingForegroundSpeechEnabled: Bool {
         OutingForegroundSpeech.isEnabled(
             stored: UserDefaults.standard.object(forKey: OutingForegroundSpeech.storageKey) as? Bool)

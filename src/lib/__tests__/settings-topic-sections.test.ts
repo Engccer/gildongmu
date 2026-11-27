@@ -68,7 +68,7 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
   it("설명 문장은 그 설정 바로 뒤의 footer다", () => {
     for (const [setting, footer] of [
       ["ios.settings.outingForegroundSpeech", "ios.settings.outingForegroundSpeechFooter"],
-      ["ios.settings.backgroundSpeech", "ios.settings.backgroundSpeechFooter"],
+      ["ios.settings.backgroundSpeech", "ios.settings.backgroundSpeechFooterOuting"],
       ["ios.settings.weightKg", "ios.settings.weightFooter"],
       ["ios.settings.trendHaptics", "ios.settings.trendHapticsFooter"],
     ]) {
@@ -104,21 +104,24 @@ describe("백그라운드 음성 안내 설명은 그 판에 있는 기능만 �
     JSON.parse(readFileSync(join(ROOT, dir, `${locale}.json`), "utf8")) as Record<string, Record<string, Record<string, string>>>;
   const LOCALES = ["ko", "en", "es", "fr", "it", "ja"];
 
-  it("나들이를 말하는 문장은 나들이 봉인 플래그가 켜진 판(실험판)에서만 고른다", () => {
-    expect(BODY).toMatch(
-      /AppConfig\.experimentalOutingEnabled\s*\?\s*appLocalized\("ios\.settings\.backgroundSpeechFooterOuting"\)\s*:\s*appLocalized\("ios\.settings\.backgroundSpeechFooter"\)/,
-    );
+  it("iOS는 나들이가 정식판으로 졸업해(3.0) 나들이 문장으로 고정이다 — 조건·종전 갈래가 없다", () => {
+    expect(BODY).toContain('Text(appLocalized("ios.settings.backgroundSpeechFooterOuting"))');
+    expect(SETTINGS).not.toContain('"ios.settings.backgroundSpeechFooter"');
+    for (const locale of LOCALES) {
+      const ios = extra("ios/i18n/ios-extra", locale).ios.settings;
+      expect(ios.backgroundSpeechFooter, locale).toBeUndefined();
+      expect(ios.backgroundSpeechFooterOuting, locale).toEqual(expect.any(String));
+    }
+    expect(extra("ios/i18n/ios-extra", "ko").ios.settings.backgroundSpeechFooterOuting).toContain("나들이");
   });
 
-  it("정식판 문장은 안드로이드 확정 문장과 6로케일 같고, 나들이 문장만 그 구절을 더 가진다", () => {
+  it("안드로이드는 나들이가 없어 나들이 구절 없는 문장이다(6로케일, iOS 문장과 다르다)", () => {
     for (const locale of LOCALES) {
       const ios = extra("ios/i18n/ios-extra", locale).ios.settings;
       const android = extra("android/i18n/android-extra", locale).android.settings;
-      expect(ios.backgroundSpeechFooter, locale).toBe(android.backgroundSpeechFooter);
-      expect(ios.backgroundSpeechFooterOuting, locale).toEqual(expect.any(String));
-      expect(ios.backgroundSpeechFooterOuting, locale).not.toBe(ios.backgroundSpeechFooter);
+      expect(android.backgroundSpeechFooter, locale).toEqual(expect.any(String));
+      expect(android.backgroundSpeechFooter, locale).not.toBe(ios.backgroundSpeechFooterOuting);
     }
-    expect(extra("ios/i18n/ios-extra", "ko").ios.settings.backgroundSpeechFooter).not.toContain("나들이");
-    expect(extra("ios/i18n/ios-extra", "ko").ios.settings.backgroundSpeechFooterOuting).toContain("나들이");
+    expect(extra("android/i18n/android-extra", "ko").android.settings.backgroundSpeechFooter).not.toContain("나들이");
   });
 });

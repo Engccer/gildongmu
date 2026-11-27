@@ -387,6 +387,7 @@
     <string name="android_outing_passSide">옆에 %1$s</string>
     <string name="android_outing_returnToOrigin">출발점으로</string>
     <string name="android_outing_roadEntered">%1$s에 들어섰습니다</string>
+    <string name="android_outing_sheetTitle">나들이 (베타)</string>
     <string name="android_outing_start">나들이 시작</string>
     <string name="android_outing_started">나들이 시작</string>
     <string name="android_outing_stop">나들이 종료</string>
@@ -807,6 +808,7 @@
     <string name="directions_from">출발지</string>
     <string name="directions_fromHere">여기부터 길찾기</string>
     <string name="directions_geoError">현재 위치를 확인할 수 없습니다. 출발지를 검색해 지정해 주세요.</string>
+    <string name="directions_journeyReady">경로 안내가 준비되었습니다.</string>
     <string name="directions_loading">경로를 찾는 중입니다.</string>
     <string name="directions_locating">현재 위치를 확인하는 중입니다.</string>
     <string name="directions_needEndpoints">출발지와 도착지를 먼저 선택해 주세요.</string>

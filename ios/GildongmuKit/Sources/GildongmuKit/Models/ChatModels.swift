@@ -23,7 +23,7 @@ public enum ChatRenderPayload: Sendable {
     case webResults([WebSearchResult])
     /// 여정 카드(E70-b, 실험판). 디코딩이 실패한 `journey` 렌더는 `.unsupported`로 접는다(답 전체를 잃지 않는다).
     case journey(JourneyChatPayload)
-    /// 경로 카드의 [안내 시작] 재료(E83, 실험판). 계약에 맞지 않는 `route-start` 렌더는 `.unsupported`로 접는다.
+    /// 경로 카드의 [안내 시작] 재료(E83). 계약에 맞지 않는 `route-start` 렌더는 `.unsupported`로 접는다.
     case routeStart(RouteStartChatPayload)
     case unsupported
 }
@@ -161,7 +161,7 @@ public struct ChatRequestBody: Encodable, Sendable {
     public let locale: String
     public let placeContext: PlaceContext?
     /// 클라이언트 능력 신고(E70-b D7). nil이면 키 자체를 생략해 종전 요청과 byte-identical이다.
-    /// 채팅 탭에서만 싣고(`"journey"`, 실험판은 `"route-start"`도), 장소 채팅은 싣지 않는다.
+    /// 채팅 탭에서만 싣고(`"journey"`·`"route-start"`), 장소 채팅은 싣지 않는다.
     public let capabilities: [String]?
     /// `userLocation`이 수동 지정 위치인가(D2). `capabilities`와 함께만 싣는다(웹 `useChat` 미러).
     public let userLocationManual: Bool?
