@@ -40,7 +40,7 @@ async function sentBody(opts?: Parameters<typeof useChat>[0]): Promise<string> {
 const text = "자동차로 신도림역까지 가서 지하철로 강남 가는 길";
 /** 능력 신고가 생기기 전의 요청 본문(키 순서까지) — 이 모양이 바뀌면 옛 서버·캐시와의 동일성이 깨진다. */
 const legacyBody = (userLocation: unknown, placeContext?: PlaceContext) =>
-  JSON.stringify({ messages: [{ role: "user", text }], userLocation, locale: "ko", placeContext });
+  JSON.stringify({ messages: [{ role: "user", text }], userLocation, locale: "ko", placeContext, chatModel: "openai" });
 
 describe("useChat 여정 능력 신고", () => {
   it("옵션이 없으면 요청 본문이 종전과 같다", async () => {

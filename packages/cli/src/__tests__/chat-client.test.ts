@@ -46,6 +46,13 @@ describe("chatOnce", () => {
     expect(result).toEqual({ text: "답변입니다", sources: [{ label: "source.kakao" }] });
   });
 
+  it("요청 본문에 채팅 답변 모델 GPT-6.1 Terra(`chatModel: \"openai\"`)를 싣는다(E92 §3)", async () => {
+    stubFetchWithBody('{"type":"done","text":"답","renders":[],"sources":[]}\n');
+    await chatOnce([{ role: "user", text: "질문" }], { locale: "ko", apiUrl: "https://x.test" });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toEqual({ messages: [{ role: "user", text: "질문" }], locale: "ko", chatModel: "openai" });
+  });
+
   it("error 이벤트는 throw한다", async () => {
     stubFetchWithBody('{"type":"error","code":"upstream_failed"}\n');
 

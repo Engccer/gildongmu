@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * 채팅 답변 모델 봉인 2선(소스 가드). 1선은 구조다: 서버는 알려진 다섯 값만 다른 회사로 보내고(`parseChatModel`, 값 없음 = Gemini),
- * 웹·CLI는 3.0 출시 날까지 필드를 만들지 않고(E92 §3, 브랜치 `release/3.0-web`), iOS는 3.0부터 정식판도 Kit 한 판정으로 값을 채운다.
+ * 웹·CLI는 Terra(`openai`) 한 값만 보내고(E92 §3), iOS는 3.0부터 정식판도 Kit 한 판정으로 값을 채운다.
  * 이 테스트는 그 구조가 소스에서 무너지지 않았는지 센다.
  * spec `docs/superpowers/specs/2026-11-23-e89-chat-model-choice-design.md` §3, `2026-11-27-e92-release-3.0-design.md` §2·§3.
  */
@@ -24,21 +24,23 @@ const rel = (p: string) => relative(ROOT, p);
 const isTest = (p: string) => /__tests__|\.test\.|\.spec\./.test(p);
 
 describe("채팅 답변 모델 봉인 (E89·E92)", () => {
-  it("서버·웹 소스에서 `chatModel`을 쓰는 곳은 라우트와 chat-models뿐이다", () => {
-    const allowed = new Set(["src/app/api/chat/route.ts", "src/lib/chat/chat-models.ts"]);
+  it("서버·웹 소스에서 `chatModel`을 쓰는 곳은 라우트·chat-models와 웹 채팅 훅뿐이고, 웹은 Terra(`openai`)만 보낸다(E92 §3)", () => {
+    const allowed = new Set(["src/app/api/chat/route.ts", "src/lib/chat/chat-models.ts", "src/hooks/useChat.ts"]);
     const offenders = files(join(ROOT, "src"), [".ts", ".tsx"])
       .filter((p) => !isTest(p) && !allowed.has(rel(p)))
       .filter((p) => /\bchatModel\b/.test(readFileSync(p, "utf8")))
       .map(rel);
     expect(offenders).toEqual([]);
+    expect(readFileSync(join(ROOT, "src/hooks/useChat.ts"), "utf8").match(/chatModel:\s*"[^"]*"/g)).toEqual(['chatModel: "openai"']);
   });
 
-  it("CLI·MCP 패키지는 `chatModel`을 보내지 않는다", () => {
-    const offenders = files(join(ROOT, "packages"), [".ts", ".mjs", ".js"])
+  it("CLI는 채팅 요청에 Terra(`openai`)만 보내고 MCP는 `chatModel`을 보내지 않는다(E92 §3)", () => {
+    const users = files(join(ROOT, "packages"), [".ts", ".mjs", ".js"])
       .filter((p) => !isTest(p) && !p.includes("/dist/"))
       .filter((p) => /\bchatModel\b/.test(readFileSync(p, "utf8")))
       .map(rel);
-    expect(offenders).toEqual([]);
+    expect(users).toEqual(["packages/cli/src/lib/chat-client.ts"]);
+    expect(readFileSync(join(ROOT, users[0]), "utf8").match(/chatModel:\s*"[^"]*"/g)).toEqual(['chatModel: "openai"']);
   });
 
   it("추천 질문 라우트는 선택 모델을 읽지 않는다(범위 밖, Gemini 그대로)", () => {

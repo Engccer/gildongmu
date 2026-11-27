@@ -44,7 +44,8 @@ export async function chatOnce(messages: ChatTurn[], opts: ChatOnceOptions): Pro
     res = await fetch(new URL("/api/chat", opts.apiUrl), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messages, userLocation: opts.userLocation, locale: opts.locale }),
+      // 채팅 답변 모델(E92 §3): 웹과 같이 GPT-6.1 Terra로 묻는다. 값이 없으면 서버가 Gemini로 답한다(옛 앱 보호).
+      body: JSON.stringify({ messages, userLocation: opts.userLocation, locale: opts.locale, chatModel: "openai" }),
     });
   } catch (err) {
     // 연결 실패는 exit 7 — api-client.ts apiRequest와 동형(HTTP 비정상과 3-state 분리).
