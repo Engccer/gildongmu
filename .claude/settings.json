@@ -1,5 +1,6 @@
 {
   "enabledPlugins": {
-    "swiftui-pro@swiftui-agent-skill": true
+    "swiftui-pro@swiftui-agent-skill": true,
+    "xcode@claude-plugins-official": true
   }
 }
