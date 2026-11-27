@@ -34,6 +34,11 @@ describe("채팅 답변 모델 봉인 (E89·E92)", () => {
     expect(readFileSync(join(ROOT, "src/hooks/useChat.ts"), "utf8").match(/chatModel:\s*"[^"]*"/g)).toEqual(['chatModel: "openai"']);
   });
 
+  it("웹 채팅 노출 게이트는 OpenAI 키다(웹이 Terra로 보내므로, 게이트 패턴: 키 없으면 기능 0)", () => {
+    const page = readFileSync(join(ROOT, "src/app/[locale]/page.tsx"), "utf8");
+    expect(page).toContain("canShowChat={hasOpenAiKey()}");
+  });
+
   it("CLI는 채팅 요청에 Terra(`openai`)만 보내고 MCP는 `chatModel`을 보내지 않는다(E92 §3)", () => {
     const users = files(join(ROOT, "packages"), [".ts", ".mjs", ".js"])
       .filter((p) => !isTest(p) && !p.includes("/dist/"))
