@@ -38,10 +38,8 @@ final class ChatModel {
     private var followUpTask: Task<Void, Never>?
 
     private let service = ChatService()
-    #if DEBUG || EXPERIMENTAL
-    /// 채팅 답변 모델 선택지 캐시(E89). 조회가 실패하면 nil로 두어 다음 전송에서 다시 묻는다.
+    /// 채팅 답변 모델 선택지 캐시(E89·E92). 조회가 실패하면 nil로 두어 다음 전송에서 다시 묻는다.
     private var chatModelChoices: [String]?
-    #endif
     private let suggestionsService = ChatSuggestionsService()
     /// 전송·완료 효과음. 두 전송 진입점(입력바·추천 질문)과 두 채팅 화면(탭·장소 sheet)을
     /// 모두 덮는 유일한 지점이 이 모델이라 여기서 재생한다(웹은 ChatInterface가 담당).
@@ -78,13 +76,8 @@ final class ChatModel {
                     timeout: LocationFixPolicy.softTimeout
                 )
             }
-            var body = requestBody()
-            #if DEBUG || EXPERIMENTAL
-            // 실험판 채팅 답변 모델(E89). 일반 채팅·장소 채팅 모두 같은 선택을 싣는다.
-            if AppConfig.experimentalChatModelEnabled {
-                body = body.with(chatModel: ChatAnswerModel.requestValue(await resolveChatModel()))
-            }
-            #endif
+            // 채팅 답변 모델(E89, 3.0 정식판 E92 A1). 일반 채팅·장소 채팅 모두 같은 선택을 싣는다. Terra는 `openai`, Gemini는 필드 없음.
+            let body = requestBody().with(chatModel: await resolveChatModel())
 
             var done: (text: String, renders: [ChatRenderPayload], sources: [ChatSource])?
             var errored = false
@@ -173,18 +166,17 @@ final class ChatModel {
         AccessibilityNotification.Announcement(message).post()
     }
 
-    #if DEBUG || EXPERIMENTAL
-    /// 서버가 연 채팅 답변 모델 중 설정 값(E89, 나들이 `resolveProvider`와 같은 규칙). 조회는 3초 한 번 캐시하고,
-    /// 실패하면 저장값 그대로 보낸다. 그 모델이 닫혀 있으면 서버가 502로 답해 기존 채팅 실패 문장이 된다.
+    /// 요청에 실을 채팅 답변 모델(E89, 나들이 `resolveProvider`와 같은 규칙). 조회는 3초 한 번 캐시하고,
+    /// 실패하면 저장값(없으면 처음 값 Terra) 그대로 보낸다. 그 모델이 닫혀 있으면 서버가 502로 답해 기존 채팅 실패 문장이 된다.
+    /// 실험판만 선택지가 여섯이다(`experimentalChatModelEnabled`의 남은 소비자).
     private func resolveChatModel() async -> String? {
         let stored = UserDefaults.standard.string(forKey: ChatAnswerModel.storageKey)
+        let extended = AppConfig.experimentalChatModelEnabled
         if chatModelChoices == nil, let server = try? await service.models(baseURL: AppConfig.apiBaseURL, timeout: 3) {
-            chatModelChoices = ChatAnswerModel.choices(server: server)
+            chatModelChoices = ChatAnswerModel.choices(server: server, extended: extended)
         }
-        guard let choices = chatModelChoices else { return stored }
-        return ChatAnswerModel.effective(stored: stored, choices: choices)
+        return ChatAnswerModel.requestValue(stored: stored, choices: chatModelChoices, extended: extended)
     }
-    #endif
 
     /// 대화 전체 히스토리 + 장소 앵커(웹 불변식: 주변 기준은 장소, 길찾기 출발지는 userLocation).
     /// 일반 채팅은 placeContext 미포함(키 생략) — 웹 "byte-identical" 계약.

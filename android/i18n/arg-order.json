@@ -1685,6 +1685,12 @@
   "android.reorder.moved": [
     "position"
   ],
+  "android.settings.chatModelDefaultName": [
+    "name"
+  ],
+  "android.settings.chatModelLegacyName": [
+    "name"
+  ],
   "android.settings.releaseNotesVersion": [
     "version"
   ],

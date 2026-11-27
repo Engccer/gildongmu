@@ -870,6 +870,12 @@
   "ios.search.announceCount": [
     "count"
   ],
+  "ios.settings.chatModelDefaultName": [
+    "name"
+  ],
+  "ios.settings.chatModelLegacyName": [
+    "name"
+  ],
   "ios.settings.releaseNotesVersion": [
     "version"
   ],

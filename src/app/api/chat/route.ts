@@ -13,6 +13,7 @@ import {
   boundChatHistory,
   CHAT_MODEL_REQUEST_TIMEOUT_MS,
   createChatModelSession,
+  isDailyCapped,
   parseChatModel,
   reserveChatModelDaily,
   type ChatModelId,
@@ -169,7 +170,7 @@ function errorKind(e: unknown): string {
 
 /**
  * Gemini 밖 회사의 채팅(E89 spec C3·C4·C9·C10). 응답 계약(NDJSON `status`·`done`·`error`)은 Gemini 경로와 같다.
- * 키 없음은 502(스트림 전), 하루 상한은 503, 그 밖의 실패는 기존 `chat_failed`다. Gemini로 돌리지 않는다.
+ * 키 없음은 502(스트림 전), 하루 상한(Terra 제외, E92 A5)은 503, 그 밖의 실패는 기존 `chat_failed`다. Gemini로 돌리지 않는다.
  */
 function otherModelResponse(
   request: Request,
@@ -190,7 +191,7 @@ function otherModelResponse(
     signal: AbortSignal.any([request.signal, AbortSignal.timeout(CHAT_MODEL_REQUEST_TIMEOUT_MS)]),
   });
   if (!session) return jsonError("chat_model_unavailable", 502);
-  if (!reserveChatModelDaily(Date.now())) return jsonError("daily_budget_exhausted", 503);
+  if (isDailyCapped(id) && !reserveChatModelDaily(Date.now())) return jsonError("daily_budget_exhausted", 503);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

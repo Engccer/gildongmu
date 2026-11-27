@@ -97,6 +97,9 @@
     },
     "dataSources": {
       "walkHealth": "I passi vengono dal sensore di passi; le calorie sono una stima da distanza e peso"
+    },
+    "chat": {
+      "consentData": "Le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity."
     }
   },
   "search": {

@@ -100,6 +100,14 @@ describe("/api/chat chatModel 봉인 (E89)", () => {
     expect(await res.json()).toEqual({ error: "daily_budget_exhausted" });
   });
 
+  it("Terra(`openai`)는 하루 상한이 다 차도 답한다(E92 A5: 정식판 처음 값은 상한 밖)", async () => {
+    other.session = { round: async () => ({ text: "테라 답", calls: [] }), addToolResults: () => {} };
+    other.budget = false;
+    const res = await post({ ...base, chatModel: "openai" });
+    expect(res.status).toBe(200);
+    expect(JSON.parse((await res.text()).trim())).toEqual({ type: "done", text: "테라 답", renders: [], sources: [] });
+  });
+
   it("모델 실패(402 등)는 기존 chat_failed이고 로그에 질문 글을 싣지 않는다", async () => {
     const { ChatModelError } = await import("@/lib/chat/chat-model-error");
     other.session = {

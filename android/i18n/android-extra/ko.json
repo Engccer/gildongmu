@@ -97,6 +97,9 @@
     },
     "dataSources": {
       "walkHealth": "걸음 수는 걸음 센서 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다"
+    },
+    "chat": {
+      "consentData": "질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini로 전송됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다."
     }
   },
   "search": {

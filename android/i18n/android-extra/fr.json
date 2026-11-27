@@ -97,6 +97,9 @@
     },
     "dataSources": {
       "walkHealth": "Les pas viennent du capteur de pas ; les calories sont une estimation d'après la distance et le poids"
+    },
+    "chat": {
+      "consentData": "Vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity."
     }
   },
   "search": {

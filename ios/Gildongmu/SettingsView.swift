@@ -83,10 +83,11 @@ struct SettingsView: View {
     // 조회 전·실패면 행이 없다. 저장값이 닫혔으면 목록 맨 앞이 실효값이다(Kit `VergiliusProvider.effective`).
     @AppStorage(VergiliusProvider.storageKey) private var vergiliusProviderRaw = ""
     @State private var vergiliusChoices: [String] = []
-    // 채팅 답변 모델(E89) — 선택지는 서버에 키가 있는 것뿐이다(`/api/chat/models`). 조회 전·실패·다른 모델 없음이면 행이 없다.
+    #endif
+    // 채팅 답변 모델(E89, 3.0 정식판 E92 A3) — 선택지는 서버에 키가 있는 것뿐이다(`/api/chat/models`). 정식판은 Terra·Gemini 둘이고
+    // 서버가 Terra를 열지 않으면 행이 없다(Gemini로 간다). 실험판은 여섯. 조회 전·실패면 행이 없다.
     @AppStorage(ChatAnswerModel.storageKey) private var chatModelRaw = ""
     @State private var chatModelChoices: [String] = []
-    #endif
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
@@ -126,22 +127,37 @@ struct SettingsView: View {
         #endif
     }
 
-    /// 채팅 답변 모델 선택지를 서버에서 받는다(실험판만). 실패하면 행을 그리지 않는다.
+    /// 채팅 답변 모델 선택지를 서버에서 받는다. 실패하면 행을 그리지 않는다. 실험판은 선택지가 여섯이다.
     private func loadChatModelChoices() async {
-        #if DEBUG || EXPERIMENTAL
-        guard AppConfig.experimentalChatModelEnabled,
-              let server = try? await ChatService().models(baseURL: AppConfig.apiBaseURL) else { return }
-        chatModelChoices = ChatAnswerModel.choices(server: server)
-        #endif
+        guard let server = try? await ChatService().models(baseURL: AppConfig.apiBaseURL) else { return }
+        chatModelChoices = ChatAnswerModel.choices(server: server, extended: AppConfig.experimentalChatModelEnabled)
     }
 
-    #if DEBUG || EXPERIMENTAL
     private var chatModelSelection: Binding<String> {
         Binding(
             get: { ChatAnswerModel.effective(stored: chatModelRaw, choices: chatModelChoices) ?? "" },
             set: { chatModelRaw = $0 })
     }
 
+    /// 메뉴의 선택지 한 줄(E92 A4). 정식판 두 모델은 「이름 (기본·레거시)」 아래에 설명 한 줄을 붙인다. 두 글은 메뉴 항목 하나의
+    /// 제목과 부제목이라 한 접근성 객체로 읽힌다(「GPT-6.1 Terra (기본), 필요한 …」, 줄을 나누지 않는다). 접힌 줄의 값은 제목만이다.
+    /// ⚠ 메뉴 항목의 부제목은 `Button` 라벨의 둘째 `Text`에서만 나온다(빈 동작, 선택은 Picker의 tag가 한다). `VStack`으로 묶으면
+    /// 둘째 줄이 조용히 빠진다(2026-11-27 시뮬레이터 실측). 실험판 추가 선택지는 이름만이다.
+    private func chatModelOption(_ id: String) -> some View {
+        let name = ChatAnswerModel.displayName(id) ?? id
+        let (title, description): (String, String?) = switch id {
+        case "openai": (appLocalized("ios.settings.chatModelDefaultName", name), appLocalized("ios.settings.chatModelTerraDescription"))
+        case ChatAnswerModel.geminiID:
+            (appLocalized("ios.settings.chatModelLegacyName", name), appLocalized("ios.settings.chatModelGeminiDescription"))
+        default: (name, nil)
+        }
+        return Button {} label: {
+            Text(title)
+            if let description { Text(description) }
+        }
+    }
+
+    #if DEBUG || EXPERIMENTAL
     private var vergiliusSelection: Binding<String> {
         Binding(
             get: { VergiliusProvider.effective(stored: vergiliusProviderRaw, choices: vergiliusChoices) ?? "" },
@@ -303,21 +319,23 @@ struct SettingsView: View {
                     // 해제하면 채팅이 다시 동의 화면으로 — 5.1.2(i)의 동의 재검토·철회 요건.
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
                            isOn: $aiConsentGranted)
-                    #if DEBUG || EXPERIMENTAL
-                    if AppConfig.experimentalChatModelEnabled, !chatModelChoices.isEmpty {
+                    if !chatModelChoices.isEmpty {
                         Picker(appLocalized("ios.settings.chatModel"), selection: chatModelSelection) {
                             ForEach(chatModelChoices, id: \.self) { id in
-                                Text(ChatAnswerModel.displayName(id) ?? id).tag(id)
+                                chatModelOption(id).tag(id)
                             }
                         }
                         .pickerStyle(.menu)
                         .id("chatModel-\(AppLanguage.current)")
-                        // 다른 회사로 가는 범위를 알리는 설명(E89 위원장 판정 2026-11-23). 다른 설정의 설명은 헤더 없는 섹션의 footer지만,
-                        // 여기서 AI 묶음을 나누면 정식판에도 동의 스위치와 링크 사이에 간격이 생긴다. 실험판 줄 안의 작은 글씨 한 줄로 둔다.
-                        Text(appLocalized("ios.settings.chatModelFooter"))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        // Anthropic까지 가는 범위를 알리는 설명(E89 위원장 판정 2026-11-23)은 Claude를 고를 수 있는 실험판에만 둔다.
+                        // 다른 설정의 설명은 헤더 없는 섹션의 footer지만, 여기서 AI 묶음을 나누면 동의 스위치와 링크 사이에 간격이 생긴다.
+                        if AppConfig.experimentalChatModelEnabled {
+                            Text(appLocalized("ios.settings.chatModelFooter"))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    #if DEBUG || EXPERIMENTAL
                     if AppConfig.experimentalOutingEnabled, !vergiliusChoices.isEmpty {
                         Picker(appLocalized("ios.settings.vergiliusProvider"), selection: vergiliusSelection) {
                             ForEach(vergiliusChoices, id: \.self) { id in
