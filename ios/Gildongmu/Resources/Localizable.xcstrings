@@ -20726,37 +20726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 OpenAI로 전송됩니다. 설정에서 채팅 답변 모델을 Gemini로 바꾸면 Google로 전송됩니다. 추천 질문을 만들기 위해 마지막 질문과 답변은 Google Gemini에도 전달되고, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다."
+            "value": "채팅과 말로 묻기의 질문, 대화 내용, 장소 정보, 현재 위치는 답변을 만들기 위해 OpenAI와 Google Gemini로 전송됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전송됩니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your questions, the conversation, the place you are viewing, and your current location are sent to OpenAI to generate answers. If you change the chat answer model to Gemini in Settings, they are sent to Google instead. Your last question and answer are also sent to Google Gemini to suggest follow-up questions, and questions that need a web search are also sent to Perplexity."
+            "value": "Your questions in chat and Ask by voice, the conversation, place information, and your current location are sent to OpenAI and Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a OpenAI para generar respuestas. Si cambia el modelo de respuesta del chat a Gemini en Ajustes, se envían a Google. Para sugerir preguntas, su última pregunta y la respuesta también se envían a Google Gemini, y las preguntas que requieren búsqueda web también se envían a Perplexity."
+            "value": "Sus preguntas en el chat y en Preguntar por voz, la conversación, la información del lugar y su ubicación actual se envían a OpenAI y Google Gemini para generar respuestas. Las preguntas que requieren una búsqueda web también se envían a Perplexity."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à OpenAI pour générer les réponses. Si vous choisissez Gemini comme modèle de réponse du chat dans les Réglages, ils sont envoyés à Google. Pour suggérer des questions, votre dernière question et la réponse sont aussi transmises à Google Gemini, et les questions nécessitant une recherche web sont aussi transmises à Perplexity."
+            "value": "Vos questions dans le chat et dans Demander à voix haute, la conversation, les informations sur le lieu et votre position actuelle sont envoyées à OpenAI et Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi envoyées à Perplexity."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a OpenAI per generare le risposte. Se nelle Impostazioni si sceglie Gemini come modello di risposta della chat, vengono inviati a Google. Per suggerire altre domande, l'ultima domanda e la risposta vengono inviate anche a Google Gemini, e le domande che richiedono una ricerca web vengono inviate anche a Perplexity."
+            "value": "Le domande nella chat e in Chiedi a voce, la conversazione, le informazioni sul luogo e la posizione attuale vengono inviate a OpenAI e Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにOpenAIに送信されます。設定でチャットの回答モデルをGeminiに変えると、Googleに送信されます。おすすめの質問を作るため、最後の質問と回答はGoogle Geminiにも送信され、ウェブ検索が必要な質問はPerplexityにも送信されます。"
+            "value": "チャットと「声で質問」の質問、会話の内容、場所の情報、現在地は、回答を作るためにOpenAIとGoogle Geminiに送信されます。ウェブ検索が必要な質問はPerplexityにも送信されます。"
           }
         }
       }

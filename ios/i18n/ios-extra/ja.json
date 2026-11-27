@@ -59,7 +59,7 @@
       "listenStop": "再生を停止",
       "share": "共有",
       "consentTitle": "AIチャットのご利用について",
-      "consentData": "質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにOpenAIに送信されます。設定でチャットの回答モデルをGeminiに変えると、Googleに送信されます。おすすめの質問を作るため、最後の質問と回答はGoogle Geminiにも送信され、ウェブ検索が必要な質問はPerplexityにも送信されます。",
+      "consentData": "チャットと「声で質問」の質問、会話の内容、場所の情報、現在地は、回答を作るためにOpenAIとGoogle Geminiに送信されます。ウェブ検索が必要な質問はPerplexityにも送信されます。",
       "consentAiNotice": "回答はAIが生成するため、不正確な場合があります。",
       "consentAlt": "同意しなくても、検索と周辺タブはそのまま利用できます。",
       "consentAgree": "同意して開始",

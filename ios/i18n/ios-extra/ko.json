@@ -59,7 +59,7 @@
       "listenStop": "재생 중지",
       "share": "공유",
       "consentTitle": "AI 채팅 사용 안내",
-      "consentData": "질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 OpenAI로 전송됩니다. 설정에서 채팅 답변 모델을 Gemini로 바꾸면 Google로 전송됩니다. 추천 질문을 만들기 위해 마지막 질문과 답변은 Google Gemini에도 전달되고, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다.",
+      "consentData": "채팅과 말로 묻기의 질문, 대화 내용, 장소 정보, 현재 위치는 답변을 만들기 위해 OpenAI와 Google Gemini로 전송됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전송됩니다.",
       "consentAiNotice": "답변은 AI가 생성하며 부정확할 수 있습니다.",
       "consentAlt": "동의하지 않아도 검색과 내 주변 탭은 그대로 사용할 수 있습니다.",
       "consentAgree": "동의하고 시작",

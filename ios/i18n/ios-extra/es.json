@@ -59,7 +59,7 @@
       "listenStop": "Detener la reproducción",
       "share": "Compartir",
       "consentTitle": "Acerca del chat con IA",
-      "consentData": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a OpenAI para generar respuestas. Si cambia el modelo de respuesta del chat a Gemini en Ajustes, se envían a Google. Para sugerir preguntas, su última pregunta y la respuesta también se envían a Google Gemini, y las preguntas que requieren búsqueda web también se envían a Perplexity.",
+      "consentData": "Sus preguntas en el chat y en Preguntar por voz, la conversación, la información del lugar y su ubicación actual se envían a OpenAI y Google Gemini para generar respuestas. Las preguntas que requieren una búsqueda web también se envían a Perplexity.",
       "consentAiNotice": "Las respuestas son generadas por IA y pueden ser inexactas.",
       "consentAlt": "Puede seguir usando las pestañas Buscar y Cerca sin aceptar.",
       "consentAgree": "Aceptar y empezar",
