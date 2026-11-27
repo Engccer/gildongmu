@@ -50,7 +50,7 @@ function buildSearchPlacesDeclaration(): FunctionDeclaration {
     name: "search_places",
     description:
       "키워드로 장소(상호·POI)를 검색한다. 예: '길동 카페', '강남역 맛집'. " +
-      "사용자가 특정 지명/상호를 찾을 때 사용.",
+      "사용자가 상호나 업종(카페·약국·소아과 등)으로 장소를 찾을 때 사용. sort 없이 지명을 빼면 현재 위치(또는 보고 있는 장소) 근처가 먼저 나온다.",
     parametersJsonSchema: { type: "object", properties, required: ["query"] },
   };
 }
@@ -165,7 +165,8 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_night_clinics",
       description:
-        "현재 위치(또는 지명) 주변 소아 야간·휴일 진료 병원(달빛어린이병원)을 보여준다.",
+        "현재 위치(또는 지명) 주변에서 지금 문 연 소아과를 찾을 때 쓴다. " +
+        "달빛어린이병원(소아 야간·휴일 진료)과 근처 일반 소아청소년과를 합쳐 진료 중 여부와 함께 보여준다.",
       parametersJsonSchema: {
         type: "object",
         properties: PLACE_ARG,
@@ -201,7 +202,8 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_surroundings",
       description:
-        "현재 위치(또는 지명) 주변 편의점·음식점·약국 등 주변 장소를 방위·거리와 함께 보여준다.",
+        "현재 위치(또는 지명) 바로 주변의 가장 가까운 가게·시설 12곳을 종류를 섞어 방위·거리와 함께 보여준다. " +
+        "종류를 정하지 않고 바로 옆에 무엇이 어느 방향에 있는지 물을 때 쓴다.",
       parametersJsonSchema: {
         type: "object",
         properties: PLACE_ARG,

@@ -47,6 +47,10 @@ describe("extractEntities", () => {
     const got = extractEntities("첫차 오전 5시 30분, 막차 23:58", ["time"]).map((e) => e.norm);
     expect(got).toEqual(["05:30", "23:58"]);
   });
+  it("오후 표기는 24시간제로 바꾼다(E86 52 「오후 10시 20분」 = 22:20)", () => {
+    const got = extractEntities("막차는 오후 10시 20분, 첫차 오전 5:40, 오후 12시 10분, 오전 12시 5분", ["time"]).map((e) => e.norm);
+    expect(got).toEqual(["22:20", "05:40", "12:10", "00:05"]);
+  });
   it("수치+단위를 뽑고 천 단위 구분자를 벗긴다", () => {
     const got = extractEntities("약 1,250m 거리, 28분 소요, 5호선", ["number"]).map((e) => e.norm);
     expect(got).toEqual(["1250m", "28분", "5호선"]);
