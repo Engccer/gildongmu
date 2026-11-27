@@ -12,6 +12,75 @@
 
 ---
 
+## 3.0 (빌드 40)
+
+기준은 2.8 아카이브 커밋 `459370b2`(빌드 39)이며 이후 `ios/` 커밋 75건(아카이브 커밋 포함)을 판정했다. 메이저 판이다. 채팅 답변 기본 모델이 GPT-6.1 Terra로 바뀌고(설정에서 Gemini 3.6 Flash로 되돌림), 나들이가 베타로 정식판에 들어온다(E92).
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 채팅 답변 모델 Terra 기본·설정 선택지 둘(E92 A) | `fce721d7`·`498e5c4f`·`078d3755` | ko·en. 동의 재요청(`aiChatConsentV2`)은 앱이 그 자리에서 묻으므로 항목으로 적지 않는다(위원장 수정) |
+| 채팅 답 아래 수단별 안내 시작(E83 졸업) | `6c12b0d0`(`experimentalChatGuideEnabled` 삭제)·`9a0914fe`·`8fd7b514` | ko·en. 서버 `route-start`는 전 로케일, 자동차 시작은 ko만(`canStartCarGuide`)이라 en은 도보·대중교통 |
+| 나들이(베타)·말로 묻기(E51·E82 졸업) | `6c12b0d0`(`experimentalOutingEnabled` 삭제)와 E82 묶음 | ko·en. 로케일 가드 없음 |
+| 가로 화면·두 칸 배치(E91) | `0cbc6b81` | ko·en. 세로 고정 해제(`UISupportedInterfaceOrientations` 세 방향) |
+| 안내 시트 목적지 전화 걸기(E90) | `18124bdf`·`d96e5cde` | ko·en |
+| 두 손가락 두 번 탭 받아쓰기(E82 판정 10 졸업) | `3274b5f3` | ko·en. CallKit 정식판 링크(위원장 판정 2026-11-28: 중국 포함 전체 국가 제출) |
+| 탭 순서 설정(E66 졸업) | `3274b5f3` | ko·en |
+| 상단 줄 새로고침 자리(E82 판정 8 졸업) | `6c12b0d0`(`experimentalTopBarRefreshEnabled` 삭제) | ko·en |
+| 지정한 위치 4시간 수명·출발지 「현재 위치로 되돌리기」 | `7eed341f`·`776d9d41` | ko·en |
+| 승차역을 떠난 열차를 고를 때 한 대 앞 열차 추적(A74) | `f0ed17d1`·`71543542` | ko·en |
+
+제외 근거: 흔들면 장소 검색 창(E87 `ShakeToSearch`)·실험판 채팅 답변 모델 선택지 여섯·「나들이(베타) 답변 모델」 줄은 `#if EXPERIMENTAL`·`#if DEBUG || EXPERIMENTAL` 뒤다. 여정 통지 문장(`directions.journeyReady`, E92 D)은 체감이 작아 적지 않는다. 채팅 도구 `get_bus_route`·`get_entrance_sides`와 도구 설명 정리(E92 C)는 서버 변경이다. 리뷰 반영 커밋은 같은 기능의 보정이다.
+
+새 서버 의존: `/api/chat/models`·`/api/vergilius/providers`(ko·en 모두 `openai` 포함), `/api/chat`의 `chatModel:"openai"` + `capabilities:["route-start"]`(ko·en 모두 `route-start` 렌더), `/api/vergilius/ask`(ko, `openai`)를 2026-11-28 프로덕션에서 실호출해 확인했다.
+
+심사 노트 판정: **갱신한다(`--review-notes`).** AI chat 절이 「동의 화면이 Google Gemini와 Perplexity를 밝힌다」여서 거짓이 된다(기본 수신처 OpenAI). 그 절에 OpenAI·기본값·설정 전환·재동의·나들이 「말로 묻기」를 적고, 백그라운드 절에 나들이(베타) 한 문장을 더했다. 정본은 `1.0-submission-draft.md` §9(ASC 2.8 실값과 같음을 대조한 뒤 고쳤다). 수집 데이터 유형은 바뀌지 않아 개인정보 라벨은 그대로다.
+
+한국어 노트는 `tone-polish` 기준으로 다듬은 시안을 위원장이 TextEdit에서 두 번 고쳐 확정했다(2026-11-28). 모델은 회사 이름 수준으로 부르고 권유 문장은 존대, 한 항목 한 동작이다.
+
+### ko
+
+```
+길동무 3.0입니다. 채팅이 더 간결하고 정확하게 답하도록 업그레이드되었고, 목적지를 설정하지 않고 걸으며 주변 정보를 탐색할 수 있는 ‘나들이’ 기능이 베타로 들어갔습니다.
+
+새로운 기능
+- 채팅 답변 기본 모델이 오픈AI 모델로 바뀌었습니다. 필요한 정보를 정확히 찾아 핵심만 간결하게 답합니다. 예전처럼 자세히 풀어 설명하는 답을 원하시면 설정에서 ‘채팅 답변 모델’을 기존 구글 모델로 선택해 주세요.
+- 채팅에서 대화하다가 이동 경로가 확정되면 답변 아래에 안내 시작 버튼이 나타납니다. 누르면 도보, 자동차, 대중교통 안내시트가 바로 열립니다.
+- 나들이(베타) 기능이 들어갔습니다. 목적지 없이 걸을 때 주변 가게, 건물, 교차로, 횡단보도를 알려 줍니다. 화면 왼쪽 위의 ‘나들이(베타) 시작’을 누르세요.
+- 나들이 중에는 ‘말로 묻기’ 버튼을 누른 채 궁금한 것을 말하면 지금 주변 상황을 바탕으로 답합니다.
+- 화면을 가로로 돌려 쓸 수 있습니다. 가로 화면에서는 검색, 길찾기, 채팅이 두 칸으로 나뉩니다.
+- 실시간 안내시트에서 목적지 전화번호가 있는 장소의 경우 안내 화면 제목 줄에서 바로 전화를 걸 수 있습니다.
+- 받아쓰기가 있는 화면에서 VoiceOver 두 손가락으로 두 번 탭하여 받아쓰기를 시작하고 끝낼 수 있습니다.
+- 설정의 ‘탭 순서’에서 화면 하단에 표시되는 탭의 순서를 바꿀 수 있습니다.
+
+개선
+- ‘새로고침’ 버튼이 ‘길동무’ 메뉴 밖으로 나와 화면 오른쪽 위에 있습니다.
+- 직접 지정한 위치는 4시간이 지나면 자동으로 해제됩니다. 길찾기 출발지에서 ‘현재 위치로 되돌리기’를 누르시면 바로 해제할 수도 있습니다.
+- 지하철 안내에서 승차역을 이미 떠난 열차를 고르면 다른 열차를 따라가던 문제를 수정했습니다.
+```
+
+### en
+
+```
+Gildongmu 3.0. Chat has been upgraded to answer more concisely and accurately, and Stroll, which lets you explore what is around you as you walk without setting a destination, is now available in beta.
+
+New
+- Chat now uses an OpenAI model by default. It finds the information you need accurately and answers briefly with just the key points. If you prefer the previous, more detailed answers, choose the previous Google model in Settings under “Chat answer model”.
+- When a route is settled during a chat, a button to start guidance appears below the answer. Press it to open the walking or transit guidance sheet right away.
+- Stroll (beta) is here. As you walk without a destination, it tells you about nearby shops, buildings, intersections, and crosswalks. Press “Start stroll (beta)” at the top left of the screen.
+- During a stroll, hold the “Ask by voice” button and say what you want to know. The answer is based on what is around you right now.
+- You can now use the app in landscape. In landscape, Search, Directions, and Chat are split into two columns.
+- In the live guidance sheet, if the destination has a phone number, you can call it right from the title row of the guidance screen.
+- On screens with dictation, a VoiceOver two-finger double-tap starts and stops dictation.
+- You can change the order of the tabs at the bottom of the screen in Settings under “Tab order”.
+
+Improvements
+- The “Refresh” button has moved out of the Gildongmu menu to the top right of the screen.
+- A location you set yourself is now cleared automatically after 4 hours. You can also clear it right away by pressing “Back to current location” in the Directions starting point.
+- Fixed an issue in subway guidance where choosing a train that had already left your boarding station made the app follow a different train.
+```
+
 ## 2.8 (빌드 39)
 
 기준은 2.7 아카이브 커밋 `49007a6a`(빌드 38)이며 이후 `ios/` 커밋 11건을 판정했다. 실험판에만 있던 여정(자동차 환승·정류장 갈아타기·지금 탄 열차)과 채팅 여정 카드가 정식판으로 졸업하고, 지하철 하차 출구 안내가 추가된다.

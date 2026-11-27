@@ -34,8 +34,8 @@ interface ChatRequest {
   /** `userLocation`이 수동 지정 위치인가(E70-b D2·E83 R6) — 카드의 `manualOrigin`으로 돌려준다(그 카드는 실제 위치로 다시 조회한다). */
   userLocationManual?: boolean;
   /**
-   * 실험판 「채팅 답변 모델」(E89). 알려진 다섯 값(`chat-models.ts`)만 다른 회사로 간다. 없거나 모르는 값이면 종전 Gemini 경로 그대로다
-   * (정식판·웹·CLI는 이 필드를 보내지 않는다 — 봉인 1선, 가드 `chat-model-seal.test.ts`).
+   * 「채팅 답변 모델」(E89, 3.0 정식판 E92). 알려진 다섯 값(`chat-models.ts`)만 다른 회사로 간다. 없거나 모르는 값이면 종전 Gemini 경로 그대로다
+   * (2.8 이하 앱 보호. 3.0 앱은 Terra를 고르면 `openai`를 싣고, 웹·CLI는 3.0 판매 개시 날 `release/3.0-web` 병합부터 싣는다. 가드 `chat-model-seal.test.ts`).
    */
   chatModel?: unknown;
 }
