@@ -245,7 +245,6 @@
       "listenSpeed15x": "1,5x",
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Guidage vocal en arrière-plan",
-      "backgroundSpeechFooter": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, même écran éteint ou pendant l'utilisation d'une autre app.",
       "backgroundSpeechFooterOuting": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que la narration de la balade, même écran éteint ou pendant l'utilisation d'une autre app.",
       "outingForegroundSpeech": "Entendre le guidage de la balade avec la voix de l'appareil",
       "outingForegroundSpeechFooter": "Pendant la balade, annonce les lieux proches, les intersections et les passages piétons avec la voix de l'appareil au lieu de VoiceOver, même écran allumé.",
@@ -363,6 +362,7 @@
     },
     "outing": {
       "heading": "Balade",
+      "sheetTitle": "Balade (bêta)",
       "start": "Commencer la balade",
       "stop": "Terminer la balade",
       "endedByUser": "Balade terminée.",

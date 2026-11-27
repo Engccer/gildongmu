@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">Pasando junto a %1$s</string>
     <string name="android_outing_returnToOrigin">Volver al inicio</string>
     <string name="android_outing_roadEntered">Ahora en %1$s</string>
+    <string name="android_outing_sheetTitle">Paseo (beta)</string>
     <string name="android_outing_start">Iniciar paseo</string>
     <string name="android_outing_started">Paseo iniciado</string>
     <string name="android_outing_stop">Terminar el paseo</string>

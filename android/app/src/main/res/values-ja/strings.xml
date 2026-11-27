@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">そばに%1$s</string>
     <string name="android_outing_returnToOrigin">出発地点へ</string>
     <string name="android_outing_roadEntered">%1$sに入りました</string>
+    <string name="android_outing_sheetTitle">お散歩（ベータ版）</string>
     <string name="android_outing_start">お散歩を開始</string>
     <string name="android_outing_started">お散歩を開始しました</string>
     <string name="android_outing_stop">お散歩を終了</string>

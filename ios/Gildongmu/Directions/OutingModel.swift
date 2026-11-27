@@ -1252,9 +1252,12 @@ final class OutingModel {
         }
     }
 
-    /// 서버가 연 답변 모델 중 설정 값(없으면 맨 앞, V23). 선택지 조회가 실패하면 저장값(없으면 처음 값)으로 그대로 묻는다 —
+    /// 실험판: 서버가 연 답변 모델 중 설정 값(없으면 맨 앞, V23). 선택지 조회가 실패하면 저장값(없으면 처음 값)으로 그대로 묻는다 —
     /// 그 모델이 닫혀 있으면 서버가 502로 답하고 「답을 받지 못했습니다」가 된다.
+    /// 정식판(E92 3.0): Terra(`openai`) 고정이고 저장값을 읽지 않는다. 고르는 줄(설정 「나들이 답변 모델」)이 실험판에만 있어
+    /// 정식판의 저장값은 사용자가 고른 값이 아니다(실험판에서 옮겨 온 값이 정식판 요청에 닿지 않게, 가드 `outing-guard.test.ts`).
     private func resolveProvider() async -> String? {
+        #if DEBUG || EXPERIMENTAL
         let stored = UserDefaults.standard.string(forKey: VergiliusProvider.storageKey)
         // 질문 경로의 조회는 3초까지(첫 문장 12초 시한 안이다). 실패하면 다음 질문에서 다시 묻는다.
         if providerChoices == nil, let server = try? await vergilius.providers(timeout: 3) {
@@ -1262,6 +1265,9 @@ final class OutingModel {
         }
         guard let choices = providerChoices else { return stored ?? VergiliusProvider.displayOrder.first }
         return VergiliusProvider.effective(stored: stored, choices: choices)
+        #else
+        return "openai"
+        #endif
     }
 
     /// 재료(V18): 앱이 계산한 것만. 가게 관계는 마지막 fix의 것이다(매 fix 갱신).

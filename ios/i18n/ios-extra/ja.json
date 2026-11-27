@@ -245,7 +245,6 @@
       "listenSpeed15x": "1.5倍",
       "listenSpeed2x": "2倍",
       "backgroundSpeech": "バックグラウンド音声案内",
-      "backgroundSpeechFooter": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内を端末の音声で伝えます。",
       "backgroundSpeechFooterOuting": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺の読み上げを端末の音声で伝えます。",
       "outingForegroundSpeech": "お散歩の案内を端末の音声で聞く",
       "outingForegroundSpeechFooter": "お散歩中は画面がついていても、周辺、分かれ道、横断歩道の案内をVoiceOverの代わりに端末の音声で伝えます。",
@@ -363,6 +362,7 @@
     },
     "outing": {
       "heading": "お散歩",
+      "sheetTitle": "お散歩（ベータ版）",
       "start": "お散歩を開始",
       "stop": "お散歩を終了",
       "endedByUser": "お散歩を終了しました。",

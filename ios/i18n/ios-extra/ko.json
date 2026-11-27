@@ -245,7 +245,6 @@
       "listenSpeed15x": "1.5배",
       "listenSpeed2x": "2배",
       "backgroundSpeech": "백그라운드 음성 안내",
-      "backgroundSpeechFooter": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다.",
       "backgroundSpeechFooterOuting": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다. 나들이 중에는 주변 정보도 안내합니다.",
       "outingForegroundSpeech": "나들이 안내를 기기 음성으로 듣기",
       "outingForegroundSpeechFooter": "나들이 중에는 화면이 켜져 있어도 주변, 갈림길, 횡단보도 안내를 VoiceOver 대신 기기 음성으로 말합니다.",
@@ -363,6 +362,7 @@
     },
     "outing": {
       "heading": "나들이",
+      "sheetTitle": "나들이 (베타)",
       "start": "나들이 시작",
       "stop": "나들이 종료",
       "endedByUser": "나들이를 종료했습니다.",

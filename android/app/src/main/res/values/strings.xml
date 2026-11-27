@@ -387,6 +387,7 @@
     <string name="android_outing_passSide">옆에 %1$s</string>
     <string name="android_outing_returnToOrigin">출발점으로</string>
     <string name="android_outing_roadEntered">%1$s에 들어섰습니다</string>
+    <string name="android_outing_sheetTitle">나들이 (베타)</string>
     <string name="android_outing_start">나들이 시작</string>
     <string name="android_outing_started">나들이 시작</string>
     <string name="android_outing_stop">나들이 종료</string>

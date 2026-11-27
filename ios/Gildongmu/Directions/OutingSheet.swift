@@ -144,7 +144,8 @@ struct OutingSheet: View {
             }
         } header: {
             GuideTitleRow {
-                Text(appLocalized("ios.outing.heading"))
+                // 베타 표기는 이 제목 한 곳이다(E92 판정 ⓕ — 버튼 이름에는 붙이지 않는다). 「나들이 (베타)」 한 문자열이라 한 접근성 객체다.
+                Text(appLocalized("ios.outing.sheetTitle"))
                     .accessibilityAddTraits(.isHeader)
             } trailing: {
                 GuideMinimizeButton(action: onMinimize)

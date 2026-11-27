@@ -245,7 +245,6 @@
       "listenSpeed15x": "1,5x",
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Guida vocale in background",
-      "backgroundSpeechFooter": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un'altra app.",
       "backgroundSpeechFooterOuting": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e la narrazione della passeggiata, anche a schermo spento o mentre usi un'altra app.",
       "outingForegroundSpeech": "Ascolta la guida della passeggiata con la voce del dispositivo",
       "outingForegroundSpeechFooter": "Durante la passeggiata, annuncia i luoghi vicini, gli incroci e gli attraversamenti pedonali con la voce del dispositivo invece di VoiceOver, anche a schermo acceso.",
@@ -363,6 +362,7 @@
     },
     "outing": {
       "heading": "Passeggiata",
+      "sheetTitle": "Passeggiata (beta)",
       "start": "Inizia passeggiata",
       "stop": "Termina la passeggiata",
       "endedByUser": "Passeggiata terminata.",

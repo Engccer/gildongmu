@@ -29611,6 +29611,46 @@
         }
       }
     },
+    "ios.outing.sheetTitle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 (베타)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stroll (Beta)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paseo (beta)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balade (bêta)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passeggiata (beta)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩（ベータ版）"
+          }
+        }
+      }
+    },
     "ios.outing.start": {
       "localizations": {
         "ko": {
@@ -31927,46 +31967,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "バックグラウンド音声案内"
-          }
-        }
-      }
-    },
-    "ios.settings.backgroundSpeechFooter": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speaks guidance such as turns, going off route, and arrival in the device voice even while the screen is off or you are using another app."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, incluso con la pantalla apagada o mientras usas otra app."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, même écran éteint ou pendant l'utilisation d'une autre app."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un'altra app."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内を端末の音声で伝えます。"
           }
         }
       }

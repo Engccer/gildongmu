@@ -302,6 +302,7 @@
     <string name="android_outing_passSide">Accanto: %1$s</string>
     <string name="android_outing_returnToOrigin">Torna al punto di partenza</string>
     <string name="android_outing_roadEntered">Ora su %1$s</string>
+    <string name="android_outing_sheetTitle">Passeggiata (beta)</string>
     <string name="android_outing_start">Inizia passeggiata</string>
     <string name="android_outing_started">Passeggiata iniziata</string>
     <string name="android_outing_stop">Termina la passeggiata</string>

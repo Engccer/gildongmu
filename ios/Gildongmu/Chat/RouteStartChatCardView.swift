@@ -2,7 +2,7 @@ import SwiftUI
 import GildongmuKit
 
 /// 채팅 경로 카드(E83, spec `2026-11-14-e83-chat-route-start-design.md` R3·R6·R7·R8·R10·R12): 한 도착지의 수단별 [안내 시작]과
-/// [길찾기에서 열기]. 실험판 봉인 뒤에서만 그린다(대화 화면의 `showsRouteStartCard`).
+/// [길찾기에서 열기]. 채팅 탭의 범용 채팅에서만 그린다(대화 화면의 `showsRouteStartCard`).
 ///
 /// 읽기 순서: (답에 도착지가 둘 이상일 때만) 도착지 이름 → 도보 안내 시작 → 자동차 안내 시작 → 대중교통 안내 시작 → 길찾기에서 열기.
 /// 줄마다 한 접근성 객체이고 제목·합계·heading은 없다(R12 — 턴 점프는 질문 heading이 맡는다).
