@@ -206,6 +206,7 @@
     "staleOriginNotice": "Impossibile ottenere la posizione attuale: i percorsi usano la tua posizione di {age}.",
     "needEndpoints": "Scegli prima una partenza e una destinazione.",
     "readySummary": "Indicazioni pronte per {count} modalità.",
+    "journeyReady": "Indicazioni pronte.",
     "allFailed": "Nessun percorso trovato.",
     "via": "Tappa intermedia",
     "searchVia": "Cerca tappa intermedia",

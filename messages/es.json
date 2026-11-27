@@ -206,6 +206,7 @@
     "staleOriginNotice": "No se pudo obtener tu ubicación actual; las rutas usan dónde estabas {age}.",
     "needEndpoints": "Elige primero un origen y un destino.",
     "readySummary": "Guía de ruta lista para {count, plural, one {# modo} other {# modos}}.",
+    "journeyReady": "Guía de ruta lista.",
     "allFailed": "No se encontraron rutas.",
     "via": "Punto intermedio",
     "searchVia": "Buscar punto intermedio",

@@ -376,7 +376,7 @@ describe("여정 웹 입구(E70-f · E77)", () => {
     expect(urls.some((u) => u.startsWith("/api/route/transit") || u.startsWith("/api/route/car") || u.startsWith("/api/route/walk"))).toBe(false);
     // 출입구 승격(A11)도 부르지 않는다.
     expect(urls.some((u) => u.startsWith("/api/places/entrance"))).toBe(false);
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("readySummary"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("journeyReady"));
     expect(screen.getByRole("button", { name: "guideStartTransitAlt" })).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(heading));
     // 도구 스냅샷은 여정 결과에 null을 낸다(spec §4 — 도구 계약에 여정이 없다. 수단 전부 null인 plan은 "경로 없음"으로 읽힌다).

@@ -206,6 +206,7 @@
     "staleOriginNotice": "현재 위치를 확인하지 못해 {age}에 확인한 위치로 찾았습니다.",
     "needEndpoints": "출발지와 도착지를 먼저 선택해 주세요.",
     "readySummary": "{count}개 수단의 경로 안내가 준비되었습니다.",
+    "journeyReady": "경로 안내가 준비되었습니다.",
     "allFailed": "경로를 찾지 못했습니다.",
     "via": "경유지",
     "searchVia": "경유지 검색",

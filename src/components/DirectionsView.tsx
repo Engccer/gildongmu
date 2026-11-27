@@ -1448,7 +1448,7 @@ export function DirectionsView({
   // 커밋되는 상태 불일치가 재발한다. 낭독되는 수치라 시각으로 반증되지 않으므로
   // 진실원을 하나(results.outcomes)로 줄이는 것이 수정이다. settled인데 results가
   // 없으면(재조회 중 편집으로 리셋) 요약도 없다 — 없는 경로를 세지 않는다.
-  // 여정 조회(E70-f)는 "1개 수단"이다(판정 22). 경로 없음·실패는 iOS와 같은 대중교통 문장.
+  // 여정 조회(E70-f)는 수로 1이지만 통지는 수를 말하지 않는다("1개 수단"이 어색하다, E92 위원장 2026-11-27). 경로 없음·실패는 iOS와 같은 대중교통 문장.
   const journeyOutcome = results?.journey?.outcome ?? null;
   const settledCount = results
     ? journeyOutcome
@@ -1460,7 +1460,9 @@ export function DirectionsView({
   const settledBase =
     phase.kind === "settled" && settledCount !== null
       ? settledCount > 0
-        ? t("readySummary", { count: settledCount })
+        ? journeyOutcome?.kind === "found"
+          ? t("journeyReady")
+          : t("readySummary", { count: settledCount })
         : journeyOutcome?.kind === "noRoute"
           ? tTransit("noRoute")
           : journeyOutcome?.kind === "failed"

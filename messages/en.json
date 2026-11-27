@@ -206,6 +206,7 @@
     "staleOriginNotice": "Couldn't get your current location, so routes use where you were {age}.",
     "needEndpoints": "Please choose a starting point and destination first.",
     "readySummary": "Route guidance is ready for {count, plural, one {# mode} other {# modes}}.",
+    "journeyReady": "Route guidance is ready.",
     "allFailed": "No routes found.",
     "via": "Via",
     "searchVia": "Search waypoint",

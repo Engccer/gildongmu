@@ -1072,7 +1072,7 @@ final class DirectionsModel {
             if aboardOrigin == nil {
                 recordRecentRoute(from: from, to: to, via: nil, boardStation: boardStation, alightStation: alightStation)
             }
-            announce([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
+            announce([appLocalized("directions.journeyReady"), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
                                    haptic: .success)
         case .noRoute:
             phase = .settled(successCount: 0)
@@ -2429,6 +2429,8 @@ struct DirectionsTabView: View {
         case .settled where model.journeyOutcome == .failed: appLocalized("route.transit.error")
         case .settled where model.journeyAboardNoRoute != nil:
             journeyAboardNoRouteText(opposite: model.journeyAboardNoRoute == true)
+        case .settled where model.journeyFound:
+            [appLocalized("directions.journeyReady"), model.resultsStaleNotice].compactMap { $0 }.joined(separator: " ")
         case .settled(let count):
             [count > 0 ? appLocalized("directions.readySummary", count) : appLocalized("directions.allFailed"),
              model.resultsStaleNotice].compactMap { $0 }.joined(separator: " ")

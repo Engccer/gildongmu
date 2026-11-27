@@ -206,6 +206,7 @@
     "staleOriginNotice": "Position actuelle introuvable : les itinéraires utilisent votre position connue {age}.",
     "needEndpoints": "Choisissez d'abord un départ et une arrivée.",
     "readySummary": "Itinéraires prêts pour {count, plural, one {# mode} other {# modes}}.",
+    "journeyReady": "Itinéraire prêt.",
     "allFailed": "Aucun itinéraire trouvé.",
     "via": "Étape",
     "searchVia": "Rechercher une étape",
