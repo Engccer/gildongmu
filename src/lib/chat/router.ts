@@ -4,6 +4,7 @@
  * 출처(source)를 함께 반환한다. 도구 내부 실패는 호출자(agent-loop)가 흡수한다.
  */
 import type { ExecutionContext, RouteStartRenderPayload, ToolResult } from "./types";
+import { haversineMeters } from "@/lib/geo";
 import type { Place, PlaceSort } from "@/lib/types";
 import {
   barrierFreePlaceToPlace,
@@ -161,6 +162,32 @@ function namedPlaceCoverageGate(target: { lat: number; lng: number; label: strin
       notice: "말한 장소가 대한민국 밖의 장소로 잡혔습니다. 이 기능은 대한민국 안에서만 됩니다.",
     },
   };
+}
+
+/**
+ * 말한 출발지를 지금 위치로 볼 거리(m, A84). 웹 `JOURNEY_CARD_MAX_DRIFT_M`·Kit `JourneyCardPolicy.maxDriftMeters`와 같은 값이다:
+ * 대중교통 카드는 [안내 시작] 때 카드의 출발 좌표에서 이만큼 벗어났으면 다시 조회하므로, 이보다 넓히면 그 카드는 늘 재조회로 떨어진다.
+ */
+const SPOKEN_ORIGIN_HERE_M = 100;
+
+/**
+ * 말한 출발지가 안내 시작 카드를 막는가(E88 A1, A84). 「길동 현대아파트에서」처럼 지금 있는 곳을 이름으로 말하면 기기 위치(도로명주소
+ * 「천호대로 1231」)와 이름은 달라도 같은 곳이다. 그 답의 [안내 시작]은 답과 같은 경로이므로 막지 않는다. 조회 출발지는 말한 장소 그대로다.
+ */
+function spokenOriginBlocksStart(named: ResolvedCoord | undefined, ctx: ExecutionContext): boolean {
+  if (!named) return false;
+  const here = ctx.userLocation;
+  return !here || !(haversineMeters(named.lat, named.lng, here.lat, here.lng) <= SPOKEN_ORIGIN_HERE_M);
+}
+
+/**
+ * 안내 시작 버튼이 없는 답임을 모델에게 알린다(A84). 지침은 「경로가 정해지면 답 아래 안내 시작 버튼」이라 말해, 이 신호가 없으면
+ * 모델이 없는 버튼을 안내했다(2026-11-28 실사용). 버튼을 그리는 클라이언트(`route-start` 신고)에만 싣는다.
+ */
+function noStartButtonNote(blocked: boolean, ctx: ExecutionContext): { guideStart?: string } {
+  return blocked && ctx.routeStart
+    ? { guideStart: "말한 출발지에서 출발하는 경로라 답 아래에 안내 시작 버튼이 없습니다. 실시간 안내는 지금 위치에서만 시작할 수 있습니다." }
+    : {};
 }
 
 /** 말한 출발지로 조회한 답에 싣는 조각 — 실제로 고른 장소(키워드 검색 첫 결과라 말한 곳과 다를 수 있다). */
@@ -717,6 +744,7 @@ export async function executeFunction(
       if (via === null) return { data: placeNotFound(String(args.via)) };
       const viaGated = via && coverageGate(via);
       if (viaGated) return viaGated;
+      const blocked = spokenOriginBlocksStart(named, ctx);
       const briefing = useEn
         ? await getCarRouteBriefingEn({ origin, dest: { lat: p.lat, lng: p.lng } })
         : await getCarRoute({ origin, dest: { lat: p.lat, lng: p.lng }, via });
@@ -726,9 +754,10 @@ export async function executeFunction(
           ...originNote(named),
           ...(via ? { via: { name: via.name, stepIndex: briefing.waypoint?.stepIndex ?? null } } : {}),
           briefing,
+          ...noStartButtonNote(blocked, ctx),
         },
         // 경유지가 있어도 낸다(`via` 실음, 판정 7) — 그 경유지로 안내를 시작할 수 있는지는 클라이언트가 가른다(R9·R10).
-        render: named
+        render: blocked
           ? undefined
           : startCard
             ? routeStartRender(p, { mode: "car", via: routeStartVia(via), carProvider: briefing.provider ?? null })
@@ -762,16 +791,18 @@ export async function executeFunction(
       if (gated) return gated;
       // ⚠ 과금: 수단을 한정한 조회는 URL에 `SearchPathType`이 붙어 한정 없는 조회와 캐시 항목이 따로다(ODsay 호출 1회).
       const route = await getTransitRoute({ origin, dest: { lat: p.lat, lng: p.lng }, ...modeAxis });
+      const blocked = spokenOriginBlocksStart(named, ctx);
       const data = {
         destination: p.name,
         ...originNote(named),
+        ...noStartButtonNote(blocked, ctx),
         ...(mode ? { mode } : {}),
         route,
         // 「그 수단만으로는 없음」은 「경로 없음」과 다르다(조회 실패는 위에서 throw).
         ...(mode && !route ? NO_ROUTE_WITH_MODE : {}),
       };
-      // 말한 출발지의 답에는 안내 시작 카드도 없다(안내는 실제 위치에서만 시작한다) — 카드용 조회도 하지 않는다.
-      if (!routeStart || !route || named) return { data, render, source: src };
+      // 말한 출발지의 답에는 안내 시작 카드도 없다(안내는 실제 위치에서만 시작한다) — 카드용 조회도 하지 않는다. 지금 위치면 낸다(A84).
+      if (!routeStart || !route || blocked) return { data, render, source: src };
       // 카드가 싣는 결과는 길찾기 화면이 받는 것과 같은 옵션으로 한 번 더 받는다(E83 spec §4 — 경유 정류장·노선 집합·데이터 언어):
       // 화면이 그 결과로 대중교통 섹션을 그대로 세우고 안내를 시작한다. 모델에 주는 `data`는 위 조회 그대로다(신고와 무관하게 같다).
       // ⚠ 과금: 한국어 데이터 로케일은 위 조회와 ODsay URL이 같아 캐시를 탄다(추가 호출 0). 영어 데이터 로케일은 `lang`이 달라
@@ -844,6 +875,7 @@ export async function executeFunction(
       });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
+      const blocked = spokenOriginBlocksStart(named, ctx);
       if (!briefing) return { data: { destination: p.name, ...originNote(named), briefing: null }, source: src };
       // 경유지 도착 스텝은 절단 밖에 두지 않는다 — stepIndex가 LLM이 받은 배열 범위 밖을 가리키면
       // 존재하지 않는 스텝을 추론(날조)하게 된다(리뷰 검출 2026-08-23).
@@ -863,10 +895,11 @@ export async function executeFunction(
           // 안전 문장은 steps[0]에 이미 삽입돼 있어 LLM 재량과 무관하게 전달된다 —
           // stepFree 상태값도 함께 실어 LLM이 명시적으로 언급할 수 있게 한다.
           ...(briefing.stepFree ? { stepFree: briefing.stepFree } : {}),
+          ...noStartButtonNote(blocked, ctx),
         },
         // 안내 시작 카드(E83) — 신고한 요청에만. 도보 안내는 시작할 때 경로를 새로 받으므로 도착지·경유지·계단 회피만 싣는다(R4).
-        // 말한 출발지의 답에는 내지 않는다(E88 — 안내는 실제 위치에서만 시작한다).
-        ...(ctx.routeStart && !named ? { render: routeStartRender(p, { mode: "walk", via: routeStartVia(via), accessible }) } : {}),
+        // 말한 출발지의 답에는 내지 않는다(E88 — 안내는 실제 위치에서만 시작한다). 지금 위치를 이름으로 말했으면 낸다(A84).
+        ...(ctx.routeStart && !blocked ? { render: routeStartRender(p, { mode: "walk", via: routeStartVia(via), accessible }) } : {}),
         source: src,
       };
     }

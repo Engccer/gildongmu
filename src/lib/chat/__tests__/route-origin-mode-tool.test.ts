@@ -8,6 +8,8 @@ const SEOUL_STATION = { lat: 37.5547, lng: 126.9707, name: "서울역", roadAddr
 const GYEONGBOK = { lat: 37.5796, lng: 126.977, name: "경복궁", nameRoman: "Gyeongbokgung" };
 const CHEONHO = { lat: 37.5384, lng: 127.1237, name: "천호역" };
 const FUKUOKA = { lat: 33.5902, lng: 130.4017, name: "후쿠오카" };
+// 기기 위치(GILDONG)에서 약 50m — 사용자가 「여기」를 이름으로 말한 경우(A84).
+const HYUNDAI_APT = { lat: 37.5382, lng: 127.1419, name: "현대아파트", roadAddress: "서울 강동구 천호대로 1231" };
 
 vi.mock("@/lib/providers/places", () => ({ searchPlaces: vi.fn() }));
 vi.mock("@/lib/walk-route", () => ({ getWalkRoute: vi.fn() }));
@@ -46,6 +48,8 @@ const SUBWAY_ONLY = { recommended: { routeKey: "s0", legs: [] }, alternatives: [
 
 const ROUTE_TOOLS = ["get_walk_route", "get_car_route", "get_transit_route"] as const;
 const ORIGIN_LABEL = "서울역 (서울 용산구 한강대로 405)";
+const NO_START_BUTTON =
+  "말한 출발지에서 출발하는 경로라 답 아래에 안내 시작 버튼이 없습니다. 실시간 안내는 지금 위치에서만 시작할 수 있습니다.";
 
 beforeEach(() => {
   mockSearch.mockReset();
@@ -55,6 +59,7 @@ beforeEach(() => {
       : query === "경복궁" ? [GYEONGBOK]
       : query === "천호역" ? [CHEONHO]
       : query === "후쿠오카" ? [FUKUOKA]
+      : query === "길동 현대아파트" ? [HYUNDAI_APT]
       : [],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any);
@@ -88,6 +93,26 @@ describe("말한 출발지(A1)", () => {
     expect(started.render).toBeUndefined();
     const legacy = await executeFunction(tool, { destination: "경복궁", origin: "서울역" }, legacyCtx);
     expect(legacy.render).toBeUndefined();
+  });
+
+  it.each(ROUTE_TOOLS)("%s: 신고한 요청이면 버튼이 없다는 사실을 data에 싣는다(A84), 신고하지 않은 요청엔 없다", async (tool) => {
+    const started = await executeFunction(tool, { destination: "경복궁", origin: "서울역" }, startCtx);
+    expect(started.data.guideStart).toBe(NO_START_BUTTON);
+    const legacy = await executeFunction(tool, { destination: "경복궁", origin: "서울역" }, legacyCtx);
+    expect(legacy.data.guideStart).toBeUndefined();
+  });
+
+  it.each(ROUTE_TOOLS)("%s: 말한 출발지가 지금 위치에서 100m 안이면 안내 시작 카드를 낸다(A84)", async (tool) => {
+    const r = await executeFunction(tool, { destination: "경복궁", origin: "길동 현대아파트" }, startCtx);
+    expect(originPassed(tool)).toEqual({ lat: HYUNDAI_APT.lat, lng: HYUNDAI_APT.lng });
+    expect(r.data.origin).toBe("현대아파트 (서울 강동구 천호대로 1231)");
+    expect(r.data.guideStart).toBeUndefined();
+    expect(r.render).toMatchObject({ type: "route-start" });
+  });
+
+  it.each(ROUTE_TOOLS)("%s: 가까운 말한 출발지도 신고하지 않은 요청엔 종전처럼 렌더가 없다", async (tool) => {
+    const r = await executeFunction(tool, { destination: "경복궁", origin: "길동 현대아파트" }, legacyCtx);
+    expect(r.render).toBeUndefined();
   });
 
   it("대중교통: 말한 출발지의 답에는 카드용 조회(유료)를 하지 않는다", async () => {
@@ -281,7 +306,7 @@ describe("대중교통 수단 한정(A2)", () => {
       dest: { lat: GYEONGBOK.lat, lng: GYEONGBOK.lng },
       modeAxis: "subwayOnly",
     });
-    expect(r.data).toEqual({ destination: "경복궁", origin: ORIGIN_LABEL, mode: "subway", route: SUBWAY_ONLY });
+    expect(r.data).toEqual({ destination: "경복궁", origin: ORIGIN_LABEL, guideStart: NO_START_BUTTON, mode: "subway", route: SUBWAY_ONLY });
     expect(r.render).toBeUndefined();
   });
 });
