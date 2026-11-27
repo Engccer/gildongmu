@@ -39,7 +39,7 @@ async function sentBody(opts?: Parameters<typeof useChat>[0]): Promise<string> {
 
 /** 능력 신고가 생기기 전의 요청 본문(키 순서까지). */
 const legacyBody = (userLocation: unknown) =>
-  JSON.stringify({ messages: [{ role: "user", text }], userLocation, locale: "ko", placeContext: undefined });
+  JSON.stringify({ messages: [{ role: "user", text }], userLocation, locale: "ko", placeContext: undefined, chatModel: "openai" });
 const SEOUL_CITY_HALL = { lat: 37.5663, lng: 126.9779 };
 
 describe("useChat 경로 안내 시작 카드 능력 신고", () => {

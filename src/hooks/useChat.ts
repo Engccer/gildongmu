@@ -134,6 +134,8 @@ export function useChat(opts?: {
             userLocation,
             locale,
             placeContext,
+            // 채팅 답변 모델(E92 §3): 웹은 고르는 자리 없이 GPT-6.1 Terra로 묻는다. 서버의 값 없음 = Gemini는 2.8 이하 앱을 위한 것이다.
+            chatModel: "openai",
             // 여정 능력(E70-b): 신고할 때만 두 필드가 생긴다. `userLocationManual`은 위 `userLocation`이 수동 지정 위치인가 —
             // 서버가 카드에 `manualOrigin`으로 돌려준다(그 카드의 [안내 시작]은 실제 위치로 다시 조회한다, E70-b2 ③).
             // 경로 안내 시작 카드(E83)도 같은 두 필드를 쓴다 — 신고한 능력만 순서대로(여정, 경로 안내 시작) 싣는다.

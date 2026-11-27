@@ -14,7 +14,7 @@ import {
   hasSeoulSubwayRealtimeKey,
   hasOdsayKey,
   hasJusoKey,
-  hasGeminiKey,
+  hasOpenAiKey,
   hasPerplexityKey,
   hasWalkRouteKeyFor,
   hasNaverLocalKeys,
@@ -68,7 +68,7 @@ export default async function HomePage({
         canShowTransit={hasOdsayKey()}
         canSearchAddress={hasJusoKey()}
         canSearchWeb={hasPerplexityKey()}
-        canShowChat={hasGeminiKey()}
+        canShowChat={hasOpenAiKey()}
         canShowWalk={hasWalkRouteKeyFor(dataLocale(locale) === "ko" ? "ko" : "en")}
         canSortByReview={hasNaverLocalKeys()}
         canPlanJourney={hasOdsayKey() && hasTmapKey() && hasKakaoKey()}
