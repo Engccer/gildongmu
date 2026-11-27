@@ -176,7 +176,7 @@ describe("나들이 진입점", () => {
     ]);
   });
 
-  it("베타 표기는 시트 제목 한 곳이고 시작 버튼 이름에는 없다(E92 판정 ⓕ)", () => {
+  it("베타 표기는 시트 제목과 시작 버튼 이름에 있다(E92 판정 ⓕ, 버튼은 위원장 실기기 판정 2026-11-28로 더함)", () => {
     const sheet = readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8");
     expect(sheet.split('appLocalized("ios.outing.sheetTitle")').length - 1).toBe(1);
     const uses = swiftFiles(IOS).filter((f) => readFileSync(f, "utf8").includes('"ios.outing.sheetTitle"'));
@@ -187,8 +187,23 @@ describe("나들이 진입점", () => {
       const outing = JSON.parse(readFileSync(join(IOS, `i18n/ios-extra/${locale}.json`), "utf8")).ios.outing;
       expect(outing.sheetTitle.startsWith(outing.heading), locale).toBe(true);
       expect(outing.sheetTitle, locale).not.toBe(outing.heading);
-      expect(outing.start, locale).not.toMatch(/beta|bêta|베타|ベータ/i);
+      expect(outing.start, locale).toMatch(/beta|bêta|베타|ベータ/i);
     }
+  });
+
+  it("첫 진입은 베타 안내를 확인해야 시작한다(E92, 위원장 판정 2026-11-28): 확인 전에는 대화상자만, 확인은 같은 시작 경로를 다시 지난다", () => {
+    const session = readFileSync(join(IOS, "Gildongmu/Directions/GuideSessionCoordinator.swift"), "utf8");
+    const start = session.slice(session.indexOf("func startOuting()"));
+    const body = start.slice(0, start.indexOf("\n    }\n"));
+    const gate = body.indexOf("outingNoticeAcceptedKey");
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(body.indexOf("outing.requestStart("));
+    expect(body).toContain("outingNoticePending = true");
+    const accept = session.slice(session.indexOf("func acceptOutingNotice()"));
+    expect(accept.slice(0, accept.indexOf("\n    }\n"))).toMatch(/set\(true, forKey: Self\.outingNoticeAcceptedKey\)\s*startOuting\(\)/);
+    const app = readFileSync(join(IOS, "Gildongmu/GildongmuApp.swift"), "utf8");
+    expect(app).toContain('.alert(appLocalized("ios.outing.noticeTitle")');
+    expect(app).toContain("guideSession.acceptOutingNotice()");
   });
 
   it("길찾기 탭 버튼은 도착지 없는 조회의 거절 상태에서만 선다(자동 시작 아님, 위원장 판정 2026-09-26)", () => {

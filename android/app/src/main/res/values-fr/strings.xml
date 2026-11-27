@@ -292,6 +292,10 @@
     <string name="android_outing_nearJunctionTee">carrefour en T</string>
     <string name="android_outing_nearLeft">%1$s à gauche</string>
     <string name="android_outing_nearRight">%1$s à droite</string>
+    <string name="android_outing_noticeBody">La balade est une fonction bêta qui vous signale les commerces, bâtiments, carrefours, passages piétons et autres à proximité lorsque vous marchez sans destination. Les annonces peuvent être en retard ou erronées : vérifiez vous-même les alentours en marchant.</string>
+    <string name="android_outing_noticeCancel">Annuler</string>
+    <string name="android_outing_noticeConfirm">Compris, commencer</string>
+    <string name="android_outing_noticeTitle">À propos de la balade (bêta)</string>
     <string name="android_outing_originFallback">point de départ</string>
     <string name="android_outing_originLabel">Point de départ : %1$s</string>
     <string name="android_outing_originPending">Recherche du point de départ</string>
@@ -303,7 +307,7 @@
     <string name="android_outing_returnToOrigin">Retour au départ</string>
     <string name="android_outing_roadEntered">Vous êtes sur %1$s</string>
     <string name="android_outing_sheetTitle">Balade (bêta)</string>
-    <string name="android_outing_start">Commencer la balade</string>
+    <string name="android_outing_start">Commencer la balade (bêta)</string>
     <string name="android_outing_started">Balade commencée</string>
     <string name="android_outing_stop">Terminer la balade</string>
     <string name="android_outing_surroundingsFailed">Pas d\'informations sur les alentours</string>

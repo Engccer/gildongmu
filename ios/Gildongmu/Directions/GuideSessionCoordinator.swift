@@ -185,9 +185,24 @@ final class GuideSession {
         beacon.requestStart(request)
     }
 
+    /// 나들이 베타 안내를 확인했는가(E92, 3.0 정식판 첫 진입 1회). 확인 전 시작은 안내 대화상자(`outingNoticePending`)만 띄운다.
+    static let outingNoticeAcceptedKey = "outingBetaNoticeAccepted"
+    /// 나들이 첫 진입 안내 대화상자를 띄울 차례 — `GildongmuApp`의 `.alert`가 보고 내린다.
+    var outingNoticePending = false
+
+    /// 안내 대화상자의 「확인하고 시작」 — 확인을 저장하고 같은 시작 경로를 다시 지난다(거부 게이트도 다시 본다).
+    func acceptOutingNotice() {
+        UserDefaults.standard.set(true, forKey: Self.outingNoticeAcceptedKey)
+        startOuting()
+    }
+
     /// 나들이 시작(E51 §5.1) — 진입점 둘(제목 메뉴·길찾기 탭 거절 자리의 버튼)이 부르는 **유일한** 시작 경로.
     func startOuting() {
         guard !refuseIfActive() else { return }
+        guard UserDefaults.standard.bool(forKey: Self.outingNoticeAcceptedKey) else {
+            outingNoticePending = true
+            return
+        }
         cancelPrewalk()
         retirePrewalkRestart()
         beacon.clearArrival()

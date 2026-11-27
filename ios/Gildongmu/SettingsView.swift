@@ -140,9 +140,10 @@ struct SettingsView: View {
             set: { chatModelRaw = $0 })
     }
 
-    /// 메뉴의 선택지 이름(E92 A4). 정식판 두 모델은 「이름 (기본·레거시)」, 실험판 추가 선택지는 이름만이다.
-    /// ⚠ 선택지는 다른 설정 피커와 같이 `Text` 하나다. `Button` 라벨(제목·부제목)로 만들면 시뮬레이터에선 열리지만 실기기
-    /// VoiceOver에서 메뉴가 열리지 않았다(2026-11-28 위원장 실기기). 설명은 줄 아래 한 줄(`chatModelDescription`)로 둔다.
+    /// 선택지 이름(E92 A4). 정식판 두 모델은 「이름 (기본·레거시)」, 실험판 추가 선택지는 이름만이다.
+    /// ⚠ 설명을 선택지 안에서 읽히게 하려고 메뉴 피커 대신 선택 화면(`ChatModelChoiceView`)을 쓴다. 메뉴 항목의 부제목은
+    /// `Button` 라벨에서만 나오는데 그 판은 실기기 VoiceOver에서 메뉴가 열리지 않았고, 설명을 줄 아래로 빼면 선택지와
+    /// 따로 읽혔다(2026-11-28 위원장 실기기 두 번).
     private func chatModelTitle(_ id: String) -> String {
         let name = ChatAnswerModel.displayName(id) ?? id
         return switch id {
@@ -152,7 +153,7 @@ struct SettingsView: View {
         }
     }
 
-    /// 지금 고른 모델의 설명 한 줄. 정식판 두 모델만 있다.
+    /// 선택지의 설명 한 줄. 정식판 두 모델만 있다.
     private func chatModelDescription(_ id: String) -> String? {
         switch id {
         case "openai": appLocalized("ios.settings.chatModelTerraDescription")
@@ -321,17 +322,11 @@ struct SettingsView: View {
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
                            isOn: $aiConsentGranted)
                     if !chatModelChoices.isEmpty {
-                        Picker(appLocalized("ios.settings.chatModel"), selection: chatModelSelection) {
-                            ForEach(chatModelChoices, id: \.self) { id in
-                                Text(chatModelTitle(id)).tag(id)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .id("chatModel-\(AppLanguage.current)")
-                        if let description = chatModelDescription(chatModelSelection.wrappedValue) {
-                            Text(description)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                        let chatModelLabel = appLocalized("ios.settings.chatModel")
+                        NavigationLink(destination: ChatModelChoiceView(
+                            heading: chatModelLabel, choices: chatModelChoices, selection: chatModelSelection,
+                            title: chatModelTitle, description: chatModelDescription)) {
+                            LabeledContent(chatModelLabel, value: chatModelTitle(chatModelSelection.wrappedValue))
                         }
                         // Anthropic까지 가는 범위를 알리는 설명(E89 위원장 판정 2026-11-23)은 Claude를 고를 수 있는 실험판에만 둔다.
                         // 다른 설정의 설명은 헤더 없는 섹션의 footer지만, 여기서 AI 묶음을 나누면 동의 스위치와 링크 사이에 간격이 생긴다.
@@ -401,5 +396,47 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+/// 「채팅 답변 모델」 선택 화면(E92 A4). 한 줄 = 한 모델이고 이름과 설명이 한 버튼이라 한 접근성 객체로 읽힌다
+/// (「GPT-6.1 Terra (기본), 필요한 정보를 …」). 고른 줄에는 체크 표시와 선택됨 상태가 붙고, 고른 뒤에도 화면에 머문다
+/// (포커스가 그 줄에 남아 바뀐 상태를 바로 듣는다).
+private struct ChatModelChoiceView: View {
+    let heading: String
+    let choices: [String]
+    @Binding var selection: String
+    let title: (String) -> String
+    let description: (String) -> String?
+
+    var body: some View {
+        List {
+            ForEach(choices, id: \.self) { id in
+                Button {
+                    selection = id
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title(id))
+                                .foregroundStyle(.primary)
+                            if let text = description(id) {
+                                Text(text)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if selection == id {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.tint)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .accessibilityAddTraits(selection == id ? .isSelected : [])
+            }
+        }
+        .navigationTitle(heading)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -367,7 +367,11 @@
     "outing": {
       "heading": "Passeggiata",
       "sheetTitle": "Passeggiata (beta)",
-      "start": "Inizia passeggiata",
+      "noticeTitle": "Informazioni sulla passeggiata (beta)",
+      "noticeBody": "La passeggiata è una funzione beta che segnala negozi, edifici, incroci, strisce pedonali e altro nei dintorni quando si cammina senza una meta. Gli avvisi possono arrivare in ritardo o essere sbagliati, quindi controlla i dintorni mentre cammini.",
+      "noticeConfirm": "Ho capito, inizia",
+      "noticeCancel": "Annulla",
+      "start": "Inizia passeggiata (beta)",
       "stop": "Termina la passeggiata",
       "endedByUser": "Passeggiata terminata.",
       "returnToOrigin": "Torna al punto di partenza",

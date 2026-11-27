@@ -377,6 +377,10 @@
     <string name="android_outing_nearJunctionTee">삼거리</string>
     <string name="android_outing_nearLeft">왼쪽 %1$s</string>
     <string name="android_outing_nearRight">오른쪽 %1$s</string>
+    <string name="android_outing_noticeBody">나들이는 목적지 없이 걸을 때 주변 가게, 건물, 교차로, 횡단보도 등을 알려 주는 베타 기능입니다. 안내가 늦거나 틀릴 수 있으니 주변을 직접 확인하며 걸어 주세요.</string>
+    <string name="android_outing_noticeCancel">취소</string>
+    <string name="android_outing_noticeConfirm">확인하고 시작</string>
+    <string name="android_outing_noticeTitle">나들이 베타 안내</string>
     <string name="android_outing_originFallback">출발점</string>
     <string name="android_outing_originLabel">출발점 %1$s</string>
     <string name="android_outing_originPending">출발점 잡는 중</string>
@@ -387,8 +391,8 @@
     <string name="android_outing_passSide">옆에 %1$s</string>
     <string name="android_outing_returnToOrigin">출발점으로</string>
     <string name="android_outing_roadEntered">%1$s에 들어섰습니다</string>
-    <string name="android_outing_sheetTitle">나들이 (베타)</string>
-    <string name="android_outing_start">나들이 시작</string>
+    <string name="android_outing_sheetTitle">나들이(베타)</string>
+    <string name="android_outing_start">나들이(베타) 시작</string>
     <string name="android_outing_started">나들이 시작</string>
     <string name="android_outing_stop">나들이 종료</string>
     <string name="android_outing_surroundingsFailed">주변 정보 없음</string>

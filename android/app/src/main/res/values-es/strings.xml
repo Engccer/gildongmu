@@ -292,6 +292,10 @@
     <string name="android_outing_nearJunctionTee">cruce en T</string>
     <string name="android_outing_nearLeft">%1$s a la izquierda</string>
     <string name="android_outing_nearRight">%1$s a la derecha</string>
+    <string name="android_outing_noticeBody">Paseo es una función beta que le avisa de tiendas, edificios, cruces, pasos de peatones y más a su alrededor cuando camina sin destino. Los avisos pueden llegar tarde o ser incorrectos, así que compruebe su entorno mientras camina.</string>
+    <string name="android_outing_noticeCancel">Cancelar</string>
+    <string name="android_outing_noticeConfirm">Entendido, iniciar</string>
+    <string name="android_outing_noticeTitle">Acerca del paseo (beta)</string>
     <string name="android_outing_originFallback">punto de inicio</string>
     <string name="android_outing_originLabel">Punto de inicio: %1$s</string>
     <string name="android_outing_originPending">Fijando el punto de inicio</string>
@@ -303,7 +307,7 @@
     <string name="android_outing_returnToOrigin">Volver al inicio</string>
     <string name="android_outing_roadEntered">Ahora en %1$s</string>
     <string name="android_outing_sheetTitle">Paseo (beta)</string>
-    <string name="android_outing_start">Iniciar paseo</string>
+    <string name="android_outing_start">Iniciar paseo (beta)</string>
     <string name="android_outing_started">Paseo iniciado</string>
     <string name="android_outing_stop">Terminar el paseo</string>
     <string name="android_outing_surroundingsFailed">Sin información del entorno</string>

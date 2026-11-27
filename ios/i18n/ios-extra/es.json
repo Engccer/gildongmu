@@ -367,7 +367,11 @@
     "outing": {
       "heading": "Paseo",
       "sheetTitle": "Paseo (beta)",
-      "start": "Iniciar paseo",
+      "noticeTitle": "Acerca del paseo (beta)",
+      "noticeBody": "Paseo es una función beta que le avisa de tiendas, edificios, cruces, pasos de peatones y más a su alrededor cuando camina sin destino. Los avisos pueden llegar tarde o ser incorrectos, así que compruebe su entorno mientras camina.",
+      "noticeConfirm": "Entendido, iniciar",
+      "noticeCancel": "Cancelar",
+      "start": "Iniciar paseo (beta)",
       "stop": "Terminar el paseo",
       "endedByUser": "Paseo terminado.",
       "returnToOrigin": "Volver al inicio",

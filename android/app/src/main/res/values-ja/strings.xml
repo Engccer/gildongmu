@@ -292,6 +292,10 @@
     <string name="android_outing_nearJunctionTee">丁字路</string>
     <string name="android_outing_nearLeft">左に%1$s</string>
     <string name="android_outing_nearRight">右に%1$s</string>
+    <string name="android_outing_noticeBody">お散歩は、目的地を決めずに歩くときに、周りのお店や建物、交差点、横断歩道などを知らせるベータ版の機能です。案内が遅れたり間違ったりすることがあるので、周りをご自身でも確かめながら歩いてください。</string>
+    <string name="android_outing_noticeCancel">キャンセル</string>
+    <string name="android_outing_noticeConfirm">確認して開始</string>
+    <string name="android_outing_noticeTitle">お散歩（ベータ版）について</string>
     <string name="android_outing_originFallback">出発地点</string>
     <string name="android_outing_originLabel">出発地点 %1$s</string>
     <string name="android_outing_originPending">出発地点を確認中</string>
@@ -303,7 +307,7 @@
     <string name="android_outing_returnToOrigin">出発地点へ</string>
     <string name="android_outing_roadEntered">%1$sに入りました</string>
     <string name="android_outing_sheetTitle">お散歩（ベータ版）</string>
-    <string name="android_outing_start">お散歩を開始</string>
+    <string name="android_outing_start">お散歩（ベータ版）を開始</string>
     <string name="android_outing_started">お散歩を開始しました</string>
     <string name="android_outing_stop">お散歩を終了</string>
     <string name="android_outing_surroundingsFailed">周辺情報なし</string>

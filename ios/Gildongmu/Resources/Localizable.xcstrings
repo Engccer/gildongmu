@@ -29251,6 +29251,166 @@
         }
       }
     },
+    "ios.outing.noticeBody": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이는 목적지 없이 걸을 때 주변 가게, 건물, 교차로, 횡단보도 등을 알려 주는 베타 기능입니다. 안내가 늦거나 틀릴 수 있으니 주변을 직접 확인하며 걸어 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stroll is a beta feature that tells you about nearby shops, buildings, intersections, crosswalks, and more as you walk without a destination. Announcements may be late or wrong, so check your surroundings yourself as you walk."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paseo es una función beta que le avisa de tiendas, edificios, cruces, pasos de peatones y más a su alrededor cuando camina sin destino. Los avisos pueden llegar tarde o ser incorrectos, así que compruebe su entorno mientras camina."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La balade est une fonction bêta qui vous signale les commerces, bâtiments, carrefours, passages piétons et autres à proximité lorsque vous marchez sans destination. Les annonces peuvent être en retard ou erronées : vérifiez vous-même les alentours en marchant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La passeggiata è una funzione beta che segnala negozi, edifici, incroci, strisce pedonali e altro nei dintorni quando si cammina senza una meta. Gli avvisi possono arrivare in ritardo o essere sbagliati, quindi controlla i dintorni mentre cammini."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩は、目的地を決めずに歩くときに、周りのお店や建物、交差点、横断歩道などを知らせるベータ版の機能です。案内が遅れたり間違ったりすることがあるので、周りをご自身でも確かめながら歩いてください。"
+          }
+        }
+      }
+    },
+    "ios.outing.noticeCancel": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "ios.outing.noticeConfirm": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인하고 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK, start"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entendido, iniciar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compris, commencer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ho capito, inizia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認して開始"
+          }
+        }
+      }
+    },
+    "ios.outing.noticeTitle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 베타 안내"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About stroll (beta)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca del paseo (beta)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos de la balade (bêta)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni sulla passeggiata (beta)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩（ベータ版）について"
+          }
+        }
+      }
+    },
     "ios.outing.originFallback": {
       "localizations": {
         "ko": {
@@ -29656,7 +29816,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 (베타)"
+            "value": "나들이(베타)"
           }
         },
         "en": {
@@ -29696,37 +29856,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나들이 시작"
+            "value": "나들이(베타) 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start stroll"
+            "value": "Start stroll (beta)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar paseo"
+            "value": "Iniciar paseo (beta)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Commencer la balade"
+            "value": "Commencer la balade (bêta)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inizia passeggiata"
+            "value": "Inizia passeggiata (beta)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お散歩を開始"
+            "value": "お散歩（ベータ版）を開始"
           }
         }
       }

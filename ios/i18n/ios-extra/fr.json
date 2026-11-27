@@ -367,7 +367,11 @@
     "outing": {
       "heading": "Balade",
       "sheetTitle": "Balade (bêta)",
-      "start": "Commencer la balade",
+      "noticeTitle": "À propos de la balade (bêta)",
+      "noticeBody": "La balade est une fonction bêta qui vous signale les commerces, bâtiments, carrefours, passages piétons et autres à proximité lorsque vous marchez sans destination. Les annonces peuvent être en retard ou erronées : vérifiez vous-même les alentours en marchant.",
+      "noticeConfirm": "Compris, commencer",
+      "noticeCancel": "Annuler",
+      "start": "Commencer la balade (bêta)",
       "stop": "Terminer la balade",
       "endedByUser": "Balade terminée.",
       "returnToOrigin": "Retour au départ",

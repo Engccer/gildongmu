@@ -367,7 +367,11 @@
     "outing": {
       "heading": "Stroll",
       "sheetTitle": "Stroll (Beta)",
-      "start": "Start stroll",
+      "noticeTitle": "About stroll (beta)",
+      "noticeBody": "Stroll is a beta feature that tells you about nearby shops, buildings, intersections, crosswalks, and more as you walk without a destination. Announcements may be late or wrong, so check your surroundings yourself as you walk.",
+      "noticeConfirm": "OK, start",
+      "noticeCancel": "Cancel",
+      "start": "Start stroll (beta)",
       "stop": "End stroll",
       "endedByUser": "Stroll ended.",
       "returnToOrigin": "Back to start",

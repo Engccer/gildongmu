@@ -135,6 +135,16 @@ struct GildongmuApp: App {
             // 탭 바 액세서리가 그 자리(콘텐츠 → 띠바 → 탭 바)를 시스템이 보장한다.
             // 접근성 객체 하나(버튼). live region이 아니다 — 안내 통지는 모델 창구가 낸다.
             .modifier(GuideBandAccessory(isShown: showsGuideBand) { guideBand(tab: selectedTab) })
+            // 나들이 첫 진입 안내(E92, 3.0): 확인해야 시작한다. 시스템 대화상자라 VoiceOver가 제목·본문·버튼을 읽는다.
+            .alert(appLocalized("ios.outing.noticeTitle"), isPresented: Binding(
+                get: { guideSession.outingNoticePending },
+                set: { guideSession.outingNoticePending = $0 }
+            )) {
+                Button(appLocalized("ios.outing.noticeConfirm")) { guideSession.acceptOutingNotice() }
+                Button(appLocalized("ios.outing.noticeCancel"), role: .cancel) {}
+            } message: {
+                Text(appLocalized("ios.outing.noticeBody"))
+            }
             // 안내 시트(N1 §2.2). item 하나로 두 시트를 직렬화한다(설계 리뷰 M2). 내리는
             // 제스처는 전부 최소화다 — 콜백 시점의 모델 상태로 뜻을 정하지 않는다(C3·C4).
             .sheet(item: Binding(

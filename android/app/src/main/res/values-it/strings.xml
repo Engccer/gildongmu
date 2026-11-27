@@ -292,6 +292,10 @@
     <string name="android_outing_nearJunctionTee">incrocio a T</string>
     <string name="android_outing_nearLeft">%1$s a sinistra</string>
     <string name="android_outing_nearRight">%1$s a destra</string>
+    <string name="android_outing_noticeBody">La passeggiata è una funzione beta che segnala negozi, edifici, incroci, strisce pedonali e altro nei dintorni quando si cammina senza una meta. Gli avvisi possono arrivare in ritardo o essere sbagliati, quindi controlla i dintorni mentre cammini.</string>
+    <string name="android_outing_noticeCancel">Annulla</string>
+    <string name="android_outing_noticeConfirm">Ho capito, inizia</string>
+    <string name="android_outing_noticeTitle">Informazioni sulla passeggiata (beta)</string>
     <string name="android_outing_originFallback">punto di partenza</string>
     <string name="android_outing_originLabel">Punto di partenza: %1$s</string>
     <string name="android_outing_originPending">Rilevamento del punto di partenza</string>
@@ -303,7 +307,7 @@
     <string name="android_outing_returnToOrigin">Torna al punto di partenza</string>
     <string name="android_outing_roadEntered">Ora su %1$s</string>
     <string name="android_outing_sheetTitle">Passeggiata (beta)</string>
-    <string name="android_outing_start">Inizia passeggiata</string>
+    <string name="android_outing_start">Inizia passeggiata (beta)</string>
     <string name="android_outing_started">Passeggiata iniziata</string>
     <string name="android_outing_stop">Termina la passeggiata</string>
     <string name="android_outing_surroundingsFailed">Nessuna informazione sui dintorni</string>
