@@ -140,21 +140,24 @@ struct SettingsView: View {
             set: { chatModelRaw = $0 })
     }
 
-    /// 메뉴의 선택지 한 줄(E92 A4). 정식판 두 모델은 「이름 (기본·레거시)」 아래에 설명 한 줄을 붙인다. 두 글은 메뉴 항목 하나의
-    /// 제목과 부제목이라 한 접근성 객체로 읽힌다(「GPT-6.1 Terra (기본), 필요한 …」, 줄을 나누지 않는다). 접힌 줄의 값은 제목만이다.
-    /// ⚠ 메뉴 항목의 부제목은 `Button` 라벨의 둘째 `Text`에서만 나온다(빈 동작, 선택은 Picker의 tag가 한다). `VStack`으로 묶으면
-    /// 둘째 줄이 조용히 빠진다(2026-11-27 시뮬레이터 실측). 실험판 추가 선택지는 이름만이다.
-    private func chatModelOption(_ id: String) -> some View {
+    /// 메뉴의 선택지 이름(E92 A4). 정식판 두 모델은 「이름 (기본·레거시)」, 실험판 추가 선택지는 이름만이다.
+    /// ⚠ 선택지는 다른 설정 피커와 같이 `Text` 하나다. `Button` 라벨(제목·부제목)로 만들면 시뮬레이터에선 열리지만 실기기
+    /// VoiceOver에서 메뉴가 열리지 않았다(2026-11-28 위원장 실기기). 설명은 줄 아래 한 줄(`chatModelDescription`)로 둔다.
+    private func chatModelTitle(_ id: String) -> String {
         let name = ChatAnswerModel.displayName(id) ?? id
-        let (title, description): (String, String?) = switch id {
-        case "openai": (appLocalized("ios.settings.chatModelDefaultName", name), appLocalized("ios.settings.chatModelTerraDescription"))
-        case ChatAnswerModel.geminiID:
-            (appLocalized("ios.settings.chatModelLegacyName", name), appLocalized("ios.settings.chatModelGeminiDescription"))
-        default: (name, nil)
+        return switch id {
+        case "openai": appLocalized("ios.settings.chatModelDefaultName", name)
+        case ChatAnswerModel.geminiID: appLocalized("ios.settings.chatModelLegacyName", name)
+        default: name
         }
-        return Button {} label: {
-            Text(title)
-            if let description { Text(description) }
+    }
+
+    /// 지금 고른 모델의 설명 한 줄. 정식판 두 모델만 있다.
+    private func chatModelDescription(_ id: String) -> String? {
+        switch id {
+        case "openai": appLocalized("ios.settings.chatModelTerraDescription")
+        case ChatAnswerModel.geminiID: appLocalized("ios.settings.chatModelGeminiDescription")
+        default: nil
         }
     }
 
@@ -320,11 +323,16 @@ struct SettingsView: View {
                     if !chatModelChoices.isEmpty {
                         Picker(appLocalized("ios.settings.chatModel"), selection: chatModelSelection) {
                             ForEach(chatModelChoices, id: \.self) { id in
-                                chatModelOption(id).tag(id)
+                                Text(chatModelTitle(id)).tag(id)
                             }
                         }
                         .pickerStyle(.menu)
                         .id("chatModel-\(AppLanguage.current)")
+                        if let description = chatModelDescription(chatModelSelection.wrappedValue) {
+                            Text(description)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                         // Anthropic까지 가는 범위를 알리는 설명(E89 위원장 판정 2026-11-23)은 Claude를 고를 수 있는 실험판에만 둔다.
                         // 다른 설정의 설명은 헤더 없는 섹션의 footer지만, 여기서 AI 묶음을 나누면 동의 스위치와 링크 사이에 간격이 생긴다.
                         if AppConfig.experimentalChatModelEnabled {

@@ -81,9 +81,9 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
 });
 
 describe("채팅 답변 모델 설명(E89 판정 2026-11-23, E92)", () => {
-  it("전송 범위 설명은 그 Picker 바로 뒤의 글 한 줄이고 실험판 선택지 확장에만 선다(AI 묶음을 나누면 간격이 생겨 footer 대신 줄 안에 둔다)", () => {
+  it("고른 모델 설명(E92, 선택지 안 부제목은 실기기 VoiceOver에서 메뉴가 안 열려 줄 밖으로)과 전송 범위 설명은 그 Picker 바로 뒤의 글 줄이고 실험판 선택지 확장에만 선다(AI 묶음을 나누면 간격이 생겨 footer 대신 줄 안에 둔다)", () => {
     const between = BODY.slice(at("ios.settings.chatModel"), at("ios.settings.chatModelFooter"));
-    expect(between.replace(/if AppConfig\.experimentalChatModelEnabled \{/, "")).not.toMatch(/(Picker|Toggle|TextField|Link|NavigationLink)\(|\bif\b|#endif/);
+    expect(between.replace(/if AppConfig\.experimentalChatModelEnabled \{/, "").replace(/if let description = chatModelDescription\(chatModelSelection\.wrappedValue\) \{/, "")).not.toMatch(/(Picker|Toggle|TextField|Link|NavigationLink)\(|\bif\b|#endif/);
     expect(between).toContain("if AppConfig.experimentalChatModelEnabled {");
   });
 
