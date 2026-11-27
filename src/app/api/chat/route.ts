@@ -35,7 +35,7 @@ interface ChatRequest {
   userLocationManual?: boolean;
   /**
    * 「채팅 답변 모델」(E89, 3.0 정식판 E92). 알려진 다섯 값(`chat-models.ts`)만 다른 회사로 간다. 없거나 모르는 값이면 종전 Gemini 경로 그대로다
-   * (2.8 이하 앱 보호. 3.0 앱은 Terra를 고르면 `openai`를 싣고, 웹·CLI는 3.0 판매 개시 날 `release/3.0-web` 병합부터 싣는다. 가드 `chat-model-seal.test.ts`).
+   * (2.8 이하 앱 보호. 3.0 앱은 Terra를 고르면 `openai`를 싣고, 웹·CLI는 2026-11-28부터 `openai`를 고정으로 싣는다. 가드 `chat-model-seal.test.ts`).
    */
   chatModel?: unknown;
 }
