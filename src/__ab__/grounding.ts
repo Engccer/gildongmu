@@ -105,7 +105,9 @@ export function normalize(s: string): string {
 }
 
 const PHONE_RE = /0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}/g;
-const TIME_RE = /(\d{1,2}):(\d{2})|(\d{1,2})\s*시\s*(\d{1,2})\s*분/g;
+// 「오후 10시 20분」은 22:20이다(E86 52·04에서 Terra의 12시간제 표기가 매번 누출로 찍혔다, E92 2026-11-28).
+// 오전·오후 접두를 함께 잡아 24시간제로 바꾼다. 접두가 없으면 종전처럼 적힌 숫자 그대로다.
+const TIME_RE = /(?:(오전|오후)\s*)?(?:(\d{1,2}):(\d{2})|(\d{1,2})\s*시\s*(\d{1,2})\s*분)/g;
 // 단위 표는 dodo 이식본과 한 벌이다(D27, 2026-09-02): 온도 `도`·통화 `유로`·`€`는 dodo 여행 도메인이
 // 더한 것을 정본이 흡수한 것 — gildongmu 도메인엔 나오지 않아 채점 결과는 무변화이고, 흡수하지
 // 않으면 두 이식본이 갈라진다(PORTS.md 역제안 2026-08-25).
@@ -155,9 +157,11 @@ export function extractEntities(text: string, kinds: readonly EntityKind[]): Ent
   let stripped = text;
   const times: Entity[] = [];
   for (const m of text.matchAll(TIME_RE)) {
-    const hh = m[1] ?? m[3];
-    const mm = m[2] ?? m[4];
-    times.push({ kind: "time", raw: m[0], norm: `${pad2(hh)}:${pad2(mm)}` });
+    let hh = Number(m[2] ?? m[4]);
+    const mm = m[3] ?? m[5];
+    if (m[1] === "오후" && hh < 12) hh += 12;
+    if (m[1] === "오전" && hh === 12) hh = 0;
+    times.push({ kind: "time", raw: m[0], norm: `${pad2(String(hh))}:${pad2(mm)}` });
     stripped = stripped.replace(m[0], " ");
   }
   const phones: Entity[] = [];

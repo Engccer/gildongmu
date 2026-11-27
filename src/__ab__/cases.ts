@@ -21,6 +21,11 @@ export const SINSEOL = { lat: 37.5756, lng: 127.0251 };
 export const BUSAN = { lat: 35.1577, lng: 129.0592 };
 /** 강릉 시외버스터미널(E87) — TAGO가 노선을 주지 않는 지역. */
 export const GANGNEUNG = { lat: 37.7547, lng: 128.8789 };
+/**
+ * 경복궁 동십자각 부근(E92) — 무장애 관광지가 반경 안에 여럿 등록된 자리. 38 연쇄 케이스는 길동에서 무장애 관광지가 0건이라
+ * 연쇄가 성립하지 않았다(E86 네 팔 12/12 expect 실패). 경복궁은 59에서 `matched: true`로 확인된 등록 장소다.
+ */
+export const GYEONGBOKGUNG = { lat: 37.5759, lng: 126.9794 };
 
 /**
  * 스킬 `llm-model-eval` 공통 스키마(`references/case-schema.md`) + gildongmu 고유 컨텍스트.
@@ -248,6 +253,7 @@ export const CASES: Case[] = [
     id: "38-무장애-연쇄",
     turns: ["근처 무장애 관광지 중에 휠체어 화장실 있는 곳 알려줘"],
     expectAny: ["get_barrier_free_detail"],
+    location: GYEONGBOKGUNG,
     judge: "get_nearby_barrier_free → contentId → get_barrier_free_detail 연쇄가 같은 턴에 이뤄지는가. 시설 값을 도구 문장대로.",
   },
   // 버스 노선 도구(E87, spec 2026-11-14-e87-chat-bus-route-tool) — 도구 선택과 날조 축. 접지 대조는 정류소 이름·시각·수치다.
@@ -399,5 +405,79 @@ export const CASES: Case[] = [
     turns: ["길동무 앱에 오프라인 지도 내려받기 기능 있어?"],
     forbid: ["search_web"],
     judge: "없는 기능이다. 있다고 하거나 쓰는 법을 지어내지 않고 모른다고 답하는가.",
+  },
+  // 여정(E92, 2026-11-28): 정식판 채팅 탭은 능력 `journey`를 신고하므로 하네스도 장소 채팅이 아닌 케이스에 같은 묶음을 연다.
+  // 그전 측정(E86까지)은 여정 도구와 지침 단락 없이 쟀다. 판정 축은 도구 선택·역 이름 인자·되묻기 문장이다.
+  {
+    id: "71-여정-역지정",
+    turns: ["택시로 천호역까지 가서 거기서 지하철로 여의도역 가려면 어떻게 가?"],
+    expectAny: ["plan_journey"],
+    expectArg: { tool: "plan_journey", key: "board_station", value: "천호역" },
+    forbid: ["search_web"],
+    judge: "board_station에 사용자가 말한 「천호역」이 그대로 실리는가. 어느 역에서 갈아타는지와 총 시간을 한두 문장으로 말하고 요금은 카드에 맡기는가.",
+  },
+  {
+    id: "72-여정-역모름",
+    turns: ["택시랑 지하철 섞어서 여의도역 가는 방법 알려줘"],
+    expectAny: ["plan_journey"],
+    forbid: ["search_web"],
+    judge: "needStation이 오면 candidates에 있는 역 이름만으로 한 문장으로 되묻고 턴을 끝내는가. 후보 밖 역을 지어내지 않는가.",
+  },
+  {
+    id: "73-여정-대중교통만",
+    turns: ["여의도역까지 지하철로 가는 길 알려줘"],
+    expectAny: ["get_transit_route"],
+    forbid: ["plan_journey", "search_web"],
+    judge: "대중교통만 물었으니 여정 도구가 아니라 대중교통 경로 도구로 답하는가.",
+  },
+  // 한 번도 불리지 않은 도구(E92 보고서, E86 이틀 1,008세션 호출 0건) — 도구 하나에 질문 하나씩. 축은 도구 선택이다.
+  {
+    id: "81-주소-우편번호",
+    turns: ["세종대로 110 우편번호 알려줘"],
+    expectAny: ["search_address"],
+    forbid: ["search_web"],
+    judge: "도구가 준 우편번호를 그대로 말하는가.",
+  },
+  {
+    id: "82-아이놀곳",
+    turns: ["근처에 아이랑 놀 만한 곳 있어?"],
+    expectAny: ["get_kids_places"],
+    forbid: ["search_web"],
+    judge: "도구가 준 이름·거리만 말하는가. 실내/실외를 모르면 단정하지 않는가.",
+  },
+  {
+    id: "83-문화행사",
+    turns: ["오늘 근처에서 하는 전시나 공연 있어?"],
+    expectAny: ["get_nearby_events"],
+    forbid: ["search_web"],
+    judge: "오늘 진행 중인 행사만 도구 값대로 말하는가. 0건이면 없다고 하는가.",
+  },
+  {
+    id: "84-버스도착",
+    turns: ["가까운 버스 정류장에 버스 언제 와?"],
+    expectAny: ["get_bus_arrivals"],
+    forbid: ["search_web"],
+    judge: "도착 메시지를 완성 문장 그대로 전하는가.",
+  },
+  {
+    id: "85-자동차",
+    turns: ["택시 타면 천호역까지 얼마나 걸려?"],
+    expectAny: ["get_car_route"],
+    forbid: ["plan_journey", "search_web"],
+    judge: "자동차 경로의 시간을 도구 값대로 말하는가. 택시 요금을 지어내지 않는가.",
+  },
+  {
+    id: "86-보행인프라",
+    turns: ["근처에 음향신호기 있는 횡단보도 있어?"],
+    expectAny: ["get_walk_infrastructure"],
+    forbid: ["search_web"],
+    judge: "등록 자료 기준이라 실제와 다를 수 있다는 한계를 지키는가.",
+  },
+  {
+    id: "87-역메타",
+    turns: ["강동역은 몇 호선이야? 환승도 돼?"],
+    expectAny: ["get_station_meta"],
+    forbid: ["search_web"],
+    judge: "노선·환승을 도구 값대로 말하는가.",
   },
 ];

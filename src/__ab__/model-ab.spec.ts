@@ -31,7 +31,7 @@ import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { buildChatSystemInstruction } from "@/lib/chat/system-instruction";
 import { GEMINI_MODEL } from "@/lib/gemini/client";
 import { dataLocale } from "@/lib/data-locale";
-import type { ExecutionContext } from "@/lib/chat/types";
+import type { ChatCapability, ExecutionContext } from "@/lib/chat/types";
 import { checkLangInvariantArgs, scoreGrounding, type ToolOutput } from "./grounding";
 import { buildReport, instructionKey, parseModelSpec, type Checks, type ResultFile, type RunResult } from "./report";
 import { CASES, GILDONG, type Case } from "./cases";
@@ -140,19 +140,37 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOut
   } as unknown as GoogleGenAI;
 }
 
-/** 세션 공통 실행 맥락 — 두 러너가 같은 값을 쓰게 한 곳에서 만든다. */
+/**
+ * 세션에 여는 도구 선언 — 정식판 클라이언트가 보내는 묶음과 같게 둔다(E92, 2026-11-28).
+ * 채팅 탭(iOS·웹)은 ko에서 능력 `journey`를 신고하고, 장소 상세에서 연 채팅은 라우트가 빈 집합으로 닫는다(`/api/chat` route.ts).
+ * `route-start`는 길찾기 세 도구의 렌더만 바꾸고 모델에 주는 `data`는 같아서 열지 않는다(열면 대중교통 카드용 ODsay 조회가
+ * 캐시 스텁 때문에 한 번씩 더 나간다).
+ */
+function declarationsOf(c: Case) {
+  return availableDeclarations(c.place ? new Set() : new Set<ChatCapability>(["journey"]));
+}
+
+/** 여정 도구가 실제로 선언됐는가 — 라우트처럼 선언 목록을 정본으로 지침 단락과 실행 맥락을 연다. */
+function journeyOpenOf(c: Case): boolean {
+  return declarationsOf(c).some((d) => d.name === "plan_journey");
+}
+
+/** 세션 공통 실행 맥락 — 세 러너가 같은 값을 쓰게 한 곳에서 만든다. 여정 턴 상태는 세션마다 새로 만든다. */
 function ctxOf(c: Case): ExecutionContext {
   return {
     userLocation: c.withLocation === false ? undefined : (c.location ?? GILDONG),
     placeAnchor: c.place ? { lat: c.place.lat, lng: c.place.lng, name: c.place.name } : undefined,
+    ...(journeyOpenOf(c)
+      ? { journey: { clientIp: "ab-harness", manualOrigin: false, turn: { asked: false, queried: false } } }
+      : {}),
     locale: "ko",
     dataLocale: dataLocale("ko"),
   };
 }
 
-/** 세션에 보내는 systemInstruction — 두 러너와 채점기·결과 파일이 같은 값을 쓰게 한 곳에서 만든다. */
+/** 세션에 보내는 systemInstruction — 세 러너와 채점기·결과 파일이 같은 값을 쓰게 한 곳에서 만든다. */
 function instructionOf(c: Case): string {
-  return buildChatSystemInstruction("ko", c.place, { journey: false });
+  return buildChatSystemInstruction("ko", c.place, { journey: journeyOpenOf(c) });
 }
 
 function checksOf(c: Case, toolCalls: string[], toolArgs: RoundStat["toolArgs"], toolOutputs: ToolOutput[], text: string): Checks {
@@ -200,7 +218,7 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
       ai: instrument(real, rounds, toolOutputs, spec.thinkingLevel),
       model: spec.model,
       systemInstruction: instructionOf(c),
-      tools: [{ functionDeclarations: availableDeclarations(new Set()) }],
+      tools: [{ functionDeclarations: declarationsOf(c) }],
       history,
       ctx,
     });
@@ -248,7 +266,7 @@ async function runClaudeOne(client: ClaudeClientLike, model: string, c: Case, re
         client,
         spec: parseClaudeSpec(model),
         systemInstruction: instructionOf(c),
-        tools: toAnthropicTools(availableDeclarations(new Set())),
+        tools: toAnthropicTools(declarationsOf(c)),
         turns: c.turns,
         ctx: ctxOf(c),
       },
@@ -299,7 +317,7 @@ async function runOpenAiOne(call: OpenAiCall, model: string, c: Case, rep: numbe
         call,
         spec: parseOpenAiSpec(model),
         systemInstruction: instructionOf(c),
-        tools: toOpenAiTools(availableDeclarations(new Set())),
+        tools: toOpenAiTools(declarationsOf(c)),
         turns: c.turns,
         ctx: ctxOf(c),
       },
