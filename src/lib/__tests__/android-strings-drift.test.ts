@@ -33,6 +33,7 @@ const INTENDED_DIFFERENCES: Record<string, string> = {
   "android.nearby.subwayEmptyNearest": "문안 동일, iOS 지정자 %@ → 명명 플레이스홀더 {station}·{distance}",
   "android.nearby.subwayClosed": "문안 동일, iOS 지정자 %@ → {time}",
   "android.releaseNotice.title": "2026-11-21 위원장 판정: 안드로이드 새 소식 창 제목은 iOS 「길동무 2.0…」에서 버전만 뺀다",
+  "android.chat.consentData": "iOS 3.0은 기본 수신처가 OpenAI다(E92 A7). 안드로이드는 3.0 범위 밖이고 chatModel을 보내지 않아 Gemini로 가므로 종전 문장을 둔다",
 };
 function flatten(obj: unknown, prefix = ""): Flat {
   const out: Flat = {};

@@ -59,7 +59,7 @@
       "listenStop": "Detener la reproducción",
       "share": "Compartir",
       "consentTitle": "Acerca del chat con IA",
-      "consentData": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity.",
+      "consentData": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a OpenAI para generar respuestas. Si cambia el modelo de respuesta del chat a Gemini en Ajustes, se envían a Google. Para sugerir preguntas, su última pregunta y la respuesta también se envían a Google Gemini, y las preguntas que requieren búsqueda web también se envían a Perplexity.",
       "consentAiNotice": "Las respuestas son generadas por IA y pueden ser inexactas.",
       "consentAlt": "Puede seguir usando las pestañas Buscar y Cerca sin aceptar.",
       "consentAgree": "Aceptar y empezar",
@@ -267,6 +267,10 @@
       "tabOrderResetDone": "Orden predeterminado restablecido",
       "chatModel": "Modelo de respuesta del chat",
       "chatModelFooter": "Si elige un modelo distinto de Gemini, sus preguntas del chat y su ubicación se envían a OpenAI o a Anthropic.",
+      "chatModelDefaultName": "{name} (predeterminado)",
+      "chatModelLegacyName": "{name} (clásico)",
+      "chatModelTerraDescription": "Busca con precisión la información que necesita y responde de forma breve, solo con lo esencial",
+      "chatModelGeminiDescription": "El modelo anterior, que explica lugares y rutas de forma amable y detallada",
       "vergiliusProvider": "Modelo de respuesta del paseo"
     },
     "shortcut": {

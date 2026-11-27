@@ -62,10 +62,10 @@ enum AppConfig {
     static let experimentalChatGuideEnabled = false
     #endif
 
-    /// 채팅 답변 모델 선택(E89, 위원장 판정 2026-11-23)의 봉인. 켜지면 설정에 「채팅 답변 모델」 줄이 서고(서버가 연 모델이 있을 때만)
-    /// 채팅 요청에 고른 모델을 싣는다(처음 값 Gemini는 싣지 않는다). 소비자는 그 둘뿐이다(`SettingsView`의 Picker 줄,
-    /// `ChatModel`의 요청 본문, `chat-model-seal.test.ts`가 잠근다). 꺼지면 요청 본문이 종전과 같다. 나들이 플래그와 졸업 시점이 달라 따로 둔다.
-    /// 실험판 실기기 판정을 통과하면 이 검사를 삭제한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
+    /// 채팅 답변 모델 선택지 확장(E89, 위원장 판정 2026-11-23). 「채팅 답변 모델」 줄 자체는 3.0에서 정식판으로 졸업했고
+    /// (정식판 선택지는 Terra·Gemini 둘, E92 A3), 이 플래그는 실험판 선택지 여섯(Luna·Claude 셋 추가)과 그 전송 범위 설명만 켠다.
+    /// 소비자는 `ChatAnswerModel.choices`·`requestValue`의 `extended` 인자(`SettingsView`·`ChatModel`)와 `SettingsView`의 설명 한 줄이다.
+    /// 나들이 플래그와 졸업 시점이 달라 따로 둔다.
     #if EXPERIMENTAL
     static let experimentalChatModelEnabled = true
     #else

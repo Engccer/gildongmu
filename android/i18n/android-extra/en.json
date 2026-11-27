@@ -97,6 +97,9 @@
     },
     "dataSources": {
       "walkHealth": "Steps come from the step sensor; calories are an estimate from distance and weight"
+    },
+    "chat": {
+      "consentData": "Your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity."
     }
   },
   "search": {

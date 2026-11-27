@@ -97,6 +97,9 @@
     },
     "dataSources": {
       "walkHealth": "歩数は歩数センサーの実測、カロリーは歩いた距離と体重から計算した推定値です"
+    },
+    "chat": {
+      "consentData": "質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにGoogle Geminiに送信されます。ウェブ検索が必要な質問はPerplexityにも送信されます。"
     }
   },
   "search": {

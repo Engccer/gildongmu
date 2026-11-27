@@ -59,7 +59,7 @@
       "listenStop": "Stop playback",
       "share": "Share",
       "consentTitle": "About AI Chat",
-      "consentData": "Your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity.",
+      "consentData": "Your questions, the conversation, the place you are viewing, and your current location are sent to OpenAI to generate answers. If you change the chat answer model to Gemini in Settings, they are sent to Google instead. Your last question and answer are also sent to Google Gemini to suggest follow-up questions, and questions that need a web search are also sent to Perplexity.",
       "consentAiNotice": "Answers are AI-generated and may be inaccurate.",
       "consentAlt": "You can keep using the Search and Nearby tabs without agreeing.",
       "consentAgree": "Agree and start",
@@ -267,6 +267,10 @@
       "tabOrderResetDone": "Default order restored",
       "chatModel": "Chat answer model",
       "chatModelFooter": "If you choose a model other than Gemini, your chat questions and location are sent to OpenAI or Anthropic.",
+      "chatModelDefaultName": "{name} (default)",
+      "chatModelLegacyName": "{name} (legacy)",
+      "chatModelTerraDescription": "Finds the information you need accurately and answers briefly with just the key points",
+      "chatModelGeminiDescription": "The previous model, which explains places and routes in a friendly, detailed way",
       "vergiliusProvider": "Stroll answer model"
     },
     "shortcut": {

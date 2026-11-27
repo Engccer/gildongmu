@@ -1,7 +1,9 @@
 /**
- * 실험판 「채팅 답변 모델」(E89 spec `2026-11-23-e89-chat-model-choice-design.md`)의 식별자·게이트·하루 상한·세션 조립. 서버 전용.
+ * 「채팅 답변 모델」(E89 spec `2026-11-23-e89-chat-model-choice-design.md`, 3.0 정식판 E92 spec `2026-11-27-e92-release-3.0-design.md` §2)의
+ * 식별자·게이트·하루 상한·세션 조립. 서버 전용.
  *
- * 처음 값 Gemini는 이 표에 없다. 요청에 `chatModel`이 없거나 다섯 밖의 값이면 `/api/chat`은 종전 Gemini 경로를 그대로 탄다(정식판 봉인 1선).
+ * Gemini는 이 표에 없다. 요청에 `chatModel`이 없거나 다섯 밖의 값이면 `/api/chat`은 종전 Gemini 경로를 그대로 탄다
+ * (2.8 이하 앱은 값을 보내지 않으므로 그 앱의 질문은 계속 Gemini로 간다, E92 A1). 3.0 앱은 Terra를 고르면 `openai`를 보낸다.
  * 키가 없는 회사는 선택지에 서지 않는다(게이트 패턴: 목록·요청·호출 전부 0).
  */
 import type { FunctionDeclaration } from "@google/genai";
@@ -95,9 +97,16 @@ export function createChatModelSession(input: ChatModelSessionInput): ChatModelS
   });
 }
 
-// 비용 방어(spec C10): 기존 채팅 IP 상한(60초 10회) 뒤에, 다른 회사 경로에만 인스턴스 하루 상한을 더한다.
+// 비용 방어(spec C10): 기존 채팅 IP 상한(60초 10회) 뒤에, 실험판 전용 네 모델(Luna·Claude 셋)에만 인스턴스 하루 상한을 더한다.
 // 최악 Opus 질문당 약 2.3센트 × 150 = 인스턴스당 하루 약 3.5달러. ⚠ `rate-limit.ts` 머리 주석의 한계 그대로 인스턴스별이다.
+// Terra(`openai`)는 3.0 정식판 처음 값이라 상한 밖이다(E92 spec A5: 운영형 질문당 0.76센트로 Gemini 3.6보다 싸고,
+// Gemini 경로에도 하루 상한이 없다 — IP 상한만).
 export const CHAT_MODEL_DAILY_CAP = 150;
+
+/** 하루 상한을 세는 모델인가. 정식판 처음 값 Terra만 뺀다(E92 A5). */
+export function isDailyCapped(id: ChatModelId): boolean {
+  return id !== "openai";
+}
 
 /** 다른 회사로 보내는 이력의 글자 합 상한. 하루 상한은 건수만 세므로 건당 입력을 여기서 묶는다(리뷰 2026-11-23). */
 export const CHAT_MODEL_HISTORY_MAX_CHARS = 24_000;
@@ -128,7 +137,7 @@ export function boundChatHistory(raw: readonly { role?: unknown; text?: unknown 
 }
 const KST_OFFSET_MS = 9 * 3_600_000;
 
-/** 하루 상한(KST 자정 리셋, 다섯 모델 합산). 테스트가 새 인스턴스를 만든다. */
+/** 하루 상한(KST 자정 리셋, 상한을 세는 네 모델 합산). 테스트가 새 인스턴스를 만든다. */
 export function createChatModelBudget(cap = CHAT_MODEL_DAILY_CAP) {
   let day = -1;
   let used = 0;

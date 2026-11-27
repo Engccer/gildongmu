@@ -451,7 +451,11 @@
     <string name="android_settings_carListenerDriver">운전자 (스피커, 짧은 명령)</string>
     <string name="android_settings_carListenerPassenger">동승자 (이어폰, 화면 낭독)</string>
     <string name="android_settings_chatModel">채팅 답변 모델</string>
+    <string name="android_settings_chatModelDefaultName">%1$s (기본)</string>
     <string name="android_settings_chatModelFooter">Gemini가 아닌 모델을 고르면 채팅 질문과 위치가 OpenAI 또는 Anthropic으로 전송됩니다.</string>
+    <string name="android_settings_chatModelGeminiDescription">기존 모델로, 장소와 길을 친절하게 풀어 설명하는 모델</string>
+    <string name="android_settings_chatModelLegacyName">%1$s (레거시)</string>
+    <string name="android_settings_chatModelTerraDescription">필요한 정보를 정확히 찾고, 핵심만 간결하게 답하는 모델</string>
     <string name="android_settings_dictationHold">누르고 있는 동안 녹음</string>
     <string name="android_settings_dictationStyle">받아쓰기 방식</string>
     <string name="android_settings_dictationTap">탭해서 녹음 시작 또는 중지</string>
@@ -1140,7 +1144,7 @@
     <string name="privacy_activity">iOS 앱의 도보 안내 도착 화면에 표시하는 걸음 수와 설정에 입력한 체중은 기기 안에서만 사용하며 전송하거나 저장하지 않습니다.</string>
     <string name="privacy_agent">WebMCP를 지원하는 AI 에이전트 브라우저로 길동무의 도구를 쓰면, 도구 출력이 그 에이전트 제공자에게 전달됩니다. 전달되는 것은 검색어와 검색 결과(장소 이름, 주소, 전화번호), 장소 정보(역의 첫차와 막차, 편의시설, 실시간 도착, 무장애 시설), 길찾기의 출발지, 도착지, 경유지 이름, 경로 요약과 안내 문장입니다. 좌표는 전달하지 않지만 위치와 이동을 유추할 수 있는 정보입니다. 이 기능은 WebMCP를 지원하는 AI 에이전트 브라우저로 길동무를 열었을 때만 동작합니다. 일반 브라우저에서는 동작하지 않으며, 길동무 안에 따로 켜는 설정은 없습니다.</string>
     <string name="privacy_analytics">웹 방문 통계는 Vercel Analytics로 익명 집계합니다. 쿠키를 사용하지 않고, 개인을 식별하는 정보를 저장하지 않습니다.</string>
-    <string name="privacy_chat">AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송됩니다. 실험판에서 채팅 답변 모델을 바꾸면 Google Gemini 대신 OpenAI 또는 Anthropic Claude에 전송됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 길 위에서 말로 묻기 기능에서는 질문 글, 현재 위치, 주변 장소 목록, 방금 안내한 내용이 답변 생성을 위해 OpenAI, Google Gemini 또는 Anthropic Claude에 전송되며, 음성은 기기 밖으로 나가지 않습니다. 답변은 AI가 생성하며 부정확할 수 있습니다.</string>
+    <string name="privacy_chat">AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 설정에 따라 OpenAI 또는 Google Gemini에 전송됩니다. 실험판에서는 Anthropic Claude를 고를 수도 있습니다. 추천 질문을 만들기 위해 마지막 질문과 답변은 Google Gemini에도 전달됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 길 위에서 말로 묻기 기능에서는 질문 글, 현재 위치, 주변 장소 목록, 방금 안내한 내용이 답변 생성을 위해 OpenAI, Google Gemini 또는 Anthropic Claude에 전송되며, 음성은 기기 밖으로 나가지 않습니다. 답변은 AI가 생성하며 부정확할 수 있습니다.</string>
     <string name="privacy_contact">서비스와 개인정보 처리에 관한 문의는 engccer@gmail.com 으로 보내 주세요.</string>
     <string name="privacy_contactHeading">문의</string>
     <string name="privacy_dictation">iOS 앱의 받아쓰기는 기기 안에서 처리되어 음성이 기기를 떠나지 않습니다. 웹의 받아쓰기는 음성을 Deepgram에 전송해 텍스트로 변환하며, 변환 후 저장하지 않습니다.</string>

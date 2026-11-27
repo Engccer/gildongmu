@@ -11,7 +11,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
   };
 });
 
-import { availableChatModels, boundChatHistory, createChatModelBudget, createChatModelSession, parseChatModel } from "../chat-models";
+import { availableChatModels, boundChatHistory, createChatModelBudget, createChatModelSession, isDailyCapped, parseChatModel } from "../chat-models";
 
 describe("parseChatModel (E89 C2)", () => {
   it("알려진 다섯 값만 통과, 나머지는 null(= 종전 Gemini 경로)", () => {
@@ -47,6 +47,11 @@ describe("하루 상한 (E89 C10)", () => {
     expect(b.reserve(kstNoon)).toBe(false);
     const nextKstDay = Date.UTC(2026, 10, 23, 15); // 2026-11-24 00:00 KST
     expect(b.reserve(nextKstDay)).toBe(true);
+  });
+
+  it("정식판 처음 값 Terra(`openai`)는 상한을 세지 않고 실험판 네 모델만 센다(E92 A5)", () => {
+    expect(isDailyCapped("openai")).toBe(false);
+    for (const id of ["openai-luna", "claude-opus", "claude-sonnet", "claude-haiku"] as const) expect(isDailyCapped(id)).toBe(true);
   });
 });
 
